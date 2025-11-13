@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id          String      @id @default(cuid())
+  nome        String
+  email       String?     @unique
+  telefone    String?
+  empresa     String?
+  endereco    String?
+  cidade      String?
+  estado      String?
+  cep         String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  contatos    Contato[]
+  oportunidades Oportunidade[]
+  tarefas     Tarefa[]
+  
+  @@map("clientes")
+}
+
+model Contato {
+  id          String      @id @default(cuid())
+  nome        String
+  email       String?
+  telefone    String?
+  cargo       String?
+  clienteId   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  @@map("contatos")
+}
+
+model Oportunidade {
+  id          String      @id @default(cuid())
+  titulo      String
+  descricao   String?
+  valor       Float?
+  status      String      @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
+  probabilidade Int       @default(0) // 0-100
+  dataFechamento DateTime?
+  clienteId   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tarefas     Tarefa[]
+  
+  @@map("oportunidades")
+}
+
+model Tarefa {
+  id          String      @id @default(cuid())
+  titulo      String
+  descricao   String?
+  status      String      @default("pendente") // pendente, em_andamento, concluida
+  prioridade  String      @default("media") // baixa, media, alta
+  dataVencimento DateTime?
+  clienteId   String?
+  oportunidadeId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  cliente     Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  
+  @@map("tarefas")
+}
+
