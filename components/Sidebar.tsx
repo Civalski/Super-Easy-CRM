@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -50,8 +51,17 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
       <div className="p-6 border-b border-gray-800">
-        <h1 className="text-2xl font-bold">Arker CRM</h1>
-        <p className="text-sm text-gray-400 mt-1">Sistema de Gestão</p>
+        <div className="flex items-center justify-center mb-2">
+          <Image
+            src="/arkerlogo1.png"
+            alt="Arker CRM"
+            width={150}
+            height={50}
+            className="object-contain"
+            priority
+          />
+        </div>
+        <p className="text-sm text-gray-400 text-center">Sistema de Gestão</p>
       </div>
 
       <nav className="flex-1 p-4">

@@ -45,6 +45,18 @@ model Contato {
   @@map("contatos")
 }
 
+model Ambiente {
+  id          String      @id @default(cuid())
+  nome        String
+  descricao   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  oportunidades Oportunidade[]
+  
+  @@map("ambientes")
+}
+
 model Oportunidade {
   id          String      @id @default(cuid())
   titulo      String
@@ -54,10 +66,12 @@ model Oportunidade {
   probabilidade Int       @default(0) // 0-100
   dataFechamento DateTime?
   clienteId   String
+  ambienteId  String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
   cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  ambiente    Ambiente    @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
   tarefas     Tarefa[]
   
   @@map("oportunidades")

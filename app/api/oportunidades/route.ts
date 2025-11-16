@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server'
 import { store } from '@/lib/store'
 import { MockOportunidade } from '@/lib/mockData'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Simula delay de API
     await new Promise((resolve) => setTimeout(resolve, 200))
     
-    const oportunidades = store.getOportunidades()
+    const { searchParams } = new URL(request.url)
+    const ambienteId = searchParams.get('ambienteId')
+    
+    let oportunidades = store.getOportunidades()
+    
+    // Filtra por ambiente se fornecido
+    if (ambienteId) {
+      oportunidades = oportunidades.filter((opp) => opp.ambienteId === ambienteId)
+    }
+    
     const oportunidadesOrdenadas = oportunidades.sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     )
@@ -25,7 +34,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { titulo, descricao, valor, status, probabilidade, clienteId, dataFechamento } = body
+    const { titulo, descricao, valor, status, probabilidade, clienteId, ambienteId, dataFechamento } = body
 
     // Validação básica
     if (!titulo || titulo.trim() === '') {
@@ -42,6 +51,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!ambienteId || ambienteId.trim() === '') {
+      return NextResponse.json(
+        { error: 'Ambiente é obrigatório' },
+        { status: 400 }
+      )
+    }
+
     // Simula delay de API
     await new Promise((resolve) => setTimeout(resolve, 200))
 
@@ -50,6 +66,15 @@ export async function POST(request: Request) {
     if (!cliente) {
       return NextResponse.json(
         { error: 'Cliente não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Busca o ambiente para validar
+    const ambiente = store.getAmbienteById(ambienteId)
+    if (!ambiente) {
+      return NextResponse.json(
+        { error: 'Ambiente não encontrado' },
         { status: 404 }
       )
     }
@@ -64,8 +89,12 @@ export async function POST(request: Request) {
       probabilidade: probabilidade || 0,
       dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
       clienteId,
+      ambienteId,
       cliente: {
         nome: cliente.nome,
+      },
+      ambiente: {
+        nome: ambiente.nome,
       },
       createdAt: new Date(),
       updatedAt: new Date(),

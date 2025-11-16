@@ -18,6 +18,14 @@ export interface MockCliente {
   }
 }
 
+export interface MockAmbiente {
+  id: string
+  nome: string
+  descricao: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface MockOportunidade {
   id: string
   titulo: string
@@ -27,7 +35,11 @@ export interface MockOportunidade {
   probabilidade: number
   dataFechamento: Date | null
   clienteId: string
+  ambienteId: string
   cliente: {
+    nome: string
+  }
+  ambiente: {
     nome: string
   }
   createdAt: Date
@@ -119,6 +131,30 @@ export const mockClientes: MockCliente[] = [
   },
 ]
 
+export const mockAmbientes: MockAmbiente[] = [
+  {
+    id: '1',
+    nome: 'Clientes de Produto X',
+    descricao: 'Pipeline para clientes interessados no produto X',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    id: '2',
+    nome: 'Clientes de Produto Y',
+    descricao: 'Pipeline para clientes interessados no produto Y',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    id: '3',
+    nome: 'Geral',
+    descricao: 'Pipeline geral para todas as oportunidades',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+]
+
 export const mockOportunidades: MockOportunidade[] = [
   {
     id: '1',
@@ -129,8 +165,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 30,
     dataFechamento: new Date('2024-03-01'),
     clienteId: '1',
+    ambienteId: '1',
     cliente: {
       nome: 'João Silva',
+    },
+    ambiente: {
+      nome: 'Clientes de Produto X',
     },
     createdAt: new Date('2024-01-15'),
     updatedAt: new Date('2024-01-20'),
@@ -144,8 +184,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 50,
     dataFechamento: new Date('2024-02-15'),
     clienteId: '2',
+    ambienteId: '2',
     cliente: {
       nome: 'Maria Santos',
+    },
+    ambiente: {
+      nome: 'Clientes de Produto Y',
     },
     createdAt: new Date('2024-01-10'),
     updatedAt: new Date('2024-01-18'),
@@ -159,8 +203,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 70,
     dataFechamento: new Date('2024-02-20'),
     clienteId: '3',
+    ambienteId: '1',
     cliente: {
       nome: 'Pedro Oliveira',
+    },
+    ambiente: {
+      nome: 'Clientes de Produto X',
     },
     createdAt: new Date('2024-01-05'),
     updatedAt: new Date('2024-01-15'),
@@ -174,8 +222,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 85,
     dataFechamento: new Date('2024-02-10'),
     clienteId: '4',
+    ambienteId: '3',
     cliente: {
       nome: 'Ana Costa',
+    },
+    ambiente: {
+      nome: 'Geral',
     },
     createdAt: new Date('2024-01-20'),
     updatedAt: new Date('2024-01-22'),
@@ -189,8 +241,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 100,
     dataFechamento: new Date('2024-01-25'),
     clienteId: '1',
+    ambienteId: '2',
     cliente: {
       nome: 'João Silva',
+    },
+    ambiente: {
+      nome: 'Clientes de Produto Y',
     },
     createdAt: new Date('2023-12-01'),
     updatedAt: new Date('2024-01-25'),
@@ -204,8 +260,12 @@ export const mockOportunidades: MockOportunidade[] = [
     probabilidade: 0,
     dataFechamento: null,
     clienteId: '2',
+    ambienteId: '1',
     cliente: {
       nome: 'Maria Santos',
+    },
+    ambiente: {
+      nome: 'Clientes de Produto X',
     },
     createdAt: new Date('2023-11-15'),
     updatedAt: new Date('2024-01-10'),
@@ -256,6 +316,11 @@ export const getClientes = async (): Promise<MockCliente[]> => {
   // Simula delay de API
   await new Promise((resolve) => setTimeout(resolve, 100))
   return mockClientes
+}
+
+export const getAmbientes = async (): Promise<MockAmbiente[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  return mockAmbientes
 }
 
 export const getOportunidades = async (): Promise<MockOportunidade[]> => {

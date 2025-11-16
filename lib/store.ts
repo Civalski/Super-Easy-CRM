@@ -3,21 +3,25 @@ import {
   mockOportunidades,
   mockClientes,
   mockTarefas,
+  mockAmbientes,
   MockOportunidade,
   MockCliente,
   MockTarefa,
+  MockAmbiente,
 } from './mockData'
 
 class InMemoryStore {
   private oportunidades: MockOportunidade[]
   private clientes: MockCliente[]
   private tarefas: MockTarefa[]
+  private ambientes: MockAmbiente[]
 
   constructor() {
     // Inicializa com dados mockados
     this.oportunidades = [...mockOportunidades]
     this.clientes = [...mockClientes]
     this.tarefas = [...mockTarefas]
+    this.ambientes = [...mockAmbientes]
   }
 
   // Métodos para Oportunidades
@@ -30,6 +34,13 @@ class InMemoryStore {
   }
 
   addOportunidade(oportunidade: MockOportunidade): void {
+    // Busca o ambiente para incluir o nome
+    const ambiente = this.getAmbienteById(oportunidade.ambienteId)
+    if (ambiente) {
+      oportunidade.ambiente = {
+        nome: ambiente.nome,
+      }
+    }
     this.oportunidades.push(oportunidade)
   }
 
@@ -38,6 +49,17 @@ class InMemoryStore {
     if (index === -1) {
       return null
     }
+    
+    // Se ambienteId foi atualizado, busca o nome do ambiente
+    if (updates.ambienteId) {
+      const ambiente = this.getAmbienteById(updates.ambienteId)
+      if (ambiente) {
+        updates.ambiente = {
+          nome: ambiente.nome,
+        }
+      }
+    }
+    
     this.oportunidades[index] = {
       ...this.oportunidades[index],
       ...updates,
@@ -125,10 +147,46 @@ class InMemoryStore {
     return true
   }
 
+  // Métodos para Ambientes
+  getAmbientes(): MockAmbiente[] {
+    return [...this.ambientes]
+  }
+
+  getAmbienteById(id: string): MockAmbiente | undefined {
+    return this.ambientes.find((a) => a.id === id)
+  }
+
+  addAmbiente(ambiente: MockAmbiente): void {
+    this.ambientes.push(ambiente)
+  }
+
+  updateAmbiente(id: string, updates: Partial<MockAmbiente>): MockAmbiente | null {
+    const index = this.ambientes.findIndex((a) => a.id === id)
+    if (index === -1) {
+      return null
+    }
+    this.ambientes[index] = {
+      ...this.ambientes[index],
+      ...updates,
+      updatedAt: new Date(),
+    }
+    return this.ambientes[index]
+  }
+
+  deleteAmbiente(id: string): boolean {
+    const index = this.ambientes.findIndex((a) => a.id === id)
+    if (index === -1) {
+      return false
+    }
+    this.ambientes.splice(index, 1)
+    return true
+  }
+
   reset(): void {
     this.oportunidades = [...mockOportunidades]
     this.clientes = [...mockClientes]
     this.tarefas = [...mockTarefas]
+    this.ambientes = [...mockAmbientes]
   }
 }
 

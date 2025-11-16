@@ -75,13 +75,24 @@ export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoa
 
     const activeId = active.id as string
     const overId = over.id as string
+    const activeOportunidade = oportunidades.find((opp) => opp.id === activeId)
 
-    // Se soltou em uma coluna (não em outro card)
+    if (!activeOportunidade) {
+      setActiveId(null)
+      return
+    }
+
+    let newStatus: string | undefined
+
     if (COLUMNS.some((col) => col.id === overId)) {
-      const oportunidade = oportunidades.find((opp) => opp.id === activeId)
-      if (oportunidade && oportunidade.status !== overId) {
-        onStatusChange(activeId, overId)
-      }
+      newStatus = overId
+    } else {
+      const overOportunidade = oportunidades.find((opp) => opp.id === overId)
+      newStatus = overOportunidade?.status
+    }
+
+    if (newStatus && activeOportunidade.status !== newStatus) {
+      onStatusChange(activeId, newStatus)
     }
 
     setActiveId(null)
@@ -131,4 +142,3 @@ export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoa
     </DndContext>
   )
 }
-
