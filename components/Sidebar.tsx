@@ -50,8 +50,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
-      <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center justify-center mb-2">
+      <div className="py-4 px-4 border-b border-gray-800">
+        <div className="flex items-center justify-center">
           <Image
             src="/arkerlogo1.png"
             alt="Arker CRM"
@@ -61,7 +61,6 @@ export default function Sidebar() {
             priority
           />
         </div>
-        <p className="text-sm text-gray-400 text-center">Sistema de Gestão</p>
       </div>
 
       <nav className="flex-1 p-4">

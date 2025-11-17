@@ -1,18 +1,23 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/store'
-import { MockCliente } from '@/lib/mockData'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    
-    const clientes = store.getClientes()
-    const clientesOrdenados = clientes.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    )
+    const clientes = await prisma.cliente.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        _count: {
+          select: {
+            oportunidades: true,
+            contatos: true,
+          },
+        },
+      },
+    })
 
-    return NextResponse.json(clientesOrdenados)
+    return NextResponse.json(clientes)
   } catch (error) {
     console.error('Erro ao buscar clientes:', error)
     return NextResponse.json(
@@ -35,16 +40,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-
-    const clientes = store.getClientes()
-    
     // Verifica se já existe cliente com o mesmo email (se fornecido)
     if (email && email.trim() !== '') {
-      const clienteExistente = clientes.find(
-        (c) => c.email && c.email.toLowerCase() === email.toLowerCase()
-      )
+      const clienteExistente = await prisma.cliente.findUnique({
+        where: { email: email.trim() },
+      })
       if (clienteExistente) {
         return NextResponse.json(
           { error: 'Já existe um cliente com este email' },
@@ -53,29 +53,36 @@ export async function POST(request: Request) {
       }
     }
 
-    const novoCliente: MockCliente = {
-      id: String(clientes.length + 1),
-      nome: nome.trim(),
-      email: email && email.trim() !== '' ? email.trim() : null,
-      telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null,
-      empresa: empresa && empresa.trim() !== '' ? empresa.trim() : null,
-      endereco: endereco && endereco.trim() !== '' ? endereco.trim() : null,
-      cidade: cidade && cidade.trim() !== '' ? cidade.trim() : null,
-      estado: estado && estado.trim() !== '' ? estado.trim().toUpperCase() : null,
-      cep: cep && cep.trim() !== '' ? cep.trim() : null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      _count: {
-        oportunidades: 0,
-        contatos: 0,
+    const novoCliente = await prisma.cliente.create({
+      data: {
+        nome: nome.trim(),
+        email: email && email.trim() !== '' ? email.trim() : null,
+        telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null,
+        empresa: empresa && empresa.trim() !== '' ? empresa.trim() : null,
+        endereco: endereco && endereco.trim() !== '' ? endereco.trim() : null,
+        cidade: cidade && cidade.trim() !== '' ? cidade.trim() : null,
+        estado: estado && estado.trim() !== '' ? estado.trim().toUpperCase() : null,
+        cep: cep && cep.trim() !== '' ? cep.trim() : null,
       },
-    }
-
-    store.addCliente(novoCliente)
+      include: {
+        _count: {
+          select: {
+            oportunidades: true,
+            contatos: true,
+          },
+        },
+      },
+    })
 
     return NextResponse.json(novoCliente, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar cliente:', error)
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Já existe um cliente com este email' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Erro ao criar cliente' },
       { status: 500 }

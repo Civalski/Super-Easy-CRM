@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/Button'
+import AmbienteSelector from '@/components/AmbienteSelector'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 
@@ -11,16 +12,10 @@ interface Cliente {
   nome: string
 }
 
-interface Ambiente {
-  id: string
-  nome: string
-}
-
 export default function NovaOportunidadePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [ambientes, setAmbientes] = useState<Ambiente[]>([])
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -39,13 +34,12 @@ export default function NovaOportunidadePage() {
       .then((data) => setClientes(data))
       .catch((error) => console.error('Erro ao carregar clientes:', error))
 
-    // Carrega ambientes para o select
+    // Carrega ambientes e seleciona o primeiro automaticamente
     fetch('/api/ambientes')
       .then((res) => res.json())
       .then((data) => {
-        setAmbientes(data)
-        // Se houver apenas um ambiente, seleciona automaticamente
-        if (data.length === 1) {
+        // Se houver ambientes, seleciona o primeiro automaticamente
+        if (data.length > 0) {
           setFormData((prev) => ({ ...prev, ambienteId: data[0].id }))
         }
       })
@@ -61,8 +55,22 @@ export default function NovaOportunidadePage() {
     })
   }
 
+  const handleAmbienteChange = (ambienteId: string | null) => {
+    setFormData({
+      ...formData,
+      ambienteId: ambienteId || '',
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validação de campos obrigatórios
+    if (!formData.ambienteId || formData.ambienteId.trim() === '') {
+      alert('Por favor, selecione um ambiente')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -184,21 +192,10 @@ export default function NovaOportunidadePage() {
               >
                 Ambiente <span className="text-red-500">*</span>
               </label>
-              <select
-                id="ambienteId"
-                name="ambienteId"
-                required
-                value={formData.ambienteId}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione um ambiente</option>
-                {ambientes.map((ambiente) => (
-                  <option key={ambiente.id} value={ambiente.id}>
-                    {ambiente.nome}
-                  </option>
-                ))}
-              </select>
+              <AmbienteSelector
+                ambienteSelecionado={formData.ambienteId || null}
+                onAmbienteChange={handleAmbienteChange}
+              />
             </div>
 
             <div>

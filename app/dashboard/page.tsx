@@ -1,11 +1,36 @@
-import { getDashboardStats } from '@/lib/mockData'
+import { prisma } from '@/lib/prisma'
 import StatCard from '@/components/StatCard'
 import { Users, Briefcase, Calendar, TrendingUp } from 'lucide-react'
 
 export default async function Dashboard() {
-  const stats = await getDashboardStats()
-  
-  const { clientesCount, oportunidadesCount, tarefasCount, valorTotal, oportunidadesPorStatus } = stats
+  // Buscar dados reais do banco de dados
+  const [clientesCount, oportunidadesCount, tarefasCount, oportunidades] = await Promise.all([
+    prisma.cliente.count(),
+    prisma.oportunidade.count(),
+    prisma.tarefa.count(),
+    prisma.oportunidade.findMany({
+      select: {
+        status: true,
+        valor: true,
+      },
+    }),
+  ])
+
+  // Calcular valor total (excluindo oportunidades perdidas)
+  const valorTotal = oportunidades
+    .filter((opp) => opp.status !== 'perdida')
+    .reduce((sum, opp) => sum + (opp.valor || 0), 0)
+
+  // Agrupar oportunidades por status
+  const oportunidadesPorStatusMap = oportunidades.reduce((acc, opp) => {
+    acc[opp.status] = (acc[opp.status] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const oportunidadesPorStatus = Object.entries(oportunidadesPorStatusMap).map(([status, count]) => ({
+    status,
+    _count: count,
+  }))
 
   const valorFormatado = new Intl.NumberFormat('pt-BR', {
     style: 'currency',

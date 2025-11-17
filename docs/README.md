@@ -9,7 +9,7 @@ Sistema de CRM completo desenvolvido com Next.js, Prisma, e funcionalidades de d
 - **TypeScript** - Tipagem estática
 - **Tailwind CSS** - Estilização
 - **@dnd-kit** - Biblioteca para drag and drop
-- **PostgreSQL** - Banco de dados
+- **SQLite** - Banco de dados
 
 ## Estrutura do Projeto
 
@@ -43,34 +43,27 @@ Sistema de CRM completo desenvolvido com Next.js, Prisma, e funcionalidades de d
 npm install
 ```
 
-2. **Modo de Desenvolvimento (sem banco de dados):**
-   - O sistema está configurado para usar dados mockados
-   - Não é necessário configurar banco de dados
-   - Os dados são armazenados em memória durante a execução
+2. Configure o banco de dados SQLite:
+   - Crie um arquivo `.env` na raiz do projeto com:
+   ```
+   DATABASE_URL="file:./dev.db"
+   ```
+   - Ou use outro caminho para o arquivo SQLite se preferir
 
-3. Inicie o servidor de desenvolvimento:
+3. Execute as migrações do Prisma:
+```bash
+npm run db:generate
+npm run db:push
+```
+
+4. Inicie o servidor de desenvolvimento:
 ```bash
 npm run dev
 ```
 
-4. Acesse [http://localhost:3000](http://localhost:3000)
+5. Acesse [http://localhost:3000](http://localhost:3000)
 
-### Configurando Banco de Dados (Opcional - Futuro)
-
-Quando quiser conectar a um banco de dados real:
-
-1. Configure o banco de dados no arquivo `.env`:
-```
-DATABASE_URL="postgresql://usuario:senha@localhost:5432/arker_crm?schema=public"
-```
-
-2. Execute as migrações do Prisma:
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-3. Substitua as chamadas em `lib/mockData.ts` por chamadas ao Prisma nas páginas
+**Nota:** O banco de dados SQLite será criado automaticamente na primeira execução. O arquivo `dev.db` será criado na raiz do projeto.
 
 ## Scripts Disponíveis
 
@@ -87,9 +80,10 @@ npx prisma db push
 - ✅ Dashboard com estatísticas
 - ✅ Gerenciamento de clientes
 - ✅ Pipeline de oportunidades com drag and drop (Kanban)
-- ✅ API REST para oportunidades
+- ✅ API REST completa (clientes, oportunidades, tarefas, ambientes)
+- ✅ Banco de dados SQLite integrado
 - ✅ Interface responsiva
-- ✅ **Dados mockados para desenvolvimento frontend (sem necessidade de banco de dados)**
+- ✅ Busca integrada
 
 ## Próximos Passos
 

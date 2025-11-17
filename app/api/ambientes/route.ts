@@ -1,18 +1,26 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/store'
-import { MockAmbiente } from '@/lib/mockData'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    
-    const ambientes = store.getAmbientes()
-    const ambientesOrdenados = ambientes.sort(
-      (a, b) => a.nome.localeCompare(b.nome)
-    )
+    let ambientes = await prisma.ambiente.findMany({
+      orderBy: {
+        nome: 'asc',
+      },
+    })
 
-    return NextResponse.json(ambientesOrdenados)
+    // Se não houver ambientes, cria um ambiente padrão
+    if (ambientes.length === 0) {
+      const ambientePadrao = await prisma.ambiente.create({
+        data: {
+          nome: 'Ambiente Padrão',
+          descricao: 'Ambiente criado automaticamente',
+        },
+      })
+      ambientes = [ambientePadrao]
+    }
+
+    return NextResponse.json(ambientes)
   } catch (error) {
     console.error('Erro ao buscar ambientes:', error)
     return NextResponse.json(
@@ -35,19 +43,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-
-    const ambientes = store.getAmbientes()
-    const novoAmbiente: MockAmbiente = {
-      id: String(ambientes.length + 1),
-      nome: nome.trim(),
-      descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    store.addAmbiente(novoAmbiente)
+    const novoAmbiente = await prisma.ambiente.create({
+      data: {
+        nome: nome.trim(),
+        descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
+      },
+    })
 
     return NextResponse.json(novoAmbiente, { status: 201 })
   } catch (error) {

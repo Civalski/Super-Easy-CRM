@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/store'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const ambiente = store.getAmbienteById(params.id)
+    const ambiente = await prisma.ambiente.findUnique({
+      where: { id: params.id },
+    })
     
     if (!ambiente) {
       return NextResponse.json(
@@ -33,7 +35,7 @@ export async function PATCH(
     const body = await request.json()
     const { nome, descricao } = body
 
-    const updates: { nome?: string; descricao?: string | null } = {}
+    const updateData: { nome?: string; descricao?: string | null } = {}
     
     if (nome !== undefined) {
       if (!nome || nome.trim() === '') {
@@ -42,25 +44,27 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      updates.nome = nome.trim()
+      updateData.nome = nome.trim()
     }
 
     if (descricao !== undefined) {
-      updates.descricao = descricao && descricao.trim() !== '' ? descricao.trim() : null
+      updateData.descricao = descricao && descricao.trim() !== '' ? descricao.trim() : null
     }
 
-    const ambienteAtualizado = store.updateAmbiente(params.id, updates)
+    const ambienteAtualizado = await prisma.ambiente.update({
+      where: { id: params.id },
+      data: updateData,
+    })
 
-    if (!ambienteAtualizado) {
+    return NextResponse.json(ambienteAtualizado)
+  } catch (error: any) {
+    console.error('Erro ao atualizar ambiente:', error)
+    if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Ambiente não encontrado' },
         { status: 404 }
       )
     }
-
-    return NextResponse.json(ambienteAtualizado)
-  } catch (error) {
-    console.error('Erro ao atualizar ambiente:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar ambiente' },
       { status: 500 }
@@ -73,18 +77,19 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const sucesso = store.deleteAmbiente(params.id)
+    await prisma.ambiente.delete({
+      where: { id: params.id },
+    })
 
-    if (!sucesso) {
+    return NextResponse.json({ message: 'Ambiente deletado com sucesso' })
+  } catch (error: any) {
+    console.error('Erro ao deletar ambiente:', error)
+    if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Ambiente não encontrado' },
         { status: 404 }
       )
     }
-
-    return NextResponse.json({ message: 'Ambiente deletado com sucesso' })
-  } catch (error) {
-    console.error('Erro ao deletar ambiente:', error)
     return NextResponse.json(
       { error: 'Erro ao deletar ambiente' },
       { status: 500 }

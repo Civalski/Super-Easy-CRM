@@ -1,27 +1,31 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/store'
-import { MockOportunidade } from '@/lib/mockData'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    
     const { searchParams } = new URL(request.url)
     const ambienteId = searchParams.get('ambienteId')
     
-    let oportunidades = store.getOportunidades()
-    
-    // Filtra por ambiente se fornecido
-    if (ambienteId) {
-      oportunidades = oportunidades.filter((opp) => opp.ambienteId === ambienteId)
-    }
-    
-    const oportunidadesOrdenadas = oportunidades.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    )
+    const oportunidades = await prisma.oportunidade.findMany({
+      where: ambienteId ? { ambienteId } : undefined,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        cliente: {
+          select: {
+            nome: true,
+          },
+        },
+        ambiente: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+    })
 
-    return NextResponse.json(oportunidadesOrdenadas)
+    return NextResponse.json(oportunidades)
   } catch (error) {
     console.error('Erro ao buscar oportunidades:', error)
     return NextResponse.json(
@@ -58,11 +62,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Simula delay de API
-    await new Promise((resolve) => setTimeout(resolve, 200))
-
-    // Busca o cliente para obter o nome
-    const cliente = store.getClienteById(clienteId)
+    // Verifica se o cliente existe
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: clienteId },
+    })
     if (!cliente) {
       return NextResponse.json(
         { error: 'Cliente não encontrado' },
@@ -70,8 +73,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Busca o ambiente para validar
-    const ambiente = store.getAmbienteById(ambienteId)
+    // Verifica se o ambiente existe
+    const ambiente = await prisma.ambiente.findUnique({
+      where: { id: ambienteId },
+    })
     if (!ambiente) {
       return NextResponse.json(
         { error: 'Ambiente não encontrado' },
@@ -79,32 +84,40 @@ export async function POST(request: Request) {
       )
     }
 
-    const oportunidades = store.getOportunidades()
-    const novaOportunidade: MockOportunidade = {
-      id: String(oportunidades.length + 1),
-      titulo: titulo.trim(),
-      descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
-      valor: valor ? parseFloat(valor) : null,
-      status: status || 'prospeccao',
-      probabilidade: probabilidade || 0,
-      dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
-      clienteId,
-      ambienteId,
-      cliente: {
-        nome: cliente.nome,
+    const novaOportunidade = await prisma.oportunidade.create({
+      data: {
+        titulo: titulo.trim(),
+        descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
+        valor: valor ? parseFloat(String(valor)) : null,
+        status: status || 'prospeccao',
+        probabilidade: probabilidade ? parseInt(String(probabilidade)) : 0,
+        dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
+        clienteId,
+        ambienteId,
       },
-      ambiente: {
-        nome: ambiente.nome,
+      include: {
+        cliente: {
+          select: {
+            nome: true,
+          },
+        },
+        ambiente: {
+          select: {
+            nome: true,
+          },
+        },
       },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    store.addOportunidade(novaOportunidade)
+    })
 
     return NextResponse.json(novaOportunidade, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar oportunidade:', error)
+    if (error.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Cliente ou ambiente não encontrado' },
+        { status: 404 }
+      )
+    }
     return NextResponse.json(
       { error: 'Erro ao criar oportunidade' },
       { status: 500 }
