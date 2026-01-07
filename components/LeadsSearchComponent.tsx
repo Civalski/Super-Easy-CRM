@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Download, Loader2 } from 'lucide-react';
 import { useLeadsSearch, useEstados, useCidades } from '@/lib/hooks/useLeadsSearch';
+import CnaeSelector from '@/components/CnaeSelector';
 import type { LeadsSearchFilters, EmpresaParquet } from '@/types/leads';
 
 export function LeadsSearchComponent() {
@@ -13,7 +14,10 @@ export function LeadsSearchComponent() {
     const [filters, setFilters] = useState<LeadsSearchFilters>({
         estado: '',
         cidade: '',
-        cnae: '',
+        cnae_principal: '',
+        cnae_secundario: '',
+        exigir_secundario: false,
+        qualquer_secundario: false,
         situacao: '',
         porte: '',
         limit: 100,
@@ -50,6 +54,14 @@ export function LeadsSearchComponent() {
         } catch (error) {
             console.error('Erro ao buscar leads:', error);
         }
+    };
+
+    const handleCnaePrincipalChange = (cnaes: string[]) => {
+        setFilters({ ...filters, cnae_principal: cnaes[0] || '' });
+    };
+
+    const handleCnaeSecundarioChange = (cnaes: string[]) => {
+        setFilters({ ...filters, cnae_secundario: cnaes[0] || '' });
     };
 
     const handleExportCSV = () => {
@@ -134,21 +146,89 @@ export function LeadsSearchComponent() {
                         </div>
                     </div>
 
-                    {/* Linha 2: CNAE e Situação */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                CNAE (Código)
+                    {/* Linha 2: CNAE Principal */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CNAE Principal (Atividade Principal da Empresa)
+                        </label>
+                        <CnaeSelector
+                            selectedCnaes={filters.cnae_principal ? [filters.cnae_principal] : []}
+                            onSelectionChange={handleCnaePrincipalChange}
+                            multiple={false}
+                        />
+                    </div>
+
+                    {/* Linha 3: Filtro de CNAE Secundário Avançado */}
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="mb-3">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={filters.exigir_secundario || false}
+                                    onChange={(e) => setFilters({
+                                        ...filters,
+                                        exigir_secundario: e.target.checked,
+                                        qualquer_secundario: false,
+                                        cnae_secundario: ''
+                                    })}
+                                    className="mr-2 h-4 w-4"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
+                                    Exigir CNAE Secundário (filtro combinado)
+                                </span>
                             </label>
-                            <input
-                                type="text"
-                                value={filters.cnae}
-                                onChange={(e) => setFilters({ ...filters, cnae: e.target.value })}
-                                placeholder="Ex: 4399103"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                            <p className="text-xs text-gray-500 mt-1 ml-6">
+                                Marque para filtrar empresas que têm a atividade principal ACIMA e também uma atividade secundária
+                            </p>
                         </div>
 
+                        {filters.exigir_secundario && (
+                            <div className="space-y-3 pl-6 border-l-2 border-blue-400">
+                                <div className="flex gap-4">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="tipo_secundario"
+                                            checked={filters.qualquer_secundario || false}
+                                            onChange={() => setFilters({
+                                                ...filters,
+                                                qualquer_secundario: true,
+                                                cnae_secundario: ''
+                                            })}
+                                            className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">Qualquer CNAE secundário</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="tipo_secundario"
+                                            checked={!filters.qualquer_secundario}
+                                            onChange={() => setFilters({ ...filters, qualquer_secundario: false })}
+                                            className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">CNAE secundário específico</span>
+                                    </label>
+                                </div>
+
+                                {!filters.qualquer_secundario && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Selecione o CNAE Secundário
+                                        </label>
+                                        <CnaeSelector
+                                            selectedCnaes={filters.cnae_secundario ? [filters.cnae_secundario] : []}
+                                            onSelectionChange={handleCnaeSecundarioChange}
+                                            multiple={false}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Linha 4: Situação e Porte */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Situação Cadastral
@@ -165,10 +245,7 @@ export function LeadsSearchComponent() {
                                 <option value="SUSPENSA">Suspensa</option>
                             </select>
                         </div>
-                    </div>
 
-                    {/* Linha 3: Porte e Limite */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Porte da Empresa
@@ -185,22 +262,23 @@ export function LeadsSearchComponent() {
                                 <option value="GRANDE EMPRESA">Grande Empresa</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Limite de Resultados
-                            </label>
-                            <select
-                                value={filters.limit}
-                                onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value) })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value={50}>50 resultados</option>
-                                <option value={100}>100 resultados</option>
-                                <option value={500}>500 resultados</option>
-                                <option value={1000}>1000 resultados</option>
-                            </select>
-                        </div>
+                    {/* Linha 4: Limite de Resultados */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Limite de Resultados
+                        </label>
+                        <select
+                            value={filters.limit}
+                            onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option value={50}>50 resultados</option>
+                            <option value={100}>100 resultados</option>
+                            <option value={500}>500 resultados</option>
+                            <option value={1000}>1000 resultados</option>
+                        </select>
                     </div>
 
                     {/* Botão de Busca */}
@@ -287,8 +365,8 @@ export function LeadsSearchComponent() {
                                         </td>
                                         <td className="py-3 px-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${empresa['SITUAÇÃO CADASTRAL'] === 'ATIVA'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-red-100 text-red-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-red-100 text-red-700'
                                                 }`}>
                                                 {empresa['SITUAÇÃO CADASTRAL']}
                                             </span>

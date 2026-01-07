@@ -115,18 +115,23 @@ async def list_cidades(estado: str):
 async def search_empresas(
     estado: Optional[str] = Query(None, description="Sigla do estado (ex: SP)"),
     cidade: Optional[str] = Query(None, description="Nome da cidade"),
-    cnae: Optional[str] = Query(None, description="Código CNAE principal"),
+    cnae_principal: Optional[str] = Query(None, description="Código CNAE principal"),
+    cnae_secundario: Optional[str] = Query(None, description="Código CNAE secundário"),
+    exigir_secundario: bool = Query(False, description="Exigir que tenha CNAE secundário"),
+    qualquer_secundario: bool = Query(False, description="Aceitar qualquer CNAE secundário (não vazio)"),
     situacao: Optional[str] = Query(None, description="Situação cadastral (ex: ATIVA)"),
     porte: Optional[str] = Query(None, description="Porte da empresa"),
     limit: int = Query(100, ge=1, le=1000, description="Limite de resultados")
 ):
     """
-    Busca empresas com filtros
+    Busca empresas com filtros avançados de CNAE
     
     Exemplos:
     - /search?estado=SP&cidade=ADAMANTINA
-    - /search?estado=SP&cnae=4399103
-    - /search?estado=SP&porte=MICRO EMPRESA&limit=50
+    - /search?estado=SP&cnae_principal=4399103
+    - /search?estado=SP&cnae_principal=4399103&cnae_secundario=4322301
+    - /search?estado=SP&cnae_principal=4399103&exigir_secundario=true&qualquer_secundario=true
+    - /search?estado=SP&cnae_secundario=4322301
     """
     
     if not DADOS_PATH.exists():
@@ -175,9 +180,21 @@ async def search_empresas(
             df = table.to_pandas()
             total_lidos += len(df)
             
-            # Aplicar filtros
-            if cnae:
-                df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae)]
+            # Aplicar filtros de CNAE
+            if cnae_principal:
+                # Filtro por CNAE principal
+                df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae_principal)]
+            
+            if exigir_secundario:
+                if qualquer_secundario:
+                    # Exigir que tenha QUALQUER CNAE secundário (não vazio)
+                    df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.len() > 0]
+                elif cnae_secundario:
+                    # Exigir CNAE secundário específico
+                    df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae_secundario), regex=False)]
+            elif cnae_secundario:
+                # Buscar apenas por CNAE secundário (sem exigir principal)
+                df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae_secundario), regex=False)]
             
             if situacao:
                 df = df[df['SITUAÇÃO CADASTRAL'] == situacao.upper()]
@@ -202,7 +219,10 @@ async def search_empresas(
             "filtros": {
                 "estado": estado_upper,
                 "cidade": cidade,
-                "cnae": cnae,
+                "cnae_principal": cnae_principal,
+                "cnae_secundario": cnae_secundario,
+                "exigir_secundario": exigir_secundario,
+                "qualquer_secundario": qualquer_secundario,
                 "situacao": situacao,
                 "porte": porte
             },

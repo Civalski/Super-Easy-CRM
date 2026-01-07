@@ -51,7 +51,10 @@ export interface EmpresaParquet {
 export interface LeadsSearchFilters {
     estado?: string;
     cidade?: string;
-    cnae?: string;
+    cnae_principal?: string;
+    cnae_secundario?: string;
+    exigir_secundario?: boolean;
+    qualquer_secundario?: boolean;
     situacao?: string;
     porte?: string;
     limit?: number;
@@ -64,7 +67,10 @@ export interface LeadsSearchResponse {
     filtros: {
         estado: string;
         cidade?: string;
-        cnae?: string;
+        cnae_principal?: string;
+        cnae_secundario?: string;
+        exigir_secundario?: boolean;
+        qualquer_secundario?: boolean;
         situacao?: string;
         porte?: string;
     };

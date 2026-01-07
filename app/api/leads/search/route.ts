@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
 
         const estado = searchParams.get('estado');
         const cidade = searchParams.get('cidade');
-        const cnae = searchParams.get('cnae');
+        const cnae_principal = searchParams.get('cnae_principal');
+        const cnae_secundario = searchParams.get('cnae_secundario');
+        const exigir_secundario = searchParams.get('exigir_secundario') === 'true';
+        const qualquer_secundario = searchParams.get('qualquer_secundario') === 'true';
         const situacao = searchParams.get('situacao');
         const porte = searchParams.get('porte');
         const limit = searchParams.get('limit') || '100';
@@ -30,7 +33,10 @@ export async function GET(request: NextRequest) {
 
         queryParams.append('estado', estado);
         if (cidade) queryParams.append('cidade', cidade);
-        if (cnae) queryParams.append('cnae', cnae);
+        if (cnae_principal) queryParams.append('cnae_principal', cnae_principal);
+        if (cnae_secundario) queryParams.append('cnae_secundario', cnae_secundario);
+        if (exigir_secundario) queryParams.append('exigir_secundario', 'true');
+        if (qualquer_secundario) queryParams.append('qualquer_secundario', 'true');
         if (situacao) queryParams.append('situacao', situacao);
         if (porte) queryParams.append('porte', porte);
         queryParams.append('limit', limit);
