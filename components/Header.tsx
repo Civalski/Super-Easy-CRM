@@ -57,11 +57,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
       try {
         const response = await fetch(`/api/busca?q=${encodeURIComponent(busca)}`)
         const data = await response.json()
-        setResultados(data)
+
+        // Garantir que clientes e oportunidades sejam sempre arrays
+        const resultadosValidados: BuscaResultado = {
+          clientes: Array.isArray(data.clientes) ? data.clientes : [],
+          oportunidades: Array.isArray(data.oportunidades) ? data.oportunidades : [],
+        }
+
+        setResultados(resultadosValidados)
         setMostrarResultados(true)
       } catch (error) {
         console.error('Erro ao buscar:', error)
-        setResultados(null)
+        setResultados({ clientes: [], oportunidades: [] })
       } finally {
         setCarregando(false)
       }
@@ -86,8 +93,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const totalResultados = (resultados?.clientes.length || 0) + (resultados?.oportunidades.length || 0)
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
-      <div className="flex items-center justify-between px-6 py-4">
+    <header className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <div className="flex items-center justify-between px-6 gap-4 min-h-[var(--top-bar-height)]">
         {/* Seção Esquerda - Menu Mobile */}
         <div className="flex items-center lg:hidden">
           <button

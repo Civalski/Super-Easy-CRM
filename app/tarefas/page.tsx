@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Button from '@/components/Button'
-import { Plus, Calendar, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Plus, Calendar, Loader2, CheckCircle2, Clock, AlertCircle, History, RotateCcw, Filter, X } from 'lucide-react'
 
 interface Tarefa {
   id: string
@@ -14,6 +14,8 @@ interface Tarefa {
   dataVencimento: Date | null
   clienteId: string | null
   oportunidadeId: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 const statusConfig = {
@@ -49,9 +51,15 @@ const prioridadeConfig = {
   },
 }
 
+type TabType = 'pendentes' | 'historico'
+
 export default function TarefasPage() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TabType>('pendentes')
+  const [filtroStatus, setFiltroStatus] = useState<string>('')
+  const [filtroPrioridade, setFiltroPrioridade] = useState<string>('')
+  const [atualizandoTarefa, setAtualizandoTarefa] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTarefas()
@@ -71,14 +79,24 @@ export default function TarefasPage() {
     try {
       const response = await fetch('/api/tarefas')
       const data = await response.json()
-      // Converter strings de data para objetos Date
-      const tarefasComData = data.map((tarefa: any) => ({
-        ...tarefa,
-        dataVencimento: tarefa.dataVencimento ? new Date(tarefa.dataVencimento) : null,
-      }))
-      setTarefas(tarefasComData)
+
+      // Garantir que data seja sempre um array
+      if (Array.isArray(data)) {
+        // Converter strings de data para objetos Date
+        const tarefasComData = data.map((tarefa: any) => ({
+          ...tarefa,
+          dataVencimento: tarefa.dataVencimento ? new Date(tarefa.dataVencimento) : null,
+          createdAt: new Date(tarefa.createdAt),
+          updatedAt: new Date(tarefa.updatedAt),
+        }))
+        setTarefas(tarefasComData)
+      } else {
+        console.error('API de tarefas retornou dados em formato inesperado:', data)
+        setTarefas([])
+      }
     } catch (error) {
       console.error('Erro ao carregar tarefas:', error)
+      setTarefas([])
     } finally {
       setLoading(false)
     }
@@ -91,6 +109,84 @@ export default function TarefasPage() {
       month: '2-digit',
       year: 'numeric',
     }).format(new Date(date))
+  }
+
+  const voltarTarefaParaPendente = async (tarefaId: string) => {
+    setAtualizandoTarefa(tarefaId)
+    try {
+      const response = await fetch(`/api/tarefas/${tarefaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'pendente' }),
+      })
+
+      if (response.ok) {
+        await fetchTarefas()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Erro ao atualizar tarefa')
+      }
+    } catch (error) {
+      console.error('Erro ao voltar tarefa para pendente:', error)
+      alert('Erro ao atualizar tarefa. Tente novamente.')
+    } finally {
+      setAtualizandoTarefa(null)
+    }
+  }
+
+  // Filtrar tarefas por aba
+  const tarefasPendentes = tarefas.filter(
+    (t) => t.status === 'pendente' || t.status === 'em_andamento'
+  )
+  const tarefasConcluidas = tarefas.filter((t) => t.status === 'concluida')
+
+  // Aplicar filtros
+  const aplicarFiltros = (lista: Tarefa[]) => {
+    let filtradas = [...lista]
+
+    // Aplicar filtro de status apenas na aba pendentes
+    if (activeTab === 'pendentes' && filtroStatus) {
+      filtradas = filtradas.filter((t) => t.status === filtroStatus)
+    }
+
+    if (filtroPrioridade) {
+      filtradas = filtradas.filter((t) => t.prioridade === filtroPrioridade)
+    }
+
+    return filtradas
+  }
+
+  // Ordenar tarefas pendentes por prioridade (alta -> média -> baixa) e depois por data de vencimento
+  const tarefasPendentesOrdenadas = aplicarFiltros(tarefasPendentes).sort((a, b) => {
+    const prioridadeOrder = { alta: 3, media: 2, baixa: 1 }
+    const prioridadeDiff = (prioridadeOrder[b.prioridade as keyof typeof prioridadeOrder] || 2) -
+      (prioridadeOrder[a.prioridade as keyof typeof prioridadeOrder] || 2)
+    if (prioridadeDiff !== 0) return prioridadeDiff
+
+    // Se mesma prioridade, ordenar por data de vencimento (mais próximas primeiro)
+    if (!a.dataVencimento && !b.dataVencimento) return 0
+    if (!a.dataVencimento) return 1
+    if (!b.dataVencimento) return -1
+    return new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()
+  })
+
+  // Ordenar tarefas concluídas por data de conclusão (mais recentes primeiro)
+  const tarefasConcluidasOrdenadas = aplicarFiltros(tarefasConcluidas).sort((a, b) => {
+    // Usando updatedAt para refletir quando foi concluída
+    const dateA = a.updatedAt instanceof Date ? a.updatedAt : new Date(a.updatedAt)
+    const dateB = b.updatedAt instanceof Date ? b.updatedAt : new Date(b.updatedAt)
+    return dateB.getTime() - dateA.getTime()
+  })
+
+  const tarefasExibidas = activeTab === 'pendentes' ? tarefasPendentesOrdenadas : tarefasConcluidasOrdenadas
+
+  const temFiltrosAtivos = (activeTab === 'pendentes' && filtroStatus !== '') || filtroPrioridade !== ''
+
+  const limparFiltros = () => {
+    setFiltroStatus('')
+    setFiltroPrioridade('')
   }
 
   if (loading) {
@@ -123,25 +219,138 @@ export default function TarefasPage() {
         </Link>
       </div>
 
-      {tarefas.length === 0 ? (
+      {/* Abas */}
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => {
+              setActiveTab('pendentes')
+              limparFiltros()
+            }}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'pendentes'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <Clock size={18} />
+              <span>Pendentes</span>
+              {tarefasPendentes.length > 0 && (
+                <span className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs font-semibold">
+                  {tarefasPendentes.length}
+                </span>
+              )}
+            </div>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('historico')
+              limparFiltros()
+            }}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'historico'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <History size={18} />
+              <span>Histórico</span>
+              {tarefasConcluidas.length > 0 && (
+                <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full text-xs font-semibold">
+                  {tarefasConcluidas.length}
+                </span>
+              )}
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Filtros */}
+      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter size={18} className="text-gray-500 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtros:</span>
+          </div>
+
+          {activeTab === 'pendentes' && (
+            <div>
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="em_andamento">Em Andamento</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <select
+              value={filtroPrioridade}
+              onChange={(e) => setFiltroPrioridade(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas as prioridades</option>
+              <option value="baixa">Baixa</option>
+              <option value="media">Média</option>
+              <option value="alta">Alta</option>
+            </select>
+          </div>
+
+          {temFiltrosAtivos && (
+            <button
+              onClick={limparFiltros}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <X size={16} />
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
+      {tarefasExibidas.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Nenhuma tarefa cadastrada
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Comece criando sua primeira tarefa.
-          </p>
-          <Link href="/tarefas/nova">
-            <Button>
-              <Plus size={20} className="mr-2" />
-              Criar Tarefa
-            </Button>
-          </Link>
+          {activeTab === 'pendentes' ? (
+            <>
+              <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Nenhuma tarefa pendente
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Todas as suas tarefas estão concluídas! Parabéns!
+              </p>
+              <Link href="/tarefas/nova">
+                <Button>
+                  <Plus size={20} className="mr-2" />
+                  Criar Nova Tarefa
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <History size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Nenhuma tarefa concluída
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                As tarefas concluídas aparecerão aqui.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tarefas.map((tarefa) => {
+          {tarefasExibidas.map((tarefa) => {
             const statusInfo = statusConfig[tarefa.status as keyof typeof statusConfig] || statusConfig.pendente
             const prioridadeInfo = prioridadeConfig[tarefa.prioridade as keyof typeof prioridadeConfig] || prioridadeConfig.media
             const StatusIcon = statusInfo.icon
@@ -180,6 +389,30 @@ export default function TarefasPage() {
                     </span>
                   </div>
                 </div>
+
+                {activeTab === 'historico' && (
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => voltarTarefaParaPendente(tarefa.id)}
+                      disabled={atualizandoTarefa === tarefa.id}
+                      className="w-full"
+                    >
+                      {atualizandoTarefa === tarefa.id ? (
+                        <>
+                          <Loader2 size={16} className="mr-2 animate-spin" />
+                          Atualizando...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw size={16} className="mr-2" />
+                          Voltar para Pendente
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             )
           })}

@@ -49,7 +49,7 @@ const COLUMNS = [
 
 export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
-  
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -58,6 +58,10 @@ export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoa
   )
 
   const getOportunidadesByStatus = (status: string) => {
+    // Garantir que oportunidades seja sempre um array (proteção extra)
+    if (!Array.isArray(oportunidades)) {
+      return []
+    }
     return oportunidades.filter((opp) => opp.status === status)
   }
 
@@ -67,7 +71,7 @@ export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoa
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    
+
     if (!over) {
       setActiveId(null)
       return
@@ -110,7 +114,7 @@ export default function KanbanBoard({ oportunidades, onStatusChange }: KanbanBoa
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {COLUMNS.map((column) => {
           const columnOportunidades = getOportunidadesByStatus(column.id)
-          
+
           return (
             <KanbanColumn
               key={column.id}

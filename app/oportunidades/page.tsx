@@ -26,15 +26,23 @@ export default function OportunidadesPage() {
 
   const fetchOportunidades = useCallback(async () => {
     if (!ambienteSelecionado) return
-    
+
     try {
       setLoading(true)
       const url = `/api/oportunidades?ambienteId=${ambienteSelecionado}`
       const response = await fetch(url)
       const data = await response.json()
-      setOportunidades(data)
+
+      // Garantir que data seja sempre um array
+      if (Array.isArray(data)) {
+        setOportunidades(data)
+      } else {
+        console.error('API de oportunidades retornou dados em formato inesperado:', data)
+        setOportunidades([])
+      }
     } catch (error) {
       console.error('Erro ao carregar oportunidades:', error)
+      setOportunidades([])
     } finally {
       setLoading(false)
     }
@@ -68,7 +76,7 @@ export default function OportunidadesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-      
+
       if (response.ok) {
         setOportunidades((prev) =>
           prev.map((opp) => (opp.id === id ? { ...opp, status: newStatus } : opp))
@@ -111,8 +119,8 @@ export default function OportunidadesPage() {
             </div>
           </div>
         ) : (
-          <KanbanBoard 
-            oportunidades={oportunidades} 
+          <KanbanBoard
+            oportunidades={oportunidades}
             onStatusChange={handleStatusChange}
           />
         )

@@ -16,6 +16,15 @@ interface Oportunidade {
   titulo: string
 }
 
+// Função para obter a data de hoje no formato YYYY-MM-DD
+const getTodayDate = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function NovaTarefaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -26,7 +35,7 @@ export default function NovaTarefaPage() {
     descricao: '',
     status: 'pendente',
     prioridade: 'media',
-    dataVencimento: '',
+    dataVencimento: getTodayDate(),
     clienteId: '',
     oportunidadeId: '',
   })
@@ -36,10 +45,28 @@ export default function NovaTarefaPage() {
     Promise.all([
       fetch('/api/clientes').then((res) => res.json()),
       fetch('/api/oportunidades').then((res) => res.json()),
-    ]).then(([clientesData, oportunidadesData]) => {
-      setClientes(clientesData)
-      setOportunidades(oportunidadesData)
-    })
+    ])
+      .then(([clientesData, oportunidadesData]) => {
+        // Garantir que ambos sejam arrays antes de definir o estado
+        if (Array.isArray(clientesData)) {
+          setClientes(clientesData)
+        } else {
+          console.error('API de clientes retornou dados em formato inesperado:', clientesData)
+          setClientes([])
+        }
+
+        if (Array.isArray(oportunidadesData)) {
+          setOportunidades(oportunidadesData)
+        } else {
+          console.error('API de oportunidades retornou dados em formato inesperado:', oportunidadesData)
+          setOportunidades([])
+        }
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar dados:', error)
+        setClientes([])
+        setOportunidades([])
+      })
   }, [])
 
   const handleChange = (

@@ -31,16 +31,30 @@ export default function NovaOportunidadePage() {
     // Carrega clientes para o select
     fetch('/api/clientes')
       .then((res) => res.json())
-      .then((data) => setClientes(data))
-      .catch((error) => console.error('Erro ao carregar clientes:', error))
+      .then((data) => {
+        // Garantir que data seja sempre um array
+        if (Array.isArray(data)) {
+          setClientes(data)
+        } else {
+          console.error('API de clientes retornou dados em formato inesperado:', data)
+          setClientes([])
+        }
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar clientes:', error)
+        setClientes([])
+      })
 
     // Carrega ambientes e seleciona o primeiro automaticamente
     fetch('/api/ambientes')
       .then((res) => res.json())
       .then((data) => {
-        // Se houver ambientes, seleciona o primeiro automaticamente
-        if (data.length > 0) {
+        // Garantir que data seja sempre um array
+        if (Array.isArray(data) && data.length > 0) {
+          // Se houver ambientes, seleciona o primeiro automaticamente
           setFormData((prev) => ({ ...prev, ambienteId: data[0].id }))
+        } else if (!Array.isArray(data)) {
+          console.error('API de ambientes retornou dados em formato inesperado:', data)
         }
       })
       .catch((error) => console.error('Erro ao carregar ambientes:', error))
@@ -64,7 +78,7 @@ export default function NovaOportunidadePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validação de campos obrigatórios
     if (!formData.ambienteId || formData.ambienteId.trim() === '') {
       alert('Por favor, selecione um ambiente')

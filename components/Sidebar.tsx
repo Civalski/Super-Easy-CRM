@@ -50,7 +50,7 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
-      <div className="py-4 px-4 border-b border-gray-800">
+      <div className="px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center min-h-[var(--top-bar-height)]">
         <div className="flex items-center justify-center">
           <Image
             src="/arkerlogo1.png"

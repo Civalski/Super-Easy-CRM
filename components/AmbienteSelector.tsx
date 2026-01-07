@@ -60,20 +60,30 @@ export default function AmbienteSelector({
     try {
       const response = await fetch('/api/ambientes')
       const data = await response.json()
-      setAmbientes(data)
       
-      // Se não há ambiente selecionado e existem ambientes, seleciona o primeiro
-      if (!ambienteSelecionado && data.length > 0) {
-        onAmbienteChange(data[0].id)
+      // Garantir que data seja sempre um array
+      if (Array.isArray(data)) {
+        setAmbientes(data)
+        
+        // Se não há ambiente selecionado e existem ambientes, seleciona o primeiro
+        if (!ambienteSelecionado && data.length > 0) {
+          onAmbienteChange(data[0].id)
+        }
+      } else {
+        console.error('API retornou dados em formato inesperado:', data)
+        setAmbientes([])
       }
     } catch (error) {
       console.error('Erro ao carregar ambientes:', error)
+      setAmbientes([])
     } finally {
       setLoading(false)
     }
   }
 
-  const ambienteAtual = ambientes.find((a) => a.id === ambienteSelecionado)
+  const ambienteAtual = Array.isArray(ambientes) 
+    ? ambientes.find((a) => a.id === ambienteSelecionado)
+    : undefined
 
   const handleCreateAmbiente = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -3,7 +3,19 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Button from '@/components/Button'
-import { Plus, Mail, Phone, Building2, Briefcase, Users, Eye, Loader2 } from 'lucide-react'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import {
+  Plus,
+  Mail,
+  Phone,
+  Building2,
+  Briefcase,
+  Users,
+  Eye,
+  Loader2,
+  Edit2,
+  Trash2,
+} from 'lucide-react'
 
 interface Cliente {
   id: string
@@ -20,16 +32,18 @@ interface Cliente {
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null)
 
   useEffect(() => {
     fetchClientes()
-    
+
     // Recarrega quando a página ganha foco (útil após criar novo cliente)
     const handleFocus = () => {
       fetchClientes()
     }
     window.addEventListener('focus', handleFocus)
-    
+
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
@@ -39,11 +53,38 @@ export default function ClientesPage() {
     try {
       const response = await fetch('/api/clientes')
       const data = await response.json()
-      setClientes(data)
+
+      // Garantir que data seja sempre um array
+      if (Array.isArray(data)) {
+        setClientes(data)
+      } else {
+        console.error('API de clientes retornou dados em formato inesperado:', data)
+        setClientes([])
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error)
+      setClientes([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteCliente = async (clienteId: string) => {
+    setDeletingId(clienteId)
+    try {
+      const response = await fetch(`/api/clientes/${clienteId}`, {
+        method: 'DELETE',
+      })
+      const data = response.ok ? null : await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao excluir cliente')
+      }
+      setClientes((prev) => prev.filter((cliente) => cliente.id !== clienteId))
+      setClienteToDelete(null)
+    } catch (error: any) {
+      alert(error?.message || 'Erro ao excluir cliente')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -182,13 +223,37 @@ export default function ClientesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/clientes/${cliente.id}`}
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <Eye size={16} className="mr-1" />
-                        Ver detalhes
-                      </Link>
+                      <div className="flex items-center gap-4">
+                        <Link
+                          href={`/clientes/${cliente.id}`}
+                          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          <Eye size={16} className="mr-1" />
+                          Ver detalhes
+                        </Link>
+                        <Link
+                          href={`/clientes/${cliente.id}?acao=editar`}
+                          className="inline-flex items-center text-sm text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                        >
+                          <Edit2 size={16} className="mr-1" />
+                          Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setClienteToDelete(cliente)}
+                          disabled={deletingId === cliente.id}
+                          className="inline-flex items-center text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                        >
+                          {deletingId === cliente.id ? (
+                            'Excluindo...'
+                          ) : (
+                            <>
+                              <Trash2 size={16} className="mr-1" />
+                              Excluir
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -197,6 +262,32 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(clienteToDelete)}
+        title="Excluir cliente"
+        description={
+          clienteToDelete
+            ? `Deseja realmente excluir ${clienteToDelete.nome}? Esta ação não pode ser desfeita.`
+            : undefined
+        }
+        confirmLabel="Sim, excluir"
+        confirmVariant="danger"
+        confirmLoading={
+          clienteToDelete ? deletingId === clienteToDelete.id : false
+        }
+        onCancel={() => {
+          if (clienteToDelete && deletingId === clienteToDelete.id) {
+            return
+          }
+          setClienteToDelete(null)
+        }}
+        onConfirm={() => {
+          if (clienteToDelete) {
+            handleDeleteCliente(clienteToDelete.id)
+          }
+        }}
+      />
     </div>
   )
 }

@@ -10,15 +10,16 @@ let databaseUrl = process.env.DATABASE_URL
 
 if (!databaseUrl || !databaseUrl.startsWith('file:')) {
   // Se não estiver configurado corretamente, usar o caminho padrão do SQLite
-  const dbPath = path.join(process.cwd(), 'dev.db')
+  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db')
   databaseUrl = `file:${dbPath.replace(/\\/g, '/')}`
   console.warn('DATABASE_URL não configurada corretamente, usando:', databaseUrl)
-  
+
   // Definir a variável de ambiente para o Prisma
   process.env.DATABASE_URL = databaseUrl
 }
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   datasources: {
     db: {
       url: databaseUrl,
