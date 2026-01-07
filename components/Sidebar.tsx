@@ -10,6 +10,7 @@ import {
   Calendar,
   Settings,
   BarChart3,
+  UserPlus,
 } from 'lucide-react'
 
 const menuItems = [
@@ -22,6 +23,11 @@ const menuItems = [
     name: 'Clientes',
     href: '/clientes',
     icon: Users,
+  },
+  {
+    name: 'Leads',
+    href: '/leads',
+    icon: UserPlus,
   },
   {
     name: 'Oportunidades',
@@ -68,16 +74,15 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-            
+
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon size={20} />
                   <span>{item.name}</span>
@@ -102,4 +107,3 @@ export default function Sidebar() {
     </aside>
   )
 }
-
