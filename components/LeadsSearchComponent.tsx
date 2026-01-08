@@ -15,9 +15,8 @@ export function LeadsSearchComponent() {
         estado: '',
         cidade: '',
         cnae_principal: '',
-        cnae_secundario: '',
-        exigir_secundario: false,
-        qualquer_secundario: false,
+        cnaes_secundarios: [],
+        exigir_todos_secundarios: false, // false = qualquer um, true = todos
         situacao: '',
         porte: '',
         limit: 100,
@@ -61,7 +60,7 @@ export function LeadsSearchComponent() {
     };
 
     const handleCnaeSecundarioChange = (cnaes: string[]) => {
-        setFilters({ ...filters, cnae_secundario: cnaes[0] || '' });
+        setFilters({ ...filters, cnaes_secundarios: cnaes });
     };
 
     const handleExportCSV = () => {
@@ -158,71 +157,56 @@ export function LeadsSearchComponent() {
                         />
                     </div>
 
-                    {/* Linha 3: Filtro de CNAE Secundário Avançado */}
-                    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                        <div className="mb-3">
-                            <label className="flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={filters.exigir_secundario || false}
-                                    onChange={(e) => setFilters({
-                                        ...filters,
-                                        exigir_secundario: e.target.checked,
-                                        qualquer_secundario: false,
-                                        cnae_secundario: ''
-                                    })}
-                                    className="mr-2 h-4 w-4"
-                                />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Exigir CNAE Secundário (filtro combinado)
-                                </span>
-                            </label>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-                                Marque para filtrar empresas que têm a atividade principal ACIMA e também uma atividade secundária
-                            </p>
-                        </div>
+                    {/* Linha 3: CNAE Secundário */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            CNAEs Secundários (Atividades Secundárias da Empresa)
+                        </label>
+                        <CnaeSelector
+                            selectedCnaes={filters.cnaes_secundarios || []}
+                            onSelectionChange={handleCnaeSecundarioChange}
+                            multiple={true}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Por padrão, aceita empresas com qualquer CNAE secundário. Selecione CNAEs específicos para filtrar.
+                        </p>
 
-                        {filters.exigir_secundario && (
-                            <div className="space-y-3 pl-6 border-l-2 border-blue-400">
-                                <div className="flex gap-4">
-                                    <label className="flex items-center cursor-pointer">
+                        {/* Modo de Correspondência - Aparece apenas se houver CNAEs selecionados */}
+                        {filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0 && (
+                            <div className="mt-3 p-3 border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Modo de correspondência ({filters.cnaes_secundarios.length} CNAE{filters.cnaes_secundarios.length > 1 ? 's' : ''} selecionado{filters.cnaes_secundarios.length > 1 ? 's' : ''}):
+                                </p>
+                                <div className="space-y-2">
+                                    <label className="flex items-start cursor-pointer">
                                         <input
                                             type="radio"
-                                            name="tipo_secundario"
-                                            checked={filters.qualquer_secundario || false}
-                                            onChange={() => setFilters({
-                                                ...filters,
-                                                qualquer_secundario: true,
-                                                cnae_secundario: ''
-                                            })}
-                                            className="mr-2"
+                                            checked={!filters.exigir_todos_secundarios}
+                                            onChange={() => setFilters({ ...filters, exigir_todos_secundarios: false })}
+                                            className="mr-2 mt-0.5"
                                         />
-                                        <span className="text-sm text-gray-700 dark:text-gray-200">Qualquer CNAE secundário</span>
+                                        <div>
+                                            <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Qualquer um dos CNAEs selecionados</span>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                A empresa deve ter pelo menos uma das atividades secundárias selecionadas (OR lógico)
+                                            </p>
+                                        </div>
                                     </label>
-                                    <label className="flex items-center cursor-pointer">
+                                    <label className="flex items-start cursor-pointer">
                                         <input
                                             type="radio"
-                                            name="tipo_secundario"
-                                            checked={!filters.qualquer_secundario}
-                                            onChange={() => setFilters({ ...filters, qualquer_secundario: false })}
-                                            className="mr-2"
+                                            checked={filters.exigir_todos_secundarios || false}
+                                            onChange={() => setFilters({ ...filters, exigir_todos_secundarios: true })}
+                                            className="mr-2 mt-0.5"
                                         />
-                                        <span className="text-sm text-gray-700 dark:text-gray-200">CNAE secundário específico</span>
+                                        <div>
+                                            <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Todos os CNAEs selecionados</span>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                A empresa deve ter TODAS as atividades secundárias selecionadas (AND lógico)
+                                            </p>
+                                        </div>
                                     </label>
                                 </div>
-
-                                {!filters.qualquer_secundario && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Selecione o CNAE Secundário
-                                        </label>
-                                        <CnaeSelector
-                                            selectedCnaes={filters.cnae_secundario ? [filters.cnae_secundario] : []}
-                                            onSelectionChange={handleCnaeSecundarioChange}
-                                            multiple={false}
-                                        />
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>

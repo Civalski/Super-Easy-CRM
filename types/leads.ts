@@ -52,9 +52,8 @@ export interface LeadsSearchFilters {
     estado?: string;
     cidade?: string;
     cnae_principal?: string;
-    cnae_secundario?: string;
-    exigir_secundario?: boolean;
-    qualquer_secundario?: boolean;
+    cnaes_secundarios?: string[]; // Múltiplos CNAEs secundários
+    exigir_todos_secundarios?: boolean; // true = TODOS (AND), false = QUALQUER UM (OR)
     situacao?: string;
     porte?: string;
     limit?: number;

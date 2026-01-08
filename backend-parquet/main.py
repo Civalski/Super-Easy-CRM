@@ -116,9 +116,8 @@ async def search_empresas(
     estado: Optional[str] = Query(None, description="Sigla do estado (ex: SP)"),
     cidade: Optional[str] = Query(None, description="Nome da cidade"),
     cnae_principal: Optional[str] = Query(None, description="Código CNAE principal"),
-    cnae_secundario: Optional[str] = Query(None, description="Código CNAE secundário"),
-    exigir_secundario: bool = Query(False, description="Exigir que tenha CNAE secundário"),
-    qualquer_secundario: bool = Query(False, description="Aceitar qualquer CNAE secundário (não vazio)"),
+    cnaes_secundarios: Optional[str] = Query(None, description="Lista de códigos CNAE secundários separados por vírgula"),
+    exigir_todos_secundarios: bool = Query(False, description="Exigir TODOS os CNAEs secundários (True) ou QUALQUER UM (False)"),
     situacao: Optional[str] = Query(None, description="Situação cadastral (ex: ATIVA)"),
     porte: Optional[str] = Query(None, description="Porte da empresa"),
     limit: int = Query(100, ge=1, le=1000, description="Limite de resultados")
@@ -185,16 +184,23 @@ async def search_empresas(
                 # Filtro por CNAE principal
                 df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae_principal)]
             
-            if exigir_secundario:
-                if qualquer_secundario:
-                    # Exigir que tenha QUALQUER CNAE secundário (não vazio)
-                    df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.len() > 0]
-                elif cnae_secundario:
-                    # Exigir CNAE secundário específico
-                    df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae_secundario), regex=False)]
-            elif cnae_secundario:
-                # Buscar apenas por CNAE secundário (sem exigir principal)
-                df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae_secundario), regex=False)]
+            # Filtro de CNAEs Secundários
+            if cnaes_secundarios:
+                # Parse da lista de CNAEs (vem como string separada por vírgula)
+                lista_cnaes = [cnae.strip() for cnae in cnaes_secundarios.split(',') if cnae.strip()]
+                
+                if lista_cnaes:  # Se há CNAEs selecionados
+                    if exigir_todos_secundarios:
+                        # TODOS os CNAEs devem estar presentes (AND lógico)
+                        for cnae in lista_cnaes:
+                            df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)]
+                    else:
+                        # QUALQUER UM dos CNAEs deve estar presente (OR lógico)
+                        mask = pd.Series([False] * len(df), index=df.index)
+                        for cnae in lista_cnaes:
+                            mask |= df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)
+                        df = df[mask]
+            # Se não há CNAEs secundários selecionados, aceita todos (sem filtro)
             
             if situacao:
                 df = df[df['SITUAÇÃO CADASTRAL'] == situacao.upper()]
@@ -220,9 +226,8 @@ async def search_empresas(
                 "estado": estado_upper,
                 "cidade": cidade,
                 "cnae_principal": cnae_principal,
-                "cnae_secundario": cnae_secundario,
-                "exigir_secundario": exigir_secundario,
-                "qualquer_secundario": qualquer_secundario,
+                "cnaes_secundarios": cnaes_secundarios,
+                "exigir_todos_secundarios": exigir_todos_secundarios,
                 "situacao": situacao,
                 "porte": porte
             },

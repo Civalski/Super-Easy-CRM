@@ -27,7 +27,11 @@ export function useLeadsSearch() {
 
             if (filters.estado) queryParams.append('estado', filters.estado);
             if (filters.cidade) queryParams.append('cidade', filters.cidade);
-            if (filters.cnae) queryParams.append('cnae', filters.cnae);
+            if (filters.cnae_principal) queryParams.append('cnae_principal', filters.cnae_principal);
+            if (filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0) {
+                queryParams.append('cnaes_secundarios', filters.cnaes_secundarios.join(','));
+            }
+            if (filters.exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
             if (filters.situacao) queryParams.append('situacao', filters.situacao);
             if (filters.porte) queryParams.append('porte', filters.porte);
             if (filters.limit) queryParams.append('limit', filters.limit.toString());
