@@ -97,23 +97,23 @@ export function LeadsSearchComponent() {
     return (
         <div className="space-y-6">
             {/* Formulário de Filtros */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <Filter className="w-5 h-5 text-gray-600" />
-                    <h2 className="text-lg font-semibold text-gray-800">Filtros de Busca</h2>
+                    <Filter className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Filtros de Busca</h2>
                 </div>
 
                 <form onSubmit={handleSearch} className="space-y-4">
                     {/* Linha 1: Estado e Cidade */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Estado *
                             </label>
                             <select
                                 value={filters.estado}
                                 onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 disabled={estadosLoading}
                                 required
                             >
@@ -127,13 +127,13 @@ export function LeadsSearchComponent() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Cidade
                             </label>
                             <select
                                 value={filters.cidade}
                                 onChange={(e) => setFilters({ ...filters, cidade: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 disabled={!filters.estado || cidadesLoading}
                             >
                                 <option value="">Todas as cidades</option>
@@ -148,7 +148,7 @@ export function LeadsSearchComponent() {
 
                     {/* Linha 2: CNAE Principal */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             CNAE Principal (Atividade Principal da Empresa)
                         </label>
                         <CnaeSelector
@@ -159,7 +159,7 @@ export function LeadsSearchComponent() {
                     </div>
 
                     {/* Linha 3: Filtro de CNAE Secundário Avançado */}
-                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
                         <div className="mb-3">
                             <label className="flex items-center cursor-pointer">
                                 <input
@@ -173,11 +173,11 @@ export function LeadsSearchComponent() {
                                     })}
                                     className="mr-2 h-4 w-4"
                                 />
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                     Exigir CNAE Secundário (filtro combinado)
                                 </span>
                             </label>
-                            <p className="text-xs text-gray-500 mt-1 ml-6">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
                                 Marque para filtrar empresas que têm a atividade principal ACIMA e também uma atividade secundária
                             </p>
                         </div>
@@ -197,7 +197,7 @@ export function LeadsSearchComponent() {
                                             })}
                                             className="mr-2"
                                         />
-                                        <span className="text-sm text-gray-700">Qualquer CNAE secundário</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-200">Qualquer CNAE secundário</span>
                                     </label>
                                     <label className="flex items-center cursor-pointer">
                                         <input
@@ -207,13 +207,13 @@ export function LeadsSearchComponent() {
                                             onChange={() => setFilters({ ...filters, qualquer_secundario: false })}
                                             className="mr-2"
                                         />
-                                        <span className="text-sm text-gray-700">CNAE secundário específico</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-200">CNAE secundário específico</span>
                                     </label>
                                 </div>
 
                                 {!filters.qualquer_secundario && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                             Selecione o CNAE Secundário
                                         </label>
                                         <CnaeSelector
@@ -230,13 +230,13 @@ export function LeadsSearchComponent() {
                     {/* Linha 4: Situação e Porte */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Situação Cadastral
                             </label>
                             <select
                                 value={filters.situacao}
                                 onChange={(e) => setFilters({ ...filters, situacao: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             >
                                 <option value="">Todas</option>
                                 <option value="ATIVA">Ativa</option>
@@ -247,13 +247,13 @@ export function LeadsSearchComponent() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Porte da Empresa
                             </label>
                             <select
                                 value={filters.porte}
                                 onChange={(e) => setFilters({ ...filters, porte: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             >
                                 <option value="">Todos</option>
                                 <option value="MICRO EMPRESA">Micro Empresa</option>
@@ -266,13 +266,13 @@ export function LeadsSearchComponent() {
 
                     {/* Linha 4: Limite de Resultados */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Limite de Resultados
                         </label>
                         <select
                             value={filters.limit}
                             onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                             <option value={50}>50 resultados</option>
                             <option value={100}>100 resultados</option>
@@ -303,7 +303,7 @@ export function LeadsSearchComponent() {
 
                 {/* Erro */}
                 {searchError && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-400 text-sm">
                         {searchError}
                     </div>
                 )}
@@ -311,13 +311,13 @@ export function LeadsSearchComponent() {
 
             {/* Resultados */}
             {searchData && (
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-800">
+                            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                                 Resultados da Busca
                             </h2>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {searchData.total_encontrado} empresas encontradas
                                 {searchData.total_lidos > searchData.total_encontrado &&
                                     ` (de ${searchData.total_lidos} registros analisados)`
@@ -337,44 +337,44 @@ export function LeadsSearchComponent() {
                     {/* Tabela */}
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                            <thead className="bg-gray-50 border-b border-gray-200">
+                            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                                 <tr>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Razão Social</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Nome Fantasia</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Cidade</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Atividade</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Situação</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Telefone</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Razão Social</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Nome Fantasia</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Cidade</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Atividade</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Situação</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Telefone</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Email</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {searchData.resultados.map((empresa, idx) => (
-                                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-medium text-gray-900">
+                                    <tr key={idx} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
                                             {empresa['RAZAO SOCIAL / NOME EMPRESARIAL']}
                                         </td>
-                                        <td className="py-3 px-4 text-gray-700">
+                                        <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
                                             {empresa['NOME FANTASIA'] || '-'}
                                         </td>
-                                        <td className="py-3 px-4 text-gray-700">
+                                        <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
                                             {empresa.MUNICIPIO}
                                         </td>
-                                        <td className="py-3 px-4 text-gray-700 text-xs">
+                                        <td className="py-3 px-4 text-gray-700 dark:text-gray-300 text-xs">
                                             {empresa['ATIVIDADE PRINCIPAL']}
                                         </td>
                                         <td className="py-3 px-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${empresa['SITUAÇÃO CADASTRAL'] === 'ATIVA'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-red-100 text-red-700'
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                                                 }`}>
                                                 {empresa['SITUAÇÃO CADASTRAL']}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-4 text-gray-700">
+                                        <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
                                             {empresa['TELEFONE 1'] || '-'}
                                         </td>
-                                        <td className="py-3 px-4 text-gray-700 text-xs">
+                                        <td className="py-3 px-4 text-gray-700 dark:text-gray-300 text-xs">
                                             {empresa['CORREIO ELETRONICO'] || '-'}
                                         </td>
                                     </tr>
@@ -384,7 +384,7 @@ export function LeadsSearchComponent() {
                     </div>
 
                     {searchData.resultados.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                             Nenhuma empresa encontrada com os filtros selecionados
                         </div>
                     )}
