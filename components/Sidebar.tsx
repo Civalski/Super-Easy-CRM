@@ -55,7 +55,7 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
+    <aside className="fixed left-0 top-0 w-64 h-screen bg-gray-900 text-white flex flex-col z-50">
       <div className="px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center min-h-[var(--top-bar-height)]">
         <div className="flex items-center justify-center">
           <Image
@@ -69,7 +69,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon
@@ -80,8 +80,8 @@ export default function Sidebar() {
                 <Link
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`}
                 >
                   <Icon size={20} />
@@ -92,18 +92,6 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
-
-      <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-            <span className="text-sm font-semibold">U</span>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Usuário</p>
-            <p className="text-xs text-gray-400">usuario@email.com</p>
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }

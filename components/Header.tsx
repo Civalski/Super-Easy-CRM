@@ -226,8 +226,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
 
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors">
-            <span className="text-sm font-semibold text-white">U</span>
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center">
+              <span className="text-sm font-semibold text-white">U</span>
+            </div>
+            <div className="hidden md:block text-right">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Usuário</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">usuario@email.com</p>
+            </div>
           </div>
         </div>
       </div>
