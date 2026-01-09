@@ -26,6 +26,7 @@ model Cliente {
   contatos    Contato[]
   oportunidades Oportunidade[]
   tarefas     Tarefa[]
+  prospecto   Prospecto?
   
   @@map("clientes")
 }
@@ -95,3 +96,60 @@ model Tarefa {
   @@map("tarefas")
 }
 
+model Prospecto {
+  id              String    @id @default(cuid())
+  
+  // Dados de identificação (do .parquet)
+  cnpj            String    @unique  // CNPJ completo para evitar duplicatas
+  cnpjBasico      String               // "20046506"
+  cnpjOrdem       String               // "1"
+  cnpjDv          String               // "49"
+  
+  // Dados da empresa
+  razaoSocial     String               // "RAZAO SOCIAL / NOME EMPRESARIAL"
+  nomeFantasia    String?              // "NOME FANTASIA"
+  capitalSocial   String?              // "CAPITAL SOCIAL"
+  porte           String?              // "PORTE DA EMPRESA"
+  naturezaJuridica String?             // "NATUREZA JURIDICA"
+  situacaoCadastral String?            // "SITUAÇÃO CADASTRAL"
+  dataAbertura    String?              // "DATA DE INÍCIO DE ATIVIDADE"
+  matrizFilial    String?              // "MATRIZ/FILIAL"
+  
+  // CNAE
+  cnaePrincipal      String?           // "COD ATIVIDADE PRINCIPAL"
+  cnaePrincipalDesc  String?           // "ATIVIDADE PRINCIPAL"
+  cnaesSecundarios   String?           // "COD ATIVIDADES SECUNDARIAS"
+  
+  // Endereço
+  tipoLogradouro  String?
+  logradouro      String?
+  numero          String?
+  complemento     String?
+  bairro          String?
+  cep             String?
+  municipio       String
+  uf              String
+  
+  // Contato
+  telefone1       String?
+  telefone2       String?
+  fax             String?
+  email           String?
+  
+  // Controle de Prospecção
+  status          String    @default("novo")  // novo | em_contato | qualificado | descartado | convertido
+  observacoes     String?
+  prioridade      Int       @default(0)       // 0-5 estrelas
+  
+  // Datas
+  dataImportacao  DateTime  @default(now())
+  ultimoContato   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Referência para cliente (após conversão)
+  clienteId       String?   @unique
+  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
+  
+  @@map("prospectos")
+}

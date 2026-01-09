@@ -11,6 +11,7 @@ import {
   Settings,
   BarChart3,
   UserPlus,
+  Target,
 } from 'lucide-react'
 
 const menuItems = [
@@ -28,6 +29,11 @@ const menuItems = [
     name: 'Leads',
     href: '/leads',
     icon: UserPlus,
+  },
+  {
+    name: 'Prospectar',
+    href: '/prospectar',
+    icon: Target,
   },
   {
     name: 'Oportunidades',

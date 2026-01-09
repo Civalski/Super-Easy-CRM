@@ -1,13 +1,23 @@
 /**
  * Componente de busca e filtro de leads dos arquivos .parquet
+ * Com funcionalidade de seleção e importação para prospecção
  */
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Loader2 } from 'lucide-react';
+import { Search, Filter, Download, Loader2, UserPlus, CheckSquare, Square, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useLeadsSearch, useEstados, useCidades } from '@/lib/hooks/useLeadsSearch';
 import CnaeSelector from '@/components/CnaeSelector';
 import type { LeadsSearchFilters, EmpresaParquet } from '@/types/leads';
+
+// Tipo para resposta da importação
+interface ImportResponse {
+    success: boolean;
+    importados: number;
+    duplicados: number;
+    erros: string[];
+    mensagem: string;
+}
 
 export function LeadsSearchComponent() {
     // Estados dos filtros
@@ -21,6 +31,11 @@ export function LeadsSearchComponent() {
         porte: '',
         limit: 100,
     });
+
+    // Estados de seleção para importação
+    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+    const [isImporting, setIsImporting] = useState(false);
+    const [importResult, setImportResult] = useState<ImportResponse | null>(null);
 
     // Hooks
     const { loading: searchLoading, error: searchError, data: searchData, searchLeads } = useLeadsSearch();
@@ -39,6 +54,12 @@ export function LeadsSearchComponent() {
             setFilters(prev => ({ ...prev, cidade: '' })); // Reset cidade
         }
     }, [filters.estado, fetchCidades]);
+
+    // Limpar seleção quando novos resultados chegarem
+    useEffect(() => {
+        setSelectedIndices(new Set());
+        setImportResult(null);
+    }, [searchData]);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,6 +82,78 @@ export function LeadsSearchComponent() {
 
     const handleCnaeSecundarioChange = (cnaes: string[]) => {
         setFilters({ ...filters, cnaes_secundarios: cnaes });
+    };
+
+    // Handlers de seleção
+    const handleSelectAll = () => {
+        if (!searchData?.resultados) return;
+
+        if (selectedIndices.size === searchData.resultados.length) {
+            // Se todos estão selecionados, desseleciona todos
+            setSelectedIndices(new Set());
+        } else {
+            // Seleciona todos
+            setSelectedIndices(new Set(searchData.resultados.map((_, idx) => idx)));
+        }
+    };
+
+    const handleSelectOne = (idx: number) => {
+        const newSelected = new Set(selectedIndices);
+        if (newSelected.has(idx)) {
+            newSelected.delete(idx);
+        } else {
+            newSelected.add(idx);
+        }
+        setSelectedIndices(newSelected);
+    };
+
+    // Importar selecionados
+    const handleImport = async () => {
+        if (!searchData?.resultados || selectedIndices.size === 0) return;
+
+        const empresasSelecionadas = Array.from(selectedIndices)
+            .map(idx => searchData.resultados[idx])
+            .filter(Boolean);
+
+        setIsImporting(true);
+        setImportResult(null);
+
+        try {
+            const response = await fetch('/api/prospectos/importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ empresas: empresasSelecionadas }),
+            });
+
+            const data = await response.json();
+
+            // Garantir que a resposta tenha todos os campos esperados
+            const result: ImportResponse = {
+                success: data.success ?? response.ok,
+                importados: data.importados ?? 0,
+                duplicados: data.duplicados ?? 0,
+                erros: data.erros ?? [],
+                mensagem: data.mensagem ?? data.error ?? 'Operação concluída'
+            };
+
+            setImportResult(result);
+
+            if (result.success) {
+                // Limpar seleção após sucesso
+                setSelectedIndices(new Set());
+            }
+        } catch (error) {
+            console.error('Erro ao importar:', error);
+            setImportResult({
+                success: false,
+                importados: 0,
+                duplicados: 0,
+                erros: ['Erro de conexão com o servidor'],
+                mensagem: 'Erro ao importar prospectos'
+            });
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const handleExportCSV = () => {
@@ -92,6 +185,8 @@ export function LeadsSearchComponent() {
         link.download = `leads_${filters.estado}_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
     };
+
+    const isAllSelected = searchData?.resultados && searchData.resultados.length > 0 && selectedIndices.size === searchData.resultados.length;
 
     return (
         <div className="space-y-6">
@@ -293,10 +388,43 @@ export function LeadsSearchComponent() {
                 )}
             </div>
 
+            {/* Resultado da Importação */}
+            {importResult && (
+                <div className={`p-4 rounded-lg border ${importResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
+                    }`}>
+                    <div className="flex items-start gap-3">
+                        {importResult.success ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        ) : (
+                            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                            <p className={`font-medium ${importResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                                {importResult.mensagem}
+                            </p>
+                            {importResult.success && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    ✓ {importResult.importados} importado(s) | ⊘ {importResult.duplicados} duplicado(s)
+                                </p>
+                            )}
+                            {importResult.erros && importResult.erros.length > 0 && (
+                                <ul className="text-sm text-red-600 dark:text-red-400 mt-2 list-disc pl-4">
+                                    {importResult.erros.map((erro, idx) => (
+                                        <li key={idx}>{erro}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Resultados */}
             {searchData && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                                 Resultados da Busca
@@ -306,16 +434,44 @@ export function LeadsSearchComponent() {
                                 {searchData.total_lidos > searchData.total_encontrado &&
                                     ` (de ${searchData.total_lidos} registros analisados)`
                                 }
+                                {selectedIndices.size > 0 && (
+                                    <span className="ml-2 text-blue-600 dark:text-blue-400 font-medium">
+                                        • {selectedIndices.size} selecionada(s)
+                                    </span>
+                                )}
                             </p>
                         </div>
 
-                        <button
-                            onClick={handleExportCSV}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                            <Download className="w-4 h-4" />
-                            Exportar CSV
-                        </button>
+                        <div className="flex gap-2 flex-wrap">
+                            {/* Botão Importar - aparece quando há seleção */}
+                            {selectedIndices.size > 0 && (
+                                <button
+                                    onClick={handleImport}
+                                    disabled={isImporting}
+                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors"
+                                >
+                                    {isImporting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Importando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus className="w-4 h-4" />
+                                            Importar {selectedIndices.size} para Prospecção
+                                        </>
+                                    )}
+                                </button>
+                            )}
+
+                            <button
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                <Download className="w-4 h-4" />
+                                Exportar CSV
+                            </button>
+                        </div>
                     </div>
 
                     {/* Tabela */}
@@ -323,6 +479,19 @@ export function LeadsSearchComponent() {
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                                 <tr>
+                                    <th className="py-3 px-3 w-10">
+                                        <button
+                                            onClick={handleSelectAll}
+                                            className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                            title={isAllSelected ? "Desselecionar todos" : "Selecionar todos"}
+                                        >
+                                            {isAllSelected ? (
+                                                <CheckSquare className="w-5 h-5" />
+                                            ) : (
+                                                <Square className="w-5 h-5" />
+                                            )}
+                                        </button>
+                                    </th>
                                     <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Razão Social</th>
                                     <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Nome Fantasia</th>
                                     <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Cidade</th>
@@ -334,7 +503,23 @@ export function LeadsSearchComponent() {
                             </thead>
                             <tbody>
                                 {searchData.resultados.map((empresa, idx) => (
-                                    <tr key={idx} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <tr
+                                        key={idx}
+                                        onClick={() => handleSelectOne(idx)}
+                                        className={`border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${selectedIndices.has(idx)
+                                            ? 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                                            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        <td className="py-3 px-3">
+                                            <div className="flex items-center justify-center">
+                                                {selectedIndices.has(idx) ? (
+                                                    <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                                ) : (
+                                                    <Square className="w-5 h-5 text-gray-400" />
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
                                             {empresa['RAZAO SOCIAL / NOME EMPRESARIAL']}
                                         </td>
