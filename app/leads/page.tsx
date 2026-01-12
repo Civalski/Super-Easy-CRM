@@ -1,6 +1,6 @@
 'use client'
 
-import { LeadsSearchComponent } from '@/components/LeadsSearchComponent'
+import { LeadsSearchComponent } from '@/components/features/leads'
 
 export default function LeadsPage() {
     return (

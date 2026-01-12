@@ -1,0 +1,105 @@
+/**
+ * Componente de resultados de busca global
+ */
+'use client';
+
+import { User, Briefcase } from 'lucide-react';
+import type { BuscaResultado } from '@/lib/hooks/useGlobalSearch';
+
+interface SearchResultsDropdownProps {
+    resultados: BuscaResultado | null;
+    carregando: boolean;
+    totalResultados: number;
+    onClienteClick: (id: string) => void;
+    onOportunidadeClick: (id: string) => void;
+}
+
+export function SearchResultsDropdown({
+    resultados,
+    carregando,
+    totalResultados,
+    onClienteClick,
+    onOportunidadeClick,
+}: SearchResultsDropdownProps) {
+    return (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+            {carregando ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    Buscando...
+                </div>
+            ) : totalResultados === 0 ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    Nenhum resultado encontrado
+                </div>
+            ) : (
+                <>
+                    {/* Clientes */}
+                    {resultados?.clientes && resultados.clientes.length > 0 && (
+                        <div>
+                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                                    Clientes ({resultados.clientes.length})
+                                </h3>
+                            </div>
+                            {resultados.clientes.map((cliente) => (
+                                <button
+                                    key={cliente.id}
+                                    onClick={() => onClienteClick(cliente.id)}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                                            <User size={16} className="text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {cliente.nome}
+                                            </div>
+                                            {cliente.empresa && (
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {cliente.empresa}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Oportunidades */}
+                    {resultados?.oportunidades && resultados.oportunidades.length > 0 && (
+                        <div>
+                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                                    Oportunidades ({resultados.oportunidades.length})
+                                </h3>
+                            </div>
+                            {resultados.oportunidades.map((oportunidade) => (
+                                <button
+                                    key={oportunidade.id}
+                                    onClick={() => onOportunidadeClick(oportunidade.id)}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+                                            <Briefcase size={16} className="text-green-600 dark:text-green-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {oportunidade.titulo}
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {oportunidade.cliente.nome}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}

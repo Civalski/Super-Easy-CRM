@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Button from '@/components/Button'
+import { Button } from '@/components/common'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 

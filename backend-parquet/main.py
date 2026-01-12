@@ -240,6 +240,352 @@ async def search_empresas(
             detail=f"Erro ao processar dados: {str(e)}"
         )
 
+@app.get("/count")
+async def count_empresas(
+    estado: Optional[str] = Query(None, description="Sigla do estado (ex: SP)"),
+    cidade: Optional[str] = Query(None, description="Nome da cidade"),
+    cnae_principal: Optional[str] = Query(None, description="Código CNAE principal"),
+    cnaes_secundarios: Optional[str] = Query(None, description="Lista de códigos CNAE secundários separados por vírgula"),
+    exigir_todos_secundarios: bool = Query(False, description="Exigir TODOS os CNAEs secundários (True) ou QUALQUER UM (False)"),
+    situacao: Optional[str] = Query(None, description="Situação cadastral (ex: ATIVA)"),
+    porte: Optional[str] = Query(None, description="Porte da empresa"),
+):
+    """
+    Conta o total de empresas que correspondem aos filtros (sem limite)
+    Útil para saber o tamanho real do resultado antes de exportar
+    """
+    
+    if not DADOS_PATH.exists():
+        raise HTTPException(status_code=500, detail="Pasta de dados não encontrada")
+    
+    if not estado:
+        raise HTTPException(
+            status_code=400, 
+            detail="Parâmetro 'estado' é obrigatório"
+        )
+    
+    estado_upper = estado.upper()
+    estado_path = DADOS_PATH / estado_upper
+    
+    if not estado_path.exists():
+        raise HTTPException(status_code=404, detail=f"Estado {estado} não encontrado")
+    
+    # Determinar quais arquivos ler
+    if cidade:
+        cidade_file = estado_path / f"{estado_upper} - {cidade.upper()}.parquet"
+        if not cidade_file.exists():
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Cidade {cidade} não encontrada no estado {estado}"
+            )
+        arquivos = [cidade_file]
+    else:
+        arquivos = list(estado_path.glob("*.parquet"))
+        if not arquivos:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Nenhum arquivo .parquet encontrado para o estado {estado}"
+            )
+    
+    try:
+        total_filtrado = 0
+        total_lidos = 0
+        
+        for arquivo in arquivos:
+            table = pq.read_table(arquivo)
+            df = table.to_pandas()
+            total_lidos += len(df)
+            
+            # Aplicar filtros
+            if cnae_principal:
+                df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae_principal)]
+            
+            if cnaes_secundarios:
+                lista_cnaes = [cnae.strip() for cnae in cnaes_secundarios.split(',') if cnae.strip()]
+                if lista_cnaes:
+                    if exigir_todos_secundarios:
+                        for cnae in lista_cnaes:
+                            df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)]
+                    else:
+                        mask = pd.Series([False] * len(df), index=df.index)
+                        for cnae in lista_cnaes:
+                            mask |= df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)
+                        df = df[mask]
+            
+            if situacao:
+                df = df[df['SITUAÇÃO CADASTRAL'] == situacao.upper()]
+            
+            if porte:
+                df = df[df['PORTE DA EMPRESA'] == porte.upper()]
+            
+            total_filtrado += len(df)
+        
+        return {
+            "total_encontrado": total_filtrado,
+            "total_lidos": total_lidos,
+            "filtros": {
+                "estado": estado_upper,
+                "cidade": cidade,
+                "cnae_principal": cnae_principal,
+                "cnaes_secundarios": cnaes_secundarios,
+                "exigir_todos_secundarios": exigir_todos_secundarios,
+                "situacao": situacao,
+                "porte": porte
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erro ao processar dados: {str(e)}"
+        )
+
+
+from fastapi.responses import StreamingResponse
+import io
+
+@app.get("/export")
+async def export_empresas(
+    estado: Optional[str] = Query(None, description="Sigla do estado (ex: SP)"),
+    cidade: Optional[str] = Query(None, description="Nome da cidade"),
+    cnae_principal: Optional[str] = Query(None, description="Código CNAE principal"),
+    cnaes_secundarios: Optional[str] = Query(None, description="Lista de códigos CNAE secundários separados por vírgula"),
+    exigir_todos_secundarios: bool = Query(False, description="Exigir TODOS os CNAEs secundários (True) ou QUALQUER UM (False)"),
+    situacao: Optional[str] = Query(None, description="Situação cadastral (ex: ATIVA)"),
+    porte: Optional[str] = Query(None, description="Porte da empresa"),
+):
+    """
+    Exporta TODOS os leads que correspondem aos filtros em formato CSV
+    Usa streaming para suportar milhões de registros
+    """
+    
+    if not DADOS_PATH.exists():
+        raise HTTPException(status_code=500, detail="Pasta de dados não encontrada")
+    
+    if not estado:
+        raise HTTPException(
+            status_code=400, 
+            detail="Parâmetro 'estado' é obrigatório"
+        )
+    
+    estado_upper = estado.upper()
+    estado_path = DADOS_PATH / estado_upper
+    
+    if not estado_path.exists():
+        raise HTTPException(status_code=404, detail=f"Estado {estado} não encontrado")
+    
+    # Determinar quais arquivos ler
+    if cidade:
+        cidade_file = estado_path / f"{estado_upper} - {cidade.upper()}.parquet"
+        if not cidade_file.exists():
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Cidade {cidade} não encontrada no estado {estado}"
+            )
+        arquivos = [cidade_file]
+    else:
+        arquivos = list(estado_path.glob("*.parquet"))
+        if not arquivos:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Nenhum arquivo .parquet encontrado para o estado {estado}"
+            )
+
+    def generate_csv():
+        """Generator que produz CSV linha por linha para streaming"""
+        header_written = False
+        
+        for arquivo in arquivos:
+            try:
+                table = pq.read_table(arquivo)
+                df = table.to_pandas()
+                
+                # Aplicar filtros
+                if cnae_principal:
+                    df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae_principal)]
+                
+                if cnaes_secundarios:
+                    lista_cnaes = [cnae.strip() for cnae in cnaes_secundarios.split(',') if cnae.strip()]
+                    if lista_cnaes:
+                        if exigir_todos_secundarios:
+                            for cnae in lista_cnaes:
+                                df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)]
+                        else:
+                            mask = pd.Series([False] * len(df), index=df.index)
+                            for cnae in lista_cnaes:
+                                mask |= df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)
+                            df = df[mask]
+                
+                if situacao:
+                    df = df[df['SITUAÇÃO CADASTRAL'] == situacao.upper()]
+                
+                if porte:
+                    df = df[df['PORTE DA EMPRESA'] == porte.upper()]
+                
+                if len(df) == 0:
+                    continue
+                
+                # Escrever header apenas uma vez
+                if not header_written:
+                    output = io.StringIO()
+                    df.head(0).to_csv(output, index=False)
+                    yield output.getvalue().encode('utf-8-sig')  # BOM para Excel
+                    header_written = True
+                
+                # Escrever dados em chunks para evitar uso excessivo de memória
+                chunk_size = 1000
+                for i in range(0, len(df), chunk_size):
+                    chunk = df.iloc[i:i+chunk_size]
+                    output = io.StringIO()
+                    chunk.to_csv(output, index=False, header=False)
+                    yield output.getvalue().encode('utf-8')
+                    
+            except Exception as e:
+                print(f"Erro ao processar {arquivo}: {e}")
+                continue
+    
+    # Gerar nome do arquivo
+    filename_parts = [f"leads_{estado_upper}"]
+    if cidade:
+        filename_parts.append(cidade.upper().replace(' ', '_'))
+    if cnae_principal:
+        filename_parts.append(f"cnae_{cnae_principal}")
+    filename_parts.append(pd.Timestamp.now().strftime("%Y%m%d_%H%M%S"))
+    filename = "_".join(filename_parts) + ".csv"
+    
+    return StreamingResponse(
+        generate_csv(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-cache",
+        }
+    )
+
+
+@app.get("/export-xlsx")
+async def export_empresas_xlsx(
+    estado: Optional[str] = Query(None, description="Sigla do estado (ex: SP)"),
+    cidade: Optional[str] = Query(None, description="Nome da cidade"),
+    cnae_principal: Optional[str] = Query(None, description="Código CNAE principal"),
+    cnaes_secundarios: Optional[str] = Query(None, description="Lista de códigos CNAE secundários separados por vírgula"),
+    exigir_todos_secundarios: bool = Query(False, description="Exigir TODOS os CNAEs secundários (True) ou QUALQUER UM (False)"),
+    situacao: Optional[str] = Query(None, description="Situação cadastral (ex: ATIVA)"),
+    porte: Optional[str] = Query(None, description="Porte da empresa"),
+):
+    """
+    Exporta TODOS os leads que correspondem aos filtros em formato Excel (.xlsx)
+    """
+    
+    if not DADOS_PATH.exists():
+        raise HTTPException(status_code=500, detail="Pasta de dados não encontrada")
+    
+    if not estado:
+        raise HTTPException(
+            status_code=400, 
+            detail="Parâmetro 'estado' é obrigatório"
+        )
+    
+    estado_upper = estado.upper()
+    estado_path = DADOS_PATH / estado_upper
+    
+    if not estado_path.exists():
+        raise HTTPException(status_code=404, detail=f"Estado {estado} não encontrado")
+    
+    # Determinar quais arquivos ler
+    if cidade:
+        cidade_file = estado_path / f"{estado_upper} - {cidade.upper()}.parquet"
+        if not cidade_file.exists():
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Cidade {cidade} não encontrada no estado {estado}"
+            )
+        arquivos = [cidade_file]
+    else:
+        arquivos = list(estado_path.glob("*.parquet"))
+        if not arquivos:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Nenhum arquivo .parquet encontrado para o estado {estado}"
+            )
+
+    try:
+        # Coletar todos os dataframes filtrados
+        all_dfs = []
+        
+        for arquivo in arquivos:
+            try:
+                table = pq.read_table(arquivo)
+                df = table.to_pandas()
+                
+                # Aplicar filtros
+                if cnae_principal:
+                    df = df[df['COD ATIVIDADE PRINCIPAL'] == str(cnae_principal)]
+                
+                if cnaes_secundarios:
+                    lista_cnaes = [cnae.strip() for cnae in cnaes_secundarios.split(',') if cnae.strip()]
+                    if lista_cnaes:
+                        if exigir_todos_secundarios:
+                            for cnae in lista_cnaes:
+                                df = df[df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)]
+                        else:
+                            mask = pd.Series([False] * len(df), index=df.index)
+                            for cnae in lista_cnaes:
+                                mask |= df['COD ATIVIDADES SECUNDARIAS'].fillna('').str.contains(str(cnae), regex=False)
+                            df = df[mask]
+                
+                if situacao:
+                    df = df[df['SITUAÇÃO CADASTRAL'] == situacao.upper()]
+                
+                if porte:
+                    df = df[df['PORTE DA EMPRESA'] == porte.upper()]
+                
+                if len(df) > 0:
+                    all_dfs.append(df)
+                    
+            except Exception as e:
+                print(f"Erro ao processar {arquivo}: {e}")
+                continue
+        
+        # Concatenar todos os resultados
+        if not all_dfs:
+            raise HTTPException(status_code=404, detail="Nenhum registro encontrado com os filtros aplicados")
+        
+        final_df = pd.concat(all_dfs, ignore_index=True)
+        
+        # Gerar Excel em memória
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            final_df.to_excel(writer, index=False, sheet_name='Leads')
+        output.seek(0)
+        
+        # Gerar nome do arquivo
+        filename_parts = [f"leads_{estado_upper}"]
+        if cidade:
+            filename_parts.append(cidade.upper().replace(' ', '_'))
+        if cnae_principal:
+            filename_parts.append(f"cnae_{cnae_principal}")
+        filename_parts.append(pd.Timestamp.now().strftime("%Y%m%d_%H%M%S"))
+        filename = "_".join(filename_parts) + ".xlsx"
+        
+        return StreamingResponse(
+            io.BytesIO(output.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-cache",
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erro ao gerar arquivo Excel: {str(e)}"
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 5000))

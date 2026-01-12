@@ -13,6 +13,21 @@ import type {
     CidadesResponse
 } from '@/types/leads';
 
+// Resposta da contagem de leads
+export interface LeadsCountResponse {
+    total_encontrado: number;
+    total_lidos: number;
+    filtros: {
+        estado: string;
+        cidade?: string;
+        cnae_principal?: string;
+        cnaes_secundarios?: string;
+        exigir_todos_secundarios?: boolean;
+        situacao?: string;
+        porte?: string;
+    };
+}
+
 export function useLeadsSearch() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -70,6 +85,63 @@ export function useLeadsSearch() {
     };
 }
 
+// Hook para contar total de leads
+export function useLeadsCount() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [count, setCount] = useState<LeadsCountResponse | null>(null);
+
+    const countLeads = useCallback(async (filters: LeadsSearchFilters) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const queryParams = new URLSearchParams();
+
+            if (filters.estado) queryParams.append('estado', filters.estado);
+            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            if (filters.cnae_principal) queryParams.append('cnae_principal', filters.cnae_principal);
+            if (filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0) {
+                queryParams.append('cnaes_secundarios', filters.cnaes_secundarios.join(','));
+            }
+            if (filters.exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
+            if (filters.situacao) queryParams.append('situacao', filters.situacao);
+            if (filters.porte) queryParams.append('porte', filters.porte);
+
+            const response = await fetch(`/api/leads/count?${queryParams.toString()}`);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro ao contar leads');
+            }
+
+            const result: LeadsCountResponse = await response.json();
+            setCount(result);
+            return result;
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+            setError(errorMessage);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const clearCount = useCallback(() => {
+        setCount(null);
+        setError(null);
+    }, []);
+
+    return {
+        loading,
+        error,
+        count,
+        countLeads,
+        clearCount,
+    };
+}
+
 export function useEstados() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -108,15 +180,13 @@ export function useEstados() {
     };
 }
 
-export function useCidades(estado?: string) {
+export function useCidades() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [cidades, setCidades] = useState<Cidade[]>([]);
 
-    const fetchCidades = useCallback(async (estadoParam?: string) => {
-        const estadoToFetch = estadoParam || estado;
-
-        if (!estadoToFetch) {
+    const fetchCidades = useCallback(async (estadoParam: string) => {
+        if (!estadoParam) {
             setError('Estado não fornecido');
             return [];
         }
@@ -125,7 +195,7 @@ export function useCidades(estado?: string) {
         setError(null);
 
         try {
-            const response = await fetch(`/api/leads/cidades/${estadoToFetch}`);
+            const response = await fetch(`/api/leads/cidades/${estadoParam}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -144,7 +214,7 @@ export function useCidades(estado?: string) {
         } finally {
             setLoading(false);
         }
-    }, [estado]);
+    }, []);
 
     return {
         loading,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Button from '@/components/Button'
+import { Button } from '@/components/common'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function SeedPage() {
@@ -70,11 +70,10 @@ export default function SeedPage() {
 
           {result && (
             <div
-              className={`p-4 rounded-lg ${
-                result.success
+              className={`p-4 rounded-lg ${result.success
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
-              }`}
+                }`}
             >
               <div className="flex items-start">
                 {result.success ? (
@@ -84,9 +83,8 @@ export default function SeedPage() {
                 )}
                 <div className="flex-1">
                   <h3
-                    className={`font-semibold mb-2 ${
-                      result.success ? 'text-green-900' : 'text-red-900'
-                    }`}
+                    className={`font-semibold mb-2 ${result.success ? 'text-green-900' : 'text-red-900'
+                      }`}
                   >
                     {result.success ? 'Sucesso!' : 'Erro'}
                   </h3>

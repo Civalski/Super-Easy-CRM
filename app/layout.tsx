@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import Layout from '@/components/Layout'
+import { Layout } from '@/components/layout'
 
 export const metadata: Metadata = {
   title: 'Arker CRM',

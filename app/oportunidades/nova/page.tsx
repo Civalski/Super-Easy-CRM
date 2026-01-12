@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Button from '@/components/Button'
-import AmbienteSelector from '@/components/AmbienteSelector'
+import { Button } from '@/components/common'
+import { AmbienteSelector } from '@/components/features/oportunidades'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 

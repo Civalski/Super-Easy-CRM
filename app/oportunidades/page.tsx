@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
-import KanbanBoard from '@/components/KanbanBoard'
-import Button from '@/components/Button'
-import AmbienteSelector from '@/components/AmbienteSelector'
+import { KanbanBoard, AmbienteSelector } from '@/components/features/oportunidades'
+import { Button } from '@/components/common'
+
 import { Plus, Loader2 } from 'lucide-react'
 
 interface Oportunidade {

@@ -3,8 +3,7 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import Button from '@/components/Button'
-import ConfirmDialog from '@/components/ConfirmDialog'
+import { Button, ConfirmDialog } from '@/components/common'
 import {
   ArrowLeft,
   Briefcase,
