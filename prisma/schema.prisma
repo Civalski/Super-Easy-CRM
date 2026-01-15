@@ -140,6 +140,7 @@ model Prospecto {
   status          String    @default("novo")  // novo | em_contato | qualificado | descartado | convertido
   observacoes     String?
   prioridade      Int       @default(0)       // 0-5 estrelas
+  lote            String?                     // Lote de importação (A, B, C... Z, A1, B1...)
   
   // Datas
   dataImportacao  DateTime  @default(now())

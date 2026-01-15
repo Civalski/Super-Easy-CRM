@@ -18,6 +18,7 @@ export interface Prospecto {
     status: string;
     prioridade: number;
     observacoes: string | null;
+    lote: string | null;
     dataImportacao: string;
     ultimoContato: string | null;
     clienteId: string | null;
@@ -30,6 +31,7 @@ export interface Estatisticas {
     qualificado: number;
     descartado: number;
     convertido: number;
+    lotes: string[];
 }
 
 export interface ProspectosResponse {

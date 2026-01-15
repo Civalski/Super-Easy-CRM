@@ -349,6 +349,8 @@ export function LeadsSearchComponent() {
                 title: 'Estado não selecionado',
                 text: 'Por favor, selecione um estado primeiro.',
                 confirmButtonColor: '#6366f1',
+                background: '#1f2937',
+                color: '#f3f4f6',
             });
             return;
         }
@@ -360,10 +362,24 @@ export function LeadsSearchComponent() {
             title: 'Confirmar Importação',
             html: `
                 <div style="text-align: left; padding: 10px 0;">
-                    <p style="margin-bottom: 12px;">Você está prestes a importar <strong>${totalLeads}</strong> leads para a aba <strong>Prospectar</strong>.</p>
-                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-top: 8px;">
-                        <p style="margin: 0; color: #92400e; font-size: 14px;">
-                            ⚠️ Isso pode demorar alguns minutos dependendo da quantidade de registros.
+                    <p style="margin-bottom: 12px; color: #e5e7eb;">Você está prestes a importar <strong style="color: #a78bfa;">${totalLeads}</strong> leads para a aba <strong style="color: #a78bfa;">Prospectar</strong>.</p>
+                    
+                    <div style="margin: 16px 0;">
+                        <label style="display: block; color: #9ca3af; font-size: 14px; margin-bottom: 6px;">Organizar em lotes:</label>
+                        <select id="swal-tamanho-lote" style="width: 100%; padding: 10px 12px; background: #374151; border: 1px solid #4b5563; border-radius: 8px; color: #f3f4f6; font-size: 14px;">
+                            <option value="0">Sem lote (todos juntos)</option>
+                            <option value="30" selected>Lotes de 30 (A, B, C...)</option>
+                            <option value="50">Lotes de 50</option>
+                            <option value="100">Lotes de 100</option>
+                        </select>
+                        <p style="margin-top: 6px; color: #6b7280; font-size: 12px;">
+                            Lotes ajudam a organizar grandes quantidades de leads (ex: Lote A, Lote B...)
+                        </p>
+                    </div>
+                    
+                    <div style="background: #374151; border: 1px solid #4b5563; border-radius: 8px; padding: 12px; margin-top: 8px;">
+                        <p style="margin: 0; color: #fbbf24; font-size: 14px;">
+                            Atenção: Isso pode demorar alguns minutos dependendo da quantidade de registros.
                         </p>
                     </div>
                 </div>
@@ -371,13 +387,21 @@ export function LeadsSearchComponent() {
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#6366f1',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '🚀 Sim, importar!',
+            cancelButtonColor: '#4b5563',
+            confirmButtonText: 'Sim, importar',
             cancelButtonText: 'Cancelar',
             reverseButtons: true,
+            background: '#1f2937',
+            color: '#f3f4f6',
+            preConfirm: () => {
+                const select = document.getElementById('swal-tamanho-lote') as HTMLSelectElement;
+                return { tamanhoLote: select?.value || '0' };
+            }
         });
 
         if (!result.isConfirmed) return;
+
+        const tamanhoLote = result.value?.tamanhoLote || '0';
 
         setIsExportingProspectar(true);
         setImportResult(null);
@@ -419,6 +443,11 @@ export function LeadsSearchComponent() {
                 queryParams.append('bairros', selectedBairros.join(','));
             }
 
+            // Adicionar tamanho do lote se selecionado
+            if (tamanhoLote && tamanhoLote !== '0') {
+                queryParams.append('tamanho_lote', tamanhoLote);
+            }
+
             // Chamar API para importar
             const response = await fetch(`/api/leads/export-prospectar?${queryParams.toString()}`, {
                 method: 'POST',
@@ -433,23 +462,42 @@ export function LeadsSearchComponent() {
             // Mostrar resultado com SweetAlert2
             const importados = data.importados || 0;
             const duplicados = data.duplicados || 0;
+            const lotes = data.lotes || [];
+
+            // Montar HTML dos lotes se existirem
+            const lotesHtml = lotes.length > 0
+                ? `<div style="margin-top: 12px; padding: 12px; background: #1e3a5f; border-radius: 8px;">
+                        <p style="margin: 0 0 8px 0; color: #93c5fd; font-size: 13px; font-weight: 500;">Lotes criados:</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            ${lotes.slice(0, 10).map((l: string) => `<span style="background: #3b82f6; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Lote ${l}</span>`).join('')}
+                            ${lotes.length > 10 ? `<span style="color: #93c5fd; font-size: 12px; padding: 4px;">+${lotes.length - 10} mais</span>` : ''}
+                        </div>
+                    </div>`
+                : '';
 
             await Swal.fire({
                 icon: 'success',
-                title: 'Importação Concluída!',
+                title: 'Importação Concluída',
                 html: `
                     <div style="text-align: left; padding: 10px 0;">
                         <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 16px;">
-                            <div style="background: #dcfce7; padding: 16px 24px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 28px; font-weight: bold; color: #16a34a;">${importados}</div>
-                                <div style="font-size: 12px; color: #15803d;">Importados</div>
+                            <div style="background: #065f46; padding: 16px 24px; border-radius: 12px; text-align: center;">
+                                <div style="font-size: 28px; font-weight: bold; color: #34d399;">${importados}</div>
+                                <div style="font-size: 12px; color: #6ee7b7;">Importados</div>
                             </div>
-                            <div style="background: #fef3c7; padding: 16px 24px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 28px; font-weight: bold; color: #d97706;">${duplicados}</div>
-                                <div style="font-size: 12px; color: #b45309;">Duplicados</div>
+                            <div style="background: #78350f; padding: 16px 24px; border-radius: 12px; text-align: center;">
+                                <div style="font-size: 28px; font-weight: bold; color: #fbbf24;">${duplicados}</div>
+                                <div style="font-size: 12px; color: #fcd34d;">Duplicados</div>
                             </div>
+                            ${lotes.length > 0 ? `
+                            <div style="background: #1e3a5f; padding: 16px 24px; border-radius: 12px; text-align: center;">
+                                <div style="font-size: 28px; font-weight: bold; color: #60a5fa;">${lotes.length}</div>
+                                <div style="font-size: 12px; color: #93c5fd;">Lotes</div>
+                            </div>
+                            ` : ''}
                         </div>
-                        <p style="text-align: center; color: #6b7280; font-size: 14px;">
+                        ${lotesHtml}
+                        <p style="text-align: center; color: #9ca3af; font-size: 14px; margin-top: 12px;">
                             Os leads foram adicionados à aba Prospectar.
                         </p>
                     </div>
@@ -458,7 +506,9 @@ export function LeadsSearchComponent() {
                 confirmButtonText: 'Ir para Prospectar',
                 showCancelButton: true,
                 cancelButtonText: 'Continuar aqui',
-                cancelButtonColor: '#6b7280',
+                cancelButtonColor: '#4b5563',
+                background: '#1f2937',
+                color: '#f3f4f6',
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = '/prospectar';
@@ -481,6 +531,8 @@ export function LeadsSearchComponent() {
                 title: 'Erro na Importação',
                 text: error instanceof Error ? error.message : 'Erro desconhecido ao importar leads.',
                 confirmButtonColor: '#ef4444',
+                background: '#1f2937',
+                color: '#f3f4f6',
             });
 
             setImportResult({

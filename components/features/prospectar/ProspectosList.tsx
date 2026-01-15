@@ -12,12 +12,14 @@ interface ProspectosListProps {
     loading: boolean;
     error: string | null;
     openMenuId: string | null;
+    selectedIds: Set<string>;
     onMenuToggle: (id: string | null) => void;
     onStatusChange: (id: string, status: string) => void;
     onPrioridadeChange: (id: string, prioridade: number) => void;
     onEditObservacao: (id: string, observacoes: string) => void;
     onConverter: (id: string) => void;
     onDelete: (id: string) => void;
+    onToggleSelect: (id: string) => void;
 }
 
 export function ProspectosList({
@@ -25,12 +27,14 @@ export function ProspectosList({
     loading,
     error,
     openMenuId,
+    selectedIds,
     onMenuToggle,
     onStatusChange,
     onPrioridadeChange,
     onEditObservacao,
     onConverter,
     onDelete,
+    onToggleSelect,
 }: ProspectosListProps) {
     if (loading) {
         return (
@@ -58,7 +62,7 @@ export function ProspectosList({
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="font-medium">Nenhum prospecto encontrado</p>
-                    <p className="text-sm mt-1">Importe leads da aba Leads para começar</p>
+                    <p className="text-sm mt-1">Importe leads da aba Leads para comecar</p>
                 </div>
             </div>
         );
@@ -72,12 +76,14 @@ export function ProspectosList({
                         key={prospecto.id}
                         prospecto={prospecto}
                         openMenuId={openMenuId}
+                        isSelected={selectedIds.has(prospecto.id)}
                         onMenuToggle={onMenuToggle}
                         onStatusChange={onStatusChange}
                         onPrioridadeChange={onPrioridadeChange}
                         onEditObservacao={onEditObservacao}
                         onConverter={onConverter}
                         onDelete={onDelete}
+                        onToggleSelect={onToggleSelect}
                     />
                 ))}
             </div>

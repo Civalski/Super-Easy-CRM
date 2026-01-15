@@ -99,8 +99,20 @@ function parseCSVLine(line: string): string[] {
     return result;
 }
 
+// Função para gerar identificação do lote (A, B, C... Z, A1, B1... Z1, A2...)
+function gerarIdentificadorLote(indice: number): string {
+    const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const letraIndice = indice % 26;
+    const rodada = Math.floor(indice / 26);
+
+    if (rodada === 0) {
+        return letras[letraIndice];
+    }
+    return `${letras[letraIndice]}${rodada}`;
+}
+
 // Função para mapear empresa do CSV para dados do prospecto
-function mapearEmpresaParaProspecto(empresa: EmpresaCSV) {
+function mapearEmpresaParaProspecto(empresa: EmpresaCSV, lote?: string) {
     const cnpj = montarCNPJ(
         empresa['CNPJ BASICO'],
         empresa['CNPJ ORDEM'],
@@ -137,6 +149,7 @@ function mapearEmpresaParaProspecto(empresa: EmpresaCSV) {
         email: empresa['CORREIO ELETRONICO'] || null,
         status: 'novo',
         prioridade: 0,
+        lote: lote || null,
     };
 }
 
@@ -163,6 +176,7 @@ export async function POST(request: NextRequest) {
         const ano_inicio_max = searchParams.get('ano_inicio_max');
         const mes_inicio = searchParams.get('mes_inicio');
         const bairros = searchParams.get('bairros');
+        const tamanho_lote = searchParams.get('tamanho_lote'); // Tamanho do lote (ex: 30)
 
         // Validar parâmetros obrigatórios
         if (!estado) {
@@ -238,10 +252,15 @@ export async function POST(request: NextRequest) {
             existentes.forEach(e => cnpjsExistentes.add(e.cnpj));
         }
 
-        // Preparar dados para inserção
+        // Preparar dados para inserção com lotes
         const prospectosCriar: ReturnType<typeof mapearEmpresaParaProspecto>[] = [];
         let duplicados = 0;
         const erros: string[] = [];
+
+        // Configurar lotes
+        const tamLote = tamanho_lote ? parseInt(tamanho_lote) : 0; // 0 = sem lote
+        let contadorLote = 0;
+        let indiceLote = 0;
 
         for (const empresa of empresas) {
             try {
@@ -259,7 +278,20 @@ export async function POST(request: NextRequest) {
                 // Marcar como existente para evitar duplicatas no mesmo lote
                 cnpjsExistentes.add(cnpj);
 
-                const dadosProspecto = mapearEmpresaParaProspecto(empresa);
+                // Determinar lote atual
+                let loteAtual: string | undefined;
+                if (tamLote > 0) {
+                    loteAtual = gerarIdentificadorLote(indiceLote);
+                    contadorLote++;
+
+                    // Mudar para próximo lote quando atingir o tamanho
+                    if (contadorLote >= tamLote) {
+                        contadorLote = 0;
+                        indiceLote++;
+                    }
+                }
+
+                const dadosProspecto = mapearEmpresaParaProspecto(empresa, loteAtual);
                 prospectosCriar.push(dadosProspecto);
 
             } catch (err) {
@@ -279,13 +311,23 @@ export async function POST(request: NextRequest) {
             importados += criados.count;
         }
 
+        // Calcular quantidade de lotes gerados
+        const quantidadeLotes = tamLote > 0 ? indiceLote + (contadorLote > 0 ? 1 : 0) : 0;
+        const lotesGerados = quantidadeLotes > 0
+            ? Array.from({ length: quantidadeLotes }, (_, i) => gerarIdentificadorLote(i))
+            : [];
+
         return NextResponse.json({
             success: true,
             importados,
             duplicados,
             totalProcessados: empresas.length,
+            lotes: lotesGerados,
+            tamanhoLote: tamLote || null,
             erros: erros.slice(0, 10), // Limitar erros retornados
-            mensagem: `${importados} prospecto(s) importado(s), ${duplicados} duplicado(s) ignorado(s)`
+            mensagem: tamLote > 0
+                ? `${importados} prospecto(s) importado(s) em ${lotesGerados.length} lote(s), ${duplicados} duplicado(s) ignorado(s)`
+                : `${importados} prospecto(s) importado(s), ${duplicados} duplicado(s) ignorado(s)`
         });
 
     } catch (error) {

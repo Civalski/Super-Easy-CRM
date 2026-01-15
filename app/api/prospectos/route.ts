@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         const uf = searchParams.get('uf');
         const municipio = searchParams.get('municipio');
         const prioridade = searchParams.get('prioridade');
+        const lote = searchParams.get('lote');
         const limit = searchParams.get('limit');
         const offset = searchParams.get('offset');
 
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
         if (uf) where.uf = uf;
         if (municipio) where.municipio = { contains: municipio };
         if (prioridade) where.prioridade = parseInt(prioridade);
+        if (lote) where.lote = lote;
 
         // Buscar prospectos
         const [prospectos, total] = await Promise.all([
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
                     { prioridade: 'desc' },
                     { dataImportacao: 'desc' }
                 ],
-                take: limit ? parseInt(limit) : 50,
+                take: limit ? parseInt(limit) : 100,
                 skip: offset ? parseInt(offset) : 0,
             }),
             prisma.prospecto.count({ where })
@@ -50,6 +52,20 @@ export async function GET(request: NextRequest) {
             _count: { status: true }
         });
 
+        // Buscar lotes únicos usando raw query (compatível mesmo antes do prisma generate)
+        let lotes: string[] = [];
+        try {
+            const lotesResult = await prisma.$queryRaw<{ lote: string | null }[]>`
+                SELECT DISTINCT lote FROM prospectos 
+                WHERE lote IS NOT NULL AND status != 'convertido'
+                ORDER BY lote ASC
+            `;
+            lotes = lotesResult.map(l => l.lote).filter((l): l is string => l !== null);
+        } catch {
+            // Campo lote pode não existir ainda se o DB não foi migrado
+            lotes = [];
+        }
+
         const stats = {
             total,
             novo: 0,
@@ -57,12 +73,13 @@ export async function GET(request: NextRequest) {
             qualificado: 0,
             descartado: 0,
             convertido: 0,
+            lotes,
         };
 
         estatisticas.forEach((e: { status: string; _count: { status: number } }) => {
             const key = e.status as keyof typeof stats;
-            if (key in stats) {
-                stats[key] = e._count.status;
+            if (key in stats && typeof stats[key] === 'number') {
+                (stats as Record<string, number | string[]>)[key] = e._count.status;
             }
         });
 
@@ -71,7 +88,7 @@ export async function GET(request: NextRequest) {
             estatisticas: stats,
             paginacao: {
                 total,
-                limit: limit ? parseInt(limit) : 50,
+                limit: limit ? parseInt(limit) : 100,
                 offset: offset ? parseInt(offset) : 0,
             }
         });
