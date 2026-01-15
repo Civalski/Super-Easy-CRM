@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { CheckSquare, Square, UserPlus, Download, FileDown, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react';
+import { CheckSquare, Square, UserPlus, Users, FileDown, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react';
 import type { EmpresaParquet } from '@/types/leads';
 
 interface LeadsTableProps {
@@ -17,13 +17,14 @@ interface LeadsTableProps {
     isImporting: boolean;
     isExporting?: boolean;
     isExportingXlsx?: boolean;
+    isExportingProspectar?: boolean;
     isCountLoading?: boolean;
     onSelectAll: () => void;
     onSelectOne: (idx: number) => void;
     onImport: () => void;
-    onExportCSV: () => void;
     onExportAllCSV?: () => void;
     onExportAllXlsx?: () => void;
+    onExportAllProspectar?: () => void;
     displayLimit?: number;
 }
 
@@ -46,14 +47,15 @@ export function LeadsTable({
     isImporting,
     isExporting = false,
     isExportingXlsx = false,
+    isExportingProspectar = false,
     isCountLoading = false,
     onSelectAll,
     onSelectOne,
     onImport,
-    onExportCSV,
     onExportAllCSV,
     onExportAllXlsx,
-    displayLimit = 100,
+    onExportAllProspectar,
+    displayLimit = 20,
 }: LeadsTableProps) {
     const isAllSelected = resultados.length > 0 && selectedIndices.size === resultados.length;
     const hasMoreResults = totalEncontrado > resultados.length;
@@ -90,16 +92,6 @@ export function LeadsTable({
                                 )}
                             </button>
                         )}
-
-                        {/* Botão exportar amostra atual */}
-                        <button
-                            onClick={onExportCSV}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                            title={`Exportar ${resultados.length} registros exibidos`}
-                        >
-                            <Download className="w-4 h-4" />
-                            Exportar Exibidos ({resultados.length})
-                        </button>
 
                         {/* Botões exportar TODOS - CSV e Excel */}
                         {onExportAllCSV && (
@@ -146,6 +138,34 @@ export function LeadsTable({
                                     <>
                                         <FileSpreadsheet className="w-4 h-4" />
                                         Excel (
+                                        {isCountLoading ? (
+                                            <Loader2 className="w-3 h-3 animate-spin inline" />
+                                        ) : (
+                                            formatNumber(totalEncontrado)
+                                        )}
+                                        )
+                                    </>
+                                )}
+                            </button>
+                        )}
+
+                        {/* Botão exportar TODOS para Prospectar */}
+                        {onExportAllProspectar && (
+                            <button
+                                onClick={onExportAllProspectar}
+                                disabled={isExportingProspectar}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors"
+                                title={`Importar todos os ${formatNumber(totalEncontrado)} leads para a aba Prospectar`}
+                            >
+                                {isExportingProspectar ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Importando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Users className="w-4 h-4" />
+                                        Prospectar (
                                         {isCountLoading ? (
                                             <Loader2 className="w-3 h-3 animate-spin inline" />
                                         ) : (

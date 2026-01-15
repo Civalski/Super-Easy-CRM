@@ -20,7 +20,7 @@ export interface LeadsCountResponse {
     filtros: {
         estado: string;
         cidade?: string;
-        cnae_principal?: string;
+        cnaes_principais?: string;
         cnaes_secundarios?: string;
         exigir_todos_secundarios?: boolean;
         situacao?: string;
@@ -42,13 +42,36 @@ export function useLeadsSearch() {
 
             if (filters.estado) queryParams.append('estado', filters.estado);
             if (filters.cidade) queryParams.append('cidade', filters.cidade);
-            if (filters.cnae_principal) queryParams.append('cnae_principal', filters.cnae_principal);
+            if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
+                queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
+            }
             if (filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0) {
                 queryParams.append('cnaes_secundarios', filters.cnaes_secundarios.join(','));
             }
             if (filters.exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
+            if (filters.filtrar_telefones_invalidos) queryParams.append('filtrar_telefones_invalidos', 'true');
+            if (filters.adicionar_nono_digito) queryParams.append('adicionar_nono_digito', 'true');
+            if (filters.apenas_celular) queryParams.append('apenas_celular', 'true');
             if (filters.situacao) queryParams.append('situacao', filters.situacao);
             if (filters.porte) queryParams.append('porte', filters.porte);
+            if (filters.capital_min !== undefined && filters.capital_min !== null) {
+                queryParams.append('capital_min', filters.capital_min.toString());
+            }
+            if (filters.capital_max !== undefined && filters.capital_max !== null) {
+                queryParams.append('capital_max', filters.capital_max.toString());
+            }
+            if (filters.ano_inicio_min !== undefined && filters.ano_inicio_min !== null) {
+                queryParams.append('ano_inicio_min', filters.ano_inicio_min.toString());
+            }
+            if (filters.ano_inicio_max !== undefined && filters.ano_inicio_max !== null) {
+                queryParams.append('ano_inicio_max', filters.ano_inicio_max.toString());
+            }
+            if (filters.mes_inicio !== undefined && filters.mes_inicio !== null) {
+                queryParams.append('mes_inicio', filters.mes_inicio.toString());
+            }
+            if (filters.bairros && filters.bairros.length > 0) {
+                queryParams.append('bairros', filters.bairros.join(','));
+            }
             if (filters.limit) queryParams.append('limit', filters.limit.toString());
 
             const response = await fetch(`/api/leads/search?${queryParams.toString()}`);
@@ -100,13 +123,36 @@ export function useLeadsCount() {
 
             if (filters.estado) queryParams.append('estado', filters.estado);
             if (filters.cidade) queryParams.append('cidade', filters.cidade);
-            if (filters.cnae_principal) queryParams.append('cnae_principal', filters.cnae_principal);
+            if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
+                queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
+            }
             if (filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0) {
                 queryParams.append('cnaes_secundarios', filters.cnaes_secundarios.join(','));
             }
             if (filters.exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
+            if (filters.filtrar_telefones_invalidos) queryParams.append('filtrar_telefones_invalidos', 'true');
+            if (filters.adicionar_nono_digito) queryParams.append('adicionar_nono_digito', 'true');
+            if (filters.apenas_celular) queryParams.append('apenas_celular', 'true');
             if (filters.situacao) queryParams.append('situacao', filters.situacao);
             if (filters.porte) queryParams.append('porte', filters.porte);
+            if (filters.capital_min !== undefined && filters.capital_min !== null) {
+                queryParams.append('capital_min', filters.capital_min.toString());
+            }
+            if (filters.capital_max !== undefined && filters.capital_max !== null) {
+                queryParams.append('capital_max', filters.capital_max.toString());
+            }
+            if (filters.ano_inicio_min !== undefined && filters.ano_inicio_min !== null) {
+                queryParams.append('ano_inicio_min', filters.ano_inicio_min.toString());
+            }
+            if (filters.ano_inicio_max !== undefined && filters.ano_inicio_max !== null) {
+                queryParams.append('ano_inicio_max', filters.ano_inicio_max.toString());
+            }
+            if (filters.mes_inicio !== undefined && filters.mes_inicio !== null) {
+                queryParams.append('mes_inicio', filters.mes_inicio.toString());
+            }
+            if (filters.bairros && filters.bairros.length > 0) {
+                queryParams.append('bairros', filters.bairros.join(','));
+            }
 
             const response = await fetch(`/api/leads/count?${queryParams.toString()}`);
 
@@ -221,5 +267,98 @@ export function useCidades() {
         error,
         cidades,
         fetchCidades,
+    };
+}
+
+// Interface de resposta dos bairros
+export interface BairrosResponse {
+    estado: string;
+    cidade?: string;
+    total_bairros: number;
+    total_registros: number;
+    bairros: string[];
+}
+
+export function useBairros() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [bairros, setBairros] = useState<string[]>([]);
+    const [totalRegistros, setTotalRegistros] = useState<number>(0);
+
+    const fetchBairros = useCallback(async (filters: LeadsSearchFilters) => {
+        if (!filters.estado) {
+            setError('Estado não fornecido');
+            return [];
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const queryParams = new URLSearchParams();
+            queryParams.append('estado', filters.estado);
+            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
+                queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
+            }
+            if (filters.cnaes_secundarios && filters.cnaes_secundarios.length > 0) {
+                queryParams.append('cnaes_secundarios', filters.cnaes_secundarios.join(','));
+            }
+            if (filters.exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
+            if (filters.filtrar_telefones_invalidos) queryParams.append('filtrar_telefones_invalidos', 'true');
+            if (filters.apenas_celular) queryParams.append('apenas_celular', 'true');
+            if (filters.situacao) queryParams.append('situacao', filters.situacao);
+            if (filters.porte) queryParams.append('porte', filters.porte);
+            if (filters.capital_min !== undefined && filters.capital_min !== null) {
+                queryParams.append('capital_min', filters.capital_min.toString());
+            }
+            if (filters.capital_max !== undefined && filters.capital_max !== null) {
+                queryParams.append('capital_max', filters.capital_max.toString());
+            }
+            if (filters.ano_inicio_min !== undefined && filters.ano_inicio_min !== null) {
+                queryParams.append('ano_inicio_min', filters.ano_inicio_min.toString());
+            }
+            if (filters.ano_inicio_max !== undefined && filters.ano_inicio_max !== null) {
+                queryParams.append('ano_inicio_max', filters.ano_inicio_max.toString());
+            }
+            if (filters.mes_inicio !== undefined && filters.mes_inicio !== null) {
+                queryParams.append('mes_inicio', filters.mes_inicio.toString());
+            }
+
+            const response = await fetch(`/api/leads/bairros?${queryParams.toString()}`);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro ao buscar bairros');
+            }
+
+            const result: BairrosResponse = await response.json();
+            setBairros(result.bairros);
+            setTotalRegistros(result.total_registros);
+            return result.bairros;
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+            setError(errorMessage);
+            setBairros([]);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const clearBairros = useCallback(() => {
+        setBairros([]);
+        setError(null);
+        setTotalRegistros(0);
+    }, []);
+
+    return {
+        loading,
+        error,
+        bairros,
+        totalRegistros,
+        fetchBairros,
+        clearBairros,
     };
 }

@@ -1,6 +1,6 @@
 /**
- * API Route: Bridge entre Next.js e Backend Python (FastAPI)
- * Endpoint: /api/leads/export-xlsx - Exporta todos os leads em Excel (.xlsx)
+ * API Route: Lista bairros únicos para pós-filtro
+ * Endpoint: /api/leads/bairros
  */
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -10,16 +10,13 @@ export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
 
-        // Construir query string para o backend Python
-        const queryParams = new URLSearchParams();
-
+        // Extrair parâmetros (todos os filtros base)
         const estado = searchParams.get('estado');
         const cidade = searchParams.get('cidade');
         const cnaes_principais = searchParams.get('cnaes_principais');
         const cnaes_secundarios = searchParams.get('cnaes_secundarios');
         const exigir_todos_secundarios = searchParams.get('exigir_todos_secundarios') === 'true';
         const filtrar_telefones_invalidos = searchParams.get('filtrar_telefones_invalidos') === 'true';
-        const adicionar_nono_digito = searchParams.get('adicionar_nono_digito') === 'true';
         const apenas_celular = searchParams.get('apenas_celular') === 'true';
         const situacao = searchParams.get('situacao');
         const porte = searchParams.get('porte');
@@ -28,7 +25,6 @@ export async function GET(request: NextRequest) {
         const ano_inicio_min = searchParams.get('ano_inicio_min');
         const ano_inicio_max = searchParams.get('ano_inicio_max');
         const mes_inicio = searchParams.get('mes_inicio');
-        const bairros = searchParams.get('bairros');
 
         // Validar parâmetros obrigatórios
         if (!estado) {
@@ -38,13 +34,14 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Construir query string para backend Python
+        const queryParams = new URLSearchParams();
         queryParams.append('estado', estado);
         if (cidade) queryParams.append('cidade', cidade);
         if (cnaes_principais) queryParams.append('cnaes_principais', cnaes_principais);
         if (cnaes_secundarios) queryParams.append('cnaes_secundarios', cnaes_secundarios);
         if (exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
         if (filtrar_telefones_invalidos) queryParams.append('filtrar_telefones_invalidos', 'true');
-        if (adicionar_nono_digito) queryParams.append('adicionar_nono_digito', 'true');
         if (apenas_celular) queryParams.append('apenas_celular', 'true');
         if (situacao) queryParams.append('situacao', situacao);
         if (porte) queryParams.append('porte', porte);
@@ -53,13 +50,13 @@ export async function GET(request: NextRequest) {
         if (ano_inicio_min) queryParams.append('ano_inicio_min', ano_inicio_min);
         if (ano_inicio_max) queryParams.append('ano_inicio_max', ano_inicio_max);
         if (mes_inicio) queryParams.append('mes_inicio', mes_inicio);
-        if (bairros) queryParams.append('bairros', bairros);
 
-        // Chamar backend Python - sem timeout pois pode demorar muito
+        // Chamar backend Python
         const response = await fetch(
-            `${PYTHON_API_URL}/export-xlsx?${queryParams.toString()}`,
+            `${PYTHON_API_URL}/bairros?${queryParams.toString()}`,
             {
                 method: 'GET',
+                signal: AbortSignal.timeout(120000), // 2 minutos
             }
         );
 
@@ -67,40 +64,28 @@ export async function GET(request: NextRequest) {
             const error = await response.json().catch(() => ({}));
             return NextResponse.json(
                 {
-                    error: 'Erro ao exportar leads do backend Python',
+                    error: 'Erro ao buscar bairros',
                     detail: error.detail || response.statusText
                 },
                 { status: response.status }
             );
         }
 
-        // Fazer streaming da resposta
-        const headers = new Headers();
-
-        // Copiar headers relevantes do backend
-        const contentDisposition = response.headers.get('Content-Disposition');
-        if (contentDisposition) {
-            headers.set('Content-Disposition', contentDisposition);
-        } else {
-            headers.set('Content-Disposition', 'attachment; filename="leads_export.xlsx"');
-        }
-        headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        headers.set('Cache-Control', 'no-cache');
-
-        // Stream a resposta diretamente
-        return new NextResponse(response.body, {
-            status: 200,
-            headers,
-        });
+        const data = await response.json();
+        return NextResponse.json(data);
 
     } catch (error) {
-        console.error('Erro na API /api/leads/export-xlsx:', error);
+        console.error('Erro na API /api/leads/bairros:', error);
+
+        if (error instanceof Error && error.name === 'TimeoutError') {
+            return NextResponse.json(
+                { error: 'Timeout ao buscar bairros' },
+                { status: 504 }
+            );
+        }
 
         return NextResponse.json(
-            {
-                error: 'Erro interno do servidor',
-                message: error instanceof Error ? error.message : 'Erro desconhecido'
-            },
+            { error: 'Erro interno do servidor' },
             { status: 500 }
         );
     }

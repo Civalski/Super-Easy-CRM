@@ -15,11 +15,20 @@ export async function GET(request: NextRequest) {
 
         const estado = searchParams.get('estado');
         const cidade = searchParams.get('cidade');
-        const cnae_principal = searchParams.get('cnae_principal');
+        const cnaes_principais = searchParams.get('cnaes_principais');
         const cnaes_secundarios = searchParams.get('cnaes_secundarios');
         const exigir_todos_secundarios = searchParams.get('exigir_todos_secundarios') === 'true';
+        const filtrar_telefones_invalidos = searchParams.get('filtrar_telefones_invalidos') === 'true';
+        const adicionar_nono_digito = searchParams.get('adicionar_nono_digito') === 'true';
+        const apenas_celular = searchParams.get('apenas_celular') === 'true';
         const situacao = searchParams.get('situacao');
         const porte = searchParams.get('porte');
+        const capital_min = searchParams.get('capital_min');
+        const capital_max = searchParams.get('capital_max');
+        const ano_inicio_min = searchParams.get('ano_inicio_min');
+        const ano_inicio_max = searchParams.get('ano_inicio_max');
+        const mes_inicio = searchParams.get('mes_inicio');
+        const bairros = searchParams.get('bairros');
         const limit = searchParams.get('limit') || '100';
 
         // Validar parâmetros obrigatórios
@@ -32,11 +41,20 @@ export async function GET(request: NextRequest) {
 
         queryParams.append('estado', estado);
         if (cidade) queryParams.append('cidade', cidade);
-        if (cnae_principal) queryParams.append('cnae_principal', cnae_principal);
+        if (cnaes_principais) queryParams.append('cnaes_principais', cnaes_principais);
         if (cnaes_secundarios) queryParams.append('cnaes_secundarios', cnaes_secundarios);
         if (exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
+        if (filtrar_telefones_invalidos) queryParams.append('filtrar_telefones_invalidos', 'true');
+        if (adicionar_nono_digito) queryParams.append('adicionar_nono_digito', 'true');
+        if (apenas_celular) queryParams.append('apenas_celular', 'true');
         if (situacao) queryParams.append('situacao', situacao);
         if (porte) queryParams.append('porte', porte);
+        if (capital_min) queryParams.append('capital_min', capital_min);
+        if (capital_max) queryParams.append('capital_max', capital_max);
+        if (ano_inicio_min) queryParams.append('ano_inicio_min', ano_inicio_min);
+        if (ano_inicio_max) queryParams.append('ano_inicio_max', ano_inicio_max);
+        if (mes_inicio) queryParams.append('mes_inicio', mes_inicio);
+        if (bairros) queryParams.append('bairros', bairros);
         queryParams.append('limit', limit);
 
         // Chamar backend Python
