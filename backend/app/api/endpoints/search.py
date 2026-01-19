@@ -33,40 +33,35 @@ async def search_empresas(
     # Inicializar estado_upper se não foi definido no bloco de estado único
     estado_upper = loc_filters.estado.upper() if loc_filters.estado else None
 
+    # 2. Construir filtro SQL
+    from app.services.sql_filters import construir_filtro_sql
+    from app.services.duckdb_client import duckdb_client
+    
+    where_clause = construir_filtro_sql(filters, bairros)
+    
+    # Lista de arquivos como strings para o DuckDB
+    arquivos_str = [str(a) for a in arquivos]
+    
     try:
-        resultados = []
-        total_lidos = 0
+        # Executar query no DuckDB
+        # A query já aplica LIMIT e filtros diretamente no motor SQL
+        df_result = duckdb_client.query_files(
+            file_paths=arquivos_str,
+            where_clause=where_clause,
+            limit=limit
+        )
         
-        for arquivo in arquivos:
-            # Ler arquivo
-            table = pq.read_table(arquivo)
-            df = table.to_pandas()
-            total_lidos += len(df)
-            
-            # Aplicar filtros padrao
-            df = aplicar_filtros_padrao(df, filters)
-            
-            # Pós-filtro de bairros
-            if bairros:
-                lista_bairros = [b.strip() for b in bairros.split(',') if b.strip()]
-                if lista_bairros:
-                    df = filtrar_bairros_df(df, lista_bairros)
-            
-            # Adicionar aos resultados
-            if len(df) > 0:
-                resultados.extend(df.to_dict('records'))
-            
-            # Parar se já atingiu o limite
-            if len(resultados) >= limit:
-                break
+        # Obter contagem total (opcional, pode ser pesado se não for necessário na busca paginada simples)
+        # Para performance, na busca simples retornamos apenas o count da página ou fazemos uma query de count separada
+        # Mas o frontend espera "total_encontrado". DuckDB é rápido, vamos tentar o count.
+        # SE ficar lento, podemos remover e fazer count apenas no endpoint /count
         
-        # Limitar resultados
-        resultados = resultados[:limit]
+        # Transformar em dict records
+        resultados = df_result.to_dict('records')
         
-        # Construir resposta
         return {
-            "total_encontrado": len(resultados),
-            "total_lidos": total_lidos,
+            "total_encontrado": len(resultados), # Na busca paginada, isso é só o tamanho da página. O total real vem do /count.
+            "total_lidos": -1, # DuckDB abstrai isso
             "filtros": {
                 "brasil_inteiro": loc_filters.brasil_inteiro,
                 "estados": loc_filters.estados,
@@ -80,7 +75,8 @@ async def search_empresas(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao processar dados: {str(e)}")
+        print(f"Erro detalhado DuckDB: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar dados com DuckDB: {str(e)}")
 
 @router.get("/count")
 async def count_empresas(
@@ -103,29 +99,25 @@ async def count_empresas(
 
     estado_upper = loc_filters.estado.upper() if loc_filters.estado else None
 
+    # 2. Construir filtro SQL
+    from app.services.sql_filters import construir_filtro_sql
+    from app.services.duckdb_client import duckdb_client
+    
+    where_clause = construir_filtro_sql(filters, bairros)
+    
+    # Lista de arquivos como strings para o DuckDB
+    arquivos_str = [str(a) for a in arquivos]
+
     try:
-        total_filtrado = 0
-        total_lidos = 0
-        
-        for arquivo in arquivos:
-            table = pq.read_table(arquivo)
-            df = table.to_pandas()
-            total_lidos += len(df)
-            
-            # Aplicar filtros padrao
-            df = aplicar_filtros_padrao(df, filters)
-            
-            # Pós-filtro de bairros
-            if bairros:
-                lista_bairros = [b.strip() for b in bairros.split(',') if b.strip()]
-                if lista_bairros:
-                    df = filtrar_bairros_df(df, lista_bairros)
-            
-            total_filtrado += len(df)
+        # Executar count no DuckDB
+        total_filtrado = duckdb_client.count_files(
+            file_paths=arquivos_str,
+            where_clause=where_clause
+        )
         
         return {
             "total_encontrado": total_filtrado,
-            "total_lidos": total_lidos,
+            "total_lidos": -1, 
             "filtros": {
                 "brasil_inteiro": loc_filters.brasil_inteiro,
                 "estados": loc_filters.estados,
@@ -138,4 +130,5 @@ async def count_empresas(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao processar dados: {str(e)}")
+        print(f"Erro detalhado DuckDB Count: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar dados com DuckDB: {str(e)}")

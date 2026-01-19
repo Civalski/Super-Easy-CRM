@@ -74,55 +74,93 @@ async def export_empresas(
     if not arquivos:
         raise HTTPException(status_code=404, detail="Nenhum arquivo encontrado")
 
-    def generate_csv():
-        """Generator que produz CSV linha por linha para streaming"""
-        header_written = False
-        
-        for arquivo in arquivos:
-            try:
-                table = pq.read_table(arquivo)
-                df = table.to_pandas()
-                
-                # Filters
-                df = aplicar_filtros_padrao(df, filters)
-                
-                # Bairros
-                if bairros:
-                    lista_bairros = [b.strip() for b in bairros.split(',') if b.strip()]
-                    if lista_bairros:
-                        df = filtrar_bairros_df(df, lista_bairros)
-                
-                if len(df) == 0:
-                    continue
-                
-                # Tratar dados
-                df = tratar_dataframe_para_exportacao(df)
-                
-                # Escrever header apenas uma vez
-                if not header_written:
-                    output = io.StringIO()
-                    df.head(0).to_csv(output, index=False)
-                    yield output.getvalue().encode('utf-8-sig')  # BOM para Excel
-                    header_written = True
-                
-                # Escrever dados em chunks
-                chunk_size = 1000
-                for i in range(0, len(df), chunk_size):
-                    chunk = df.iloc[i:i+chunk_size]
-                    output = io.StringIO()
-                    chunk.to_csv(output, index=False, header=False)
-                    yield output.getvalue().encode('utf-8')
-                    
-            except Exception as e:
-                print(f"Erro ao processar {arquivo}: {e}")
-                continue
-    
     # Gerar nome do arquivo
     filename_parts = [f"leads_{escopo_descricao}"]
     if filters.cnaes_principais:
         filename_parts.append("cnaes_multiplos")
     filename_parts.append(pd.Timestamp.now().strftime("%Y%m%d_%H%M%S"))
     filename = "_".join(filename_parts) + ".csv"
+
+    def generate_csv():
+        from app.services.sql_filters import construir_filtro_sql
+        from app.services.duckdb_client import duckdb_client
+        
+        where_clause = construir_filtro_sql(filters, bairros)
+        arquivos_str = [f"'{str(a).replace("'", "''")}'" for a in arquivos]
+        files_list = ", ".join(arquivos_str)
+        
+        # Query base para ler parquet
+        base_query = f"FROM read_parquet([{files_list}], union_by_name=True)"
+        if where_clause:
+            base_query += f" WHERE {where_clause}"
+            
+        # Select customizado para formatar CNPJ e selecionar colunas
+        # CNPJ: concatenar lpad(BASICO,8,'0') || lpad(ORDEM,4,'0') || lpad(DV,2,'0')
+        # Precisamos listar todas as colunas que queremos, exceto as removidas
+        # Para simplificar, vamos selecionar tudo e calcular CNPJ
+        
+        # Montagem do CNPJ no DuckDB
+        cnpj_expr = """
+            lpad(CAST("CNPJ BASICO" AS VARCHAR), 8, '0') || 
+            lpad(CAST("CNPJ ORDEM" AS VARCHAR), 4, '0') || 
+            lpad(CAST("CNPJ DV" AS VARCHAR), 2, '0') AS CNPJ
+        """
+        
+        # Colunas para remover da seleção final (no SELECT * EXCLUDE)
+        exclude_cols = "EXCLUDE (\"CNPJ BASICO\", \"CNPJ ORDEM\", \"CNPJ DV\", FAX, PAIS, \"CIDADE NO EXTERIOR\")"
+        
+        full_query = f"SELECT *, {cnpj_expr} {base_query}"
+        # Nota: DuckDB suporta SELECT * EXCLUDE ..., mas para simplificar e garantir compatibilidade
+        # com a logica anterior que removia depois, podemos fazer isso.
+        # Mas vamos fazer melhor: SELECT * EXCEPT(...) no DuckDB
+        
+        full_query = f"""
+            SELECT * EXCLUDE ("CNPJ BASICO", "CNPJ ORDEM", "CNPJ DV", FAX, PAIS, "CIDADE NO EXTERIOR"),
+            {cnpj_expr}
+            {base_query}
+        """
+        
+        try:
+            # Executar query e obter cursor
+            conn = duckdb_client.conn
+            cursor = conn.execute(full_query)
+            
+            # Header
+            header_written = False
+            
+            # Fetch em chunks para streaming
+            CHUNK_SIZE = 5000
+            
+            while True:
+                # Usar df() no chunk para aproveitar to_csv do pandas que lida bem com CSV quoting
+                # fetch_df_chunk() nao existe direto, mas podemos usar fetchmany() e criar DF
+                chunk_rows = cursor.fetchmany(CHUNK_SIZE)
+                if not chunk_rows:
+                    break
+                    
+                # Converter para DataFrame para usar to_csv robusto
+                cols = [desc[0] for desc in cursor.description]
+                chunk_df = pd.DataFrame(chunk_rows, columns=cols)
+                
+                # Tratar nulos como string vazia (equivalente ao tratamento anterior)
+                chunk_df = chunk_df.fillna('')
+                
+                output = io.StringIO()
+                if not header_written:
+                    # Header + BOM para Excel
+                    chunk_df.head(0).to_csv(output, index=False)
+                    yield output.getvalue().encode('utf-8-sig')
+                    header_written = True
+                    # Reset buffer for data
+                    output = io.StringIO()
+                
+                chunk_df.to_csv(output, index=False, header=False)
+                yield output.getvalue().encode('utf-8')
+                
+        except Exception as e:
+            print(f"Erro no streaming DuckDB: {e}")
+            # Em streaming http, lançar erro aqui corta a conexão, o que é o comportamento esperado
+            raise e
 
     return StreamingResponse(
         generate_csv(),
