@@ -3,6 +3,10 @@
 Dados
 /Dados
 /dados
+data
+/data
+parquet
+/parquet
 # dependencies
 /node_modules
 /.pnp

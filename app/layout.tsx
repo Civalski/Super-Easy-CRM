@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Layout } from '@/components/layout'
+import { Providers } from './Providers'
 
 export const metadata: Metadata = {
   title: 'Arker CRM',
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark">
       <body>
-        <Layout>{children}</Layout>
+        <Providers>
+          <Layout>{children}</Layout>
+        </Providers>
       </body>
     </html>
   )

@@ -10,23 +10,11 @@ import type {
     Estado,
     Cidade,
     EstadosResponse,
-    CidadesResponse
+    CidadesResponse,
+    LeadsCountResponse
 } from '@/types/leads';
 
-// Resposta da contagem de leads
-export interface LeadsCountResponse {
-    total_encontrado: number;
-    total_lidos: number;
-    filtros: {
-        estado: string;
-        cidade?: string;
-        cnaes_principais?: string;
-        cnaes_secundarios?: string;
-        exigir_todos_secundarios?: boolean;
-        situacao?: string;
-        porte?: string;
-    };
-}
+// Resposta da contagem de leads (importada de types/leads)
 
 export function useLeadsSearch() {
     const [loading, setLoading] = useState(false);
@@ -40,8 +28,26 @@ export function useLeadsSearch() {
         try {
             const queryParams = new URLSearchParams();
 
-            if (filters.estado) queryParams.append('estado', filters.estado);
-            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            // Parâmetros de localização - suporte a múltiplos estados/cidades
+            if (filters.brasil_inteiro) {
+                queryParams.append('brasil_inteiro', 'true');
+            } else if (filters.cidades && filters.cidades.length > 0) {
+                // Se cidades já estiverem no formato UF:CIDADE, usa como está
+                // Caso contrário, tenta usar o estado singular se disponível
+                const cidadesFormatadas = filters.cidades.map(c => {
+                    if (c.includes(':')) return c;
+                    if (filters.estado) return `${filters.estado}:${c}`;
+                    return c; // Envia só nome da cidade (backend pode não gostar se for ambíguo)
+                });
+                queryParams.append('cidades', cidadesFormatadas.join(','));
+
+            } else if (filters.estados && filters.estados.length > 0) {
+                queryParams.append('estados', filters.estados.join(','));
+            } else if (filters.estado) {
+                queryParams.append('estado', filters.estado);
+                if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            }
+
             if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
                 queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
             }
@@ -73,6 +79,7 @@ export function useLeadsSearch() {
                 queryParams.append('bairros', filters.bairros.join(','));
             }
             if (filters.limit) queryParams.append('limit', filters.limit.toString());
+
 
             const response = await fetch(`/api/leads/search?${queryParams.toString()}`);
 
@@ -121,8 +128,24 @@ export function useLeadsCount() {
         try {
             const queryParams = new URLSearchParams();
 
-            if (filters.estado) queryParams.append('estado', filters.estado);
-            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            // Parâmetros de localização - suporte a múltiplos estados/cidades
+            if (filters.brasil_inteiro) {
+                queryParams.append('brasil_inteiro', 'true');
+            } else if (filters.cidades && filters.cidades.length > 0) {
+                const cidadesFormatadas = filters.cidades.map(c => {
+                    if (c.includes(':')) return c;
+                    if (filters.estado) return `${filters.estado}:${c}`;
+                    return c;
+                });
+                queryParams.append('cidades', cidadesFormatadas.join(','));
+
+            } else if (filters.estados && filters.estados.length > 0) {
+                queryParams.append('estados', filters.estados.join(','));
+            } else if (filters.estado) {
+                queryParams.append('estado', filters.estado);
+                if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            }
+
             if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
                 queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
             }
@@ -153,6 +176,7 @@ export function useLeadsCount() {
             if (filters.bairros && filters.bairros.length > 0) {
                 queryParams.append('bairros', filters.bairros.join(','));
             }
+
 
             const response = await fetch(`/api/leads/count?${queryParams.toString()}`);
 

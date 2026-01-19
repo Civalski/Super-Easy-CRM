@@ -10,33 +10,37 @@
  * v2.0: Adicionada contagem total e exportação completa para CSV
  * v2.1: Adicionada exportação para Excel (.xlsx)
  * v2.2: Adicionada exportação de TODOS os leads para aba Prospectar
+ * v2.3: Persistência de filtros entre navegações via Context
  */
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLeadsSearch, useLeadsCount, useEstados, useCidades, useBairros, type LeadsCountResponse } from '@/lib/hooks/useLeadsSearch';
-import { LeadsFiltersForm, LeadsTable, ImportResultAlert, BairroFilter, type ImportResult } from './index';
-import type { LeadsSearchFilters, EmpresaParquet } from '@/types/leads';
+import { useLeadsSearch, useLeadsCount, useEstados, useCidades, useBairros } from '@/lib/hooks/useLeadsSearch';
+import { useLeadsFilters } from '@/lib/context';
+import { LeadsFiltersForm, LeadsTable, ImportResultAlert, BairroFilter, SavedFiltersPanel, type ImportResult } from './index';
+import type { EmpresaParquet } from '@/types/leads';
 import Swal from 'sweetalert2';
 
 export function LeadsSearchComponent() {
-    // Estados dos filtros
-    const [filters, setFilters] = useState<LeadsSearchFilters>({
-        estado: '',
-        cidade: '',
-        cnaes_principais: [],
-        cnaes_secundarios: [],
-        exigir_todos_secundarios: false,
-        filtrar_telefones_invalidos: true, // Ativado por padrão
-        adicionar_nono_digito: false,
-        apenas_celular: false,
-        situacao: '',
-        porte: '',
-        limit: 20, // Limite fixo de 20 para visualização
-    });
+    // Estado dos filtros do contexto (persistido entre navegações)
+    const {
+        filters,
+        setFilters,
+        searchData,
+        setSearchData,
+        countData,
+        setCountData,
+        selectedIndices,
+        setSelectedIndices,
+        selectedBairros,
+        setSelectedBairros,
+        bairroFilterApplied,
+        setBairroFilterApplied,
+        hasSearched,
+        setHasSearched,
+    } = useLeadsFilters();
 
-    // Estados de seleção para importação
-    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+    // Estados locais que não precisam persistir
     const [isImporting, setIsImporting] = useState(false);
     const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
@@ -46,49 +50,81 @@ export function LeadsSearchComponent() {
     const [isExportingProspectar, setIsExportingProspectar] = useState(false);
 
     // Hooks
-    const { loading: searchLoading, error: searchError, data: searchData, searchLeads } = useLeadsSearch();
-    const { loading: countLoading, error: countError, count: countData, countLeads } = useLeadsCount();
+    const { loading: searchLoading, error: searchError, searchLeads } = useLeadsSearch();
+    const { loading: countLoading, error: countError, countLeads } = useLeadsCount();
     const { loading: estadosLoading, estados, fetchEstados } = useEstados();
-    const { loading: cidadesLoading, cidades, fetchCidades } = useCidades();
-    const { loading: bairrosLoading, bairros: bairrosDisponiveis, totalRegistros: bairrosTotalRegistros, fetchBairros, clearBairros } = useBairros();
+    const { loading: loadingCidadesApi, fetchCidades } = useCidades();
+    const [cidadesDisplay, setCidadesDisplay] = useState<any[]>([]);
+    const [loadingCidades, setLoadingCidades] = useState(false);
 
-    // Estado para pós-filtro de bairros
-    const [selectedBairros, setSelectedBairros] = useState<string[]>([]);
-    const [bairroFilterApplied, setBairroFilterApplied] = useState(false);
+    const { loading: bairrosLoading, bairros: bairrosDisponiveis, totalRegistros: bairrosTotalRegistros, fetchBairros, clearBairros } = useBairros();
 
     // Carregar estados ao montar
     useEffect(() => {
         fetchEstados();
     }, [fetchEstados]);
 
-    // Carregar cidades quando estado mudar
+    // Carregar cidades quando estados mudarem (suporte multi-estado)
     useEffect(() => {
-        if (filters.estado) {
-            // Usamos uma IIFE para garantir que o estado é capturado corretamente
-            const estadoAtual = filters.estado;
-            fetchCidades(estadoAtual);
-            setFilters(prev => ({ ...prev, cidade: '' }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.estado]);
+        const loadCidades = async () => {
+            const estadosParaCarregar = filters.estados && filters.estados.length > 0
+                ? filters.estados
+                : (filters.estado ? [filters.estado] : []);
 
-    // Limpar seleção quando novos resultados chegarem
-    useEffect(() => {
-        setSelectedIndices(new Set());
-        setImportResult(null);
-    }, [searchData]);
+            if (estadosParaCarregar.length === 0) {
+                setCidadesDisplay([]);
+                return;
+            }
+
+            setLoadingCidades(true);
+            try {
+                const promises = estadosParaCarregar.map(uf => fetchCidades(uf));
+                const results = await Promise.all(promises);
+
+                const todasCidades = results.flatMap((lista, i) => {
+                    const uf = estadosParaCarregar[i];
+                    return lista.map(c => ({
+                        nome: c.nome,
+                        value: `${uf}:${c.nome}`,
+                        group: uf
+                    }));
+                }).sort((a, b) => {
+                    // Ordenar por UF primeiro, depois por nome da cidade
+                    const groupCompare = (a.group || '').localeCompare(b.group || '');
+                    if (groupCompare !== 0) return groupCompare;
+                    return a.nome.localeCompare(b.nome);
+                });
+
+
+                setCidadesDisplay(todasCidades);
+            } catch (error) {
+                console.error("Erro ao carregar cidades", error);
+            } finally {
+                setLoadingCidades(false);
+            }
+        };
+
+        loadCidades();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.estados, filters.estado]);
+
+
+
 
     // Handlers
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!filters.estado) {
-            alert('Por favor, selecione um estado');
+        // Validar localização
+        if (!filters.brasil_inteiro && !filters.estado && (!filters.estados || filters.estados.length === 0)) {
+            alert('Por favor, selecione um estado ou ative "Brasil Inteiro"');
             return;
         }
 
         try {
-            // Limpar filtro de bairros anterior
+            // Limpar estados anteriores
+            setSelectedIndices(new Set());
+            setImportResult(null);
             setSelectedBairros([]);
             setBairroFilterApplied(false);
             clearBairros();
@@ -97,10 +133,19 @@ export function LeadsSearchComponent() {
             const filtrosSemBairro = { ...filters, bairros: undefined };
 
             // Buscar amostra para exibição e contar total em paralelo
-            await Promise.all([
+            const [searchResult, countResult] = await Promise.all([
                 searchLeads(filtrosSemBairro),
                 countLeads(filtrosSemBairro)
             ]);
+
+            // Salvar resultados no contexto para persistir entre navegações
+            if (searchResult) {
+                setSearchData(searchResult);
+            }
+            if (countResult) {
+                setCountData(countResult);
+            }
+            setHasSearched(true);
 
             // Buscar bairros disponíveis para o pós-filtro
             fetchBairros(filtrosSemBairro).catch(console.error);
@@ -177,18 +222,31 @@ export function LeadsSearchComponent() {
 
     // NOVO: Exportar TODOS os leads que correspondem ao filtro via streaming
     const handleExportAllCSV = async () => {
-        if (!filters.estado) {
-            alert('Por favor, selecione um estado primeiro');
+        if (!filters.brasil_inteiro && !filters.estado && (!filters.estados || filters.estados.length === 0)) {
+            alert('Por favor, selecione uma localização primeiro');
             return;
         }
+
 
         setIsExporting(true);
 
         try {
             // Construir query params
             const queryParams = new URLSearchParams();
-            queryParams.append('estado', filters.estado);
-            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+
+            // Parâmetros de localização
+            if (filters.brasil_inteiro) {
+                queryParams.append('brasil_inteiro', 'true');
+            } else if (filters.cidades && filters.cidades.length > 0) {
+                // Cidades já vêm no formato ESTADO:CIDADE do seletor
+                queryParams.append('cidades', filters.cidades.join(','));
+            } else if (filters.estados && filters.estados.length > 0) {
+                queryParams.append('estados', filters.estados.join(','));
+            } else if (filters.estado) {
+                queryParams.append('estado', filters.estado);
+                if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            }
+
             if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
                 queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
             }
@@ -220,6 +278,7 @@ export function LeadsSearchComponent() {
             if (selectedBairros.length > 0) {
                 queryParams.append('bairros', selectedBairros.join(','));
             }
+
 
             // Fazer download via streaming
             const response = await fetch(`/api/leads/export?${queryParams.toString()}`);
@@ -260,18 +319,31 @@ export function LeadsSearchComponent() {
 
     // NOVO: Exportar TODOS os leads em formato Excel (.xlsx)
     const handleExportAllXlsx = async () => {
-        if (!filters.estado) {
-            alert('Por favor, selecione um estado primeiro');
+        if (!filters.brasil_inteiro && !filters.estado && (!filters.estados || filters.estados.length === 0)) {
+            alert('Por favor, selecione uma localização primeiro');
             return;
         }
+
 
         setIsExportingXlsx(true);
 
         try {
             // Construir query params
             const queryParams = new URLSearchParams();
-            queryParams.append('estado', filters.estado);
-            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+
+            // Parâmetros de localização
+            if (filters.brasil_inteiro) {
+                queryParams.append('brasil_inteiro', 'true');
+            } else if (filters.cidades && filters.cidades.length > 0) {
+                // Cidades já vêm no formato ESTADO:CIDADE do seletor
+                queryParams.append('cidades', filters.cidades.join(','));
+            } else if (filters.estados && filters.estados.length > 0) {
+                queryParams.append('estados', filters.estados.join(','));
+            } else if (filters.estado) {
+                queryParams.append('estado', filters.estado);
+                if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            }
+
             if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
                 queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
             }
@@ -303,6 +375,7 @@ export function LeadsSearchComponent() {
             if (selectedBairros.length > 0) {
                 queryParams.append('bairros', selectedBairros.join(','));
             }
+
 
             // Fazer download via streaming
             const response = await fetch(`/api/leads/export-xlsx?${queryParams.toString()}`);
@@ -343,17 +416,19 @@ export function LeadsSearchComponent() {
 
     // NOVO: Exportar TODOS os leads diretamente para a aba Prospectar
     const handleExportAllProspectar = async () => {
-        if (!filters.estado) {
+        if (!filters.brasil_inteiro && !filters.estado && (!filters.estados || filters.estados.length === 0)) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Estado não selecionado',
-                text: 'Por favor, selecione um estado primeiro.',
+                title: 'Localização não selecionada',
+                text: 'Por favor, selecione um estado ou ative "Brasil Inteiro".',
                 confirmButtonColor: '#6366f1',
                 background: '#1f2937',
                 color: '#f3f4f6',
             });
             return;
         }
+
+
 
         // Confirmar antes de importar com SweetAlert2
         const totalLeads = countData?.total_encontrado?.toLocaleString('pt-BR') || 'todos os';
@@ -409,8 +484,20 @@ export function LeadsSearchComponent() {
         try {
             // Construir query params
             const queryParams = new URLSearchParams();
-            queryParams.append('estado', filters.estado);
-            if (filters.cidade) queryParams.append('cidade', filters.cidade);
+
+            // Parâmetros de localização
+            if (filters.brasil_inteiro) {
+                queryParams.append('brasil_inteiro', 'true');
+            } else if (filters.cidades && filters.cidades.length > 0) {
+                // Cidades já vêm no formato ESTADO:CIDADE do seletor
+                queryParams.append('cidades', filters.cidades.join(','));
+            } else if (filters.estados && filters.estados.length > 0) {
+                queryParams.append('estados', filters.estados.join(','));
+            } else if (filters.estado) {
+                queryParams.append('estado', filters.estado);
+                if (filters.cidade) queryParams.append('cidade', filters.cidade);
+            }
+
             if (filters.cnaes_principais && filters.cnaes_principais.length > 0) {
                 queryParams.append('cnaes_principais', filters.cnaes_principais.join(','));
             }
@@ -442,6 +529,7 @@ export function LeadsSearchComponent() {
             if (selectedBairros.length > 0) {
                 queryParams.append('bairros', selectedBairros.join(','));
             }
+
 
             // Adicionar tamanho do lote se selecionado
             if (tamanhoLote && tamanhoLote !== '0') {
@@ -555,12 +643,16 @@ export function LeadsSearchComponent() {
                 onFiltersChange={setFilters}
                 onSearch={handleSearch}
                 estados={estados}
-                cidades={cidades}
+                cidades={cidadesDisplay}
                 estadosLoading={estadosLoading}
-                cidadesLoading={cidadesLoading}
+                cidadesLoading={loadingCidades}
+
                 searchLoading={searchLoading || countLoading}
                 searchError={searchError || countError}
             />
+
+            {/* Painel de Filtros Salvos */}
+            <SavedFiltersPanel />
 
             {/* Resultado da Importação */}
             {importResult && <ImportResultAlert result={importResult} />}
@@ -576,10 +668,15 @@ export function LeadsSearchComponent() {
 
                         try {
                             const filtrosComBairro = { ...filters, bairros: selectedBairros };
-                            await Promise.all([
+                            const [searchResult, countResult] = await Promise.all([
                                 searchLeads(filtrosComBairro),
                                 countLeads(filtrosComBairro)
                             ]);
+
+                            // Salvar resultados no contexto
+                            if (searchResult) setSearchData(searchResult);
+                            if (countResult) setCountData(countResult);
+
                             setBairroFilterApplied(true);
                         } catch (error) {
                             console.error('Erro ao aplicar filtro de bairro:', error);
@@ -590,10 +687,14 @@ export function LeadsSearchComponent() {
                         setBairroFilterApplied(false);
                         const filtrosSemBairro = { ...filters, bairros: undefined };
                         try {
-                            await Promise.all([
+                            const [searchResult, countResult] = await Promise.all([
                                 searchLeads(filtrosSemBairro),
                                 countLeads(filtrosSemBairro)
                             ]);
+
+                            // Salvar resultados no contexto
+                            if (searchResult) setSearchData(searchResult);
+                            if (countResult) setCountData(countResult);
                         } catch (error) {
                             console.error('Erro ao limpar filtro de bairro:', error);
                         }

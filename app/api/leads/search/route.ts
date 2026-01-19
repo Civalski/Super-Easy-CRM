@@ -13,8 +13,14 @@ export async function GET(request: NextRequest) {
         // Construir query string para o backend Python
         const queryParams = new URLSearchParams();
 
+        // Parâmetros de localização (novos)
         const estado = searchParams.get('estado');
+        const estados = searchParams.get('estados');
         const cidade = searchParams.get('cidade');
+        const cidades = searchParams.get('cidades');
+        const brasil_inteiro = searchParams.get('brasil_inteiro') === 'true';
+
+        // Outros parâmetros
         const cnaes_principais = searchParams.get('cnaes_principais');
         const cnaes_secundarios = searchParams.get('cnaes_secundarios');
         const exigir_todos_secundarios = searchParams.get('exigir_todos_secundarios') === 'true';
@@ -31,16 +37,23 @@ export async function GET(request: NextRequest) {
         const bairros = searchParams.get('bairros');
         const limit = searchParams.get('limit') || '100';
 
-        // Validar parâmetros obrigatórios
-        if (!estado) {
+        // Validar parâmetros de localização
+        const temLocalizacao = brasil_inteiro || estado || estados || cidades;
+        if (!temLocalizacao) {
             return NextResponse.json(
-                { error: 'Parâmetro "estado" é obrigatório' },
+                { error: 'É necessário informar pelo menos: "estado", "estados", "cidades" ou "brasil_inteiro=true"' },
                 { status: 400 }
             );
         }
 
-        queryParams.append('estado', estado);
+        // Parâmetros de localização
+        if (brasil_inteiro) queryParams.append('brasil_inteiro', 'true');
+        if (estados) queryParams.append('estados', estados);
+        if (cidades) queryParams.append('cidades', cidades);
+        if (estado) queryParams.append('estado', estado);
         if (cidade) queryParams.append('cidade', cidade);
+
+        // Outros parâmetros
         if (cnaes_principais) queryParams.append('cnaes_principais', cnaes_principais);
         if (cnaes_secundarios) queryParams.append('cnaes_secundarios', cnaes_secundarios);
         if (exigir_todos_secundarios) queryParams.append('exigir_todos_secundarios', 'true');
@@ -56,6 +69,7 @@ export async function GET(request: NextRequest) {
         if (mes_inicio) queryParams.append('mes_inicio', mes_inicio);
         if (bairros) queryParams.append('bairros', bairros);
         queryParams.append('limit', limit);
+
 
         // Chamar backend Python
         const response = await fetch(

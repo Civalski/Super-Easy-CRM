@@ -49,8 +49,12 @@ export interface EmpresaParquet {
 
 // Filtros de busca
 export interface LeadsSearchFilters {
-    estado?: string;
-    cidade?: string;
+    estado?: string; // Estado único (retrocompatibilidade)
+
+    estados?: string[]; // Múltiplos estados (novo)
+    cidade?: string; // Cidade única (retrocompatibilidade)
+    cidades?: string[]; // Múltiplas cidades (novo)
+    brasil_inteiro?: boolean; // Selecionar todos os estados do Brasil
     cnaes_principais?: string[]; // Múltiplos CNAEs principais (OR lógico)
     cnaes_secundarios?: string[]; // Múltiplos CNAEs secundários
     exigir_todos_secundarios?: boolean; // true = TODOS (AND), false = QUALQUER UM (OR)
@@ -74,7 +78,10 @@ export interface LeadsSearchResponse {
     total_lidos: number;
     filtros: {
         estado: string;
+        estados?: string;
         cidade?: string;
+        cidades?: string;
+        brasil_inteiro?: boolean;
         cnaes_principais?: string;
         cnaes_secundarios?: string;
         exigir_todos_secundarios?: boolean;
@@ -82,6 +89,24 @@ export interface LeadsSearchResponse {
         porte?: string;
     };
     resultados: EmpresaParquet[];
+}
+
+// Resposta da API de contagem
+export interface LeadsCountResponse {
+    total_encontrado: number;
+    total_lidos: number;
+    filtros: {
+        estado: string;
+        estados?: string;
+        cidade?: string;
+        cidades?: string;
+        brasil_inteiro?: boolean;
+        cnaes_principais?: string;
+        cnaes_secundarios?: string;
+        exigir_todos_secundarios?: boolean;
+        situacao?: string;
+        porte?: string;
+    };
 }
 
 // Estado disponível

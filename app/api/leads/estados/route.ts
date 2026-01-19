@@ -13,8 +13,8 @@ export async function GET() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            // Cache por 1 hora (estados não mudam frequentemente)
-            next: { revalidate: 3600 },
+            // Não cachear para garantir que novos arquivos sejam detectados
+            cache: 'no-store',
         });
 
         if (!response.ok) {

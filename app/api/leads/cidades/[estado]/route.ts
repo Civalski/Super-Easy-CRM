@@ -25,8 +25,8 @@ export async function GET(
             headers: {
                 'Content-Type': 'application/json',
             },
-            // Cache por 1 hora
-            next: { revalidate: 3600 },
+            // Não cachear
+            cache: 'no-store',
         });
 
         if (!response.ok) {

@@ -3,14 +3,14 @@
 
 Write-Host "🔄 Limpando portas do projeto Arker CRM..." -ForegroundColor Yellow
 
-# Matar todos os processos Node.js
-Write-Host "Parando processos Node.js..." -ForegroundColor Cyan
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# Matar todos os processos Node.js (DESATIVADO PARA NÃO MATAR O PRÓPRIO NPM)
+# Write-Host "Parando processos Node.js..." -ForegroundColor Cyan
+# Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-# Matar todos os processos Python
-Write-Host "Parando processos Python..." -ForegroundColor Cyan
-Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# Matar todos os processos Python (DESATIVADO PARA EVITAR COLATERAIS)
+# Write-Host "Parando processos Python..." -ForegroundColor Cyan
+# Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 # Tentar liberar porta 3000 especificamente (Next.js)
 Write-Host "Verificando porta 3000..." -ForegroundColor Cyan
