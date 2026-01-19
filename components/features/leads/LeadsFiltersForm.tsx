@@ -402,10 +402,10 @@ export function LeadsFiltersForm({
                                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200 hover:border-purple-400"
                             >
                                 <option value="">Todas as situações</option>
-                                <option value="ATIVA">✅ Ativa</option>
-                                <option value="INAPTA">⚠️ Inapta</option>
-                                <option value="BAIXADA">🔴 Baixada</option>
-                                <option value="SUSPENSA">⏸️ Suspensa</option>
+                                <option value="ATIVA">Ativa</option>
+                                <option value="INAPTA">Inapta</option>
+                                <option value="BAIXADA">Baixada</option>
+                                <option value="SUSPENSA">Suspensa</option>
                             </select>
                         </div>
 
@@ -419,10 +419,10 @@ export function LeadsFiltersForm({
                                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200 hover:border-purple-400"
                             >
                                 <option value="">Todos os portes</option>
-                                <option value="MICRO EMPRESA">🏠 Micro Empresa</option>
-                                <option value="PEQUENA EMPRESA">🏢 Pequena Empresa</option>
-                                <option value="MÉDIA EMPRESA">🏗️ Média Empresa</option>
-                                <option value="GRANDE EMPRESA">🏛️ Grande Empresa</option>
+                                <option value="MICRO EMPRESA">Micro Empresa</option>
+                                <option value="PEQUENA EMPRESA">Pequena Empresa</option>
+                                <option value="MÉDIA EMPRESA">Média Empresa</option>
+                                <option value="GRANDE EMPRESA">Grande Empresa</option>
                             </select>
                         </div>
                     </div>
@@ -493,9 +493,9 @@ export function LeadsFiltersForm({
                                 </label>
                                 <input
                                     type="number"
-                                    min="1900"
-                                    max="2100"
-                                    placeholder="Ex: 2018"
+                                    min="1998"
+                                    max="2025"
+                                    placeholder="Ex: 1998"
                                     value={filters.ano_inicio_min ?? ''}
                                     onChange={(e) => {
                                         const value = e.target.value ? parseInt(e.target.value) : undefined;
@@ -510,9 +510,9 @@ export function LeadsFiltersForm({
                                 </label>
                                 <input
                                     type="number"
-                                    min="1900"
-                                    max="2100"
-                                    placeholder="Ex: 2023"
+                                    min="1998"
+                                    max="2025"
+                                    placeholder="Ex: 2025"
                                     value={filters.ano_inicio_max ?? ''}
                                     onChange={(e) => {
                                         const value = e.target.value ? parseInt(e.target.value) : undefined;

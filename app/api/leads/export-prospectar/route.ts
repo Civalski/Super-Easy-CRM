@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
 
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:5000';
 
-// Função para montar CNPJ completo a partir dos dados
+// Função para montar CNPJ completo a partir dos dados separados
 function montarCNPJ(basico: string, ordem: string, dv: string): string {
     const basicoPad = (basico || '').padStart(8, '0');
     const ordemPad = (ordem || '').padStart(4, '0');
@@ -17,8 +17,23 @@ function montarCNPJ(basico: string, ordem: string, dv: string): string {
     return `${basicoPad}${ordemPad}${dvPad}`;
 }
 
+// Função para extrair CNPJ de uma empresa (prioriza CNPJ unificado)
+function extrairCNPJ(empresa: { [key: string]: string }): string {
+    // Priorizar CNPJ unificado se existir (vem do backend Python)
+    if (empresa['CNPJ'] && empresa['CNPJ'].trim()) {
+        return empresa['CNPJ'].trim().padStart(14, '0');
+    }
+    // Fallback para campos separados
+    return montarCNPJ(
+        empresa['CNPJ BASICO'] || '',
+        empresa['CNPJ ORDEM'] || '',
+        empresa['CNPJ DV'] || ''
+    );
+}
+
 // Interface para mapear dados do Python para o formato esperado
 interface EmpresaCSV {
+    'CNPJ': string;  // CNPJ unificado (quando vem do backend Python)
     'CNPJ BASICO': string;
     'CNPJ ORDEM': string;
     'CNPJ DV': string;
@@ -50,22 +65,46 @@ interface EmpresaCSV {
 
 // Função para parsear CSV
 function parseCSV(csvText: string): EmpresaCSV[] {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
+    // Normalizar quebras de linha (Windows usa \r\n, Unix usa \n, Mac antigo usa \r)
+    const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalizedText.split('\n').filter(line => line.trim());
+
+    console.log(`[parseCSV] Total de linhas encontradas: ${lines.length}`);
+
+    if (lines.length < 2) {
+        console.log('[parseCSV] Menos de 2 linhas, retornando vazio');
+        return [];
+    }
 
     const headers = parseCSVLine(lines[0]);
+    console.log(`[parseCSV] Headers (${headers.length}):`, headers.slice(0, 5).join(', '), '...');
+
     const results: EmpresaCSV[] = [];
+    let skippedLines = 0;
 
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
-        if (values.length === headers.length) {
+
+        // Aceitar linhas com número de valores >= headers (pode ter campos extras) 
+        // ou com até 3 campos faltando (tolerância para campos opcionais no final)
+        if (values.length >= headers.length - 3 && values.length <= headers.length + 5) {
             const row: { [key: string]: string } = {};
             headers.forEach((header, idx) => {
                 row[header] = values[idx] || '';
             });
             results.push(row as EmpresaCSV);
+        } else {
+            skippedLines++;
+            if (skippedLines <= 3) {
+                console.log(`[parseCSV] Linha ${i} ignorada: ${values.length} valores vs ${headers.length} headers`);
+            }
         }
     }
+
+    if (skippedLines > 0) {
+        console.log(`[parseCSV] ${skippedLines} linhas ignoradas por incompatibilidade de colunas`);
+    }
+    console.log(`[parseCSV] Total de registros parseados: ${results.length}`);
 
     return results;
 }
@@ -113,17 +152,33 @@ function gerarIdentificadorLote(indice: number): string {
 
 // Função para mapear empresa do CSV para dados do prospecto
 function mapearEmpresaParaProspecto(empresa: EmpresaCSV, lote?: string) {
-    const cnpj = montarCNPJ(
-        empresa['CNPJ BASICO'],
-        empresa['CNPJ ORDEM'],
-        empresa['CNPJ DV']
-    );
+    // O CSV pode vir com CNPJ unificado (do Python) ou com campos separados
+    // Priorizar CNPJ unificado se existir
+    let cnpj: string;
+    let cnpjBasico: string;
+    let cnpjOrdem: string;
+    let cnpjDv: string;
+
+    if (empresa['CNPJ'] && empresa['CNPJ'].trim()) {
+        // CNPJ já vem unificado do backend Python
+        cnpj = empresa['CNPJ'].trim().padStart(14, '0');
+        // Extrair partes do CNPJ unificado (8 + 4 + 2 = 14 dígitos)
+        cnpjBasico = cnpj.substring(0, 8);
+        cnpjOrdem = cnpj.substring(8, 12);
+        cnpjDv = cnpj.substring(12, 14);
+    } else {
+        // Fallback para campos separados
+        cnpjBasico = empresa['CNPJ BASICO'] || '';
+        cnpjOrdem = empresa['CNPJ ORDEM'] || '';
+        cnpjDv = empresa['CNPJ DV'] || '';
+        cnpj = montarCNPJ(cnpjBasico, cnpjOrdem, cnpjDv);
+    }
 
     return {
         cnpj,
-        cnpjBasico: empresa['CNPJ BASICO'] || '',
-        cnpjOrdem: empresa['CNPJ ORDEM'] || '',
-        cnpjDv: empresa['CNPJ DV'] || '',
+        cnpjBasico,
+        cnpjOrdem,
+        cnpjDv,
         razaoSocial: empresa['RAZAO SOCIAL / NOME EMPRESARIAL'] || 'Não informado',
         nomeFantasia: empresa['NOME FANTASIA'] || null,
         capitalSocial: empresa['CAPITAL SOCIAL'] || null,
@@ -249,9 +304,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Buscar CNPJs já existentes para evitar duplicatas
-        const cnpjsParaImportar = empresas.map(e =>
-            montarCNPJ(e['CNPJ BASICO'], e['CNPJ ORDEM'], e['CNPJ DV'])
-        );
+        const cnpjsParaImportar = empresas.map(e => extrairCNPJ(e));
 
         // Buscar em lotes para evitar problemas com muitos CNPJs
         const BATCH_SIZE = 1000;
@@ -278,11 +331,7 @@ export async function POST(request: NextRequest) {
 
         for (const empresa of empresas) {
             try {
-                const cnpj = montarCNPJ(
-                    empresa['CNPJ BASICO'],
-                    empresa['CNPJ ORDEM'],
-                    empresa['CNPJ DV']
-                );
+                const cnpj = extrairCNPJ(empresa);
 
                 if (cnpjsExistentes.has(cnpj)) {
                     duplicados++;

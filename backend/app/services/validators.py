@@ -7,10 +7,12 @@ def is_telefone_valido(telefone: str) -> bool:
     
     Telefones inválidos:
     - Vazios ou None
-    - Apenas dígitos repetidos (00000000, 11111111, 99999999, etc.)
+    - Apenas dígitos repetidos (00000000, 11111111, 33333333, 99999999, etc.)
+    - Números com apenas 2 dígitos únicos em padrão repetitivo (ex: 33334444, 22228888)
     - Muito curtos (menos de 8 dígitos)
-    - Sequências óbvias (12345678, 87654321)
+    - Sequências óbvias crescentes ou decrescentes (12345678, 87654321)
     - Começam com muitos zeros (0000xxxx)
+    - Padrões alternados (12121212, 98989898)
     """
     if not telefone or pd.isna(telefone):
         return False
@@ -29,34 +31,64 @@ def is_telefone_valido(telefone: str) -> bool:
     if len(apenas_digitos) < 8:
         return False
     
-    # Todos os dígitos são iguais (00000000, 11111111, 99999999, etc.)
-    if len(set(apenas_digitos)) == 1:
+    digitos_unicos = set(apenas_digitos)
+    
+    # Todos os dígitos são iguais (00000000, 11111111, 33333333, 99999999, etc.)
+    # Funciona para qualquer quantidade de dígitos
+    if len(digitos_unicos) == 1:
         return False
     
-    # Padrões inválidos comuns
-    padroes_invalidos = [
-        '12345678', '87654321',  # Sequências
-        '00000000', '11111111', '22222222', '33333333', '44444444',
-        '55555555', '66666666', '77777777', '88888888', '99999999',
-        '123456789', '987654321',
-        '0000000000', '1111111111', '2222222222', '3333333333', '4444444444',
-        '5555555555', '6666666666', '7777777777', '8888888888', '9999999999',
-    ]
+    # Apenas 2 dígitos únicos pode indicar padrão inválido (ex: 33334444, 11112222)
+    if len(digitos_unicos) == 2:
+        # Verifica se é um padrão de metades repetidas (ex: 33334444)
+        metade = len(apenas_digitos) // 2
+        primeira_metade = apenas_digitos[:metade]
+        segunda_metade = apenas_digitos[metade:metade*2]
+        
+        # Se cada metade tem apenas um dígito único, é inválido
+        if len(set(primeira_metade)) == 1 and len(set(segunda_metade)) == 1:
+            return False
+        
+        # Padrão alternado (12121212, 98989898, etc.)
+        if len(apenas_digitos) >= 8:
+            primeiro = apenas_digitos[0]
+            segundo = apenas_digitos[1]
+            if primeiro != segundo:
+                padrao_alternado = (primeiro + segundo) * (len(apenas_digitos) // 2)
+                if apenas_digitos == padrao_alternado[:len(apenas_digitos)]:
+                    return False
     
-    if apenas_digitos in padroes_invalidos:
+    # Sequências crescentes ou decrescentes (funciona para qualquer tamanho)
+    def is_sequencia(num_str: str) -> bool:
+        if len(num_str) < 4:
+            return False
+        # Verifica se é crescente
+        crescente = all(
+            int(num_str[i]) == int(num_str[i-1]) + 1 
+            for i in range(1, len(num_str))
+        )
+        # Verifica se é decrescente
+        decrescente = all(
+            int(num_str[i]) == int(num_str[i-1]) - 1 
+            for i in range(1, len(num_str))
+        )
+        return crescente or decrescente
+    
+    if is_sequencia(apenas_digitos):
         return False
     
     # Começa com muitos zeros (mais de 4)
     if apenas_digitos.startswith('00000'):
         return False
     
-    # Padrão de apenas 2 dígitos alternados (ex: 12121212, 98989898)
+    # Padrão repetitivo de blocos (ex: 12341234, 56785678)
     if len(apenas_digitos) >= 8:
-        primeiro = apenas_digitos[0]
-        segundo = apenas_digitos[1] if len(apenas_digitos) > 1 else primeiro
-        padrao_alternado = (primeiro + segundo) * (len(apenas_digitos) // 2)
-        if apenas_digitos.startswith(padrao_alternado[:len(apenas_digitos)]):
-            return False
+        for tamanho_bloco in [2, 3, 4]:
+            if len(apenas_digitos) % tamanho_bloco == 0:
+                bloco = apenas_digitos[:tamanho_bloco]
+                repeticoes = len(apenas_digitos) // tamanho_bloco
+                if apenas_digitos == bloco * repeticoes:
+                    return False
     
     return True
 
