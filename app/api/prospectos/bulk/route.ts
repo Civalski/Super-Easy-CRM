@@ -14,8 +14,7 @@ export async function DELETE(request: NextRequest) {
         const all = searchParams.get('all') === 'true';
 
         // Construir filtros
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const where: any = {};
+        const where: Record<string, any> = {};
 
         // Nunca excluir convertidos automaticamente
         where.status = { not: 'convertido' };

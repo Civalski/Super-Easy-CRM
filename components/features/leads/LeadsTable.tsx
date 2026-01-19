@@ -248,7 +248,7 @@ export function LeadsTable({
                             </p>
                             <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                                 A tabela exibe apenas <strong>{formatNumber(resultados.length)}</strong> de <strong>{formatNumber(totalEncontrado)}</strong> leads encontrados.
-                                Use os botões <strong>"CSV"</strong> ou <strong>"Excel"</strong> para baixar todos os registros.
+                                Use os botões <strong>&quot;CSV&quot;</strong> ou <strong>&quot;Excel&quot;</strong> para baixar todos os registros.
                             </p>
                         </div>
                     </div>

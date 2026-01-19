@@ -63,6 +63,8 @@ export function useGlobalSearch() {
         return () => clearTimeout(timeoutId);
     }, [busca]);
 
+    const totalResultados = (resultados?.clientes.length || 0) + (resultados?.oportunidades.length || 0);
+
     const limparBusca = useCallback(() => {
         setBusca('');
         setResultados(null);
@@ -77,9 +79,7 @@ export function useGlobalSearch() {
         if (resultados && totalResultados > 0) {
             setMostrarResultados(true);
         }
-    }, [resultados]);
-
-    const totalResultados = (resultados?.clientes.length || 0) + (resultados?.oportunidades.length || 0);
+    }, [resultados, totalResultados]);
 
     return {
         busca,
