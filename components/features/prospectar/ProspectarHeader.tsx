@@ -1,5 +1,6 @@
 /**
  * Header da página de prospecção
+ * Design consistente com outras páginas do CRM
  */
 'use client'
 
@@ -12,14 +13,16 @@ interface ProspectarHeaderProps {
 
 export function ProspectarHeader({ loading, onRefresh }: ProspectarHeaderProps) {
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <Target className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div className="p-2.5 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg shadow-purple-500/25">
+                    <Target className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Prospecção</h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Prospecção
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         Gerencie seus prospectos importados
                     </p>
                 </div>

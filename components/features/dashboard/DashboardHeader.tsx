@@ -1,9 +1,10 @@
 /**
  * Header do dashboard
+ * Design consistente com outras páginas do CRM
  */
 'use client'
 
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, LayoutDashboard } from 'lucide-react'
 
 interface DashboardHeaderProps {
     isRefreshing: boolean
@@ -12,14 +13,19 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ isRefreshing, onRefresh }: DashboardHeaderProps) {
     return (
-        <div className="mb-8 flex items-center justify-between">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    Dashboard
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Visão geral do seu negócio
-                </p>
+        <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-lg shadow-orange-500/25">
+                    <LayoutDashboard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Dashboard
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Visão geral do seu negócio
+                    </p>
+                </div>
             </div>
             <button
                 onClick={onRefresh}

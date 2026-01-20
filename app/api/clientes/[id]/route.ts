@@ -15,6 +15,7 @@ export async function GET(
             contatos: true,
           },
         },
+        prospecto: true, // Inclui dados ricos do prospecto (CNPJ, nome fantasia, capital social, etc.)
       },
     })
 

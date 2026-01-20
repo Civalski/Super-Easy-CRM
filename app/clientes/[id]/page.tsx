@@ -6,18 +6,55 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Button, ConfirmDialog } from '@/components/common'
 import {
   ArrowLeft,
+  BadgeDollarSign,
   Briefcase,
+  Building,
   Building2,
   Calendar,
   Edit2,
+  FileText,
   Loader2,
   Mail,
   MapPin,
   Phone,
   Save,
+  Scale,
+  Tag,
   Trash2,
   Users,
 } from 'lucide-react'
+
+interface Prospecto {
+  id: string
+  cnpj: string
+  cnpjBasico: string
+  cnpjOrdem: string
+  cnpjDv: string
+  razaoSocial: string
+  nomeFantasia: string | null
+  capitalSocial: string | null
+  porte: string | null
+  naturezaJuridica: string | null
+  situacaoCadastral: string | null
+  dataAbertura: string | null
+  matrizFilial: string | null
+  cnaePrincipal: string | null
+  cnaePrincipalDesc: string | null
+  cnaesSecundarios: string | null
+  tipoLogradouro: string | null
+  logradouro: string | null
+  numero: string | null
+  complemento: string | null
+  bairro: string | null
+  cep: string | null
+  municipio: string
+  uf: string
+  telefone1: string | null
+  telefone2: string | null
+  email: string | null
+  status: string
+  lote: string | null
+}
 
 interface Cliente {
   id: string
@@ -35,6 +72,7 @@ interface Cliente {
     oportunidades: number
     contatos: number
   }
+  prospecto?: Prospecto | null
 }
 
 interface ClienteFormData {
@@ -389,6 +427,162 @@ export default function ClienteDetalhesPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Dados Empresariais (do Prospecto) */}
+              {cliente.prospecto && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Building size={18} className="text-purple-500" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Dados Empresariais
+                    </h3>
+                    <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                      Dados da Receita Federal
+                    </span>
+                  </div>
+
+                  {/* CNPJ e Identificação */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <FileText size={18} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          CNPJ
+                        </p>
+                        <p className="text-sm font-mono font-medium text-gray-900 dark:text-white">
+                          {cliente.prospecto.cnpj || `${cliente.prospecto.cnpjBasico}/${cliente.prospecto.cnpjOrdem}-${cliente.prospecto.cnpjDv}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <Building2 size={18} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          Razão Social
+                        </p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {cliente.prospecto.razaoSocial}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <Tag size={18} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          Nome Fantasia
+                        </p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {cliente.prospecto.nomeFantasia || '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Informações Financeiras e Porte */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <BadgeDollarSign size={18} className="text-green-500 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          Capital Social
+                        </p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {(() => {
+                            if (!cliente.prospecto.capitalSocial) return '-';
+                            // O valor pode estar como string no formato brasileiro (ex: "1200,00") ou como número
+                            const valorStr = String(cliente.prospecto.capitalSocial);
+                            // Tenta converter removendo pontos de milhar e trocando vírgula por ponto
+                            const valorLimpo = valorStr.replace(/\./g, '').replace(',', '.');
+                            const valor = Number(valorLimpo);
+                            if (isNaN(valor)) return `R$ ${valorStr}`;
+                            return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <Briefcase size={18} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          Porte da Empresa
+                        </p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {cliente.prospecto.porte || '-'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <Scale size={18} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400">
+                          Natureza Jurídica
+                        </p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {cliente.prospecto.naturezaJuridica || '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CNAE e Atividade */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                        CNAE Principal
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {cliente.prospecto.cnaePrincipal && (
+                          <span className="font-mono mr-2 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                            {cliente.prospecto.cnaePrincipal}
+                          </span>
+                        )}
+                        {cliente.prospecto.cnaePrincipalDesc || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                        Matriz/Filial
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {cliente.prospecto.matrizFilial || '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Situação e Datas */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                        Situação Cadastral
+                      </p>
+                      <p className="text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${cliente.prospecto.situacaoCadastral?.toLowerCase().includes('ativa')
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          }`}>
+                          {cliente.prospecto.situacaoCadastral || '-'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                        Data de Abertura
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {cliente.prospecto.dataAbertura || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                        Lote de Importação
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {cliente.prospecto.lote || '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-6">

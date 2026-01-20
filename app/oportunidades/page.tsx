@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
-import { KanbanBoard, AmbienteSelector } from '@/components/features/oportunidades'
+import { KanbanBoard, AmbienteSelector, OportunidadesHeader } from '@/components/features/oportunidades'
 import { Button } from '@/components/common'
 
 import { Plus, Loader2 } from 'lucide-react'
@@ -89,26 +89,12 @@ export default function OportunidadesPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Pipeline de Oportunidades
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Gerencie seu funil de vendas com drag and drop
-          </p>
-          <AmbienteSelector
-            ambienteSelecionado={ambienteSelecionado}
-            onAmbienteChange={setAmbienteSelecionado}
-          />
-        </div>
-        <Link href="/oportunidades/nova">
-          <Button>
-            <Plus size={20} className="mr-2" />
-            Nova Oportunidade
-          </Button>
-        </Link>
-      </div>
+      <OportunidadesHeader>
+        <AmbienteSelector
+          ambienteSelecionado={ambienteSelecionado}
+          onAmbienteChange={setAmbienteSelecionado}
+        />
+      </OportunidadesHeader>
 
       {ambienteSelecionado ? (
         loading ? (

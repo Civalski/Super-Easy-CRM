@@ -7,3 +7,5 @@ export { AmbienteFormModal, DeleteConfirmModal } from './AmbienteModals';
 export { default as KanbanBoard } from './KanbanBoard';
 export { default as KanbanColumn } from './KanbanColumn';
 export { default as OportunidadeCard } from './OportunidadeCard';
+export { OportunidadesHeader } from './OportunidadesHeader';
+

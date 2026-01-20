@@ -18,11 +18,10 @@ export default function KanbanColumn({ id, title, color, children }: KanbanColum
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg p-4 min-h-[500px] transition-colors ${
-        isOver ? 'bg-opacity-80' : ''
-      } ${color}`}
+      className={`rounded-lg p-4 min-h-[500px] transition-colors ${isOver ? 'bg-opacity-80' : ''
+        } ${color}`}
     >
-      <h2 className="text-lg font-semibold mb-4 text-center">{title}</h2>
+      <h2 className="text-lg font-semibold mb-4 text-center text-white">{title}</h2>
       <div className="space-y-3">
         {children}
       </div>

@@ -14,6 +14,12 @@ export async function GET() {
             contatos: true,
           },
         },
+        prospecto: {
+          select: {
+            cnaePrincipalDesc: true,
+            capitalSocial: true,
+          },
+        },
       },
     })
 
