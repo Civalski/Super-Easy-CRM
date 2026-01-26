@@ -7,6 +7,13 @@ data
 /data
 parquet
 /parquet
+
+# Electron
+/electron
+/dist-electron
+/dist
+*.exe
+
 # dependencies
 /node_modules
 /.pnp

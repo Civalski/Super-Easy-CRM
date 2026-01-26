@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
+    await ensureDatabaseInitialized()
+    
     const { searchParams } = new URL(request.url)
     const ambienteId = searchParams.get('ambienteId')
     
@@ -37,6 +39,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await ensureDatabaseInitialized()
+    
     const body = await request.json()
     const { titulo, descricao, valor, status, probabilidade, clienteId, ambienteId, dataFechamento } = body
 

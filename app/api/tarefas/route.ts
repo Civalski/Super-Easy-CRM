@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 
 export async function GET() {
   try {
+    await ensureDatabaseInitialized()
+    
     const tarefas = await prisma.tarefa.findMany({
       orderBy: {
         createdAt: 'desc',
@@ -21,6 +23,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await ensureDatabaseInitialized()
+    
     const body = await request.json()
     const {
       titulo,

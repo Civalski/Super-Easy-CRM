@@ -9,17 +9,30 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     
     # Base paths
-    # file is in backend/app/core/config.py -> parent.parent.parent is backend/
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
     
-    # Data path defaulting to ../data/parquet relative to project root
-    # If backend is in d:\Projetos\Arker CRM\backend
-    # Then data is in d:\Projetos\Arker CRM\data\parquet
-    PARQUET_DATA_PATH: Path = BASE_DIR.parent / "data" / "parquet"
+    # Lógica de caminho dos dados (Prioridade: ENV > APPDATA > LOCAL)
+    @property
+    def PARQUET_DATA_PATH(self) -> Path:
+        # 1. Variável de ambiente explícita
+        if os.getenv("ARKER_DATA_PATH"):
+            return Path(os.getenv("ARKER_DATA_PATH"))
+            
+        # 2. Pasta no APPDATA (Produção)
+        # Windows: C:/Users/User/AppData/Roaming/ArkerCRM/Dados
+        app_data = os.getenv("APPDATA")
+        if app_data:
+            prod_path = Path(app_data) / "ArkerCRM" / "Dados"
+            if prod_path.exists():
+                return prod_path
+
+        # 3. Fallback: Desenvolvimento (local)
+        return self.BASE_DIR.parent / "data" / "parquet"
 
     CORS_ORIGINS: List[str] | str = [
         "http://localhost:3000",
         "http://localhost:5000",
+        "*", # Permitir acesso do Electron App
     ]
 
     @field_validator("CORS_ORIGINS")

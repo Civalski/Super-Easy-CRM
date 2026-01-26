@@ -254,7 +254,7 @@ export function SavedFiltersPanel() {
                                 Nenhum filtro salvo ainda
                             </p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                Configure seus filtros e clique em "Salvar Filtro Atual"
+                                Configure seus filtros e clique em &quot;Salvar Filtro Atual&quot;
                             </p>
                         </div>
                     ) : (

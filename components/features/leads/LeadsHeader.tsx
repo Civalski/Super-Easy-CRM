@@ -6,6 +6,8 @@
 
 import { Search, Database } from 'lucide-react';
 
+import { DataManagementButton } from './DataManagementButton';
+
 interface LeadsHeaderProps {
     totalLeads?: number | null;
     isLoading?: boolean;
@@ -28,26 +30,30 @@ export function LeadsHeader({ totalLeads, isLoading }: LeadsHeaderProps) {
                 </div>
             </div>
 
-            {/* Indicador de base de dados */}
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Database className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {isLoading ? (
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                            Carregando...
-                        </span>
-                    ) : totalLeads ? (
-                        <span>
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                                {totalLeads.toLocaleString('pt-BR')}
+            <div className="flex items-center gap-3">
+                <DataManagementButton />
+
+                {/* Indicador de base de dados */}
+                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Database className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {isLoading ? (
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                                Carregando...
                             </span>
-                            {' '}leads encontrados
-                        </span>
-                    ) : (
-                        'Base de dados CNPJ'
-                    )}
-                </span>
+                        ) : totalLeads ? (
+                            <span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                    {totalLeads.toLocaleString('pt-BR')}
+                                </span>
+                                {' '}leads encontrados
+                            </span>
+                        ) : (
+                            'Base de dados CNPJ'
+                        )}
+                    </span>
+                </div>
             </div>
         </div>
     );

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 
 export async function GET() {
   try {
+    // Garantir que o banco está inicializado
+    await ensureDatabaseInitialized()
+    
     const clientes = await prisma.cliente.findMany({
       orderBy: {
         createdAt: 'desc',
@@ -35,6 +38,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Garantir que o banco está inicializado
+    await ensureDatabaseInitialized()
+    
     const body = await request.json()
     const { nome, email, telefone, empresa, endereco, cidade, estado, cep } = body
 
