@@ -29,4 +29,4 @@ if (!(Test-Path .env)) {
 
 # Iniciar servidor
 Write-Host "Servidor iniciando na porta 5000..." -ForegroundColor Green
-& $pythonCmd main.py
+& $pythonCmd -u main.py

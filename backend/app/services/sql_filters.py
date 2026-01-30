@@ -74,19 +74,18 @@ def construir_filtro_sql(filters: CommonFilters, bairros: Optional[str] = None) 
     # 8. Filtros Especiais (Telefone, Celular)
     # Esses são mais complexos de fazer em SQL puro regex, mas DuckDB suporta regexp_matches
     
-    if filters.apenas_celular:
-        # Celular: (XX) 9XXXX-XXXX ou similar. Digito verificador 9.
-        # Regex simplificado: contem (DD) 9... ou DD 9...
-        # Vamos checar TELEFONE 1 ou TELEFONE 2
-        # Padrão aproximado para celular: ddd + 9 + 8 digitos
-        regex = "'.*\\(?[1-9]{2}\\)?[ ]?9[0-9]{4}[-]?[0-9]{4}.*'"
-        conditions.append(f"(regexp_matches(\"TELEFONE 1\", {regex}) OR regexp_matches(\"TELEFONE 2\", {regex}))")
+    # TEMPORARIAMENTE DESABILITADO PARA DEBUG
+    # if filters.apenas_celular:
+    #     # Celular brasileiro: tem o dígito 9 após o DDD
+    #     # Padrão mais flexível: qualquer coisa com 9 seguido de 8 dígitos
+    #     # Exemplos: (11) 91234-5678, 11 91234567, (11)912345678, 11912345678
+    #     # Regex simplificado que funciona no DuckDB: contém sequência de 9 + 8 dígitos
+    #     conditions.append("(\"TELEFONE 1\" ~ '9[0-9]{8}' OR \"TELEFONE 2\" ~ '9[0-9]{8}')")
 
     if filters.filtrar_telefones_invalidos:
-        # Telefone válido tem pelo menos 10 dígitos numéricos
-        # Vamos simplificar verificando se não é nulo e tem tamanho mínimo
-        conditions.append("(\"TELEFONE 1\" IS NOT NULL OR \"TELEFONE 2\" IS NOT NULL)") 
-        # Uma validação mais rigorosa de regex poderia ser aplicada aqui
+        # Telefone válido: não é nulo e não está vazio
+        # Vamos verificar se tem conteúdo relevante (pelo menos alguns dígitos)
+        conditions.append("((\"TELEFONE 1\" IS NOT NULL AND \"TELEFONE 1\" != '') OR (\"TELEFONE 2\" IS NOT NULL AND \"TELEFONE 2\" != ''))")
 
     # Juntar todas as condições
     if not conditions:

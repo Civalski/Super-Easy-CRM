@@ -47,10 +47,19 @@ class DuckDBClient:
             query += f" OFFSET {offset}"
             
         try:
-            return self.conn.execute(query).df()
+            # DEBUG: Mostrar query completa
+            print("DuckDB Query:", flush=True)
+            print(query, flush=True)
+            print("-" * 80, flush=True)
+            
+            result = self.conn.execute(query).df()
+            
+            print(f"DuckDB retornou {len(result)} linhas", flush=True)
+            
+            return result
         except Exception as e:
-            print(f"Erro na query DuckDB: {e}")
-            print(f"Query: {query}")
+            print(f"ERRO na query DuckDB: {e}", flush=True)
+            print(f"Query que falhou: {query}", flush=True)
             raise
 
     def count_files(self, file_paths: List[str], where_clause: str = None) -> int:

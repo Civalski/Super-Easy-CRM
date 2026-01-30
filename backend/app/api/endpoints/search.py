@@ -42,6 +42,18 @@ async def search_empresas(
     # Lista de arquivos como strings para o DuckDB
     arquivos_str = [str(a) for a in arquivos]
     
+    # DEBUG: Logs detalhados
+    print("="*80, flush=True)
+    print("DEBUG /search endpoint", flush=True)
+    print(f"Arquivos selecionados: {len(arquivos_str)}", flush=True)
+    print(f"WHERE Clause: {where_clause}", flush=True)
+    print(f"Filtros:", flush=True)
+    print(f"   - apenas_celular: {filters.apenas_celular}", flush=True)
+    print(f"   - filtrar_telefones_invalidos: {filters.filtrar_telefones_invalidos}", flush=True)
+    print(f"   - cnaes_principais: {filters.cnaes_principais}", flush=True)
+    print(f"   - limit: {limit}", flush=True)
+    print("="*80, flush=True)
+    
     try:
         # Executar query no DuckDB
         # A query já aplica LIMIT e filtros diretamente no motor SQL
@@ -50,6 +62,12 @@ async def search_empresas(
             where_clause=where_clause,
             limit=limit
         )
+        
+        print(f"Query executada com sucesso", flush=True)
+        print(f"Linhas retornadas: {len(df_result)}", flush=True)
+        if len(df_result) > 0:
+            print(f"Primeiras colunas: {list(df_result.columns[:5])}", flush=True)
+        print("="*80, flush=True)
         
         # Obter contagem total (opcional, pode ser pesado se não for necessário na busca paginada simples)
         # Para performance, na busca simples retornamos apenas o count da página ou fazemos uma query de count separada
