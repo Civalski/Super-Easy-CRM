@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   // 🏠 Modo DESENVOLVIMENTO - SQLite local
-  provider = "sqlite"  // Será trocado automaticamente: sqlite (dev) | postgresql (prod)
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
