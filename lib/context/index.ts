@@ -1,5 +1,4 @@
 /**
  * Barrel export para contextos da aplicação
  */
-export { LeadsFiltersProvider, useLeadsFilters, type SavedFilter } from './LeadsFiltersContext';
-
+// Exports serão adicionados conforme novos contextos forem criados

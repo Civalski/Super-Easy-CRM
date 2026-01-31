@@ -1,13 +1,12 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Schema Prisma para DESENVOLVIMENTO com SQLite
+// Para usar este schema localmente, renomeie para schema.prisma temporariamente
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // 🏠 Modo DESENVOLVIMENTO - SQLite local
-  provider = "sqlite"  // Será trocado automaticamente: sqlite (dev) | postgresql (prod)
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -64,8 +63,8 @@ model Oportunidade {
   titulo      String
   descricao   String?
   valor       Float?
-  status      String      @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
-  probabilidade Int       @default(0) // 0-100
+  status      String      @default("prospeccao")
+  probabilidade Int       @default(0)
   dataFechamento DateTime?
   clienteId   String
   ambienteId  String
@@ -83,8 +82,8 @@ model Tarefa {
   id          String      @id @default(cuid())
   titulo      String
   descricao   String?
-  status      String      @default("pendente") // pendente, em_andamento, concluida
-  prioridade  String      @default("media") // baixa, media, alta
+  status      String      @default("pendente")
+  prioridade  String      @default("media")
   dataVencimento DateTime?
   clienteId   String?
   oportunidadeId String?
@@ -99,14 +98,10 @@ model Tarefa {
 
 model Prospecto {
   id              String    @id @default(cuid())
-  
-  // Dados de identificação
   cnpj            String    @unique
   cnpjBasico      String
   cnpjOrdem       String
   cnpjDv          String
-  
-  // Dados da empresa
   razaoSocial     String
   nomeFantasia    String?
   capitalSocial   String?
@@ -115,13 +110,9 @@ model Prospecto {
   situacaoCadastral String?
   dataAbertura    String?
   matrizFilial    String?
-  
-  // CNAE
   cnaePrincipal      String?
   cnaePrincipalDesc  String?
   cnaesSecundarios   String?
-  
-  // Endereço
   tipoLogradouro  String?
   logradouro      String?
   numero          String?
@@ -130,26 +121,18 @@ model Prospecto {
   cep             String?
   municipio       String
   uf              String
-  
-  // Contato
   telefone1       String?
   telefone2       String?
   fax             String?
   email           String?
-  
-  // Controle de Prospecção
-  status          String    @default("novo")  // novo | em_contato | qualificado | descartado | convertido
+  status          String    @default("novo")
   observacoes     String?
-  prioridade      Int       @default(0)       // 0-5 estrelas
-  lote            String?                     // Lote de importação
-  
-  // Datas
+  prioridade      Int       @default(0)
+  lote            String?
   dataImportacao  DateTime  @default(now())
   ultimoContato   DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
-  // Referência para cliente (após conversão)
   clienteId       String?   @unique
   cliente         Cliente?  @relation(fields: [clienteId], references: [id])
   

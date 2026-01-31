@@ -8,12 +8,6 @@ data
 parquet
 /parquet
 
-# Electron
-/electron
-/dist-electron
-/dist
-*.exe
-
 # dependencies
 /node_modules
 /.pnp
@@ -70,3 +64,10 @@ ENV/
 .venv/
 backend-parquet/venv/
 backend-parquet/.env
+
+# Python builds (PyInstaller, etc.)
+/dist-python
+/backend-dist
+/backend/dist
+/backend/build
+*.spec

@@ -1,5 +1,7 @@
 import re
-import pandas as pd
+
+def is_na(val):
+    return val is None or val == '' or str(val).lower() == 'nan'
 
 def is_telefone_valido(telefone: str) -> bool:
     """
@@ -14,7 +16,7 @@ def is_telefone_valido(telefone: str) -> bool:
     - Começam com muitos zeros (0000xxxx)
     - Padrões alternados (12121212, 98989898)
     """
-    if not telefone or pd.isna(telefone):
+    if not telefone or is_na(telefone):
         return False
     
     # Converter para string e limpar
@@ -96,7 +98,7 @@ def corrigir_nono_digito(telefone: str) -> str:
     """
     Adiciona o 9º dígito em números de celular que estão no formato antigo.
     """
-    if not telefone or pd.isna(telefone):
+    if not telefone or is_na(telefone):
         return telefone
     
     # Converter para string e extrair apenas dígitos
@@ -138,7 +140,7 @@ def is_celular(telefone: str) -> bool:
     Verifica se um número é celular (começa com 6, 7, 8 ou 9).
     Aceita com ou sem DDD, com 8, 9, 10 ou 11 dígitos.
     """
-    if not telefone or pd.isna(telefone):
+    if not telefone or is_na(telefone):
         return False
         
     tel_str = str(telefone).strip()
@@ -167,7 +169,7 @@ def parse_capital_social(valor: str) -> float:
     Converte valor de capital social de string para float.
     Formatos aceitos: "17000,00", "17000.00", "17000", etc.
     """
-    if not valor or pd.isna(valor):
+    if not valor or is_na(valor):
         return 0.0
     
     try:
@@ -189,7 +191,7 @@ def parse_data_inicio(valor: str) -> tuple:
     Extrai ano e mês de uma data no formato YYYYMMDD.
     Retorna (ano, mes) ou (None, None) se inválido.
     """
-    if not valor or pd.isna(valor):
+    if not valor or is_na(valor):
         return (None, None)
     
     try:

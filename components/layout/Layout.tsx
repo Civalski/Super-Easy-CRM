@@ -1,17 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import Sidebar from './Sidebar'
 import Header from './Header'
-import { UpdateBanner } from '@/components/features/update/UpdateBanner'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
+
+  if (pathname === '/login') {
+    return <>{children}</>
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Banner de Atualização */}
-      <UpdateBanner />
 
       <div className="flex flex-1">
         {/* Sidebar Desktop */}

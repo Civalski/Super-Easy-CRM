@@ -5,7 +5,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { LeadsFiltersProvider } from '@/lib/context';
+import { AuthProvider } from '@/components/providers/AuthProvider';
 
 interface ProvidersProps {
     children: ReactNode;
@@ -13,8 +13,8 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
     return (
-        <LeadsFiltersProvider>
+        <AuthProvider>
             {children}
-        </LeadsFiltersProvider>
+        </AuthProvider>
     );
 }
