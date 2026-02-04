@@ -6,15 +6,111 @@ generator client {
 }
 
 datasource db {
-  // 🏠 Modo DESENVOLVIMENTO - SQLite local
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  // 🌐 PostgreSQL - Supabase (Produção e Desenvolvimento)
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+
+enum GoalMetricType {
+  CLIENTES_CONTATADOS
+  PROPOSTAS
+  CLIENTES_CADASTRADOS
+  VENDAS
+  QUALIFICACAO
+  NEGOCIACAO
+  PROSPECCAO
+}
+
+enum GoalPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+
+
+model User {
+  id           String    @id @default(cuid())
+  name         String?
+  email        String?   @unique
+  username     String    @unique
+  passwordHash String
+  role         String    @default("user")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  usedRegistrationCodes RegistrationCode[]
+  goals Goal[]
+  motivosPerda MotivoPerda[]
+  clientes Cliente[]
+  contatos Contato[]
+  ambientes Ambiente[]
+  oportunidades Oportunidade[]
+  tarefas Tarefa[]
+  prospectos Prospecto[]
+
+  @@map("users")
+}
+
+model RegistrationCode {
+  id        String   @id @default(cuid())
+  codeHash  String   @unique
+  usedAt    DateTime?
+  usedById  String?
+  createdAt DateTime @default(now())
+
+  usedBy User? @relation(fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@map("registration_codes")
+}
+
+
+model Goal {
+  id         String         @id @default(cuid())
+  userId     String
+  title      String?
+  metricType GoalMetricType
+  periodType GoalPeriodType
+  target     Int
+  startDate  DateTime?
+  endDate    DateTime?
+  weekDays   Int[] @default([])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots GoalSnapshot[]
+
+  @@map("goals")
+}
+
+
+model GoalSnapshot {
+  id          String   @id @default(cuid())
+  goalId      String
+  periodStart DateTime
+  periodEnd   DateTime
+  current     Int
+  target      Int
+  progress    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, periodStart, periodEnd])
+  @@map("goal_snapshots")
+}
+
 
 model Cliente {
   id          String      @id @default(cuid())
+  userId      String
   nome        String
-  email       String?     @unique
+  email       String?
   telefone    String?
   empresa     String?
   endereco    String?
@@ -28,12 +124,16 @@ model Cliente {
   oportunidades Oportunidade[]
   tarefas     Tarefa[]
   prospecto   Prospecto?
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
+  @@unique([userId, email])
   @@map("clientes")
 }
 
 model Contato {
   id          String      @id @default(cuid())
+  userId      String
   nome        String
   email       String?
   telefone    String?
@@ -43,28 +143,36 @@ model Contato {
   updatedAt   DateTime    @updatedAt
   
   cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
   @@map("contatos")
 }
 
 model Ambiente {
   id          String      @id @default(cuid())
+  userId      String
   nome        String
   descricao   String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
   oportunidades Oportunidade[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
   @@map("ambientes")
 }
 
 model Oportunidade {
   id          String      @id @default(cuid())
+  userId      String
   titulo      String
   descricao   String?
   valor       Float?
   status      String      @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
+  statusAnterior String?
+  motivoPerda String?
   probabilidade Int       @default(0) // 0-100
   dataFechamento DateTime?
   clienteId   String
@@ -75,12 +183,29 @@ model Oportunidade {
   cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   ambiente    Ambiente    @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
   tarefas     Tarefa[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
   @@map("oportunidades")
+}
+
+model MotivoPerda {
+  id        String   @id @default(cuid())
+  nome      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nome])
+  @@index([userId])
+  @@map("motivos_perda")
 }
 
 model Tarefa {
   id          String      @id @default(cuid())
+  userId      String
   titulo      String
   descricao   String?
   status      String      @default("pendente") // pendente, em_andamento, concluida
@@ -93,15 +218,18 @@ model Tarefa {
   
   cliente     Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
   @@map("tarefas")
 }
 
 model Prospecto {
   id              String    @id @default(cuid())
+  userId          String
   
   // Dados de identificação
-  cnpj            String    @unique
+  cnpj            String
   cnpjBasico      String
   cnpjOrdem       String
   cnpjDv          String
@@ -152,6 +280,9 @@ model Prospecto {
   // Referência para cliente (após conversão)
   clienteId       String?   @unique
   cliente         Cliente?  @relation(fields: [clienteId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([userId])
+  @@unique([userId, cnpj])
   @@map("prospectos")
 }

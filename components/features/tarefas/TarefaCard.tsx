@@ -3,26 +3,35 @@
  */
 'use client'
 
+import Link from 'next/link'
 import { Button } from '@/components/common'
-import { Calendar, Loader2, RotateCcw } from 'lucide-react'
+import { Calendar, CheckCircle2, Loader2, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { statusConfig, prioridadeConfig, type Tarefa, type TabType } from './TarefasTypes'
 
 interface TarefaCardProps {
     tarefa: Tarefa
     activeTab: TabType
     atualizandoTarefa: string | null
+    excluindoTarefa: string | null
     onVoltarParaPendente: (tarefaId: string) => void
+    onConcluirTarefa: (tarefaId: string) => void
+    onExcluirTarefa: (tarefaId: string) => void
 }
 
 export function TarefaCard({
     tarefa,
     activeTab,
     atualizandoTarefa,
+    excluindoTarefa,
     onVoltarParaPendente,
+    onConcluirTarefa,
+    onExcluirTarefa,
 }: TarefaCardProps) {
     const statusInfo = statusConfig[tarefa.status as keyof typeof statusConfig] || statusConfig.pendente
     const prioridadeInfo = prioridadeConfig[tarefa.prioridade as keyof typeof prioridadeConfig] || prioridadeConfig.media
     const StatusIcon = statusInfo.icon
+    const isAtualizando = atualizandoTarefa === tarefa.id
+    const isExcluindo = excluindoTarefa === tarefa.id
 
     const formatDate = (date: Date | null) => {
         if (!date) return '-'
@@ -65,16 +74,44 @@ export function TarefaCard({
                 </div>
             </div>
 
-            {activeTab === 'historico' && (
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="flex gap-2">
+                    <Link href={`/tarefas/${tarefa.id}/editar`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                            <Pencil size={16} className="mr-2" />
+                            Editar
+                        </Button>
+                    </Link>
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => onExcluirTarefa(tarefa.id)}
+                        disabled={isExcluindo || isAtualizando}
+                        className="flex-1"
+                    >
+                        {isExcluindo ? (
+                            <>
+                                <Loader2 size={16} className="mr-2 animate-spin" />
+                                Excluindo...
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 size={16} className="mr-2" />
+                                Excluir
+                            </>
+                        )}
+                    </Button>
+                </div>
+
+                {activeTab === 'historico' ? (
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onVoltarParaPendente(tarefa.id)}
-                        disabled={atualizandoTarefa === tarefa.id}
+                        disabled={isAtualizando || isExcluindo}
                         className="w-full"
                     >
-                        {atualizandoTarefa === tarefa.id ? (
+                        {isAtualizando ? (
                             <>
                                 <Loader2 size={16} className="mr-2 animate-spin" />
                                 Atualizando...
@@ -86,8 +123,28 @@ export function TarefaCard({
                             </>
                         )}
                     </Button>
-                </div>
-            )}
+                ) : (
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => onConcluirTarefa(tarefa.id)}
+                        disabled={isAtualizando || isExcluindo}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    >
+                        {isAtualizando ? (
+                            <>
+                                <Loader2 size={16} className="mr-2 animate-spin" />
+                                Concluindo...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 size={16} className="mr-2" />
+                                Concluir
+                            </>
+                        )}
+                    </Button>
+                )}
+            </div>
         </div>
     )
 }

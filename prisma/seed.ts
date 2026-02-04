@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -133,6 +134,21 @@ const prioridadesTarefas = ['baixa', 'media', 'alta']
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...')
 
+  const existingUser = await prisma.user.findFirst()
+  const seedUser =
+    existingUser ??
+    (await prisma.user.create({
+      data: {
+        name: 'Admin',
+        email: 'admin@local.test',
+        username: 'admin',
+        passwordHash: await bcrypt.hash('admin1234', 12),
+        role: 'admin',
+      },
+    }))
+
+  const userId = seedUser.id
+
   // Limpar dados existentes (opcional - descomente se quiser limpar antes de popular)
   // console.log('🗑️  Limpando dados existentes...')
   // await prisma.tarefa.deleteMany()
@@ -146,12 +162,15 @@ async function main() {
   const ambientesCriados = []
   for (const ambiente of ambientes) {
     const ambienteExistente = await prisma.ambiente.findFirst({
-      where: { nome: ambiente.nome },
+      where: { nome: ambiente.nome, userId },
     })
     
     if (!ambienteExistente) {
       const ambienteCriado = await prisma.ambiente.create({
-        data: ambiente,
+        data: {
+          ...ambiente,
+          userId,
+        },
       })
       ambientesCriados.push(ambienteCriado)
       console.log(`  ✓ Ambiente criado: ${ambiente.nome}`)
@@ -166,12 +185,15 @@ async function main() {
   const clientesCriados = []
   for (const clienteData of clientesData) {
     const clienteExistente = await prisma.cliente.findFirst({
-      where: { email: clienteData.email },
+      where: { email: clienteData.email, userId },
     })
 
     if (!clienteExistente) {
       const cliente = await prisma.cliente.create({
-        data: clienteData,
+        data: {
+          ...clienteData,
+          userId,
+        },
       })
       clientesCriados.push(cliente)
       console.log(`  ✓ Cliente criado: ${cliente.nome}`)
@@ -191,6 +213,7 @@ async function main() {
       where: {
         email: contatoData.email,
         clienteId: cliente.id,
+        userId,
       },
     })
 
@@ -199,6 +222,7 @@ async function main() {
         data: {
           ...contatoData,
           clienteId: cliente.id,
+          userId,
         },
       })
       console.log(`  ✓ Contato criado: ${contatoData.nome} (${cliente.nome})`)
@@ -287,6 +311,7 @@ async function main() {
 
     const oportunidade = await prisma.oportunidade.create({
       data: {
+        userId,
         titulo: oportunidadesTitulos[i],
         descricao: oportunidadesDescricoes[i],
         valor: valor,
@@ -364,6 +389,7 @@ async function main() {
 
     await prisma.tarefa.create({
       data: {
+        userId,
         titulo: tarefasTitulos[i],
         descricao: tarefasDescricoes[i],
         status: status,

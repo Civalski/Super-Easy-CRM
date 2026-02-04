@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const cliente = await prisma.cliente.findFirst({
+      where: { id: params.id, userId },
       include: {
         _count: {
           select: {
@@ -37,16 +43,21 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { nome, email, telefone, empresa, endereco, cidade, estado, cep } = body
 
     // Verifica se o cliente existe
-    const clienteExistente = await prisma.cliente.findUnique({
-      where: { id: params.id },
+    const clienteExistente = await prisma.cliente.findFirst({
+      where: { id: params.id, userId },
     })
 
     if (!clienteExistente) {
@@ -62,6 +73,7 @@ export async function PATCH(
         where: {
           email: email.trim(),
           id: { not: params.id },
+          userId,
         },
       })
       if (emailEmUso) {
@@ -72,18 +84,31 @@ export async function PATCH(
       }
     }
 
-    const clienteAtualizado = await prisma.cliente.update({
-      where: { id: params.id },
-      data: {
-        ...(nome !== undefined && { nome: nome.trim() }),
-        ...(email !== undefined && { email: email && email.trim() !== '' ? email.trim() : null }),
-        ...(telefone !== undefined && { telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null }),
-        ...(empresa !== undefined && { empresa: empresa && empresa.trim() !== '' ? empresa.trim() : null }),
-        ...(endereco !== undefined && { endereco: endereco && endereco.trim() !== '' ? endereco.trim() : null }),
-        ...(cidade !== undefined && { cidade: cidade && cidade.trim() !== '' ? cidade.trim() : null }),
-        ...(estado !== undefined && { estado: estado && estado.trim() !== '' ? estado.trim().toUpperCase() : null }),
-        ...(cep !== undefined && { cep: cep && cep.trim() !== '' ? cep.trim() : null }),
-      },
+    const updateData = {
+      ...(nome !== undefined && { nome: nome.trim() }),
+      ...(email !== undefined && { email: email && email.trim() !== '' ? email.trim() : null }),
+      ...(telefone !== undefined && { telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null }),
+      ...(empresa !== undefined && { empresa: empresa && empresa.trim() !== '' ? empresa.trim() : null }),
+      ...(endereco !== undefined && { endereco: endereco && endereco.trim() !== '' ? endereco.trim() : null }),
+      ...(cidade !== undefined && { cidade: cidade && cidade.trim() !== '' ? cidade.trim() : null }),
+      ...(estado !== undefined && { estado: estado && estado.trim() !== '' ? estado.trim().toUpperCase() : null }),
+      ...(cep !== undefined && { cep: cep && cep.trim() !== '' ? cep.trim() : null }),
+    }
+
+    const updated = await prisma.cliente.updateMany({
+      where: { id: params.id, userId },
+      data: updateData,
+    })
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: 'Cliente não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const clienteAtualizado = await prisma.cliente.findFirst({
+      where: { id: params.id, userId },
       include: {
         _count: {
           select: {
@@ -117,13 +142,25 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.cliente.delete({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const result = await prisma.cliente.deleteMany({
+      where: { id: params.id, userId },
     })
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Cliente não encontrado' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
@@ -140,4 +177,3 @@ export async function DELETE(
     )
   }
 }
-

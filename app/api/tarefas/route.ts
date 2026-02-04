@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const tarefas = await prisma.tarefa.findMany({
+      where: { userId },
       orderBy: {
         createdAt: 'desc',
       },
@@ -21,9 +28,14 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const body = await request.json()
     const {
@@ -46,8 +58,8 @@ export async function POST(request: Request) {
 
     // Valida se cliente existe (se fornecido)
     if (clienteId && clienteId.trim() !== '') {
-      const cliente = await prisma.cliente.findUnique({
-        where: { id: clienteId },
+      const cliente = await prisma.cliente.findFirst({
+        where: { id: clienteId, userId },
       })
       if (!cliente) {
         return NextResponse.json(
@@ -59,8 +71,8 @@ export async function POST(request: Request) {
 
     // Valida se oportunidade existe (se fornecido)
     if (oportunidadeId && oportunidadeId.trim() !== '') {
-      const oportunidade = await prisma.oportunidade.findUnique({
-        where: { id: oportunidadeId },
+      const oportunidade = await prisma.oportunidade.findFirst({
+        where: { id: oportunidadeId, userId },
       })
       if (!oportunidade) {
         return NextResponse.json(
@@ -72,6 +84,7 @@ export async function POST(request: Request) {
 
     const novaTarefa = await prisma.tarefa.create({
       data: {
+        userId,
         titulo: titulo.trim(),
         descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
         status: status || 'pendente',

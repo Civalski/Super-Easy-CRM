@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const ambiente = await prisma.ambiente.findUnique({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const ambiente = await prisma.ambiente.findFirst({
+      where: { id: params.id, userId },
     })
     
     if (!ambiente) {
@@ -28,10 +34,15 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { nome, descricao } = body
 
@@ -51,9 +62,20 @@ export async function PATCH(
       updateData.descricao = descricao && descricao.trim() !== '' ? descricao.trim() : null
     }
 
-    const ambienteAtualizado = await prisma.ambiente.update({
-      where: { id: params.id },
+    const updated = await prisma.ambiente.updateMany({
+      where: { id: params.id, userId },
       data: updateData,
+    })
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: 'Ambiente não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const ambienteAtualizado = await prisma.ambiente.findFirst({
+      where: { id: params.id, userId },
     })
 
     return NextResponse.json(ambienteAtualizado)
@@ -73,13 +95,25 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.ambiente.delete({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const result = await prisma.ambiente.deleteMany({
+      where: { id: params.id, userId },
     })
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Ambiente não encontrado' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ message: 'Ambiente deletado com sucesso' })
   } catch (error: any) {
@@ -96,4 +130,3 @@ export async function DELETE(
     )
   }
 }
-

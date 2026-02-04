@@ -54,7 +54,9 @@ export default function OportunidadeCard({ oportunidade, isDragging }: Oportunid
         isDragging ? 'shadow-2xl' : ''
       }`}
     >
-      <h3 className="font-semibold mb-2 text-sm">{oportunidade.titulo}</h3>
+      <h3 className="font-semibold mb-2 text-sm text-gray-900 dark:text-white">
+        {oportunidade.titulo}
+      </h3>
       <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
         {oportunidade.cliente.nome}
       </p>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import Swal from 'sweetalert2'
 import {
   TarefasHeader,
   TarefasTabs,
@@ -19,6 +20,14 @@ export default function TarefasPage() {
   const [filtroStatus, setFiltroStatus] = useState<string>('')
   const [filtroPrioridade, setFiltroPrioridade] = useState<string>('')
   const [atualizandoTarefa, setAtualizandoTarefa] = useState<string | null>(null)
+  const [excluindoTarefa, setExcluindoTarefa] = useState<string | null>(null)
+
+  const swalBase = {
+    background: '#0f172a',
+    color: '#e5e7eb',
+    confirmButtonColor: '#2563eb',
+    cancelButtonColor: '#6b7280',
+  }
 
   useEffect(() => {
     fetchTarefas()
@@ -76,13 +85,99 @@ export default function TarefasPage() {
         await fetchTarefas()
       } else {
         const error = await response.json()
-        alert(error.error || 'Erro ao atualizar tarefa')
+        await Swal.fire({
+          ...swalBase,
+          icon: 'error',
+          title: 'Erro ao atualizar',
+          text: error.error || 'Erro ao atualizar tarefa',
+        })
       }
     } catch (error) {
       console.error('Erro ao voltar tarefa para pendente:', error)
-      alert('Erro ao atualizar tarefa. Tente novamente.')
+      await Swal.fire({
+        ...swalBase,
+        icon: 'error',
+        title: 'Erro ao atualizar',
+        text: 'Erro ao atualizar tarefa. Tente novamente.',
+      })
     } finally {
       setAtualizandoTarefa(null)
+    }
+  }
+
+  const concluirTarefa = async (tarefaId: string) => {
+    setAtualizandoTarefa(tarefaId)
+    try {
+      const response = await fetch(`/api/tarefas/${tarefaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'concluida' }),
+      })
+
+      if (response.ok) {
+        await fetchTarefas()
+      } else {
+        const error = await response.json()
+        await Swal.fire({
+          ...swalBase,
+          icon: 'error',
+          title: 'Erro ao concluir',
+          text: error.error || 'Erro ao concluir tarefa',
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao concluir tarefa:', error)
+      await Swal.fire({
+        ...swalBase,
+        icon: 'error',
+        title: 'Erro ao concluir',
+        text: 'Erro ao concluir tarefa. Tente novamente.',
+      })
+    } finally {
+      setAtualizandoTarefa(null)
+    }
+  }
+
+  const excluirTarefa = async (tarefaId: string) => {
+    const resultado = await Swal.fire({
+      ...swalBase,
+      title: 'Excluir tarefa?',
+      text: 'Essa acao nao pode ser desfeita.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Excluir',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+    })
+    if (!resultado.isConfirmed) return
+
+    setExcluindoTarefa(tarefaId)
+    try {
+      const response = await fetch(`/api/tarefas/${tarefaId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setTarefas((prev) => prev.filter((tarefa) => tarefa.id !== tarefaId))
+      } else {
+        const error = await response.json()
+        await Swal.fire({
+          title: 'Erro ao excluir',
+          text: error.error || 'Erro ao excluir tarefa',
+          icon: 'error',
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao excluir tarefa:', error)
+      await Swal.fire({
+        title: 'Erro ao excluir',
+        text: 'Erro ao excluir tarefa. Tente novamente.',
+        icon: 'error',
+      })
+    } finally {
+      setExcluindoTarefa(null)
     }
   }
 
@@ -176,7 +271,10 @@ export default function TarefasPage() {
           tarefas={tarefasExibidas}
           activeTab={activeTab}
           atualizandoTarefa={atualizandoTarefa}
+          excluindoTarefa={excluindoTarefa}
           onVoltarParaPendente={voltarTarefaParaPendente}
+          onConcluirTarefa={concluirTarefa}
+          onExcluirTarefa={excluirTarefa}
         />
       )}
     </div>

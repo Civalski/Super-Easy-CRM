@@ -4,17 +4,23 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 // DELETE /api/prospectos/bulk - Exclui todos ou por filtro
 export async function DELETE(request: NextRequest) {
     try {
+        const userId = await getUserIdFromRequest(request);
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const lote = searchParams.get('lote');
         const status = searchParams.get('status');
         const all = searchParams.get('all') === 'true';
 
         // Construir filtros
-        const where: Record<string, any> = {};
+        const where: Record<string, any> = { userId };
 
         // Nunca excluir convertidos automaticamente
         where.status = { not: 'convertido' };

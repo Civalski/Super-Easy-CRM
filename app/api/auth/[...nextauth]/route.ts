@@ -1,41 +1,72 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
+import { prisma } from "@/lib/prisma"
 
 const handler = NextAuth({
     providers: [
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                username: { label: "Usuário", type: "text" },
+                username: { label: "Usuario ou email", type: "text" },
                 password: { label: "Senha", type: "password" }
             },
-            async authorize(credentials, req) {
-                // Credenciais fixas conforme solicitado
-                // "crie uma tela de login e senha, usuario admin, senha admin2000"
+            async authorize(credentials) {
+                const identifier = credentials?.username?.trim().toLowerCase()
+                const password = credentials?.password
 
-                if (
-                    credentials?.username === "admin" &&
-                    credentials?.password === "admin2000"
-                ) {
-                    return {
-                        id: "1",
-                        name: "Administrador",
-                        email: "admin@arker.com.br"
-                    }
+                if (!identifier || !password) {
+                    return null
                 }
 
-                return null
+                const user = await prisma.user.findFirst({
+                    where: {
+                        OR: [
+                            { username: identifier },
+                            { email: identifier },
+                        ],
+                    },
+                })
+
+                if (!user) {
+                    return null
+                }
+
+                const valid = await bcrypt.compare(password, user.passwordHash)
+
+                if (!valid) {
+                    return null
+                }
+
+                return {
+                    id: user.id,
+                    name: user.name ?? user.username,
+                    email: user.email,
+                    role: user.role,
+                    username: user.username,
+                }
             }
         })
     ],
+    secret: process.env.NEXTAUTH_SECRET,
     pages: {
-        signIn: '/login', // Página customizada de login
+        signIn: '/login',
     },
     callbacks: {
         async jwt({ token, user }) {
+            if (user) {
+                token.userId = user.id
+                token.role = user.role
+                token.username = user.username
+            }
             return token
         },
         async session({ session, token }) {
+            if (session.user) {
+                session.user.id = token.userId as string
+                session.user.role = token.role as string
+                session.user.username = (token.username as string) || null
+            }
             return session
         }
     },

@@ -9,6 +9,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, Plus, Edit, Trash2 } from 'lucide-react';
 import { useAmbientes, type Ambiente } from '@/lib/hooks/useAmbientes';
 import { AmbienteFormModal, DeleteConfirmModal } from './AmbienteModals';
@@ -22,6 +23,7 @@ export default function AmbienteSelector({
   ambienteSelecionado,
   onAmbienteChange,
 }: AmbienteSelectorProps) {
+  const router = useRouter();
   // Hook de ambientes
   const {
     ambientes,
@@ -229,6 +231,17 @@ export default function AmbienteSelector({
                 >
                   <Plus size={16} />
                   Criar Novo Ambiente
+                </button>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    router.push('/grupos');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                >
+                  <span className='font-bold'>Todos</span> (Ver em Grupos)
                 </button>
               </>
             )}

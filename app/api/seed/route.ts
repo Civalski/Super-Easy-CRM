@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
 // Dados fake para ambientes
 const ambientes = [
@@ -131,21 +132,29 @@ const statusOportunidades = ['prospeccao', 'qualificacao', 'proposta', 'negociac
 const statusTarefas = ['pendente', 'em_andamento', 'concluida']
 const prioridadesTarefas = ['baixa', 'media', 'alta']
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     console.log('🌱 Iniciando seed do banco de dados...')
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     // Criar ambientes
     console.log('📁 Criando ambientes...')
     const ambientesCriados = []
     for (const ambiente of ambientes) {
       const ambienteExistente = await prisma.ambiente.findFirst({
-        where: { nome: ambiente.nome },
+        where: { nome: ambiente.nome, userId },
       })
       
       if (!ambienteExistente) {
         const ambienteCriado = await prisma.ambiente.create({
-          data: ambiente,
+          data: {
+            ...ambiente,
+            userId,
+          },
         })
         ambientesCriados.push(ambienteCriado)
         console.log(`  ✓ Ambiente criado: ${ambiente.nome}`)
@@ -160,12 +169,15 @@ export async function POST() {
     const clientesCriados = []
     for (const clienteData of clientesData) {
       const clienteExistente = await prisma.cliente.findFirst({
-        where: { email: clienteData.email },
+        where: { email: clienteData.email, userId },
       })
 
       if (!clienteExistente) {
         const cliente = await prisma.cliente.create({
-          data: clienteData,
+          data: {
+            ...clienteData,
+            userId,
+          },
         })
         clientesCriados.push(cliente)
         console.log(`  ✓ Cliente criado: ${cliente.nome}`)
@@ -186,6 +198,7 @@ export async function POST() {
         where: {
           email: contatoData.email,
           clienteId: cliente.id,
+          userId,
         },
       })
 
@@ -194,6 +207,7 @@ export async function POST() {
           data: {
             ...contatoData,
             clienteId: cliente.id,
+            userId,
           },
         })
         contatosCriados++
@@ -293,6 +307,7 @@ export async function POST() {
 
       const oportunidade = await prisma.oportunidade.create({
         data: {
+          userId,
           titulo: oportunidadesTitulos[i],
           descricao: oportunidadesDescricoes[i],
           valor: valor,
@@ -381,6 +396,7 @@ export async function POST() {
 
       await prisma.tarefa.create({
         data: {
+          userId,
           titulo: tarefasTitulos[i],
           descricao: tarefasDescricoes[i],
           status: status,

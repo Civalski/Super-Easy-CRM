@@ -9,7 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
 
-  if (pathname === '/login') {
+  if (pathname === '/login' || pathname === '/register') {
     return <>{children}</>
   }
 

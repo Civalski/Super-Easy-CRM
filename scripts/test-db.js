@@ -1,39 +1,36 @@
-const { PrismaClient } = require('@prisma/client')
-const path = require('path')
+﻿const { PrismaClient } = require('@prisma/client')
 
 async function testDatabase() {
-    console.log('🔍 Verificando configuração do banco de dados...')
+    console.log('Verificando configuracao do banco de dados...')
 
-    // Mostrar a DATABASE_URL
-    console.log('DATABASE_URL:', process.env.DATABASE_URL || 'Não definida')
+    const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
+    console.log('DATABASE_URL definida:', hasDatabaseUrl ? 'sim' : 'nao')
 
-    // Calcular o caminho correto
-    const dbPath = path.join(process.cwd(), 'prisma', 'dev.db')
-    console.log('Caminho do banco:', dbPath)
-    console.log('Caminho normalizado:', `file:${dbPath.replace(/\\/g, '/')}`)
+    if (!hasDatabaseUrl) {
+        console.error('Erro: DATABASE_URL nao definida.')
+        process.exit(1)
+    }
 
     try {
         const prisma = new PrismaClient({
-            log: ['query', 'error', 'warn'],
+            log: ['error', 'warn'],
         })
 
-        console.log('\n✅ Prisma Client criado com sucesso!')
+        console.log('Prisma Client criado com sucesso!')
 
-        // Testar conexão
-        console.log('\n🔄 Testando conexão com o banco...')
+        console.log('Testando conexao com o banco...')
         const clientes = await prisma.cliente.findMany({
             take: 5
         })
 
-        console.log(`\n✅ Conexão bem sucedida! Encontrados ${clientes.length} clientes.`)
+        console.log(`Conexao bem sucedida! Encontrados ${clientes.length} clientes.`)
 
         if (clientes.length > 0) {
-            console.log('\n📋 Primeiros clientes:')
+            console.log('Primeiros clientes:')
             clientes.forEach(c => console.log(`  - ${c.nome} (${c.email || 'sem email'})`))
         }
 
-        // Testar criação
-        console.log('\n🔄 Testando criação de cliente...')
+        console.log('Testando criacao de cliente...')
         const novoCliente = await prisma.cliente.create({
             data: {
                 nome: 'Teste Cliente',
@@ -42,24 +39,24 @@ async function testDatabase() {
             }
         })
 
-        console.log('✅ Cliente criado com sucesso:', novoCliente.nome)
+        console.log('Cliente criado com sucesso:', novoCliente.nome)
 
-        // Deletar o cliente de teste
         await prisma.cliente.delete({
             where: { id: novoCliente.id }
         })
 
-        console.log('✅ Cliente de teste removido')
+        console.log('Cliente de teste removido')
 
         await prisma.$disconnect()
-        console.log('\n🎉 Todos os testes passaram!')
+        console.log('Todos os testes passaram!')
 
     } catch (error) {
-        console.error('\n❌ Erro ao conectar com o banco:', error)
-        console.error('\nDetalhes do erro:')
+        console.error('Erro ao conectar com o banco:', error)
+        console.error('Detalhes do erro:')
         console.error('  Mensagem:', error.message)
-        console.error('  Código:', error.code)
+        console.error('  Codigo:', error.code)
         console.error('  Stack:', error.stack)
+        process.exit(1)
     }
 }
 

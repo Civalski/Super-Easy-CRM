@@ -4,13 +4,15 @@
 'use client'
 
 import { StatCard } from '@/components/common'
-import { Users, Briefcase, Calendar, TrendingUp } from 'lucide-react'
+import { Users, Briefcase, Calendar, TrendingUp, TrendingDown } from 'lucide-react'
 
 interface DashboardData {
     clientesCount: number
     oportunidadesCount: number
     tarefasCount: number
     valorTotal: number
+    valorGanhos: number
+    valorPerdidos: number
 }
 
 interface DashboardStatsGridProps {
@@ -18,13 +20,18 @@ interface DashboardStatsGridProps {
 }
 
 export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
-    const valorFormatado = new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(data.valorTotal || 0)
+    const formatCurrency = (value: number) =>
+        new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+        }).format(value || 0)
+
+    const valorTotalFormatado = formatCurrency(data.valorTotal || 0)
+    const valorGanhosFormatado = formatCurrency(data.valorGanhos || 0)
+    const valorPerdidosFormatado = formatCurrency(data.valorPerdidos || 0)
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
             <StatCard
                 title="Total de Clientes"
                 value={data.clientesCount}
@@ -45,9 +52,21 @@ export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
             />
             <StatCard
                 title="Valor Total"
-                value={valorFormatado}
+                value={valorTotalFormatado}
                 icon={TrendingUp}
                 color="purple"
+            />
+            <StatCard
+                title="Valor Ganho"
+                value={valorGanhosFormatado}
+                icon={TrendingUp}
+                color="green"
+            />
+            <StatCard
+                title="Valor Perdido"
+                value={valorPerdidosFormatado}
+                icon={TrendingDown}
+                color="red"
             />
         </div>
     )

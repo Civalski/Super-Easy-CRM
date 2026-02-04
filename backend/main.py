@@ -7,4 +7,3 @@ if __name__ == "__main__":
     reload_flag = os.getenv("UVICORN_RELOAD", "false").lower() == "true"
     # Rodar servidor uvicorn apontando para app.main:app
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload_flag)
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)

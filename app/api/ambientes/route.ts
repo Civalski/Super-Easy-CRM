@@ -1,9 +1,16 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     let ambientes = await prisma.ambiente.findMany({
+      where: { userId },
       orderBy: {
         nome: 'asc',
       },
@@ -13,6 +20,7 @@ export async function GET() {
     if (ambientes.length === 0) {
       const ambientePadrao = await prisma.ambiente.create({
         data: {
+          userId,
           nome: 'Ambiente Padrão',
           descricao: 'Ambiente criado automaticamente',
         },
@@ -30,8 +38,13 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { nome, descricao } = body
 
@@ -45,6 +58,7 @@ export async function POST(request: Request) {
 
     const novoAmbiente = await prisma.ambiente.create({
       data: {
+        userId,
         nome: nome.trim(),
         descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
       },
@@ -59,4 +73,3 @@ export async function POST(request: Request) {
     )
   }
 }
-

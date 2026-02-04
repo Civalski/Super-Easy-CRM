@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common'
 import { AmbienteSelector } from '@/components/features/oportunidades'
+import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,6 +17,9 @@ export default function NovaOportunidadePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const { motivos, addMotivo, loading: motivosLoading, canAddCustom, customCount, maxCustom } =
+    useMotivosPerda()
+  const [novoMotivo, setNovoMotivo] = useState('')
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -23,6 +27,7 @@ export default function NovaOportunidadePage() {
     status: 'prospeccao',
     probabilidade: '0',
     dataFechamento: '',
+    motivoPerda: '',
     clienteId: '',
     ambienteId: '',
   })
@@ -63,11 +68,39 @@ export default function NovaOportunidadePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    if (e.target.name === 'status' && e.target.value !== 'perdida') {
+      setFormData((prev) => ({
+        ...prev,
+        status: e.target.value,
+        motivoPerda: '',
+      }))
+      return
+    }
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
   }
+
+  const handleAddMotivo = async () => {
+    const trimmed = novoMotivo.trim()
+    if (!trimmed) return
+    const result = await addMotivo(trimmed)
+    if (!result.ok) {
+      alert(result.error || 'Nao foi possivel adicionar o motivo')
+      return
+    }
+    setFormData((prev) => ({ ...prev, motivoPerda: result.motivo || trimmed }))
+    setNovoMotivo('')
+  }
+
+  const motivosDisponiveis = useMemo(() => {
+    if (!formData.motivoPerda) return motivos
+    const exists = motivos.some(
+      (motivo) => motivo.toLowerCase() === formData.motivoPerda.toLowerCase()
+    )
+    return exists ? motivos : [formData.motivoPerda, ...motivos]
+  }, [motivos, formData.motivoPerda])
 
   const handleAmbienteChange = (ambienteId: string | null) => {
     setFormData({
@@ -82,6 +115,11 @@ export default function NovaOportunidadePage() {
     // Validação de campos obrigatórios
     if (!formData.ambienteId || formData.ambienteId.trim() === '') {
       alert('Por favor, selecione um ambiente')
+      return
+    }
+
+    if (formData.status === 'perdida' && (!formData.motivoPerda || formData.motivoPerda.trim() === '')) {
+      alert('Informe o motivo da perda')
       return
     }
 
@@ -100,6 +138,7 @@ export default function NovaOportunidadePage() {
           clienteId: formData.clienteId || null,
           ambienteId: formData.ambienteId || null,
           dataFechamento: formData.dataFechamento || null,
+          motivoPerda: formData.motivoPerda || null,
         }),
       })
 
@@ -255,6 +294,54 @@ export default function NovaOportunidadePage() {
               </select>
             </div>
 
+            {formData.status === 'perdida' && (
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="motivoPerda"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Motivo da Perda <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="motivoPerda"
+                  name="motivoPerda"
+                  value={formData.motivoPerda}
+                  onChange={handleChange}
+                  disabled={motivosLoading}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{motivosLoading ? 'Carregando...' : 'Selecione um motivo'}</option>
+                  {motivosDisponiveis.map((motivo) => (
+                    <option key={motivo} value={motivo}>
+                      {motivo}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={novoMotivo}
+                    onChange={(event) => setNovoMotivo(event.target.value)}
+                    placeholder="Nova categoria de motivo"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddMotivo}
+                    disabled={!novoMotivo.trim() || !canAddCustom}
+                  >
+                    Adicionar
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {canAddCustom
+                    ? `Voce pode adicionar mais ${Math.max(0, maxCustom - customCount)} motivo(s).`
+                    : 'Limite de 3 motivos personalizados atingido.'}
+                </p>
+              </div>
+            )}
+
             <div>
               <label
                 htmlFor="probabilidade"
@@ -315,4 +402,3 @@ export default function NovaOportunidadePage() {
     </div>
   )
 }
-

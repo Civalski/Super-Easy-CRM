@@ -3,9 +3,23 @@
  */
 'use client'
 
-import { Loader2, Target } from 'lucide-react';
-import { ProspectoCard } from './ProspectoCard';
-import type { Prospecto } from './ProspectarTypes';
+import {
+    Loader2,
+    Target,
+    CheckSquare,
+    Square,
+    Phone,
+    Mail,
+    MapPin,
+    Star,
+    MoreVertical,
+    UserCheck,
+    Trash2,
+    MessageSquare,
+    ChevronDown,
+    CheckCircle2,
+} from 'lucide-react';
+import { STATUS_OPTIONS, getStatusConfig, type Prospecto } from './ProspectarTypes';
 
 interface ProspectosListProps {
     prospectos: Prospecto[];
@@ -20,6 +34,8 @@ interface ProspectosListProps {
     onConverter: (id: string) => void;
     onDelete: (id: string) => void;
     onToggleSelect: (id: string) => void;
+    onToggleContato: (id: string, contatado: boolean) => void;
+    onQualificar: (id: string) => void;
 }
 
 export function ProspectosList({
@@ -35,6 +51,8 @@ export function ProspectosList({
     onConverter,
     onDelete,
     onToggleSelect,
+    onToggleContato,
+    onQualificar,
 }: ProspectosListProps) {
     if (loading) {
         return (
@@ -68,24 +86,236 @@ export function ProspectosList({
         );
     }
 
+    const formatDate = (value: string | null) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('pt-BR');
+    };
+
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {prospectos.map(prospecto => (
-                    <ProspectoCard
-                        key={prospecto.id}
-                        prospecto={prospecto}
-                        openMenuId={openMenuId}
-                        isSelected={selectedIds.has(prospecto.id)}
-                        onMenuToggle={onMenuToggle}
-                        onStatusChange={onStatusChange}
-                        onPrioridadeChange={onPrioridadeChange}
-                        onEditObservacao={onEditObservacao}
-                        onConverter={onConverter}
-                        onDelete={onDelete}
-                        onToggleSelect={onToggleSelect}
-                    />
-                ))}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] table-fixed">
+                    <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[48px]">
+                                Sel.
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[30%]">
+                                Empresa
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[22%]">
+                                Contato
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                                Lote
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                                Contatado
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
+                                Status
+                            </th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
+                                AÃ§Ãµes
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {prospectos.map(prospecto => {
+                            const isSelected = selectedIds.has(prospecto.id);
+                            const isContacted = prospecto.status !== 'novo';
+                            const canToggleContato = prospecto.status === 'novo' || prospecto.status === 'em_contato';
+                            const canQualificar = prospecto.status === 'em_contato';
+
+                            return (
+                                <tr
+                                    key={prospecto.id}
+                                    className={`transition-colors ${isSelected ? 'bg-purple-50 dark:bg-purple-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-900'
+                                        }`}
+                                >
+                                    <td className="px-3 py-3">
+                                        <button
+                                            onClick={() => onToggleSelect(prospecto.id)}
+                                            className="flex-shrink-0 focus:outline-none"
+                                            aria-label={isSelected ? 'Desmarcar' : 'Selecionar'}
+                                        >
+                                            {isSelected ? (
+                                                <CheckSquare className="w-5 h-5 text-purple-500" />
+                                            ) : (
+                                                <Square className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                                            )}
+                                        </button>
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate" title={prospecto.nomeFantasia || prospecto.razaoSocial}>
+                                                    {prospecto.nomeFantasia || prospecto.razaoSocial}
+                                                </div>
+                                                {prospecto.nomeFantasia && (
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={prospecto.razaoSocial}>
+                                                        {prospecto.razaoSocial}
+                                                    </div>
+                                                )}
+                                                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                                    <span className="flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3" />
+                                                        {prospecto.municipio}/{prospecto.uf}
+                                                    </span>
+                                                    <span className="text-gray-300 dark:text-gray-600">â€¢</span>
+                                                    <span className="truncate">{prospecto.cnpj}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-0.5">
+                                                {[1, 2, 3, 4, 5].map(star => (
+                                                    <button
+                                                        key={star}
+                                                        onClick={() => onPrioridadeChange(prospecto.id, star === prospecto.prioridade ? 0 : star)}
+                                                        className="focus:outline-none"
+                                                        aria-label={`Prioridade ${star}`}
+                                                    >
+                                                        <Star
+                                                            className={`w-4 h-4 ${star <= prospecto.prioridade
+                                                                ? 'fill-yellow-400 text-yellow-400'
+                                                                : 'text-gray-300 dark:text-gray-600'
+                                                                }`}
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <div className="space-y-1 min-w-0">
+                                            {prospecto.telefone1 && (
+                                                <a href={`tel:${prospecto.telefone1}`} className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                                                    <Phone className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                                    <span className="truncate">{prospecto.telefone1}</span>
+                                                </a>
+                                            )}
+                                            {prospecto.email && (
+                                                <a href={`mailto:${prospecto.email}`} className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                                                    <Mail className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                                    <span className="truncate" title={prospecto.email}>{prospecto.email}</span>
+                                                </a>
+                                            )}
+                                            {!prospecto.telefone1 && !prospecto.email && (
+                                                <span className="text-xs text-gray-400">-</span>
+                                            )}
+                                            {prospecto.ultimoContato && (
+                                                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    Ãšltimo contato: {formatDate(prospecto.ultimoContato)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        {prospecto.lote ? (
+                                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
+                                                Lote {prospecto.lote}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <button
+                                            onClick={() => onToggleContato(prospecto.id, prospecto.status === 'novo')}
+                                            disabled={!canToggleContato}
+                                            className="flex items-center justify-center w-full disabled:opacity-50"
+                                            title={isContacted ? 'Contatado' : 'Marcar como contatado'}
+                                            aria-label={isContacted ? 'Contatado' : 'Marcar como contatado'}
+                                        >
+                                            {isContacted ? (
+                                                <CheckSquare className="w-5 h-5 text-green-600" />
+                                            ) : (
+                                                <Square className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                                            )}
+                                        </button>
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <div className="relative">
+                                            <select
+                                                value={prospecto.status}
+                                                onChange={(e) => onStatusChange(prospecto.id, e.target.value)}
+                                                disabled={prospecto.status === 'convertido'}
+                                                className={`appearance-none w-full px-3 py-1.5 pr-8 rounded-full text-[11px] font-semibold cursor-pointer ${getStatusConfig(prospecto.status).color} border-0 focus:ring-2 focus:ring-purple-500`}
+                                            >
+                                                {STATUS_OPTIONS.map(s => (
+                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" />
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onQualificar(prospecto.id)}
+                                                disabled={!canQualificar}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-600 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 transition-colors"
+                                                title={canQualificar ? 'Mover para qualificado' : 'Marque como contatado primeiro'}
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                Qualificar
+                                            </button>
+
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => onMenuToggle(openMenuId === prospecto.id ? null : prospecto.id)}
+                                                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    <MoreVertical className="w-4 h-4 text-gray-500" />
+                                                </button>
+
+                                                {openMenuId === prospecto.id && (
+                                                    <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                                                        <button
+                                                            onClick={() => {
+                                                                onEditObservacao(prospecto.id, prospecto.observacoes || '');
+                                                                onMenuToggle(null);
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                        >
+                                                            <MessageSquare className="w-4 h-4" />
+                                                            Adicionar ObservaÃ§Ã£o
+                                                        </button>
+
+                                                        {prospecto.status !== 'convertido' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    onConverter(prospecto.id);
+                                                                    onMenuToggle(null);
+                                                                }}
+                                                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                            >
+                                                                <UserCheck className="w-4 h-4" />
+                                                                Converter em Cliente
+                                                            </button>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => {
+                                                                onDelete(prospecto.id);
+                                                                onMenuToggle(null);
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                            Excluir
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         </div>
     );

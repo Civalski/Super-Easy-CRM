@@ -12,7 +12,9 @@ import {
   Settings,
   BarChart3,
   Target,
+  Trophy,
   LogOut,
+  Layers,
 } from 'lucide-react'
 
 const menuItems = [
@@ -40,6 +42,16 @@ const menuItems = [
     name: 'Tarefas',
     href: '/tarefas',
     icon: Calendar,
+  },
+  {
+    name: 'Grupos',
+    href: '/grupos',
+    icon: Layers,
+  },
+  {
+    name: 'Metas',
+    href: '/metas',
+    icon: Trophy,
   },
   {
     name: 'Relatórios',

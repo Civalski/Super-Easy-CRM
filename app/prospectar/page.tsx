@@ -75,19 +75,24 @@ export default function ProspectarPage() {
     }, [fetchProspectos]);
 
     // Atualizar status
-    const handleStatusChange = async (id: string, newStatus: string) => {
+    const handleStatusChange = async (id: string, newStatus: string, options?: { ultimoContato?: string }) => {
         try {
+            const payload: Record<string, unknown> = { status: newStatus };
+            if (options?.ultimoContato) {
+                payload.ultimoContato = options.ultimoContato;
+            }
+
             const response = await fetch(`/api/prospectos/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) throw new Error('Erro ao atualizar status');
 
             // Atualizar local
             setProspectos(prev =>
-                prev.map(p => p.id === id ? { ...p, status: newStatus } : p)
+                prev.map(p => p.id === id ? { ...p, status: newStatus, ...(options?.ultimoContato ? { ultimoContato: options.ultimoContato } : {}) } : p)
             );
 
             // Recarregar estatísticas
@@ -105,6 +110,16 @@ export default function ProspectarPage() {
                 color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
             });
         }
+    };
+
+    const handleToggleContato = (id: string, contatado: boolean) => {
+        const novoStatus = contatado ? 'em_contato' : 'novo';
+        const ultimoContato = contatado ? new Date().toISOString() : undefined;
+        handleStatusChange(id, novoStatus, ultimoContato ? { ultimoContato } : undefined);
+    };
+
+    const handleQualificar = (id: string) => {
+        handleStatusChange(id, 'qualificado');
     };
 
     // Atualizar prioridade
@@ -531,6 +546,8 @@ export default function ProspectarPage() {
                 onConverter={handleConverter}
                 onDelete={handleDelete}
                 onToggleSelect={handleToggleSelect}
+                onToggleContato={handleToggleContato}
+                onQualificar={handleQualificar}
             />
 
             {/* Paginacao */}

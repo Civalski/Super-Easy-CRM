@@ -1,8 +1,14 @@
-import { NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('q')?.trim() || ''
 
@@ -13,10 +19,16 @@ export async function GET(request: Request) {
       })
     }
 
-    const queryLower = query.toLowerCase()
-
-    // Busca clientes (SQLite não suporta mode: 'insensitive', então buscamos todos e filtramos)
-    const todosClientes = await prisma.cliente.findMany({
+    const clientes = await prisma.cliente.findMany({
+      where: {
+        userId,
+        OR: [
+          { nome: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+          { empresa: { contains: query, mode: 'insensitive' } },
+          { telefone: { contains: query } },
+        ],
+      },
       include: {
         _count: {
           select: {
@@ -25,20 +37,19 @@ export async function GET(request: Request) {
           },
         },
       },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     })
 
-    const clientes = todosClientes
-      .filter((cliente) => {
-        const nomeMatch = cliente.nome.toLowerCase().includes(queryLower)
-        const emailMatch = cliente.email?.toLowerCase().includes(queryLower)
-        const empresaMatch = cliente.empresa?.toLowerCase().includes(queryLower)
-        const telefoneMatch = cliente.telefone?.includes(query)
-        return nomeMatch || emailMatch || empresaMatch || telefoneMatch
-      })
-      .slice(0, 10)
-
-    // Busca oportunidades
-    const todasOportunidades = await prisma.oportunidade.findMany({
+    const oportunidades = await prisma.oportunidade.findMany({
+      where: {
+        userId,
+        OR: [
+          { titulo: { contains: query, mode: 'insensitive' } },
+          { descricao: { contains: query, mode: 'insensitive' } },
+          { cliente: { nome: { contains: query, mode: 'insensitive' } } },
+        ],
+      },
       include: {
         cliente: {
           select: {
@@ -51,16 +62,9 @@ export async function GET(request: Request) {
           },
         },
       },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     })
-
-    const oportunidades = todasOportunidades
-      .filter((oportunidade) => {
-        const tituloMatch = oportunidade.titulo.toLowerCase().includes(queryLower)
-        const descricaoMatch = oportunidade.descricao?.toLowerCase().includes(queryLower)
-        const clienteMatch = oportunidade.cliente.nome.toLowerCase().includes(queryLower)
-        return tituloMatch || descricaoMatch || clienteMatch
-      })
-      .slice(0, 10)
 
     return NextResponse.json({
       clientes,
@@ -74,4 +78,3 @@ export async function GET(request: Request) {
     )
   }
 }
-

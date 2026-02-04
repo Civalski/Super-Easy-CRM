@@ -1,14 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Buscar contagens de forma paralela para melhor performance
     const [clientesCount, oportunidadesCount, tarefasCount, oportunidades] = await Promise.all([
-      prisma.cliente.count(),
-      prisma.oportunidade.count(),
-      prisma.tarefa.count(),
+      prisma.cliente.count({ where: { userId } }),
+      prisma.oportunidade.count({ where: { userId } }),
+      prisma.tarefa.count({ where: { userId } }),
       prisma.oportunidade.findMany({
+        where: { userId },
         select: {
           status: true,
           valor: true,
@@ -19,6 +26,14 @@ export async function GET() {
     // Calcular valor total (excluindo oportunidades perdidas)
     const valorTotal = oportunidades
       .filter((opp) => opp.status !== 'perdida')
+      .reduce((sum, opp) => sum + (opp.valor || 0), 0)
+
+    const valorGanhos = oportunidades
+      .filter((opp) => opp.status === 'fechada')
+      .reduce((sum, opp) => sum + (opp.valor || 0), 0)
+
+    const valorPerdidos = oportunidades
+      .filter((opp) => opp.status === 'perdida')
       .reduce((sum, opp) => sum + (opp.valor || 0), 0)
 
     // Agrupar oportunidades por status
@@ -37,6 +52,8 @@ export async function GET() {
       oportunidadesCount,
       tarefasCount,
       valorTotal,
+      valorGanhos,
+      valorPerdidos,
       oportunidadesPorStatus,
     })
   } catch (error) {

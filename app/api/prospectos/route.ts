@@ -3,10 +3,16 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 // GET /api/prospectos - Lista todos os prospectos com filtros
 export async function GET(request: NextRequest) {
     try {
+        const userId = await getUserIdFromRequest(request);
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const uf = searchParams.get('uf');
@@ -17,7 +23,7 @@ export async function GET(request: NextRequest) {
         const offset = searchParams.get('offset');
 
         // Construir filtros
-        const where: Record<string, unknown> = {};
+        const where: Record<string, unknown> = { userId };
 
         // Se nenhum status específico for solicitado, excluir os convertidos por padrão
         // (pois prospectos convertidos já são clientes e não devem aparecer na lista de prospecção)
@@ -49,6 +55,7 @@ export async function GET(request: NextRequest) {
         // Estatísticas por status
         const estatisticas = await prisma.prospecto.groupBy({
             by: ['status'],
+            where,
             _count: { status: true }
         });
 
@@ -57,7 +64,9 @@ export async function GET(request: NextRequest) {
         try {
             const lotesResult = await prisma.$queryRaw<{ lote: string | null }[]>`
                 SELECT DISTINCT lote FROM prospectos 
-                WHERE lote IS NOT NULL AND status != 'convertido'
+                WHERE lote IS NOT NULL 
+                  AND status != 'convertido'
+                  AND "userId" = ${userId}
                 ORDER BY lote ASC
             `;
             lotes = lotesResult.map(l => l.lote).filter((l): l is string => l !== null);
@@ -104,11 +113,16 @@ export async function GET(request: NextRequest) {
 // POST /api/prospectos - Cria um novo prospecto
 export async function POST(request: NextRequest) {
     try {
+        const userId = await getUserIdFromRequest(request);
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
 
         // Verificar se CNPJ já existe
         const existente = await prisma.prospecto.findUnique({
-            where: { cnpj: body.cnpj }
+            where: { userId_cnpj: { userId, cnpj: body.cnpj } }
         });
 
         if (existente) {
@@ -119,7 +133,10 @@ export async function POST(request: NextRequest) {
         }
 
         const prospecto = await prisma.prospecto.create({
-            data: body
+            data: {
+                ...body,
+                userId
+            }
         });
 
         return NextResponse.json(prospecto, { status: 201 });

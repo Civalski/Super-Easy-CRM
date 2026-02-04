@@ -1,8 +1,9 @@
-/**
- * API para importação em lote de prospectos do arquivo .parquet
+﻿/**
+ * API para importacao em lote de prospectos do arquivo .parquet
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/auth';
 import type { EmpresaParquet } from '@/types/leads';
 
 interface ImportResult {
@@ -11,13 +12,13 @@ interface ImportResult {
     erros: string[];
 }
 
-// Função para montar CNPJ completo
+// Funcao para montar CNPJ completo
 function montarCNPJ(empresa: EmpresaParquet): string {
     const basico = empresa['CNPJ BASICO'] || '';
     const ordem = empresa['CNPJ ORDEM'] || '';
     const dv = empresa['CNPJ DV'] || '';
 
-    // Padronizar com zeros à esquerda
+    // Padronizar com zeros a esquerda
     const basicoPad = basico.padStart(8, '0');
     const ordemPad = ordem.padStart(4, '0');
     const dvPad = dv.padStart(2, '0');
@@ -25,7 +26,7 @@ function montarCNPJ(empresa: EmpresaParquet): string {
     return `${basicoPad}${ordemPad}${dvPad}`;
 }
 
-// Função para mapear dados do .parquet para o modelo Prospecto
+// Funcao para mapear dados do .parquet para o modelo Prospecto
 function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
     const cnpj = montarCNPJ(empresa);
 
@@ -34,13 +35,13 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
         cnpjBasico: empresa['CNPJ BASICO'] || '',
         cnpjOrdem: empresa['CNPJ ORDEM'] || '',
         cnpjDv: empresa['CNPJ DV'] || '',
-        razaoSocial: empresa['RAZAO SOCIAL / NOME EMPRESARIAL'] || 'Não informado',
+        razaoSocial: empresa['RAZAO SOCIAL / NOME EMPRESARIAL'] || 'Nao informado',
         nomeFantasia: empresa['NOME FANTASIA'] || null,
         capitalSocial: empresa['CAPITAL SOCIAL'] || null,
         porte: empresa['PORTE DA EMPRESA'] || null,
         naturezaJuridica: empresa['NATUREZA JURIDICA'] || null,
-        situacaoCadastral: empresa['SITUAÇÃO CADASTRAL'] || null,
-        dataAbertura: empresa['DATA DE INÍCIO DE ATIVIDADE'] || null,
+        situacaoCadastral: empresa['SITUAÃ‡ÃƒO CADASTRAL'] || null,
+        dataAbertura: empresa['DATA DE INÃCIO DE ATIVIDADE'] || null,
         matrizFilial: empresa['MATRIZ/FILIAL'] || null,
         cnaePrincipal: empresa['COD ATIVIDADE PRINCIPAL'] || null,
         cnaePrincipalDesc: empresa['ATIVIDADE PRINCIPAL'] || null,
@@ -51,7 +52,7 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
         complemento: empresa.COMPLEMENTO || null,
         bairro: empresa.BAIRRO || null,
         cep: empresa.CEP || null,
-        municipio: empresa.MUNICIPIO || 'Não informado',
+        municipio: empresa.MUNICIPIO || 'Nao informado',
         uf: empresa.UF || 'XX',
         telefone1: empresa['TELEFONE 1'] || null,
         telefone2: empresa['TELEFONE 2'] || null,
@@ -62,9 +63,14 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
     };
 }
 
-// POST /api/prospectos/importar - Importa múltiplas empresas
+// POST /api/prospectos/importar - Importa multiplas empresas
 export async function POST(request: NextRequest) {
     try {
+        const userId = await getUserIdFromRequest(request);
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const empresas: EmpresaParquet[] = body.empresas || [];
 
@@ -81,43 +87,40 @@ export async function POST(request: NextRequest) {
             erros: []
         };
 
-        // Buscar CNPJs já existentes para evitar duplicatas
-        const cnpjsParaImportar = empresas.map(e => montarCNPJ(e));
-        const existentes = await prisma.prospecto.findMany({
-            where: {
-                cnpj: { in: cnpjsParaImportar }
-            },
-            select: { cnpj: true }
-        });
-        const cnpjsExistentes = new Set(existentes.map(e => e.cnpj));
-
-        // Processar cada empresa
-        const prospectosCriar = [];
+        const prospectosMap = new Map<string, ReturnType<typeof mapearEmpresaParaProspecto>>();
+        let duplicadosNoPayload = 0;
 
         for (const empresa of empresas) {
             try {
                 const cnpj = montarCNPJ(empresa);
 
-                if (cnpjsExistentes.has(cnpj)) {
-                    result.duplicados++;
+                if (prospectosMap.has(cnpj)) {
+                    duplicadosNoPayload++;
                     continue;
                 }
 
                 const dadosProspecto = mapearEmpresaParaProspecto(empresa);
-                prospectosCriar.push(dadosProspecto);
-
+                prospectosMap.set(cnpj, dadosProspecto);
             } catch (err) {
                 result.erros.push(`Erro ao processar empresa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
             }
         }
 
-        // Inserir em lote
+        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto) => ({
+            ...prospecto,
+            userId,
+        }));
+
         if (prospectosCriar.length > 0) {
             const criados = await prisma.prospecto.createMany({
                 data: prospectosCriar,
-                // Nota: SQLite não suporta skipDuplicates - verificação já feita acima
+                skipDuplicates: true,
             });
             result.importados = criados.count;
+            const duplicadosNoBanco = prospectosCriar.length - criados.count;
+            result.duplicados = duplicadosNoPayload + duplicadosNoBanco;
+        } else {
+            result.duplicados = duplicadosNoPayload;
         }
 
         return NextResponse.json({

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import Link from 'next/link'
 
 export default function LoginPage() {
     const router = useRouter()
@@ -25,7 +25,7 @@ export default function LoginPage() {
             })
 
             if (result?.error) {
-                setError('Usuário ou senha inválidos')
+                setError('Usuario ou senha invalidos')
                 setLoading(false)
             } else {
                 router.push('/')
@@ -53,7 +53,7 @@ export default function LoginPage() {
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="username" className="sr-only">
-                                Usuário
+                                Usuario ou email
                             </label>
                             <input
                                 id="username"
@@ -61,7 +61,7 @@ export default function LoginPage() {
                                 type="text"
                                 required
                                 className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:z-10 sm:text-sm"
-                                placeholder="Usuário"
+                                placeholder="Usuario ou email"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                             />
@@ -107,6 +107,13 @@ export default function LoginPage() {
                                 'Entrar'
                             )}
                         </button>
+                    </div>
+
+                    <div className="text-center text-sm text-gray-400">
+                        Nao tem conta?{' '}
+                        <Link className="text-purple-400 hover:text-purple-300" href="/register">
+                            Criar conta
+                        </Link>
                     </div>
                 </form>
             </div>

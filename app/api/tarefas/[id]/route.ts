@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const tarefa = await prisma.tarefa.findUnique({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const tarefa = await prisma.tarefa.findFirst({
+      where: { id: params.id, userId },
     })
 
     if (!tarefa) {
@@ -28,10 +34,15 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const {
       titulo,
@@ -73,8 +84,8 @@ export async function PATCH(
 
     if (clienteId !== undefined) {
       if (clienteId && clienteId.trim() !== '') {
-        const cliente = await prisma.cliente.findUnique({
-          where: { id: clienteId },
+        const cliente = await prisma.cliente.findFirst({
+          where: { id: clienteId, userId },
         })
         if (!cliente) {
           return NextResponse.json(
@@ -90,8 +101,8 @@ export async function PATCH(
 
     if (oportunidadeId !== undefined) {
       if (oportunidadeId && oportunidadeId.trim() !== '') {
-        const oportunidade = await prisma.oportunidade.findUnique({
-          where: { id: oportunidadeId },
+        const oportunidade = await prisma.oportunidade.findFirst({
+          where: { id: oportunidadeId, userId },
         })
         if (!oportunidade) {
           return NextResponse.json(
@@ -105,9 +116,20 @@ export async function PATCH(
       }
     }
 
-    const tarefaAtualizada = await prisma.tarefa.update({
-      where: { id: params.id },
+    const updated = await prisma.tarefa.updateMany({
+      where: { id: params.id, userId },
       data: updateData,
+    })
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: 'Tarefa não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const tarefaAtualizada = await prisma.tarefa.findFirst({
+      where: { id: params.id, userId },
     })
 
     return NextResponse.json(tarefaAtualizada)
@@ -133,13 +155,25 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.tarefa.delete({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const result = await prisma.tarefa.deleteMany({
+      where: { id: params.id, userId },
     })
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Tarefa não encontrada' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
@@ -156,4 +190,3 @@ export async function DELETE(
     )
   }
 }
-

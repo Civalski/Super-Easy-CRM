@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import 'sweetalert2/dist/sweetalert2.min.css'
 import { Layout } from '@/components/layout'
 import { Providers } from './Providers'
 

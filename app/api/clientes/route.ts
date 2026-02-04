@@ -1,12 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Garantir que o banco está inicializado
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const clientes = await prisma.cliente.findMany({
+      where: { userId },
       orderBy: {
         createdAt: 'desc',
       },
@@ -36,10 +43,15 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Garantir que o banco está inicializado
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const body = await request.json()
     const { nome, email, telefone, empresa, endereco, cidade, estado, cep } = body
@@ -54,8 +66,8 @@ export async function POST(request: Request) {
 
     // Verifica se já existe cliente com o mesmo email (se fornecido)
     if (email && email.trim() !== '') {
-      const clienteExistente = await prisma.cliente.findUnique({
-        where: { email: email.trim() },
+      const clienteExistente = await prisma.cliente.findFirst({
+        where: { email: email.trim(), userId },
       })
       if (clienteExistente) {
         return NextResponse.json(
@@ -67,6 +79,7 @@ export async function POST(request: Request) {
 
     const novoCliente = await prisma.cliente.create({
       data: {
+        userId,
         nome: nome.trim(),
         email: email && email.trim() !== '' ? email.trim() : null,
         telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null,

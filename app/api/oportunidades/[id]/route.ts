@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const oportunidade = await prisma.oportunidade.findUnique({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const oportunidade = await prisma.oportunidade.findFirst({
+      where: { id: params.id, userId },
       include: {
         cliente: {
           select: {
@@ -40,15 +46,54 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    const { status, titulo, descricao, valor, probabilidade, clienteId, ambienteId, dataFechamento } = body
+    const {
+      status,
+      titulo,
+      descricao,
+      valor,
+      probabilidade,
+      clienteId,
+      ambienteId,
+      dataFechamento,
+      motivoPerda,
+    } = body
+
+    const oportunidadeAtual = await prisma.oportunidade.findFirst({
+      where: { id: params.id, userId },
+      select: { status: true },
+    })
+
+    if (!oportunidadeAtual) {
+      return NextResponse.json(
+        { error: 'Oportunidade nao encontrada' },
+        { status: 404 }
+      )
+    }
 
     const updateData: any = {}
-    
+    const isFechadaOuPerdida = status === 'fechada' || status === 'perdida'
+    const tinhaStatusFechadaOuPerdida =
+      oportunidadeAtual.status === 'fechada' || oportunidadeAtual.status === 'perdida'
+    const hasDataFechamento = dataFechamento !== undefined
+    const precisaMotivoPerda = status === 'perdida' && !tinhaStatusFechadaOuPerdida
+
+    if (precisaMotivoPerda && (!motivoPerda || String(motivoPerda).trim() === '')) {
+      return NextResponse.json(
+        { error: 'Informe o motivo da perda' },
+        { status: 400 }
+      )
+    }
+
     if (status !== undefined) updateData.status = status
     if (titulo !== undefined) updateData.titulo = titulo.trim()
     if (descricao !== undefined) updateData.descricao = descricao && descricao.trim() !== '' ? descricao.trim() : null
@@ -57,10 +102,59 @@ export async function PATCH(
     if (clienteId !== undefined) updateData.clienteId = clienteId
     if (ambienteId !== undefined) updateData.ambienteId = ambienteId
     if (dataFechamento !== undefined) updateData.dataFechamento = dataFechamento ? new Date(dataFechamento) : null
+    if (motivoPerda !== undefined) {
+      updateData.motivoPerda = motivoPerda && String(motivoPerda).trim() !== ''
+        ? String(motivoPerda).trim()
+        : null
+    }
 
-    const oportunidadeAtualizada = await prisma.oportunidade.update({
-      where: { id: params.id },
+    if (clienteId) {
+      const cliente = await prisma.cliente.findFirst({
+        where: { id: clienteId, userId },
+        select: { id: true },
+      })
+      if (!cliente) {
+        return NextResponse.json(
+          { error: 'Cliente não encontrado' },
+          { status: 404 }
+        )
+      }
+    }
+
+    if (ambienteId) {
+      const ambiente = await prisma.ambiente.findFirst({
+        where: { id: ambienteId, userId },
+        select: { id: true },
+      })
+      if (!ambiente) {
+        return NextResponse.json(
+          { error: 'Ambiente não encontrado' },
+          { status: 404 }
+        )
+      }
+    }
+
+    if (status !== undefined && isFechadaOuPerdida && !tinhaStatusFechadaOuPerdida) {
+      updateData.statusAnterior = oportunidadeAtual.status
+      if (!hasDataFechamento) {
+        updateData.dataFechamento = new Date()
+      }
+    }
+
+    const updated = await prisma.oportunidade.updateMany({
+      where: { id: params.id, userId },
       data: updateData,
+    })
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: 'Oportunidade não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const oportunidadeAtualizada = await prisma.oportunidade.findFirst({
+      where: { id: params.id, userId },
       include: {
         cliente: {
           select: {
@@ -98,13 +192,25 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.oportunidade.delete({
-      where: { id: params.id },
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const result = await prisma.oportunidade.deleteMany({
+      where: { id: params.id, userId },
     })
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Oportunidade não encontrada' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
@@ -121,4 +227,3 @@ export async function DELETE(
     )
   }
 }
-

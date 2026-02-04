@@ -1,15 +1,25 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const { searchParams } = new URL(request.url)
     const ambienteId = searchParams.get('ambienteId')
+    const where = {
+      userId,
+      ...(ambienteId ? { ambienteId } : {}),
+    }
     
     const oportunidades = await prisma.oportunidade.findMany({
-      where: ambienteId ? { ambienteId } : undefined,
+      where,
       orderBy: {
         createdAt: 'desc',
       },
@@ -37,12 +47,27 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     await ensureDatabaseInitialized()
+
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     const body = await request.json()
-    const { titulo, descricao, valor, status, probabilidade, clienteId, ambienteId, dataFechamento } = body
+    const {
+      titulo,
+      descricao,
+      valor,
+      status,
+      probabilidade,
+      clienteId,
+      ambienteId,
+      dataFechamento,
+      motivoPerda,
+    } = body
 
     // Validação básica
     if (!titulo || titulo.trim() === '') {
@@ -67,8 +92,8 @@ export async function POST(request: Request) {
     }
 
     // Verifica se o cliente existe
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: clienteId },
+    const cliente = await prisma.cliente.findFirst({
+      where: { id: clienteId, userId },
     })
     if (!cliente) {
       return NextResponse.json(
@@ -78,8 +103,8 @@ export async function POST(request: Request) {
     }
 
     // Verifica se o ambiente existe
-    const ambiente = await prisma.ambiente.findUnique({
-      where: { id: ambienteId },
+    const ambiente = await prisma.ambiente.findFirst({
+      where: { id: ambienteId, userId },
     })
     if (!ambiente) {
       return NextResponse.json(
@@ -88,14 +113,23 @@ export async function POST(request: Request) {
       )
     }
 
+    if (status === 'perdida' && (!motivoPerda || String(motivoPerda).trim() === '')) {
+      return NextResponse.json(
+        { error: 'Informe o motivo da perda' },
+        { status: 400 }
+      )
+    }
+
     const novaOportunidade = await prisma.oportunidade.create({
       data: {
+        userId,
         titulo: titulo.trim(),
         descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
         valor: valor ? parseFloat(String(valor)) : null,
         status: status || 'prospeccao',
         probabilidade: probabilidade ? parseInt(String(probabilidade)) : 0,
         dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
+        motivoPerda: motivoPerda ? String(motivoPerda).trim() : null,
         clienteId,
         ambienteId,
       },

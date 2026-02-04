@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
@@ -7,14 +6,15 @@ from typing import List, Any
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Arker CRM - API"
     VERSION: str = "1.0.0"
-    
+
     # Base paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
+
+    PARQUET_DATA_PATH: Path = BASE_DIR.parent / "data" / "parquet"
 
     CORS_ORIGINS: List[str] | str = [
         "http://localhost:3000",
         "http://localhost:5000",
-        "*",  # Permitir todos os origins
     ]
 
     @field_validator("CORS_ORIGINS")
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     PORT: int = 5000
+    BACKEND_ENABLED: bool = False
 
     class Config:
         env_file = ".env"
