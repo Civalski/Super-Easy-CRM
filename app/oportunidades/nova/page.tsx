@@ -3,53 +3,33 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common'
+import AsyncSelect, { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { AmbienteSelector } from '@/components/features/oportunidades'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 
-interface Cliente {
-  id: string
-  nome: string
-}
-
 export default function NovaOportunidadePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const { motivos, addMotivo, loading: motivosLoading, canAddCustom, customCount, maxCustom } =
     useMotivosPerda()
   const [novoMotivo, setNovoMotivo] = useState('')
+
+  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(null)
+
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
     valor: '',
-    status: 'prospeccao',
+    status: 'proposta',
     probabilidade: '0',
     dataFechamento: '',
     motivoPerda: '',
-    clienteId: '',
     ambienteId: '',
   })
 
   useEffect(() => {
-    // Carrega clientes para o select
-    fetch('/api/clientes')
-      .then((res) => res.json())
-      .then((data) => {
-        // Garantir que data seja sempre um array
-        if (Array.isArray(data)) {
-          setClientes(data)
-        } else {
-          console.error('API de clientes retornou dados em formato inesperado:', data)
-          setClientes([])
-        }
-      })
-      .catch((error) => {
-        console.error('Erro ao carregar clientes:', error)
-        setClientes([])
-      })
-
     // Carrega ambientes e seleciona o primeiro automaticamente
     fetch('/api/ambientes')
       .then((res) => res.json())
@@ -94,7 +74,7 @@ export default function NovaOportunidadePage() {
     setNovoMotivo('')
   }
 
-  const motivosDisponiveis = useMemo(() => {
+  const motifsDisponiveis = useMemo(() => {
     if (!formData.motivoPerda) return motivos
     const exists = motivos.some(
       (motivo) => motivo.toLowerCase() === formData.motivoPerda.toLowerCase()
@@ -118,6 +98,11 @@ export default function NovaOportunidadePage() {
       return
     }
 
+    if (!selectedPerson) {
+      alert('Por favor, selecione um cliente ou lead')
+      return
+    }
+
     if (formData.status === 'perdida' && (!formData.motivoPerda || formData.motivoPerda.trim() === '')) {
       alert('Informe o motivo da perda')
       return
@@ -126,6 +111,31 @@ export default function NovaOportunidadePage() {
     setLoading(true)
 
     try {
+      let finalClienteId = selectedPerson.tipo === 'cliente' ? selectedPerson.id : null
+
+      // Se for prospecto, converte primeiro
+      if (selectedPerson.tipo === 'prospecto') {
+        const convRes = await fetch(`/api/prospectos/${selectedPerson.id}/converter`, {
+          method: 'POST',
+        })
+        const convData = await convRes.json()
+
+        if (!convRes.ok) {
+          // Se o erro for que já foi convertido, tentamos usar o ID retornado
+          if (convRes.status === 409 && convData.clienteId) {
+            finalClienteId = convData.clienteId
+          } else {
+            throw new Error(convData.error || 'Erro ao converter lead em cliente')
+          }
+        } else {
+          finalClienteId = convData.cliente.id
+        }
+      }
+
+      if (!finalClienteId) {
+        throw new Error('Não foi possível identificar o cliente')
+      }
+
       const response = await fetch('/api/oportunidades', {
         method: 'POST',
         headers: {
@@ -135,7 +145,7 @@ export default function NovaOportunidadePage() {
           ...formData,
           valor: formData.valor ? parseFloat(formData.valor) : null,
           probabilidade: parseInt(formData.probabilidade) || 0,
-          clienteId: formData.clienteId || null,
+          clienteId: finalClienteId,
           ambienteId: formData.ambienteId || null,
           dataFechamento: formData.dataFechamento || null,
           motivoPerda: formData.motivoPerda || null,
@@ -148,9 +158,9 @@ export default function NovaOportunidadePage() {
         const error = await response.json()
         alert(error.error || 'Erro ao criar oportunidade')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar oportunidade:', error)
-      alert('Erro ao criar oportunidade. Tente novamente.')
+      alert(error.message || 'Erro ao criar oportunidade. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -215,27 +225,19 @@ export default function NovaOportunidadePage() {
             </div>
 
             <div>
-              <label
-                htmlFor="clienteId"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Cliente <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="clienteId"
-                name="clienteId"
+              {/* Async Select used here */}
+              <AsyncSelect
+                label="Cliente / Lead"
+                placeholder="Busque por nome, email ou empresa..."
+                value={selectedPerson ? selectedPerson.id : ''}
+                initialLabel={selectedPerson ? selectedPerson.nome : ''}
+                onChange={setSelectedPerson}
+                fetchUrl="/api/pessoas/busca"
                 required
-                value={formData.clienteId}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione um cliente</option>
-                {clientes.map((cliente) => (
-                  <option key={cliente.id} value={cliente.id}>
-                    {cliente.nome}
-                  </option>
-                ))}
-              </select>
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Busca em Clientes e Leads (Prospectos). Leads serão convertidos automaticamente.
+              </p>
             </div>
 
             <div>
@@ -271,28 +273,7 @@ export default function NovaOportunidadePage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="prospeccao">Prospecção</option>
-                <option value="qualificacao">Qualificação</option>
-                <option value="proposta">Proposta</option>
-                <option value="negociacao">Negociação</option>
-                <option value="fechada">Fechada</option>
-                <option value="perdida">Perdida</option>
-              </select>
-            </div>
+            {/* Status selection removed, defaults to 'proposta' */}
 
             {formData.status === 'perdida' && (
               <div className="md:col-span-2">
@@ -311,7 +292,7 @@ export default function NovaOportunidadePage() {
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">{motivosLoading ? 'Carregando...' : 'Selecione um motivo'}</option>
-                  {motivosDisponiveis.map((motivo) => (
+                  {motifsDisponiveis.map((motivo) => (
                     <option key={motivo} value={motivo}>
                       {motivo}
                     </option>
@@ -375,7 +356,7 @@ export default function NovaOportunidadePage() {
                 name="dataFechamento"
                 value={formData.dataFechamento}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
               />
             </div>
           </div>

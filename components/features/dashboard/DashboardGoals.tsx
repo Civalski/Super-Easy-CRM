@@ -4,7 +4,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Target } from 'lucide-react'
+import {
+  Target,
+  Users,
+  FileText,
+  UserPlus,
+  DollarSign,
+  CheckCircle2,
+  Briefcase,
+  Search,
+  ArrowRight,
+} from 'lucide-react'
 
 type GoalMetricType =
   | 'CLIENTES_CONTATADOS'
@@ -35,111 +45,136 @@ interface DashboardGoalsProps {
   loading: boolean
 }
 
+const metricIcons: Record<GoalMetricType, React.ElementType> = {
+  CLIENTES_CONTATADOS: Users,
+  PROPOSTAS: FileText,
+  CLIENTES_CADASTRADOS: UserPlus,
+  VENDAS: DollarSign,
+  QUALIFICACAO: CheckCircle2,
+  NEGOCIACAO: Briefcase,
+  PROSPECCAO: Search,
+}
+
 const metricLabels: Record<GoalMetricType, string> = {
-  CLIENTES_CONTATADOS: 'Clientes contatados',
+  CLIENTES_CONTATADOS: 'Contatos',
   PROPOSTAS: 'Propostas',
-  CLIENTES_CADASTRADOS: 'Clientes cadastrados',
+  CLIENTES_CADASTRADOS: 'Cadastros',
   VENDAS: 'Vendas',
-  QUALIFICACAO: 'Qualificacao',
-  NEGOCIACAO: 'Negociacao',
-  PROSPECCAO: 'Prospeccao',
+  QUALIFICACAO: 'Qualificação',
+  NEGOCIACAO: 'Negociação',
+  PROSPECCAO: 'Prospecção',
 }
 
 const periodLabels: Record<GoalPeriodType, string> = {
-  DAILY: 'Diaria',
+  DAILY: 'Diária',
   WEEKLY: 'Semanal',
   MONTHLY: 'Mensal',
   CUSTOM: 'Personalizada',
-}
-
-function formatDate(value?: string) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
 }
 
 export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   const activeGoals = goals.filter((goal) => goal.active !== false)
   const displayedGoals = activeGoals.slice(0, 4)
 
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 animate-pulse">
+        <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-24 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (displayedGoals.length === 0) {
+    return null // Ocultar se não houver metas para economizar espaço
+  }
+
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-            <Target size={20} />
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <Target size={18} />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Metas ativas</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Metas automaticas com repeticao por periodo
-            </p>
-          </div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+            Metas de Desempenho
+          </h2>
         </div>
         <Link
           href="/metas"
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          className="text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
         >
           Ver todas
+          <ArrowRight size={14} />
         </Link>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400">Carregando metas...</p>
-      ) : displayedGoals.length === 0 ? (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Nenhuma meta automatica ativa.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {displayedGoals.map((goal) => {
-            const progressValue = typeof goal.progress === 'number' ? goal.progress : 0
-            const currentValue = goal.current ?? 0
-            const displayTitle =
-              goal.title?.trim() || metricLabels[goal.metricType] || goal.metricType
-            return (
-              <div
-                key={goal.id}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/40"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{displayTitle}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {metricLabels[goal.metricType] ?? goal.metricType} ·{' '}
-                      {periodLabels[goal.periodType] ?? goal.periodType}
-                    </p>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {currentValue}/{goal.target}
-                  </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {displayedGoals.map((goal) => {
+          const progressValue = typeof goal.progress === 'number' ? goal.progress : 0
+          const currentValue = goal.current ?? 0
+          const Icon = metricIcons[goal.metricType] || Target
+
+          // Determine color based on progress
+          let colorClass = 'bg-blue-600'
+          let bgClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+
+          if (progressValue >= 100) {
+            colorClass = 'bg-green-500'
+            bgClass = 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+          } else if (progressValue < 30) {
+            // Low progress warning color could be added here if desired
+          }
+
+          return (
+            <div
+              key={goal.id}
+              className="group relative flex flex-col justify-between border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className={`p-2 rounded-lg ${bgClass}`}>
+                  <Icon size={18} strokeWidth={2.5} />
+                </div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700">
+                  {periodLabels[goal.periodType]}
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-end justify-between mb-1">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
+                    {currentValue}
+                    <span className="text-sm font-normal text-gray-400 dark:text-gray-500 ml-1">
+                      / {goal.target}
+                    </span>
+                  </span>
+                  <span className={`text-xs font-bold ${progressValue >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                    {progressValue}%
+                  </span>
                 </div>
 
-                <div className="mt-3 space-y-1">
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>
-                      Periodo atual: {formatDate(goal.periodStart)} -{' '}
-                      {formatDate(goal.periodEnd)}
-                    </span>
-                    <span>{progressValue}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full bg-blue-600 transition-all"
-                      style={{ width: `${Math.min(progressValue, 100)}%` }}
-                    />
-                  </div>
+                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 truncate" title={goal.title || metricLabels[goal.metricType]}>
+                  {goal.title?.trim() || metricLabels[goal.metricType]}
+                </h3>
+
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${colorClass}`}
+                    style={{ width: `${Math.min(progressValue, 100)}%` }}
+                  />
                 </div>
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

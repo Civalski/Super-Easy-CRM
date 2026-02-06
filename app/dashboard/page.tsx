@@ -27,13 +27,13 @@ interface GoalSummary {
   id: string
   title: string
   metricType:
-    | 'CLIENTES_CONTATADOS'
-    | 'PROPOSTAS'
-    | 'CLIENTES_CADASTRADOS'
-    | 'VENDAS'
-    | 'QUALIFICACAO'
-    | 'NEGOCIACAO'
-    | 'PROSPECCAO'
+  | 'CLIENTES_CONTATADOS'
+  | 'PROPOSTAS'
+  | 'CLIENTES_CADASTRADOS'
+  | 'VENDAS'
+  | 'QUALIFICACAO'
+  | 'NEGOCIACAO'
+  | 'PROSPECCAO'
   periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
   target: number
   current?: number
@@ -49,13 +49,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [goalsLoading, setGoalsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [dateFilter, setDateFilter] = useState<'day' | 'month'>('month')
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   const fetchDashboardData = async () => {
     try {
       setIsRefreshing(true)
       setGoalsLoading(true)
+
+      const dateParam = selectedDate.toISOString()
+
       const [dashboardResponse, goalsResponse] = await Promise.all([
-        fetch('/api/dashboard', { credentials: 'include' }),
+        fetch(`/api/dashboard?filter=${dateFilter}&date=${dateParam}`, { credentials: 'include' }),
         fetch('/api/metas', { credentials: 'include' }),
       ])
 
@@ -64,6 +71,7 @@ export default function Dashboard() {
       }
       const dashboardData: DashboardData = await dashboardResponse.json()
       setData(dashboardData)
+      setLastUpdate(new Date()) // Trigger refresh for child components
 
       if (goalsResponse.ok) {
         const goalsData = await goalsResponse.json()
@@ -81,17 +89,10 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    // Buscar dados iniciais
     fetchDashboardData()
+  }, [dateFilter, selectedDate])
 
-    // Configurar atualização automática a cada 30 segundos
-    const interval = setInterval(() => {
-      fetchDashboardData()
-    }, 30000)
 
-    // Limpar intervalo ao desmontar o componente
-    return () => clearInterval(interval)
-  }, [])
 
   if (loading || !data) {
     return <DashboardLoading />
@@ -102,6 +103,10 @@ export default function Dashboard() {
       <DashboardHeader
         isRefreshing={isRefreshing}
         onRefresh={fetchDashboardData}
+        filterType={dateFilter}
+        onFilterChange={setDateFilter}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
       />
 
       <DashboardStatsGrid data={data} />
@@ -115,7 +120,7 @@ export default function Dashboard() {
           data={data.oportunidadesPorStatus}
           totalOportunidades={data.oportunidadesCount}
         />
-        <AtividadesRecentes />
+        <AtividadesRecentes refreshTrigger={lastUpdate} onRefreshRequest={fetchDashboardData} />
       </div>
     </div>
   )

@@ -12,7 +12,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-
 enum GoalMetricType {
   CLIENTES_CONTATADOS
   PROPOSTAS
@@ -30,43 +29,40 @@ enum GoalPeriodType {
   CUSTOM
 }
 
-
-
 model User {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String?
-  email        String?   @unique
-  username     String    @unique
+  email        String?  @unique
+  username     String   @unique
   passwordHash String
-  role         String    @default("user")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   usedRegistrationCodes RegistrationCode[]
-  goals Goal[]
-  motivosPerda MotivoPerda[]
-  clientes Cliente[]
-  contatos Contato[]
-  ambientes Ambiente[]
-  oportunidades Oportunidade[]
-  tarefas Tarefa[]
-  prospectos Prospecto[]
+  goals                 Goal[]
+  motivosPerda          MotivoPerda[]
+  clientes              Cliente[]
+  contatos              Contato[]
+  ambientes             Ambiente[]
+  oportunidades         Oportunidade[]
+  tarefas               Tarefa[]
+  prospectos            Prospecto[]
 
   @@map("users")
 }
 
 model RegistrationCode {
-  id        String   @id @default(cuid())
-  codeHash  String   @unique
+  id        String    @id @default(cuid())
+  codeHash  String    @unique
   usedAt    DateTime?
   usedById  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   usedBy User? @relation(fields: [usedById], references: [id], onDelete: SetNull)
 
   @@map("registration_codes")
 }
-
 
 model Goal {
   id         String         @id @default(cuid())
@@ -77,16 +73,15 @@ model Goal {
   target     Int
   startDate  DateTime?
   endDate    DateTime?
-  weekDays   Int[] @default([])
+  weekDays   Int[]          @default([])
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots GoalSnapshot[]
 
   @@map("goals")
 }
-
 
 model GoalSnapshot {
   id          String   @id @default(cuid())
@@ -105,86 +100,85 @@ model GoalSnapshot {
   @@map("goal_snapshots")
 }
 
-
 model Cliente {
-  id          String      @id @default(cuid())
-  userId      String
-  nome        String
-  email       String?
-  telefone    String?
-  empresa     String?
-  endereco    String?
-  cidade      String?
-  estado      String?
-  cep         String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  contatos    Contato[]
+  id        String   @id @default(cuid())
+  userId    String
+  nome      String
+  email     String?
+  telefone  String?
+  empresa   String?
+  endereco  String?
+  cidade    String?
+  estado    String?
+  cep       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contatos      Contato[]
   oportunidades Oportunidade[]
-  tarefas     Tarefa[]
-  prospecto   Prospecto?
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
+  tarefas       Tarefa[]
+  prospecto     Prospecto?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, email])
+  @@index([userId])
   @@map("clientes")
 }
 
 model Contato {
-  id          String      @id @default(cuid())
-  userId      String
-  nome        String
-  email       String?
-  telefone    String?
-  cargo       String?
-  clienteId   String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  userId    String
+  nome      String
+  email     String?
+  telefone  String?
+  cargo     String?
+  clienteId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("contatos")
 }
 
 model Ambiente {
-  id          String      @id @default(cuid())
-  userId      String
-  nome        String
-  descricao   String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  id        String   @id @default(cuid())
+  userId    String
+  nome      String
+  descricao String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   oportunidades Oportunidade[]
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("ambientes")
 }
 
 model Oportunidade {
-  id          String      @id @default(cuid())
-  userId      String
-  titulo      String
-  descricao   String?
-  valor       Float?
-  status      String      @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
+  id             String    @id @default(cuid())
+  userId         String
+  titulo         String
+  descricao      String?
+  valor          Float?
+  status         String    @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
   statusAnterior String?
-  motivoPerda String?
-  probabilidade Int       @default(0) // 0-100
+  motivoPerda    String?
+  probabilidade  Int       @default(0) // 0-100
   dataFechamento DateTime?
-  clienteId   String
-  ambienteId  String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  ambiente    Ambiente    @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
-  tarefas     Tarefa[]
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  clienteId      String
+  ambienteId     String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  cliente  Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  ambiente Ambiente @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
+  tarefas  Tarefa[]
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("oportunidades")
 }
@@ -204,85 +198,89 @@ model MotivoPerda {
 }
 
 model Tarefa {
-  id          String      @id @default(cuid())
-  userId      String
-  titulo      String
-  descricao   String?
-  status      String      @default("pendente") // pendente, em_andamento, concluida
-  prioridade  String      @default("media") // baixa, media, alta
+  id             String    @id @default(cuid())
+  userId         String
+  titulo         String
+  descricao      String?
+  status         String    @default("pendente") // pendente, em_andamento, concluida
+  prioridade     String    @default("media") // baixa, media, alta
   dataVencimento DateTime?
-  clienteId   String?
+  clienteId      String?
   oportunidadeId String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  cliente     Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  notificar           Boolean @default(false)
+  notificacaoExcluida Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("tarefas")
 }
 
 model Prospecto {
-  id              String    @id @default(cuid())
-  userId          String
-  
+  id     String @id @default(cuid())
+  userId String
+
   // Dados de identificação
-  cnpj            String
-  cnpjBasico      String
-  cnpjOrdem       String
-  cnpjDv          String
-  
+  cnpj       String
+  cnpjBasico String
+  cnpjOrdem  String
+  cnpjDv     String
+
   // Dados da empresa
-  razaoSocial     String
-  nomeFantasia    String?
-  capitalSocial   String?
-  porte           String?
-  naturezaJuridica String?
+  razaoSocial       String
+  nomeFantasia      String?
+  capitalSocial     String?
+  porte             String?
+  naturezaJuridica  String?
   situacaoCadastral String?
-  dataAbertura    String?
-  matrizFilial    String?
-  
+  dataAbertura      String?
+  matrizFilial      String?
+
   // CNAE
-  cnaePrincipal      String?
-  cnaePrincipalDesc  String?
-  cnaesSecundarios   String?
-  
+  cnaePrincipal     String?
+  cnaePrincipalDesc String?
+  cnaesSecundarios  String?
+
   // Endereço
-  tipoLogradouro  String?
-  logradouro      String?
-  numero          String?
-  complemento     String?
-  bairro          String?
-  cep             String?
-  municipio       String
-  uf              String
-  
+  tipoLogradouro String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cep            String?
+  municipio      String
+  uf             String
+
   // Contato
-  telefone1       String?
-  telefone2       String?
-  fax             String?
-  email           String?
-  
+  telefone1 String?
+  telefone2 String?
+  fax       String?
+  email     String?
+
   // Controle de Prospecção
-  status          String    @default("novo")  // novo | em_contato | qualificado | descartado | convertido
-  observacoes     String?
-  prioridade      Int       @default(0)       // 0-5 estrelas
-  lote            String?                     // Lote de importação
-  
+  status      String  @default("novo") // novo | em_contato | qualificado | descartado | convertido
+  observacoes String?
+  prioridade  Int     @default(0) // 0-5 estrelas
+  lote        String? // Lote de importação
+
   // Datas
-  dataImportacao  DateTime  @default(now())
-  ultimoContato   DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  dataImportacao DateTime  @default(now())
+  ultimoContato  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
   // Referência para cliente (após conversão)
-  clienteId       String?   @unique
-  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
+  clienteId String?  @unique
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, cnpj])
+  @@index([userId])
   @@map("prospectos")
 }

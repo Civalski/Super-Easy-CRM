@@ -16,7 +16,9 @@ import {
     ChevronDown,
     CheckSquare,
     Square,
+    Eye,
 } from 'lucide-react';
+import Link from 'next/link';
 import { STATUS_OPTIONS, getStatusConfig, type Prospecto } from './ProspectarTypes';
 
 interface ProspectoCardProps {
@@ -149,6 +151,14 @@ export function ProspectoCard({
                         </select>
                         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" />
                     </div>
+
+                    <Link
+                        href={`/clientes/${prospecto.id}`}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-blue-600 dark:text-blue-400"
+                        title="Ver detalhes"
+                    >
+                        <Eye className="w-4 h-4" />
+                    </Link>
 
                     {/* Menu de ações */}
                     <div className="relative">

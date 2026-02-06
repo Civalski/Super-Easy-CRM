@@ -321,28 +321,7 @@ export default function EditarOportunidadePage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="prospeccao">Prospeccao</option>
-                <option value="qualificacao">Qualificacao</option>
-                <option value="proposta">Proposta</option>
-                <option value="negociacao">Negociacao</option>
-                <option value="fechada">Fechada</option>
-                <option value="perdida">Perdida</option>
-              </select>
-            </div>
+            {/* Status selection removed */}
 
             {formData.status === 'perdida' && (
               <div className="md:col-span-2">
@@ -425,7 +404,7 @@ export default function EditarOportunidadePage() {
                 name="dataFechamento"
                 value={formData.dataFechamento}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
               />
             </div>
           </div>

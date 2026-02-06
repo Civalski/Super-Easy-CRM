@@ -18,7 +18,9 @@ import {
     MessageSquare,
     ChevronDown,
     CheckCircle2,
+    Eye,
 } from 'lucide-react';
+import Link from 'next/link';
 import { STATUS_OPTIONS, getStatusConfig, type Prospecto } from './ProspectarTypes';
 
 interface ProspectosListProps {
@@ -118,7 +120,7 @@ export function ProspectosList({
                                 Status
                             </th>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
-                                AÃ§Ãµes
+                                Ações
                             </th>
                         </tr>
                     </thead>
@@ -127,7 +129,7 @@ export function ProspectosList({
                             const isSelected = selectedIds.has(prospecto.id);
                             const isContacted = prospecto.status !== 'novo';
                             const canToggleContato = prospecto.status === 'novo' || prospecto.status === 'em_contato';
-                            const canQualificar = prospecto.status === 'em_contato';
+                            const canQualificar = prospecto.status === 'novo' || prospecto.status === 'em_contato';
 
                             return (
                                 <tr
@@ -164,7 +166,7 @@ export function ProspectosList({
                                                         <MapPin className="w-3 h-3" />
                                                         {prospecto.municipio}/{prospecto.uf}
                                                     </span>
-                                                    <span className="text-gray-300 dark:text-gray-600">â€¢</span>
+                                                    <span className="text-gray-300 dark:text-gray-600">•</span>
                                                     <span className="truncate">{prospecto.cnpj}</span>
                                                 </div>
                                             </div>
@@ -206,7 +208,7 @@ export function ProspectosList({
                                             )}
                                             {prospecto.ultimoContato && (
                                                 <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                                                    Ãšltimo contato: {formatDate(prospecto.ultimoContato)}
+                                                    Último contato: {formatDate(prospecto.ultimoContato)}
                                                 </span>
                                             )}
                                         </div>
@@ -222,9 +224,13 @@ export function ProspectosList({
                                     </td>
                                     <td className="px-3 py-3">
                                         <button
-                                            onClick={() => onToggleContato(prospecto.id, prospecto.status === 'novo')}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleContato(prospecto.id, prospecto.status === 'novo');
+                                            }}
                                             disabled={!canToggleContato}
-                                            className="flex items-center justify-center w-full disabled:opacity-50"
+                                            className={`flex items-center justify-center w-full transition-opacity ${!canToggleContato ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
+                                                }`}
                                             title={isContacted ? 'Contatado' : 'Marcar como contatado'}
                                             aria-label={isContacted ? 'Contatado' : 'Marcar como contatado'}
                                         >
@@ -244,7 +250,13 @@ export function ProspectosList({
                                                 className={`appearance-none w-full px-3 py-1.5 pr-8 rounded-full text-[11px] font-semibold cursor-pointer ${getStatusConfig(prospecto.status).color} border-0 focus:ring-2 focus:ring-purple-500`}
                                             >
                                                 {STATUS_OPTIONS.map(s => (
-                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                    <option
+                                                        key={s.value}
+                                                        value={s.value}
+                                                        className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                                                    >
+                                                        {s.label}
+                                                    </option>
                                                 ))}
                                             </select>
                                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" />
@@ -252,6 +264,14 @@ export function ProspectosList({
                                     </td>
                                     <td className="px-3 py-3">
                                         <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/clientes/${prospecto.id}`}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                                                title="Ver detalhes"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                Ver
+                                            </Link>
                                             <button
                                                 onClick={() => onQualificar(prospecto.id)}
                                                 disabled={!canQualificar}

@@ -52,6 +52,7 @@ export async function PATCH(
       dataVencimento,
       clienteId,
       oportunidadeId,
+      notificar,
     } = body
 
     const updateData: any = {}
@@ -80,6 +81,10 @@ export async function PATCH(
 
     if (dataVencimento !== undefined) {
       updateData.dataVencimento = dataVencimento ? new Date(dataVencimento) : null
+    }
+
+    if (notificar !== undefined) {
+      updateData.notificar = typeof notificar === 'boolean' ? notificar : false
     }
 
     if (clienteId !== undefined) {

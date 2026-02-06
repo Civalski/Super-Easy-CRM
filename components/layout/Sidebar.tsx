@@ -11,10 +11,11 @@ import {
   Calendar,
   Settings,
   BarChart3,
-  Target,
+
   Trophy,
   LogOut,
   Layers,
+  Target,
 } from 'lucide-react'
 
 const menuItems = [
@@ -24,17 +25,17 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Clientes',
-    href: '/clientes',
-    icon: Users,
-  },
-  {
     name: 'Prospectar',
     href: '/prospectar',
     icon: Target,
   },
   {
-    name: 'Oportunidades',
+    name: 'Clientes',
+    href: '/clientes',
+    icon: Users,
+  },
+  {
+    name: 'Propostas',
     href: '/oportunidades',
     icon: Briefcase,
   },
@@ -44,7 +45,7 @@ const menuItems = [
     icon: Calendar,
   },
   {
-    name: 'Grupos',
+    name: 'Leads',
     href: '/grupos',
     icon: Layers,
   },
@@ -73,10 +74,10 @@ export default function Sidebar() {
       <div className="px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center min-h-[var(--top-bar-height)]">
         <div className="flex items-center justify-center">
           <Image
-            src="/arkerlogo1.png"
+            src="/arker10.png"
             alt="Arker CRM"
-            width={150}
-            height={50}
+            width={190}
+            height={65}
             className="object-contain"
             priority
           />

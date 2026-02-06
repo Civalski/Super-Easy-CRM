@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Save } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, Bell } from 'lucide-react'
 import { Button } from '@/components/common'
 
 interface Cliente {
@@ -23,7 +23,9 @@ const formatDateInput = (value: string | null) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 export default function EditarTarefaPage() {
@@ -43,6 +45,7 @@ export default function EditarTarefaPage() {
     dataVencimento: '',
     clienteId: '',
     oportunidadeId: '',
+    notificar: false,
   })
 
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function EditarTarefaPage() {
           dataVencimento: formatDateInput(tarefaData.dataVencimento),
           clienteId: tarefaData.clienteId || '',
           oportunidadeId: tarefaData.oportunidadeId || '',
+          notificar: tarefaData.notificar ?? false,
         })
 
         if (Array.isArray(clientesData)) {
@@ -106,9 +110,10 @@ export default function EditarTarefaPage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     })
   }
 
@@ -257,16 +262,17 @@ export default function EditarTarefaPage() {
                 htmlFor="dataVencimento"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Data de Vencimento
+                Data e Hora de Vencimento
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 id="dataVencimento"
                 name="dataVencimento"
                 value={formData.dataVencimento}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+
             </div>
 
             <div>
@@ -313,6 +319,39 @@ export default function EditarTarefaPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="flex flex-col justify-end">
+              <div
+                onClick={() => setFormData({ ...formData, notificar: !formData.notificar })}
+                className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${formData.notificar
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${formData.notificar
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                    : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                    }`}>
+                    <Bell size={20} />
+                  </div>
+                  <div>
+                    <p className={`font-medium ${formData.notificar ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                      Notificação no Navegador
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Receba um alerta visual quando a tarefa vencer
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.notificar ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.notificar ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                </div>
+              </div>
             </div>
           </div>
 

@@ -25,6 +25,20 @@ export async function GET(request: NextRequest) {
         // Construir filtros
         const where: Record<string, unknown> = { userId };
 
+        // Limpeza automática: Remover prospectos "em_contato" com mais de 30 dias sem qualificação
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        await prisma.prospecto.deleteMany({
+            where: {
+                userId,
+                status: 'em_contato',
+                ultimoContato: {
+                    lt: thirtyDaysAgo
+                }
+            }
+        });
+
         // Se nenhum status específico for solicitado, excluir os convertidos por padrão
         // (pois prospectos convertidos já são clientes e não devem aparecer na lista de prospecção)
         if (status) {

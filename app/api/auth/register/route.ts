@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const orConditions = [{ username }]
+    const orConditions: { username?: string; email?: string }[] = [{ username }]
     if (email) {
       orConditions.push({ email })
     }

@@ -73,6 +73,7 @@ interface Cliente {
     contatos: number
   }
   prospecto?: Prospecto | null
+  isVirtual?: boolean
 }
 
 interface ClienteFormData {
@@ -283,7 +284,7 @@ export default function ClienteDetalhesPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            {!editMode && (
+            {!editMode && !cliente?.isVirtual && (
               <Button
                 type="button"
                 variant="outline"
@@ -294,21 +295,23 @@ export default function ClienteDetalhesPage() {
                 Editar Cliente
               </Button>
             )}
-            <Button
-              type="button"
-              variant="danger"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={!cliente || deleting}
-            >
-              {deleting ? (
-                'Excluindo...'
-              ) : (
-                <>
-                  <Trash2 size={16} className="mr-2" />
-                  Excluir Cliente
-                </>
-              )}
-            </Button>
+            {!cliente?.isVirtual && (
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={!cliente || deleting}
+              >
+                {deleting ? (
+                  'Excluindo...'
+                ) : (
+                  <>
+                    <Trash2 size={16} className="mr-2" />
+                    Excluir Cliente
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>

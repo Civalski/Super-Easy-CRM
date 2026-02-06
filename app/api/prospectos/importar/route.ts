@@ -14,6 +14,11 @@ interface ImportResult {
 
 // Funcao para montar CNPJ completo
 function montarCNPJ(empresa: EmpresaParquet): string {
+    // Se ja vier com CNPJ formatado ou apenas numeros
+    if (empresa.CNPJ) {
+        return empresa.CNPJ.replace(/\D/g, '').padStart(14, '0');
+    }
+
     const basico = empresa['CNPJ BASICO'] || '';
     const ordem = empresa['CNPJ ORDEM'] || '';
     const dv = empresa['CNPJ DV'] || '';
@@ -30,18 +35,22 @@ function montarCNPJ(empresa: EmpresaParquet): string {
 function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
     const cnpj = montarCNPJ(empresa);
 
+    /**
+     * Mapeamento de campos
+     * Chaves compatíveis com o formato do arquivo .xlsx de exemplo e .parquet
+     */
     return {
         cnpj,
-        cnpjBasico: empresa['CNPJ BASICO'] || '',
-        cnpjOrdem: empresa['CNPJ ORDEM'] || '',
-        cnpjDv: empresa['CNPJ DV'] || '',
+        cnpjBasico: empresa['CNPJ BASICO'] || cnpj.substring(0, 8),
+        cnpjOrdem: empresa['CNPJ ORDEM'] || cnpj.substring(8, 12),
+        cnpjDv: empresa['CNPJ DV'] || cnpj.substring(12, 14),
         razaoSocial: empresa['RAZAO SOCIAL / NOME EMPRESARIAL'] || 'Nao informado',
         nomeFantasia: empresa['NOME FANTASIA'] || null,
         capitalSocial: empresa['CAPITAL SOCIAL'] || null,
         porte: empresa['PORTE DA EMPRESA'] || null,
         naturezaJuridica: empresa['NATUREZA JURIDICA'] || null,
-        situacaoCadastral: empresa['SITUAÃ‡ÃƒO CADASTRAL'] || null,
-        dataAbertura: empresa['DATA DE INÃCIO DE ATIVIDADE'] || null,
+        situacaoCadastral: empresa['SITUAÇÃO CADASTRAL'] || null,
+        dataAbertura: empresa['DATA DE INÍCIO DE ATIVIDADE'] || null,
         matrizFilial: empresa['MATRIZ/FILIAL'] || null,
         cnaePrincipal: empresa['COD ATIVIDADE PRINCIPAL'] || null,
         cnaePrincipalDesc: empresa['ATIVIDADE PRINCIPAL'] || null,
@@ -73,6 +82,8 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json();
         const empresas: EmpresaParquet[] = body.empresas || [];
+        const batchSize = body.batchSize || 30;
+        const fileName = body.fileName || 'Importacao';
 
         if (!Array.isArray(empresas) || empresas.length === 0) {
             return NextResponse.json(
@@ -106,10 +117,31 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto) => ({
-            ...prospecto,
-            userId,
-        }));
+        // Preparar lotes
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        // Limpar extensao do arquivo para o nome do lote
+        const cleanFileName = fileName.replace(/\.[^/.]+$/, "");
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto, index) => {
+            // Calcular indice do lote (0-based)
+            const batchIndex = Math.floor(index / batchSize);
+
+            // Gerar Label: A, B, C... Z, A1, B1...
+            const letter = alphabet[batchIndex % 26];
+            const cycle = Math.floor(batchIndex / 26);
+            const suffix = cycle > 0 ? cycle.toString() : '';
+            const batchLabel = `${letter}${suffix}`;
+
+            const loteName = `${dateStr} - ${batchLabel}`;
+
+            return {
+                ...prospecto,
+                userId,
+                lote: loteName
+            };
+        });
 
         if (prospectosCriar.length > 0) {
             const criados = await prisma.prospecto.createMany({

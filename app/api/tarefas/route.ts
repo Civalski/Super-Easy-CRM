@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const tarefas = await prisma.tarefa.findMany({
       where: { userId },
       orderBy: {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const body = await request.json()
     const {
       titulo,
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       dataVencimento,
       clienteId,
       oportunidadeId,
+      notificar,
     } = body
 
     // Validação básica
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
         dataVencimento: dataVencimento ? new Date(dataVencimento) : null,
         clienteId: clienteId && clienteId.trim() !== '' ? clienteId : null,
         oportunidadeId: oportunidadeId && oportunidadeId.trim() !== '' ? oportunidadeId : null,
+        notificar: typeof notificar === 'boolean' ? notificar : false,
       },
     })
 
@@ -110,4 +112,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

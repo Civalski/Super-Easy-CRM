@@ -21,24 +21,58 @@ export async function GET(
             contatos: true,
           },
         },
-        prospecto: true, // Inclui dados ricos do prospecto (CNPJ, nome fantasia, capital social, etc.)
+        prospecto: true,
       },
-    })
+    });
 
-    if (!cliente) {
-      return NextResponse.json(
-        { error: 'Cliente não encontrado' },
-        { status: 404 }
-      )
+    if (cliente) {
+      return NextResponse.json(cliente);
     }
 
-    return NextResponse.json(cliente)
+    // Se não encontrar cliente, procura por prospecto
+    const prospecto = await prisma.prospecto.findFirst({
+      where: { id: params.id, userId },
+    });
+
+    // Se encontrar prospecto, retorna formatado como cliente "virtual"
+    if (prospecto) {
+      const enderecoCompleto = prospecto.logradouro
+        ? `${prospecto.tipoLogradouro || ''} ${prospecto.logradouro}, ${prospecto.numero || ''} ${prospecto.complemento || ''}`.trim()
+        : null;
+
+      const virtualCliente = {
+        id: prospecto.id,
+        nome: prospecto.nomeFantasia || prospecto.razaoSocial,
+        email: prospecto.email,
+        telefone: prospecto.telefone1,
+        empresa: prospecto.razaoSocial,
+        endereco: enderecoCompleto,
+        cidade: prospecto.municipio,
+        estado: prospecto.uf,
+        cep: prospecto.cep,
+        createdAt: prospecto.createdAt,
+        updatedAt: prospecto.updatedAt,
+        _count: {
+          oportunidades: 0,
+          contatos: 0,
+        },
+        prospecto: prospecto, // Mantém os dados originais do prospecto
+        isVirtual: true, // Flag para indicar que é um prospecto visualizado como cliente
+      };
+
+      return NextResponse.json(virtualCliente);
+    }
+
+    return NextResponse.json(
+      { error: 'Cliente ou Prospecto não encontrado' },
+      { status: 404 }
+    );
   } catch (error) {
-    console.error('Erro ao buscar cliente:', error)
+    console.error('Erro ao buscar cliente:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar cliente' },
       { status: 500 }
-    )
+    );
   }
 }
 

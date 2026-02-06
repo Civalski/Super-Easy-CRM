@@ -4,6 +4,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import {
     ProspectarHeader,
@@ -76,6 +77,14 @@ export default function ProspectarPage() {
 
     // Atualizar status
     const handleStatusChange = async (id: string, newStatus: string, options?: { ultimoContato?: string }) => {
+        // Guardar estado anterior para rollback
+        const previousProspectos = prospectos;
+
+        // Optimistic Update
+        setProspectos(prev =>
+            prev.map(p => p.id === id ? { ...p, status: newStatus, ...(options?.ultimoContato ? { ultimoContato: options.ultimoContato } : {}) } : p)
+        );
+
         try {
             const payload: Record<string, unknown> = { status: newStatus };
             if (options?.ultimoContato) {
@@ -90,15 +99,14 @@ export default function ProspectarPage() {
 
             if (!response.ok) throw new Error('Erro ao atualizar status');
 
-            // Atualizar local
-            setProspectos(prev =>
-                prev.map(p => p.id === id ? { ...p, status: newStatus, ...(options?.ultimoContato ? { ultimoContato: options.ultimoContato } : {}) } : p)
-            );
-
-            // Recarregar estatísticas
+            // Recarregar estatísticas em background para manter sincronia
             fetchProspectos();
         } catch (err) {
             console.error('Erro ao atualizar status:', err);
+
+            // Revert state
+            setProspectos(previousProspectos);
+
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -118,8 +126,61 @@ export default function ProspectarPage() {
         handleStatusChange(id, novoStatus, ultimoContato ? { ultimoContato } : undefined);
     };
 
-    const handleQualificar = (id: string) => {
-        handleStatusChange(id, 'qualificado');
+    const handleQualificar = async (id: string) => {
+        const result = await Swal.fire({
+            title: 'Qualificar Prospecto?',
+            text: 'Isso criará uma oportunidade na etapa de Qualificação e moverá o prospecto para o pipeline de Vendas.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#9333ea',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sim, qualificar!',
+            cancelButtonText: 'Cancelar',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const response = await fetch(`/api/prospectos/${id}/qualificar`, {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro ao qualificar prospecto');
+            }
+
+            // Remover o prospecto da lista local imediatamente
+            setProspectos(prev => prev.filter(p => p.id !== id));
+
+            // Mostrar mensagem de sucesso
+            await Swal.fire({
+                title: 'Prospecto Qualificado!',
+                text: 'Oportunidade criada com sucesso na etapa de Qualificação.',
+                icon: 'success',
+                confirmButtonColor: '#9333ea',
+                confirmButtonText: 'Ótimo',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+
+            // Recarregar estatísticas
+            fetchProspectos();
+        } catch (err) {
+            console.error('Erro ao qualificar:', err);
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao qualificar prospecto',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Fechar',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+        }
     };
 
     // Atualizar prioridade
@@ -504,9 +565,137 @@ export default function ProspectarPage() {
         setEditingObs(obs);
     };
 
+    // Importar arquivo
+    const handleImport = async (file: File) => {
+        try {
+            // Mostrar loading inicial
+            Swal.fire({
+                title: 'Lendo arquivo...',
+                text: 'Processando planilha Excel',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            // Validar se tem dados
+            if (jsonData.length === 0) {
+                throw new Error('O arquivo está vazio');
+            }
+
+            // Perguntar o tamanho do lote
+            const { value: batchSize } = await Swal.fire({
+                title: 'Dividir em Lotes',
+                text: 'Defina quantos prospectos devem ficar em cada lote (ideal para metas diárias)',
+                icon: 'question',
+                input: 'number',
+                inputValue: 30,
+                inputLabel: 'Tamanho do Lote',
+                showCancelButton: true,
+                confirmButtonText: 'Importar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (value) => {
+                    if (!value || parseInt(value) <= 0) {
+                        return 'Por favor, insira um número maior que 0';
+                    }
+                    return null;
+                },
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+
+            if (!batchSize) return; // Cancelado pelo usuário
+
+            // Enviar para API
+            Swal.update({
+                title: 'Importando...',
+                text: `Enviando ${jsonData.length} registros para o servidor`
+            });
+
+            const response = await fetch('/api/prospectos/importar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    empresas: jsonData,
+                    batchSize: parseInt(batchSize),
+                    fileName: file.name
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || result.detalhes || 'Erro ao importar dados');
+            }
+
+            // Feedback visual
+            await Swal.fire({
+                title: 'Importação Concluída!',
+                html: `
+                    <div style="text-align: left; padding: 10px;">
+                        <p class="mb-2">O arquivo foi processado com sucesso.</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                            <div style="background: #065f46; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: bold; color: #34d399;">${result.importados}</div>
+                                <div style="font-size: 12px; color: #6ee7b7;">Novos</div>
+                            </div>
+                            <div style="background: #92400e; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: bold; color: #fbbf24;">${result.duplicados}</div>
+                                <div style="font-size: 12px; color: #fcd34d;">Duplicados</div>
+                            </div>
+                        </div>
+                        ${result.erros && result.erros.length > 0 ? `
+                            <div style="margin-top: 15px; max-height: 100px; overflow-y: auto; background: #374151; padding: 8px; border-radius: 4px; font-size: 11px;">
+                                <strong style="color: #fca5a5;">Erros (${result.erros.length}):</strong>
+                                <ul style="margin-left: 15px; margin-top: 5px; color: #d1d5db;">
+                                    ${result.erros.slice(0, 5).map((e: string) => `<li>${e}</li>`).join('')}
+                                    ${result.erros.length > 5 ? `<li>...e mais ${result.erros.length - 5} erros</li>` : ''}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `,
+                icon: result.importados > 0 ? 'success' : 'warning',
+                confirmButtonColor: '#9333ea',
+                confirmButtonText: 'Fechar',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+
+            // Atualizar lista
+            fetchProspectos();
+
+        } catch (err) {
+            console.error('Erro ao importar:', err);
+            Swal.fire({
+                title: 'Erro na Importação',
+                text: err instanceof Error ? err.message : 'Não foi possível processar o arquivo.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+            });
+        }
+    };
+
+
     return (
         <div className="space-y-6">
-            <ProspectarHeader loading={loading} onRefresh={fetchProspectos} />
+            <ProspectarHeader
+                loading={loading}
+                onRefresh={fetchProspectos}
+                onImport={handleImport}
+            />
 
             {estatisticas && (
                 <ProspectosEstatisticas

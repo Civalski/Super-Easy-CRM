@@ -46,7 +46,7 @@ export interface ProspectosResponse {
 
 export const STATUS_OPTIONS = [
     { value: 'novo', label: 'Prospectar', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-    { value: 'em_contato', label: 'Prospectar Contatado', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+    { value: 'em_contato', label: 'Contatado', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
     { value: 'qualificado', label: 'Qualificado', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     { value: 'descartado', label: 'Descartado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
     { value: 'convertido', label: 'Convertido', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },

@@ -74,34 +74,26 @@ export function TarefaCard({
                 </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                <div className="flex gap-2">
-                    <Link href={`/tarefas/${tarefa.id}/editar`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
-                            <Pencil size={16} className="mr-2" />
-                            Editar
-                        </Button>
-                    </Link>
-                    <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => onExcluirTarefa(tarefa.id)}
-                        disabled={isExcluindo || isAtualizando}
-                        className="flex-1"
-                    >
-                        {isExcluindo ? (
-                            <>
-                                <Loader2 size={16} className="mr-2 animate-spin" />
-                                Excluindo...
-                            </>
-                        ) : (
-                            <>
-                                <Trash2 size={16} className="mr-2" />
-                                Excluir
-                            </>
-                        )}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                <Link href={`/tarefas/${tarefa.id}/editar`} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full" title="Editar">
+                        <Pencil size={16} />
                     </Button>
-                </div>
+                </Link>
+                <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onExcluirTarefa(tarefa.id)}
+                    disabled={isExcluindo || isAtualizando}
+                    className="flex-1"
+                    title="Excluir"
+                >
+                    {isExcluindo ? (
+                        <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                        <Trash2 size={16} />
+                    )}
+                </Button>
 
                 {activeTab === 'historico' ? (
                     <Button
@@ -109,18 +101,13 @@ export function TarefaCard({
                         size="sm"
                         onClick={() => onVoltarParaPendente(tarefa.id)}
                         disabled={isAtualizando || isExcluindo}
-                        className="w-full"
+                        className="flex-1"
+                        title="Restaurar para Pendente"
                     >
                         {isAtualizando ? (
-                            <>
-                                <Loader2 size={16} className="mr-2 animate-spin" />
-                                Atualizando...
-                            </>
+                            <Loader2 size={16} className="animate-spin" />
                         ) : (
-                            <>
-                                <RotateCcw size={16} className="mr-2" />
-                                Voltar para Pendente
-                            </>
+                            <RotateCcw size={16} />
                         )}
                     </Button>
                 ) : (
@@ -129,18 +116,13 @@ export function TarefaCard({
                         size="sm"
                         onClick={() => onConcluirTarefa(tarefa.id)}
                         disabled={isAtualizando || isExcluindo}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                        title="Concluir Tarefa"
                     >
                         {isAtualizando ? (
-                            <>
-                                <Loader2 size={16} className="mr-2 animate-spin" />
-                                Concluindo...
-                            </>
+                            <Loader2 size={16} className="animate-spin" />
                         ) : (
-                            <>
-                                <CheckCircle2 size={16} className="mr-2" />
-                                Concluir
-                            </>
+                            <CheckCircle2 size={16} />
                         )}
                     </Button>
                 )}

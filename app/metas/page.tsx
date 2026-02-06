@@ -50,7 +50,7 @@ const metricOptions: Array<{ value: GoalMetricType; label: string }> = [
   { value: 'CLIENTES_CONTATADOS', label: 'Clientes contatados' },
   { value: 'PROPOSTAS', label: 'Propostas' },
   { value: 'CLIENTES_CADASTRADOS', label: 'Clientes cadastrados' },
-  { value: 'VENDAS', label: 'Vendas' },
+  { value: 'VENDAS', label: 'Leads' },
   { value: 'QUALIFICACAO', label: 'Qualificacao' },
   { value: 'NEGOCIACAO', label: 'Negociacao' },
   { value: 'PROSPECCAO', label: 'Prospeccao' },
@@ -121,7 +121,7 @@ function getDefaultDates(periodType: GoalPeriodType) {
   }
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
@@ -508,8 +508,8 @@ export default function MetasPage() {
                     </p>
                     <span
                       className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.useDateRange
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
                         }`}
                     >
                       {form.useDateRange ? 'Ativo' : 'Automatico'}
@@ -524,8 +524,8 @@ export default function MetasPage() {
                   onClick={toggleDateRange}
                   aria-pressed={form.useDateRange}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${form.useDateRange
-                      ? 'bg-blue-600'
-                      : 'bg-gray-300 dark:bg-gray-700'
+                    ? 'bg-blue-600'
+                    : 'bg-gray-300 dark:bg-gray-700'
                     }`}
                 >
                   <span
@@ -551,8 +551,8 @@ export default function MetasPage() {
                       type="button"
                       onClick={() => toggleWeekDay(day.value)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
                         }`}
                     >
                       {day.label}
@@ -689,8 +689,8 @@ export default function MetasPage() {
                         </h3>
                         <span
                           className={`text-xs font-medium px-2 py-0.5 rounded-full ${isAutomatic
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
-                              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
                             }`}
                         >
                           {isAutomatic ? 'Automatica' : 'Com periodo'}
