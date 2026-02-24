@@ -6,7 +6,6 @@ export interface SeedResult {
     success: boolean
     message?: string
     resumo?: {
-        ambientes: number
         clientes: number
         contatos: number
         oportunidades: number

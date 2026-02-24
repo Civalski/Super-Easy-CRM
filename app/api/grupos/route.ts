@@ -82,9 +82,6 @@ export async function GET(request: NextRequest) {
                     telefone: p.telefone1,
                     empresa: p.razaoSocial,
                 },
-                ambiente: {
-                    nome: 'Prospecção'
-                }
             }))
             total = count
 
@@ -111,11 +108,7 @@ export async function GET(request: NextRequest) {
                                 empresa: true,
                             },
                         },
-                        ambiente: {
-                            select: {
-                                nome: true,
-                            },
-                        },
+
                     },
                 }),
                 prisma.oportunidade.count({ where: whereOportunidade }),

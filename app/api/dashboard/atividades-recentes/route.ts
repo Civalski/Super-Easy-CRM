@@ -26,8 +26,7 @@ export async function GET(request: NextRequest) {
                 orderBy: { createdAt: 'desc' },
                 take: 10,
                 include: {
-                    cliente: { select: { id: true, nome: true } },
-                    ambiente: { select: { id: true, nome: true } }
+                    cliente: { select: { id: true, nome: true } }
                 }
             }),
             prisma.cliente.findMany({

@@ -87,7 +87,7 @@ export default function OportunidadeHistoricoCard({
     ? STATUS_LABELS[statusToReturn] || statusToReturn
     : null
 
-  const canReturnToPipeline = Boolean(statusToReturn)
+  const canReopen = Boolean(statusToReturn)
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -136,14 +136,14 @@ export default function OportunidadeHistoricoCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={!canReturnToPipeline}
+            disabled={!canReopen}
             onClick={() => {
               if (statusToReturn) {
                 onReturnToPipeline?.(oportunidade.id, statusToReturn)
               }
             }}
           >
-            Retornar ao pipeline
+            Reabrir Proposta
           </Button>
         </div>
       </div>

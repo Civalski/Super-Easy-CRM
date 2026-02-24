@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/common'
-import { AmbienteSelector } from '@/components/features/oportunidades'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 
@@ -38,12 +37,11 @@ export default function EditarOportunidadePage() {
     titulo: '',
     descricao: '',
     valor: '',
-    status: 'prospeccao',
+    status: 'proposta',
     probabilidade: '0',
     dataFechamento: '',
     motivoPerda: '',
     clienteId: '',
-    ambienteId: '',
   })
 
   useEffect(() => {
@@ -70,8 +68,8 @@ export default function EditarOportunidadePage() {
         setFormData({
           titulo: oportunidade.titulo || '',
           descricao: oportunidade.descricao || '',
-          valor: oportunidade.valor ? String(oportunidade.valor) : '',
-          status: oportunidade.status || 'prospeccao',
+          valor: oportunidade.valor ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(oportunidade.valor) : '',
+          status: oportunidade.status || 'proposta',
           probabilidade:
             typeof oportunidade.probabilidade === 'number'
               ? String(oportunidade.probabilidade)
@@ -79,7 +77,6 @@ export default function EditarOportunidadePage() {
           dataFechamento: formatDateInput(oportunidade.dataFechamento),
           motivoPerda: oportunidade.motivoPerda || '',
           clienteId: oportunidade.clienteId || '',
-          ambienteId: oportunidade.ambienteId || '',
         })
 
         if (Array.isArray(clientesData)) {
@@ -117,6 +114,17 @@ export default function EditarOportunidadePage() {
     })
   }
 
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '')
+    if (!rawValue) {
+      setFormData({ ...formData, valor: '' })
+      return
+    }
+    const numericValue = parseInt(rawValue, 10) / 100
+    const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue)
+    setFormData({ ...formData, valor: formatted })
+  }
+
   const handleAddMotivo = async () => {
     const trimmed = novoMotivo.trim()
     if (!trimmed) return
@@ -137,21 +145,10 @@ export default function EditarOportunidadePage() {
     return exists ? motivos : [formData.motivoPerda, ...motivos]
   }, [motivos, formData.motivoPerda])
 
-  const handleAmbienteChange = (ambienteId: string | null) => {
-    setFormData({
-      ...formData,
-      ambienteId: ambienteId || '',
-    })
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!oportunidadeId) return
 
-    if (!formData.ambienteId || formData.ambienteId.trim() === '') {
-      alert('Por favor, selecione um ambiente')
-      return
-    }
 
     if (!formData.clienteId || formData.clienteId.trim() === '') {
       alert('Por favor, selecione um cliente')
@@ -172,10 +169,9 @@ export default function EditarOportunidadePage() {
         },
         body: JSON.stringify({
           ...formData,
-          valor: formData.valor ? parseFloat(formData.valor) : null,
+          valor: formData.valor ? parseFloat(formData.valor.replace(/\./g, '').replace(',', '.')) : null,
           probabilidade: parseInt(formData.probabilidade) || 0,
           clienteId: formData.clienteId || null,
-          ambienteId: formData.ambienteId || null,
           dataFechamento: formData.dataFechamento || null,
           motivoPerda: formData.motivoPerda || null,
         }),
@@ -288,18 +284,6 @@ export default function EditarOportunidadePage() {
               </select>
             </div>
 
-            <div>
-              <label
-                htmlFor="ambienteId"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Ambiente <span className="text-red-500">*</span>
-              </label>
-              <AmbienteSelector
-                ambienteSelecionado={formData.ambienteId || null}
-                onAmbienteChange={handleAmbienteChange}
-              />
-            </div>
 
             <div>
               <label
@@ -309,15 +293,13 @@ export default function EditarOportunidadePage() {
                 Valor (R$)
               </label>
               <input
-                type="number"
+                type="text"
                 id="valor"
                 name="valor"
-                step="0.01"
-                min="0"
                 value={formData.valor}
-                onChange={handleChange}
+                onChange={handleCurrencyChange}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
+                placeholder="0,00"
               />
             </div>
 

@@ -20,11 +20,7 @@ export async function GET(
             nome: true,
           },
         },
-        ambiente: {
-          select: {
-            nome: true,
-          },
-        },
+
       },
     })
 
@@ -63,7 +59,6 @@ export async function PATCH(
       valor,
       probabilidade,
       clienteId,
-      ambienteId,
       dataFechamento,
       motivoPerda,
     } = body
@@ -100,7 +95,7 @@ export async function PATCH(
     if (valor !== undefined) updateData.valor = valor ? parseFloat(String(valor)) : null
     if (probabilidade !== undefined) updateData.probabilidade = parseInt(String(probabilidade))
     if (clienteId !== undefined) updateData.clienteId = clienteId
-    if (ambienteId !== undefined) updateData.ambienteId = ambienteId
+
     if (dataFechamento !== undefined) updateData.dataFechamento = dataFechamento ? new Date(dataFechamento) : null
     if (motivoPerda !== undefined) {
       updateData.motivoPerda = motivoPerda && String(motivoPerda).trim() !== ''
@@ -121,18 +116,7 @@ export async function PATCH(
       }
     }
 
-    if (ambienteId) {
-      const ambiente = await prisma.ambiente.findFirst({
-        where: { id: ambienteId, userId },
-        select: { id: true },
-      })
-      if (!ambiente) {
-        return NextResponse.json(
-          { error: 'Ambiente não encontrado' },
-          { status: 404 }
-        )
-      }
-    }
+
 
     if (status !== undefined && isFechadaOuPerdida && !tinhaStatusFechadaOuPerdida) {
       updateData.statusAnterior = oportunidadeAtual.status
@@ -161,11 +145,7 @@ export async function PATCH(
             nome: true,
           },
         },
-        ambiente: {
-          select: {
-            nome: true,
-          },
-        },
+
       },
     })
 
@@ -180,7 +160,7 @@ export async function PATCH(
     }
     if (error.code === 'P2003') {
       return NextResponse.json(
-        { error: 'Cliente ou ambiente não encontrado' },
+        { error: 'Cliente não encontrado' },
         { status: 404 }
       )
     }

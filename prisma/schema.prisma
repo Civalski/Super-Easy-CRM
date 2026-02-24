@@ -44,7 +44,6 @@ model User {
   motivosPerda          MotivoPerda[]
   clientes              Cliente[]
   contatos              Contato[]
-  ambientes             Ambiente[]
   oportunidades         Oportunidade[]
   tarefas               Tarefa[]
   prospectos            Prospecto[]
@@ -143,21 +142,6 @@ model Contato {
   @@map("contatos")
 }
 
-model Ambiente {
-  id        String   @id @default(cuid())
-  userId    String
-  nome      String
-  descricao String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  oportunidades Oportunidade[]
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("ambientes")
-}
-
 model Oportunidade {
   id             String    @id @default(cuid())
   userId         String
@@ -170,14 +154,12 @@ model Oportunidade {
   probabilidade  Int       @default(0) // 0-100
   dataFechamento DateTime?
   clienteId      String
-  ambienteId     String
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  cliente  Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  ambiente Ambiente @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
-  tarefas  Tarefa[]
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tarefas Tarefa[]
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("oportunidades")

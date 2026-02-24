@@ -129,7 +129,7 @@ export default function ProspectarPage() {
     const handleQualificar = async (id: string) => {
         const result = await Swal.fire({
             title: 'Qualificar Prospecto?',
-            text: 'Isso criará uma oportunidade na etapa de Qualificação e moverá o prospecto para o pipeline de Vendas.',
+            text: 'Isso marcará o prospecto como qualificado e criará uma proposta comercial.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#9333ea',

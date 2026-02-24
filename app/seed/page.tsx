@@ -10,7 +10,6 @@ export default function SeedPage() {
     success: boolean
     message?: string
     resumo?: {
-      ambientes: number
       clientes: number
       contatos: number
       oportunidades: number
@@ -49,7 +48,7 @@ export default function SeedPage() {
           </h1>
 
           <p className="text-gray-600 mb-6">
-            Esta ferramenta cria dados fake de clientes, oportunidades, contatos, tarefas e ambientes
+            Esta ferramenta cria dados fake de clientes, oportunidades, contatos e tarefas
             para você testar as funcionalidades do CRM.
           </p>
 
@@ -71,8 +70,8 @@ export default function SeedPage() {
           {result && (
             <div
               className={`p-4 rounded-lg ${result.success
-                  ? 'bg-green-50 border border-green-200'
-                  : 'bg-red-50 border border-red-200'
+                ? 'bg-green-50 border border-green-200'
+                : 'bg-red-50 border border-red-200'
                 }`}
             >
               <div className="flex items-start">
@@ -95,7 +94,6 @@ export default function SeedPage() {
                         <div className="mt-4 space-y-2">
                           <h4 className="font-medium text-green-900">Resumo:</h4>
                           <ul className="text-sm text-green-800 space-y-1">
-                            <li>• {result.resumo.ambientes} ambientes</li>
                             <li>• {result.resumo.clientes} clientes</li>
                             <li>• {result.resumo.contatos} contatos</li>
                             <li>• {result.resumo.oportunidades} oportunidades</li>
@@ -115,15 +113,14 @@ export default function SeedPage() {
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">Dados que serão criados:</h4>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• 4 ambientes (Vendas, Marketing, Suporte, Parcerias)</li>
               <li>• 10 clientes com informações completas</li>
               <li>• 7 contatos relacionados aos clientes</li>
               <li>• 20 oportunidades em diferentes status do pipeline</li>
               <li>• 25 tarefas com diferentes prioridades e status</li>
             </ul>
             <p className="text-xs text-blue-700 mt-3">
-              <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes, mesmo nome
-              para ambientes), eles não serão duplicados.
+              <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes),
+              eles não serão duplicados.
             </p>
           </div>
         </div>

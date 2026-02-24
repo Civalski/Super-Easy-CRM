@@ -77,23 +77,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             }
         }
 
-        // 2. Garantir um Ambiente (Environment)
-        let ambiente = await prisma.ambiente.findFirst({
-            where: { userId }
-        });
-
-        if (!ambiente) {
-            // Criar ambiente padrão se não existir
-            ambiente = await prisma.ambiente.create({
-                data: {
-                    userId,
-                    nome: 'Geral',
-                    descricao: 'Ambiente padrão'
-                }
-            });
-        }
-
-        // Ler body se existir para status customizado (opcional)
+        // 2. Ler body se existir para status customizado (opcional)
         let targetStatus = 'proposta'; // Default now is Proposta
         try {
             const body = await request.json();
@@ -109,7 +93,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             data: {
                 userId,
                 clienteId: clienteId!,
-                ambienteId: ambiente.id,
                 titulo: `Oportunidade - ${prospecto.nomeFantasia || prospecto.razaoSocial}`,
                 status: targetStatus,
                 valor: 0,

@@ -56,11 +56,7 @@ export async function GET(request: NextRequest) {
             nome: true,
           },
         },
-        ambiente: {
-          select: {
-            nome: true,
-          },
-        },
+
       },
       orderBy: { createdAt: 'desc' },
       take: 10,

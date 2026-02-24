@@ -27,7 +27,6 @@ export async function DELETE(request: NextRequest) {
       const goals = await tx.goal.deleteMany({ where: { userId } })
       const motivosPerda = await tx.motivoPerda.deleteMany({ where: { userId } })
       const clientes = await tx.cliente.deleteMany({ where: { userId } })
-      const ambientes = await tx.ambiente.deleteMany({ where: { userId } })
 
       return {
         tarefas: tarefas.count,
@@ -38,7 +37,6 @@ export async function DELETE(request: NextRequest) {
         metasSnapshots: goalSnapshots.count,
         motivosPerda: motivosPerda.count,
         clientes: clientes.count,
-        ambientes: ambientes.count,
       }
     })
 

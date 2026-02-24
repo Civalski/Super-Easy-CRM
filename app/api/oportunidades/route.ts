@@ -10,14 +10,16 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const { searchParams } = new URL(request.url)
-    const ambienteId = searchParams.get('ambienteId')
-    const where = {
-      userId,
-      ...(ambienteId ? { ambienteId } : {}),
+    const statusFilter = searchParams.get('status') // ex: "proposta,negociacao" ou "fechada,perdida"
+
+    const where: any = { userId }
+    if (statusFilter) {
+      const statuses = statusFilter.split(',').map(s => s.trim())
+      where.status = { in: statuses }
     }
-    
+
     const oportunidades = await prisma.oportunidade.findMany({
       where,
       orderBy: {
@@ -29,11 +31,7 @@ export async function GET(request: NextRequest) {
             nome: true,
           },
         },
-        ambiente: {
-          select: {
-            nome: true,
-          },
-        },
+
       },
     })
 
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const body = await request.json()
     const {
       titulo,
@@ -64,9 +62,9 @@ export async function POST(request: NextRequest) {
       status,
       probabilidade,
       clienteId,
-      ambienteId,
       dataFechamento,
       motivoPerda,
+      prospectoId,
     } = body
 
     // Validação básica
@@ -84,13 +82,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!ambienteId || ambienteId.trim() === '') {
-      return NextResponse.json(
-        { error: 'Ambiente é obrigatório' },
-        { status: 400 }
-      )
-    }
-
     // Verifica se o cliente existe
     const cliente = await prisma.cliente.findFirst({
       where: { id: clienteId, userId },
@@ -102,16 +93,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verifica se o ambiente existe
-    const ambiente = await prisma.ambiente.findFirst({
-      where: { id: ambienteId, userId },
-    })
-    if (!ambiente) {
-      return NextResponse.json(
-        { error: 'Ambiente não encontrado' },
-        { status: 404 }
-      )
-    }
+
 
     if (status === 'perdida' && (!motivoPerda || String(motivoPerda).trim() === '')) {
       return NextResponse.json(
@@ -120,18 +102,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ===== LÓGICA DE AUTO-CLASSIFICAÇÃO =====
+    let finalStatus = status || 'proposta'
+    let statusAutoAtualizado = false
+
+    // 1. Verificar se o cliente já tem oportunidades com status 'proposta'
+    const oportunidadesExistentes = await prisma.oportunidade.findMany({
+      where: {
+        clienteId,
+        userId,
+        status: 'proposta',
+      },
+    })
+
+    if (oportunidadesExistentes.length > 0) {
+      // Se já tem proposta, a nova vai como 'negociação'
+      finalStatus = 'negociacao'
+      statusAutoAtualizado = true
+    }
+
+    // 2. Atualizar oportunidades existentes em prospecção/qualificação para proposta
+    const oportunidadesParaAtualizar = await prisma.oportunidade.findMany({
+      where: {
+        clienteId,
+        userId,
+        status: { in: ['prospeccao', 'qualificacao'] },
+      },
+    })
+
+    if (oportunidadesParaAtualizar.length > 0) {
+      await prisma.oportunidade.updateMany({
+        where: {
+          clienteId,
+          userId,
+          status: { in: ['prospeccao', 'qualificacao'] },
+        },
+        data: {
+          status: 'proposta',
+        },
+      })
+    }
+
+    // Se o status não foi sobrescrito para negociação, manter como proposta
+    if (!statusAutoAtualizado && (status === 'proposta' || !status)) {
+      finalStatus = 'proposta'
+    }
+
     const novaOportunidade = await prisma.oportunidade.create({
       data: {
         userId,
         titulo: titulo.trim(),
         descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
         valor: valor ? parseFloat(String(valor)) : null,
-        status: status || 'prospeccao',
+        status: finalStatus,
         probabilidade: probabilidade ? parseInt(String(probabilidade)) : 0,
         dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
         motivoPerda: motivoPerda ? String(motivoPerda).trim() : null,
         clienteId,
-        ambienteId,
+
       },
       include: {
         cliente: {
@@ -139,20 +167,19 @@ export async function POST(request: NextRequest) {
             nome: true,
           },
         },
-        ambiente: {
-          select: {
-            nome: true,
-          },
-        },
+
       },
     })
 
-    return NextResponse.json(novaOportunidade, { status: 201 })
+    return NextResponse.json(
+      { ...novaOportunidade, statusAutoAtualizado },
+      { status: 201 }
+    )
   } catch (error: any) {
     console.error('Erro ao criar oportunidade:', error)
     if (error.code === 'P2003') {
       return NextResponse.json(
-        { error: 'Cliente ou ambiente não encontrado' },
+        { error: 'Cliente não encontrado' },
         { status: 404 }
       )
     }
@@ -162,4 +189,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

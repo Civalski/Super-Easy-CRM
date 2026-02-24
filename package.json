@@ -5,8 +5,6 @@
   "scripts": {
     "dev": "npm run setup:dev && powershell -ExecutionPolicy Bypass -File ./scripts/kill-ports.ps1 && npm run dev:frontend",
     "dev:frontend": "next dev",
-    "dev:backend": "cd backend && powershell -ExecutionPolicy Bypass -File ./start-backend.ps1",
-    "dev:full": "npm run setup:dev && powershell -ExecutionPolicy Bypass -File ./scripts/kill-ports.ps1 && concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"NEXT,PYTHON\" --prefix-colors \"cyan,magenta\"",
     "build": "npm run setup:prod && npm run db:generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -45,7 +43,6 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
-    "concurrently": "^9.1.2",
     "cross-env": "^10.1.0",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",

@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
-// Dados fake para ambientes
-const ambientes = [
-  { nome: 'Vendas', descricao: 'Ambiente de vendas e prospecção' },
-  { nome: 'Marketing', descricao: 'Campanhas e ações de marketing' },
-  { nome: 'Suporte', descricao: 'Atendimento e suporte técnico' },
-  { nome: 'Parcerias', descricao: 'Parcerias estratégicas' },
-]
 
 // Dados fake para clientes
 const clientesData = [
@@ -141,28 +134,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Criar ambientes
-    console.log('📁 Criando ambientes...')
-    const ambientesCriados = []
-    for (const ambiente of ambientes) {
-      const ambienteExistente = await prisma.ambiente.findFirst({
-        where: { nome: ambiente.nome, userId },
-      })
-      
-      if (!ambienteExistente) {
-        const ambienteCriado = await prisma.ambiente.create({
-          data: {
-            ...ambiente,
-            userId,
-          },
-        })
-        ambientesCriados.push(ambienteCriado)
-        console.log(`  ✓ Ambiente criado: ${ambiente.nome}`)
-      } else {
-        ambientesCriados.push(ambienteExistente)
-        console.log(`  → Ambiente já existe: ${ambiente.nome}`)
-      }
-    }
 
     // Criar clientes
     console.log('👥 Criando clientes...')
@@ -268,9 +239,8 @@ export async function POST(request: NextRequest) {
     const oportunidadesCriadas = []
     for (let i = 0; i < oportunidadesTitulos.length; i++) {
       const cliente = clientesCriados[i % clientesCriados.length]
-      const ambiente = ambientesCriados[i % ambientesCriados.length]
       const status = statusOportunidades[i % statusOportunidades.length]
-      
+
       // Calcular probabilidade baseada no status
       let probabilidade = 0
       switch (status) {
@@ -315,7 +285,7 @@ export async function POST(request: NextRequest) {
           probabilidade: probabilidade,
           dataFechamento: dataFechamento,
           clienteId: cliente.id,
-          ambienteId: ambiente.id,
+
         },
       })
       oportunidadesCriadas.push(oportunidade)
@@ -384,7 +354,7 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < tarefasTitulos.length; i++) {
       const status = statusTarefas[i % statusTarefas.length]
       const prioridade = prioridadesTarefas[i % prioridadesTarefas.length]
-      
+
       // Algumas tarefas relacionadas a clientes, outras a oportunidades
       const cliente = i % 2 === 0 ? clientesCriados[i % clientesCriados.length] : null
       const oportunidade = i % 2 === 1 ? oportunidadesCriadas[i % oportunidadesCriadas.length] : null
@@ -411,7 +381,6 @@ export async function POST(request: NextRequest) {
     }
 
     const resumo = {
-      ambientes: ambientesCriados.length,
       clientes: clientesCriados.length,
       contatos: contatosCriados,
       oportunidades: oportunidadesCriadas.length,

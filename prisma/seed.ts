@@ -3,13 +3,6 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-// Dados fake para ambientes
-const ambientes = [
-  { nome: 'Vendas', descricao: 'Ambiente de vendas e prospecção' },
-  { nome: 'Marketing', descricao: 'Campanhas e ações de marketing' },
-  { nome: 'Suporte', descricao: 'Atendimento e suporte técnico' },
-  { nome: 'Parcerias', descricao: 'Parcerias estratégicas' },
-]
 
 // Dados fake para clientes
 const clientesData = [
@@ -149,36 +142,8 @@ async function main() {
 
   const userId = seedUser.id
 
-  // Limpar dados existentes (opcional - descomente se quiser limpar antes de popular)
-  // console.log('🗑️  Limpando dados existentes...')
-  // await prisma.tarefa.deleteMany()
-  // await prisma.oportunidade.deleteMany()
-  // await prisma.contato.deleteMany()
-  // await prisma.cliente.deleteMany()
-  // await prisma.ambiente.deleteMany()
 
-  // Criar ambientes
-  console.log('📁 Criando ambientes...')
-  const ambientesCriados = []
-  for (const ambiente of ambientes) {
-    const ambienteExistente = await prisma.ambiente.findFirst({
-      where: { nome: ambiente.nome, userId },
-    })
-    
-    if (!ambienteExistente) {
-      const ambienteCriado = await prisma.ambiente.create({
-        data: {
-          ...ambiente,
-          userId,
-        },
-      })
-      ambientesCriados.push(ambienteCriado)
-      console.log(`  ✓ Ambiente criado: ${ambiente.nome}`)
-    } else {
-      ambientesCriados.push(ambienteExistente)
-      console.log(`  → Ambiente já existe: ${ambiente.nome}`)
-    }
-  }
+
 
   // Criar clientes
   console.log('👥 Criando clientes...')
@@ -272,9 +237,8 @@ async function main() {
   const oportunidadesCriadas = []
   for (let i = 0; i < oportunidadesTitulos.length; i++) {
     const cliente = clientesCriados[i % clientesCriados.length]
-    const ambiente = ambientesCriados[i % ambientesCriados.length]
     const status = statusOportunidades[i % statusOportunidades.length]
-    
+
     // Calcular probabilidade baseada no status
     let probabilidade = 0
     switch (status) {
@@ -319,7 +283,7 @@ async function main() {
         probabilidade: probabilidade,
         dataFechamento: dataFechamento,
         clienteId: cliente.id,
-        ambienteId: ambiente.id,
+
       },
     })
     oportunidadesCriadas.push(oportunidade)
@@ -377,7 +341,7 @@ async function main() {
   for (let i = 0; i < tarefasTitulos.length; i++) {
     const status = statusTarefas[i % statusTarefas.length]
     const prioridade = prioridadesTarefas[i % prioridadesTarefas.length]
-    
+
     // Algumas tarefas relacionadas a clientes, outras a oportunidades
     const cliente = i % 2 === 0 ? clientesCriados[i % clientesCriados.length] : null
     const oportunidade = i % 2 === 1 ? oportunidadesCriadas[i % oportunidadesCriadas.length] : null
@@ -404,7 +368,6 @@ async function main() {
 
   console.log('\n✨ Seed concluído com sucesso!')
   console.log(`📊 Resumo:`)
-  console.log(`   - ${ambientesCriados.length} ambientes`)
   console.log(`   - ${clientesCriados.length} clientes`)
   console.log(`   - ${oportunidadesCriadas.length} oportunidades`)
   console.log(`   - ${tarefasTitulos.length} tarefas`)

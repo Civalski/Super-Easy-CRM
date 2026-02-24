@@ -43,15 +43,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                     <h4 className="font-medium text-green-900 dark:text-green-300 mb-2">
                                         Resumo dos dados criados:
                                     </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-                                        <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                                            <div className="font-semibold text-green-900 dark:text-green-300">
-                                                {result.resumo.ambientes}
-                                            </div>
-                                            <div className="text-xs text-green-700 dark:text-green-400">
-                                                Ambientes
-                                            </div>
-                                        </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                                         <div className="bg-white dark:bg-gray-800 p-2 rounded">
                                             <div className="font-semibold text-green-900 dark:text-green-300">
                                                 {result.resumo.clientes}

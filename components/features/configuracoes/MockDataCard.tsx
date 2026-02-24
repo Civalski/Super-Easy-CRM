@@ -40,7 +40,7 @@ export function MockDataCard() {
         const isDark = document.documentElement.classList.contains('dark')
         const confirmacao = await Swal.fire({
             title: 'Excluir todos os dados?',
-            text: 'Esta acao remove clientes, contatos, oportunidades, tarefas, prospectos, metas e ambientes da sua conta. Usuarios nao serao apagados.',
+            text: 'Esta acao remove clientes, contatos, oportunidades, tarefas, prospectos e metas da sua conta. Usuarios nao serao apagados.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -68,7 +68,7 @@ export function MockDataCard() {
 
             await Swal.fire({
                 title: 'Dados excluidos!',
-            text: data.message || 'Os dados da sua conta foram excluidos com sucesso.',
+                text: data.message || 'Os dados da sua conta foram excluidos com sucesso.',
                 icon: 'success',
                 confirmButtonColor: '#10b981',
                 background: isDark ? '#1f2937' : '#ffffff',
@@ -100,7 +100,7 @@ export function MockDataCard() {
             </div>
 
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Gere dados mockados atualizados de clientes, oportunidades, contatos, tarefas e ambientes
+                Gere dados mockados atualizados de clientes, oportunidades, contatos e tarefas
                 para testar as funcionalidades do CRM.
             </p>
 
@@ -109,15 +109,13 @@ export function MockDataCard() {
                     Dados que serão criados:
                 </h3>
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>• 4 ambientes (Vendas, Marketing, Suporte, Parcerias)</li>
                     <li>• 10 clientes com informações completas</li>
                     <li>• 7 contatos relacionados aos clientes</li>
                     <li>• 20 oportunidades em diferentes status do pipeline</li>
                     <li>• 25 tarefas com diferentes prioridades e status</li>
                 </ul>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
-                    <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes, mesmo nome
-                    para ambientes), eles não serão duplicados.
+                    <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes), eles não serão duplicados.
                 </p>
             </div>
 

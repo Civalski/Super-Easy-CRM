@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, Handshake } from 'lucide-react'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
 
 // Fallback for formatCurrency if not found
@@ -26,9 +25,6 @@ interface Oportunidade {
         telefone: string | null
         empresa: string | null
     }
-    ambiente: {
-        nome: string
-    }
     type?: 'prospecto' | 'oportunidade'
     subStatus?: string
 }
@@ -41,12 +37,12 @@ interface Meta {
 }
 
 const TABS = [
-    { label: 'Prospecção', value: 'prospeccao' },
-    { label: 'Qualificado', value: 'qualificacao' },
-    { label: 'Proposta', value: 'proposta' },
-    { label: 'Negociação', value: 'negociacao' },
-    { label: 'Vendas', value: 'fechada' },
-    { label: 'Perdidas', value: 'perdida' },
+    { label: 'Prospecção', value: 'prospeccao', icon: Target },
+    { label: 'Qualificado', value: 'qualificacao', icon: Layers },
+    { label: 'Propostas', value: 'proposta', icon: Briefcase },
+    { label: 'Negociação', value: 'negociacao', icon: Handshake },
+    { label: 'Vendas', value: 'fechada', icon: DollarSign },
+    { label: 'Perdidas', value: 'perdida', icon: X },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
@@ -69,6 +65,45 @@ export default function GruposPage() {
     const [motivoOportunidadeId, setMotivoOportunidadeId] = useState<string | null>(null)
     const [motivoItemType, setMotivoItemType] = useState<'prospecto' | 'oportunidade'>('oportunidade')
     const [motivoLoading, setMotivoLoading] = useState(false)
+
+    // Detail modal state
+    const [detailModal, setDetailModal] = useState<any | null>(null)
+    const [detailLoading, setDetailLoading] = useState(false)
+
+    const handleViewDetails = useCallback(async (item: Oportunidade) => {
+        if (item.type === 'prospecto') {
+            setDetailLoading(true)
+            setDetailModal({ loading: true })
+            try {
+                const res = await fetch(`/api/prospectos/${item.id}`)
+                if (res.ok) {
+                    const prospecto = await res.json()
+                    setDetailModal(prospecto)
+                } else {
+                    setDetailModal({
+                        razaoSocial: item.cliente.nome,
+                        email: item.cliente.email,
+                        telefone: item.cliente.telefone,
+                        nomeFantasia: item.cliente.empresa,
+                        _fallback: true,
+                    })
+                }
+            } catch {
+                setDetailModal({
+                    razaoSocial: item.cliente.nome,
+                    email: item.cliente.email,
+                    telefone: item.cliente.telefone,
+                    nomeFantasia: item.cliente.empresa,
+                    _fallback: true,
+                })
+            } finally {
+                setDetailLoading(false)
+            }
+        } else {
+            // Oportunidades: redirecionar para edição
+            window.location.href = `/oportunidades/${item.id}/editar`
+        }
+    }, [])
 
     const fetchGrupos = async () => {
         setLoading(true)
@@ -250,7 +285,10 @@ export default function GruposPage() {
                                 }
               `}
                         >
-                            {tab.label}
+                            <div className="flex items-center gap-2">
+                                {tab.icon && <tab.icon size={18} />}
+                                <span>{tab.label}</span>
+                            </div>
                         </button>
                     ))}
                 </nav>
@@ -284,9 +322,6 @@ export default function GruposPage() {
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Valor
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Ambiente
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Ações
@@ -330,20 +365,14 @@ export default function GruposPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                                                {item.ambiente.nome}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-wrap gap-2">
-                                                <Link href={`/oportunidades/${item.id}/editar`}>
-                                                    <button
-                                                        className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                                                    >
-                                                        <Eye className="w-3 h-3 mr-1.5" />
-                                                        Ver mais
-                                                    </button>
-                                                </Link>
+                                                <button
+                                                    onClick={() => handleViewDetails(item)}
+                                                    className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                                >
+                                                    <Eye className="w-3 h-3 mr-1.5" />
+                                                    Ver mais
+                                                </button>
                                                 {item.type === 'prospecto' && item.subStatus === 'novo' && (
                                                     <button
                                                         onClick={() => handleStartContact(item.id)}
@@ -418,6 +447,321 @@ export default function GruposPage() {
                 onCancel={handleCancelMotivo}
                 loading={motivoLoading}
             />
-        </div >
+
+            {/* Detail Modal */}
+            {detailModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-xl">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Detalhes do Lead</h2>
+                            <button
+                                onClick={() => setDetailModal(null)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            >
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+                        {detailModal.loading ? (
+                            <div className="flex items-center justify-center p-12">
+                                <Loader2 className="animate-spin text-purple-600" size={32} />
+                            </div>
+                        ) : (
+                            <div className="p-6 space-y-6">
+                                {/* Avatar + Nome */}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xl font-semibold text-purple-600 dark:text-purple-300">
+                                            {(detailModal.razaoSocial || detailModal.nome || '?').charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                                            {detailModal.razaoSocial || detailModal.nome || '-'}
+                                        </h3>
+                                        {detailModal.nomeFantasia && (
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{detailModal.nomeFantasia}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Contato rápido */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                        <Mail size={18} className="text-gray-400" />
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Email</p>
+                                            <p className="text-sm text-gray-900 dark:text-white break-all">{detailModal.email || '-'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                        <Phone size={18} className="text-gray-400" />
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Telefone</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.telefone1 || '-'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                        <Building2 size={18} className="text-gray-400" />
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Município / UF</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">
+                                                {detailModal.municipio ? `${detailModal.municipio}${detailModal.uf ? ` - ${detailModal.uf}` : ''}` : '-'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Dados Empresariais */}
+                                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Building2 size={18} className="text-purple-500" />
+                                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Dados Empresariais</h4>
+                                        <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                            Dados da Receita Federal
+                                        </span>
+                                    </div>
+
+                                    {/* CNPJ / Razão / Fantasia */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <FileText size={18} className="text-gray-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">CNPJ</p>
+                                                <p className="text-sm font-mono font-medium text-gray-900 dark:text-white">
+                                                    {detailModal.cnpj || `${detailModal.cnpjBasico || ''}/${detailModal.cnpjOrdem || ''}-${detailModal.cnpjDv || ''}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <Building2 size={18} className="text-gray-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Razão Social</p>
+                                                <p className="text-sm text-gray-900 dark:text-white">{detailModal.razaoSocial || '-'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <Tag size={18} className="text-gray-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Nome Fantasia</p>
+                                                <p className="text-sm text-gray-900 dark:text-white">{detailModal.nomeFantasia || '-'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Capital / Porte / Natureza */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <DollarSign size={18} className="text-green-500 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Capital Social</p>
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                    {(() => {
+                                                        if (!detailModal.capitalSocial) return '-';
+                                                        const valorStr = String(detailModal.capitalSocial);
+                                                        const valorLimpo = valorStr.replace(/\./g, '').replace(',', '.');
+                                                        const valor = Number(valorLimpo);
+                                                        if (isNaN(valor)) return `R$ ${valorStr}`;
+                                                        return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <Briefcase size={18} className="text-gray-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Porte da Empresa</p>
+                                                <p className="text-sm text-gray-900 dark:text-white">{detailModal.porte || '-'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                            <Scale size={18} className="text-gray-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Natureza Jurídica</p>
+                                                <p className="text-sm text-gray-900 dark:text-white">{detailModal.naturezaJuridica || '-'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* CNAE e Matriz */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">CNAE Principal</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">
+                                                {detailModal.cnaePrincipal && (
+                                                    <span className="font-mono mr-2 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                                                        {detailModal.cnaePrincipal}
+                                                    </span>
+                                                )}
+                                                {detailModal.cnaePrincipalDesc || '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Matriz/Filial</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.matrizFilial || '-'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Situação / Abertura / Lote */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Situação Cadastral</p>
+                                            <p className="text-sm">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${detailModal.situacaoCadastral?.toLowerCase().includes('ativa')
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                                    }`}>
+                                                    {detailModal.situacaoCadastral || '-'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Data de Abertura</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.dataAbertura || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Lote de Importação</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.lote || '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Endereço */}
+                                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <MapPin size={18} className="text-gray-400" />
+                                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Endereço</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Endereço</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">
+                                                {`${detailModal.tipoLogradouro || ''} ${detailModal.logradouro || ''}`.trim() || '-'}
+                                                {detailModal.numero ? `, ${detailModal.numero}` : ''}
+                                                {detailModal.complemento ? ` - ${detailModal.complemento}` : ''}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Bairro</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.bairro || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Cidade / UF</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">
+                                                {detailModal.municipio ? `${detailModal.municipio}${detailModal.uf ? ` - ${detailModal.uf}` : ''}` : '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">CEP</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{detailModal.cep || '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Outros Contatos */}
+                                {(detailModal.telefone2 || detailModal.fax) && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Phone size={18} className="text-gray-400" />
+                                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Outros Contatos</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {detailModal.telefone2 && (
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Telefone 2</p>
+                                                    <p className="text-sm text-gray-900 dark:text-white">{detailModal.telefone2}</p>
+                                                </div>
+                                            )}
+                                            {detailModal.fax && (
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Fax</p>
+                                                    <p className="text-sm text-gray-900 dark:text-white">{detailModal.fax}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CNAEs Secundários */}
+                                {detailModal.cnaesSecundarios && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">CNAEs Secundários</p>
+                                        <p className="text-sm text-gray-900 dark:text-white break-words">{detailModal.cnaesSecundarios}</p>
+                                    </div>
+                                )}
+
+                                {/* Metadados */}
+                                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Calendar size={18} className="text-gray-400" />
+                                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Metadados</h4>
+                                    </div>
+                                    <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar size={18} className="text-gray-400" />
+                                            <div>
+                                                <p className="text-xs uppercase">Importado em</p>
+                                                <p className="text-gray-900 dark:text-white">
+                                                    {detailModal.dataImportacao ? new Date(detailModal.dataImportacao).toLocaleDateString('pt-BR') : '-'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {detailModal.ultimoContato && (
+                                            <div className="flex items-center gap-3">
+                                                <Calendar size={18} className="text-gray-400" />
+                                                <div>
+                                                    <p className="text-xs uppercase">Último Contato</p>
+                                                    <p className="text-gray-900 dark:text-white">
+                                                        {new Date(detailModal.ultimoContato).toLocaleDateString('pt-BR')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3">
+                                            <Layers size={18} className="text-gray-400" />
+                                            <div>
+                                                <p className="text-xs uppercase">Status</p>
+                                                <p className="text-gray-900 dark:text-white capitalize">{detailModal.status?.replace('_', ' ') || '-'}</p>
+                                            </div>
+                                        </div>
+                                        {detailModal.prioridade != null && detailModal.prioridade > 0 && (
+                                            <div className="flex items-center gap-3">
+                                                <Star size={18} className="text-gray-400" />
+                                                <div>
+                                                    <p className="text-xs uppercase">Prioridade</p>
+                                                    <div className="flex items-center gap-0.5 mt-0.5">
+                                                        {[1, 2, 3, 4, 5].map((i) => (
+                                                            <Star
+                                                                key={i}
+                                                                size={14}
+                                                                className={i <= detailModal.prioridade ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300 dark:text-gray-600'}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Observações */}
+                                {detailModal.observacoes && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                        <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">Observações</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{detailModal.observacoes}</p>
+                                    </div>
+                                )}
+
+                                {detailModal._fallback && (
+                                    <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                                        Exibindo dados parciais. Não foi possível carregar todos os detalhes.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
     )
 }

@@ -17,12 +17,6 @@ Este projeto usa **somente PostgreSQL (Supabase)**. Os scripts nao alternam mais
 npm run dev
 ```
 
-Se quiser subir o backend Python junto:
-
-```bash
-npm run dev:full
-```
-
 ### Deploy / Build
 
 ```bash
@@ -46,10 +40,6 @@ npm run db:push
 npm run db:migrate
 npm run db:studio
 npm run db:seed
-
-# Backend opcional
-npm run dev:backend
-npm run dev:full
 ```
 
 ---
@@ -107,3 +97,4 @@ npm run db:migrate
 
 - DATABASE.md
 - DEPLOY.md
+

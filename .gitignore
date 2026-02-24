@@ -48,23 +48,3 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
-.venv/
-backend-parquet/venv/
-backend-parquet/.env
-
-# Python builds (PyInstaller, etc.)
-/dist-python
-/backend-dist
-/backend/dist
-/backend/build
-*.spec
