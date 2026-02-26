@@ -6,12 +6,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import { LayoutList, LayoutGrid } from 'lucide-react';
 import {
     ProspectarHeader,
-    ProspectosEstatisticas,
     ProspectosFilters,
     ProspectosList,
+    LotesView,
     ObservacoesModal,
+    type AgendamentoEnvio,
     type Prospecto,
     type Estatisticas,
     type ProspectosResponse,
@@ -23,8 +25,15 @@ export default function ProspectarPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Modo de visualização: lista individual ou agrupado por lotes
+    const [viewMode, setViewMode] = useState<'lista' | 'lotes'>('lotes');
+
+    // Estado dos lotes (visualização por lotes)
+    const [lotesData, setLotesData] = useState<{ lote: string; total: number; dataImportacao: string | null }[]>([]);
+    const [totalGeralLotes, setTotalGeralLotes] = useState(0);
+    const [loadingLotes, setLoadingLotes] = useState(false);
+
     // Filtros
-    const [statusFilter, setStatusFilter] = useState<string>('');
     const [loteFilter, setLoteFilter] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -44,6 +53,11 @@ export default function ProspectarPage() {
     // Seleção múltipla
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [agendamentos, setAgendamentos] = useState<AgendamentoEnvio[]>([]);
+    const [loadingAgendamentos, setLoadingAgendamentos] = useState(false);
+    const [isScheduling, setIsScheduling] = useState(false);
+    const [cancellingScheduleId, setCancellingScheduleId] = useState<string | null>(null);
 
     // Carregar prospectos
     const fetchProspectos = useCallback(async () => {
@@ -52,13 +66,14 @@ export default function ProspectarPage() {
 
         try {
             const params = new URLSearchParams();
-            if (statusFilter) params.append('status', statusFilter);
+            // Aba Leads sempre mostra apenas leads frios
+            params.append('origem', 'leads');
             if (loteFilter) params.append('lote', loteFilter);
             params.append('limit', itemsPerPage.toString());
             params.append('offset', (page * itemsPerPage).toString());
 
             const response = await fetch(`/api/prospectos?${params.toString()}`);
-            if (!response.ok) throw new Error('Erro ao carregar prospectos');
+            if (!response.ok) throw new Error('Erro ao carregar leads');
 
             const data: ProspectosResponse = await response.json();
             setProspectos(data.prospectos);
@@ -69,11 +84,78 @@ export default function ProspectarPage() {
         } finally {
             setLoading(false);
         }
-    }, [statusFilter, loteFilter, page]);
+    }, [loteFilter, page]);
+
+    // Carregar resumo dos lotes
+    const fetchLotes = useCallback(async () => {
+        setLoadingLotes(true);
+        try {
+            const res = await fetch('/api/prospectos/lotes');
+            if (!res.ok) throw new Error('Erro ao carregar lotes');
+            const data = await res.json();
+            setLotesData(data.lotes || []);
+            setTotalGeralLotes(data.totalGeral || 0);
+        } catch {
+            setLotesData([]);
+        } finally {
+            setLoadingLotes(false);
+        }
+    }, []);
+
+    const fetchAgendamentos = useCallback(async () => {
+        setLoadingAgendamentos(true);
+        try {
+            const res = await fetch('/api/prospectos/agendamentos?status=ativos');
+            if (!res.ok) throw new Error('Erro ao carregar agendamentos');
+            const data = await res.json();
+            setAgendamentos(data.agendamentos || []);
+        } catch {
+            setAgendamentos([]);
+        } finally {
+            setLoadingAgendamentos(false);
+        }
+    }, []);
+
+    const processarAgendamentosPendentes = useCallback(async () => {
+        try {
+            const res = await fetch('/api/prospectos/agendamentos/processar', {
+                method: 'POST',
+            });
+            if (!res.ok) return;
+
+            const data = await res.json();
+            if ((data.processados ?? 0) > 0) {
+                const isDark = document.documentElement.classList.contains('dark');
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `${data.enviados ?? 0} lead(s) enviados automaticamente`,
+                    text: `${data.processados} agendamento(s) processado(s) hoje`,
+                    showConfirmButton: false,
+                    timer: 3500,
+                    timerProgressBar: true,
+                    background: isDark ? '#1f2937' : '#ffffff',
+                    color: isDark ? '#f3f4f6' : '#111827',
+                });
+            }
+        } catch {
+            // Falha silenciosa para nao travar carregamento da pagina
+        }
+    }, []);
 
     useEffect(() => {
-        fetchProspectos();
-    }, [fetchProspectos]);
+        processarAgendamentosPendentes();
+    }, [processarAgendamentosPendentes]);
+
+    useEffect(() => {
+        if (viewMode === 'lista') {
+            fetchProspectos();
+        } else {
+            fetchLotes();
+            fetchAgendamentos();
+        }
+    }, [viewMode, fetchProspectos, fetchLotes, fetchAgendamentos]);
 
     // Atualizar status
     const handleStatusChange = async (id: string, newStatus: string, options?: { ultimoContato?: string }) => {
@@ -490,7 +572,7 @@ export default function ProspectarPage() {
             const params = new URLSearchParams();
             params.append('all', 'true');
             if (loteFilter) params.append('lote', loteFilter);
-            if (statusFilter) params.append('status', statusFilter);
+            params.append('status', 'lead_frio');
 
             const response = await fetch(`/api/prospectos/bulk?${params.toString()}`, {
                 method: 'DELETE',
@@ -532,6 +614,336 @@ export default function ProspectarPage() {
             });
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    // ====== HANDLERS DE LOTES (modo visualização por lotes) ======
+
+    // Enviar um lote específico ao funil
+    const handleEnviarLote = async (lote: string) => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const bg = isDark ? '#1f2937' : '#ffffff';
+        const color = isDark ? '#f3f4f6' : '#111827';
+
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Enviar Lote ao Funil',
+            html: `Deseja enviar todos os leads do lote <strong>"${lote}"</strong> para o Funil de Prospecção?`,
+            showCancelButton: true,
+            confirmButtonText: 'Sim, enviar!',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7c3aed',
+            cancelButtonColor: '#6b7280',
+            background: bg,
+            color,
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setIsSending(true);
+        try {
+            const response = await fetch('/api/prospectos/bulk', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lote: lote === '(sem lote)' ? '' : lote }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Erro ao enviar lote');
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${data.atualizados} leads do lote "${lote}" enviados ao funil!`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                background: bg,
+                color,
+            });
+
+            fetchLotes(); // Atualizar lista de lotes
+        } catch (err) {
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao enviar lote.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: bg,
+                color,
+            });
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    // Excluir todos os leads de um lote
+    const handleExcluirLote = async (lote: string) => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const bg = isDark ? '#1f2937' : '#ffffff';
+        const color = isDark ? '#f3f4f6' : '#111827';
+
+        const confirm = await Swal.fire({
+            icon: 'warning',
+            title: 'Excluir Lote?',
+            html: `Todos os leads do lote <strong>"${lote}"</strong> serão excluídos permanentemente.<br><span style="color:#fbbf24">Esta ação não pode ser desfeita.</span>`,
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir lote!',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            background: bg,
+            color,
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setIsDeleting(true);
+        try {
+            const params = new URLSearchParams({ all: 'true', lote: lote === '(sem lote)' ? '' : lote, status: 'lead_frio' });
+            const response = await fetch(`/api/prospectos/bulk?${params}`, { method: 'DELETE' });
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Erro ao excluir lote');
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${data.excluidos} leads excluídos do lote "${lote}"`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                background: bg,
+                color,
+            });
+
+            fetchLotes();
+        } catch (err) {
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao excluir lote.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: bg,
+                color,
+            });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleAgendarLotes = async (itens: { lote: string; dataEnvio: string }[]) => {
+        if (itens.length === 0) return;
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const bg = isDark ? '#1f2937' : '#ffffff';
+        const color = isDark ? '#f3f4f6' : '#111827';
+        const preview = itens
+            .slice(0, 6)
+            .map((item) => `<li><strong>${item.lote}</strong> - ${item.dataEnvio}</li>`)
+            .join('');
+
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Salvar programacao de envios?',
+            html: `
+                <p>Serao criados <strong>${itens.length}</strong> agendamento(s).</p>
+                <ul style="text-align:left; margin-top: 8px; padding-left: 18px;">
+                    ${preview}
+                    ${itens.length > 6 ? `<li>... e mais ${itens.length - 6}</li>` : ''}
+                </ul>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar agenda',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            background: bg,
+            color,
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setIsScheduling(true);
+        try {
+            const response = await fetch('/api/prospectos/agendamentos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    itens: itens.map((item) => ({
+                        lote: item.lote === '(sem lote)' ? null : item.lote,
+                        dataEnvio: item.dataEnvio,
+                    })),
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Erro ao salvar agendamentos');
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${data.total || itens.length} agendamento(s) criado(s)`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                background: bg,
+                color,
+            });
+
+            fetchAgendamentos();
+        } catch (err) {
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao salvar programacao.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: bg,
+                color,
+            });
+        } finally {
+            setIsScheduling(false);
+        }
+    };
+
+    const handleCancelarAgendamento = async (id: string) => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const bg = isDark ? '#1f2937' : '#ffffff';
+        const color = isDark ? '#f3f4f6' : '#111827';
+
+        const confirm = await Swal.fire({
+            icon: 'warning',
+            title: 'Cancelar agendamento?',
+            text: 'Este envio automatico nao sera executado.',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, cancelar',
+            cancelButtonText: 'Voltar',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            background: bg,
+            color,
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setCancellingScheduleId(id);
+        try {
+            const response = await fetch(`/api/prospectos/agendamentos?id=${id}`, {
+                method: 'DELETE',
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Erro ao cancelar agendamento');
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Agendamento cancelado',
+                showConfirmButton: false,
+                timer: 2500,
+                background: bg,
+                color,
+            });
+
+            fetchAgendamentos();
+        } catch (err) {
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao cancelar agendamento.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: bg,
+                color,
+            });
+        } finally {
+            setCancellingScheduleId(null);
+        }
+    };
+
+    // Enviar leads frios ao funil
+    const handleEnviarAoFunil = async (opcao: 'selecionados' | 'lote' | 'todos') => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const bg = isDark ? '#1f2937' : '#ffffff';
+        const color = isDark ? '#f3f4f6' : '#111827';
+
+        let descricao = '';
+        let payload: Record<string, unknown> = {};
+
+        if (opcao === 'selecionados') {
+            if (selectedIds.size === 0) return;
+            descricao = `<strong>${selectedIds.size}</strong> lead(s) selecionado(s)`;
+            payload = { ids: Array.from(selectedIds) };
+        } else if (opcao === 'lote' && loteFilter) {
+            descricao = `todos os leads do lote <strong>${loteFilter}</strong>`;
+            payload = { lote: loteFilter };
+        } else {
+            descricao = `<strong>todos</strong> os leads frios (${estatisticas?.lead_frio ?? estatisticas?.total ?? 0})`;
+            payload = { todos: true };
+        }
+
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Enviar ao Funil',
+            html: `Deseja enviar ${descricao} para o Funil de Prospecção? Eles aparecerão como <strong>"Prospectar"</strong> no funil.`,
+            showCancelButton: true,
+            confirmButtonText: 'Sim, enviar!',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7c3aed',
+            cancelButtonColor: '#6b7280',
+            background: bg,
+            color,
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setIsSending(true);
+        try {
+            const response = await fetch('/api/prospectos/bulk', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Erro ao enviar ao funil');
+
+            setSelectedIds(new Set());
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Leads Enviados! 🎯',
+                html: `
+                    <div style="padding: 10px 0;">
+                        <div style="background: #4c1d95; padding: 16px 24px; border-radius: 12px; text-align: center; display: inline-block;">
+                            <div style="font-size: 32px; font-weight: bold; color: #c4b5fd;">${data.atualizados?.toLocaleString('pt-BR') || 0}</div>
+                            <div style="font-size: 12px; color: #a78bfa;">leads enviados ao funil</div>
+                        </div>
+                        <p style="margin-top: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 13px;">Acesse o Funil para ver os leads na etapa de Prospecção.</p>
+                    </div>
+                `,
+                confirmButtonColor: '#7c3aed',
+                confirmButtonText: 'Ótimo!',
+                background: bg,
+                color,
+            });
+
+            fetchProspectos();
+        } catch (err) {
+            console.error('Erro ao enviar ao funil:', err);
+            Swal.fire({
+                title: 'Erro!',
+                text: err instanceof Error ? err.message : 'Erro ao enviar leads ao funil.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                background: bg,
+                color,
+            });
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -691,82 +1103,138 @@ export default function ProspectarPage() {
 
     return (
         <div className="space-y-6">
+            {/* Header com toggle de visualização */}
             <ProspectarHeader
-                loading={loading}
-                onRefresh={fetchProspectos}
+                loading={viewMode === 'lista' ? loading : loadingLotes}
+                isSending={isSending}
+                totalLeadsFrios={viewMode === 'lotes' ? totalGeralLotes : (estatisticas?.lead_frio ?? estatisticas?.total ?? 0)}
+                selectedCount={selectedIds.size}
+                loteFilter={loteFilter}
+                onRefresh={viewMode === 'lotes'
+                    ? () => {
+                        fetchLotes();
+                        fetchAgendamentos();
+                    }
+                    : fetchProspectos}
                 onImport={handleImport}
+                onEnviarAoFunil={viewMode === 'lista' ? handleEnviarAoFunil : undefined}
             />
 
-            {estatisticas && (
-                <ProspectosEstatisticas
-                    estatisticas={estatisticas}
-                    statusFilter={statusFilter}
-                    onStatusFilterChange={setStatusFilter}
+            {/* Toggle Lotes / Lista */}
+            <div className="flex items-center gap-1 p-1 bg-gray-900 border border-gray-700 rounded-xl w-fit">
+                <button
+                    onClick={() => setViewMode('lotes')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'lotes'
+                            ? 'bg-gray-700 text-sky-300 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+                        }`}
+                >
+                    <LayoutGrid className="w-4 h-4" />
+                    Por Lotes
+                </button>
+                <button
+                    onClick={() => setViewMode('lista')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'lista'
+                            ? 'bg-gray-700 text-sky-300 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+                        }`}
+                >
+                    <LayoutList className="w-4 h-4" />
+                    Lista Completa
+                </button>
+            </div>
+
+            {/* ===== MODO LOTES ===== */}
+            {viewMode === 'lotes' && (
+                <LotesView
+                    lotes={lotesData}
+                    totalGeral={totalGeralLotes}
+                    loadingLotes={loadingLotes}
+                    isSending={isSending}
+                    isDeleting={isDeleting}
+                    agendamentos={agendamentos}
+                    loadingAgendamentos={loadingAgendamentos}
+                    isScheduling={isScheduling}
+                    cancellingScheduleId={cancellingScheduleId}
+                    onEnviarLote={handleEnviarLote}
+                    onEnviarTodos={() => handleEnviarAoFunil('todos')}
+                    onExcluirLote={handleExcluirLote}
+                    onAgendarLotes={handleAgendarLotes}
+                    onCancelarAgendamento={handleCancelarAgendamento}
+                    onRefresh={() => {
+                        fetchLotes();
+                        fetchAgendamentos();
+                    }}
                 />
             )}
 
-            <ProspectosFilters
-                searchTerm={searchTerm}
-                statusFilter={statusFilter}
-                loteFilter={loteFilter}
-                lotes={estatisticas?.lotes || []}
-                selectedCount={selectedIds.size}
-                totalCount={filteredProspectos.length}
-                isDeleting={isDeleting}
-                totalAll={estatisticas?.total || 0}
-                onSearchChange={setSearchTerm}
-                onStatusFilterChange={(v) => { setStatusFilter(v); setPage(0); }}
-                onLoteFilterChange={(v) => { setLoteFilter(v); setPage(0); }}
-                onSelectAll={handleSelectAll}
-                onDeleteSelected={handleDeleteMultiple}
-                onDeleteAll={handleDeleteAll}
-            />
+            {/* ===== MODO LISTA ===== */}
+            {viewMode === 'lista' && (
+                <>
+                    <ProspectosFilters
+                        searchTerm={searchTerm}
+                        statusFilter={'lead_frio'}
+                        loteFilter={loteFilter}
+                        lotes={estatisticas?.lotes || []}
+                        selectedCount={selectedIds.size}
+                        totalCount={filteredProspectos.length}
+                        isDeleting={isDeleting}
+                        totalAll={estatisticas?.total || 0}
+                        onSearchChange={setSearchTerm}
+                        onStatusFilterChange={() => { }}
+                        onLoteFilterChange={(v) => { setLoteFilter(v); setPage(0); }}
+                        onSelectAll={handleSelectAll}
+                        onDeleteSelected={handleDeleteMultiple}
+                        onDeleteAll={handleDeleteAll}
+                    />
 
-            <ProspectosList
-                prospectos={filteredProspectos}
-                loading={loading}
-                error={error}
-                openMenuId={openMenuId}
-                selectedIds={selectedIds}
-                onMenuToggle={setOpenMenuId}
-                onStatusChange={handleStatusChange}
-                onPrioridadeChange={handlePrioridadeChange}
-                onEditObservacao={handleEditObservacao}
-                onConverter={handleConverter}
-                onDelete={handleDelete}
-                onToggleSelect={handleToggleSelect}
-                onToggleContato={handleToggleContato}
-                onQualificar={handleQualificar}
-            />
+                    <ProspectosList
+                        prospectos={filteredProspectos}
+                        loading={loading}
+                        error={error}
+                        openMenuId={openMenuId}
+                        selectedIds={selectedIds}
+                        onMenuToggle={setOpenMenuId}
+                        onStatusChange={handleStatusChange}
+                        onPrioridadeChange={handlePrioridadeChange}
+                        onEditObservacao={handleEditObservacao}
+                        onConverter={handleConverter}
+                        onDelete={handleDelete}
+                        onToggleSelect={handleToggleSelect}
+                        onToggleContato={handleToggleContato}
+                        onQualificar={handleQualificar}
+                    />
 
-            {/* Paginacao */}
-            {!loading && totalPages > 1 && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Exibindo {page * itemsPerPage + 1} - {Math.min((page + 1) * itemsPerPage, totalItems)} de {totalItems.toLocaleString('pt-BR')} prospectos
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(0, p - 1))}
-                                disabled={page === 0}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                            >
-                                Anterior
-                            </button>
-                            <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                                Pagina {page + 1} de {totalPages}
-                            </span>
-                            <button
-                                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                                disabled={page >= totalPages - 1}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                            >
-                                Proxima
-                            </button>
+                    {/* Paginação */}
+                    {!loading && totalPages > 1 && (
+                        <div className="crm-card-soft p-4">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Exibindo {page * itemsPerPage + 1} - {Math.min((page + 1) * itemsPerPage, totalItems)} de {totalItems.toLocaleString('pt-BR')} leads
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                                        disabled={page === 0}
+                                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
+                                        Página {page + 1} de {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                                        disabled={page >= totalPages - 1}
+                                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                    >
+                                        Próxima
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    )}
+                </>
             )}
 
             <ObservacoesModal

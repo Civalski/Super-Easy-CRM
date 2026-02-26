@@ -81,7 +81,7 @@ export function AtividadesRecentes({ refreshTrigger, onRefreshRequest }: Ativida
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-full">
+            <div className="crm-card p-6 flex flex-col h-full">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Atividades Recentes
                 </h3>

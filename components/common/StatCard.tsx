@@ -33,7 +33,7 @@ export default function StatCard({
       : 'text-gray-600 dark:text-gray-400'
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="crm-card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
           {title}

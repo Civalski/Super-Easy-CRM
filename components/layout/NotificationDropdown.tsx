@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Calendar, AlertCircle, CheckCircle2, Trash2, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface NotificationProps {
@@ -21,6 +20,8 @@ interface SwipeableItemProps {
 }
 
 const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose }: SwipeableItemProps) => {
+    const SWIPE_ACTION_WIDTH = 72;
+    const SWIPE_DISMISS_THRESHOLD = 52;
     const [startX, setStartX] = useState<number | null>(null);
     const [offsetX, setOffsetX] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -36,12 +37,13 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
         const diff = clientX - startX;
         // Only allow swiping left
         if (diff < 0) {
-            setOffsetX(diff);
+            const clampedDiff = Math.max(diff, -SWIPE_ACTION_WIDTH);
+            setOffsetX(clampedDiff);
         }
     };
 
     const handleEnd = () => {
-        if (offsetX < -100) {
+        if (offsetX <= -SWIPE_DISMISS_THRESHOLD) {
             // Dismiss threshold
             onDismiss(notification.id);
         }
@@ -66,11 +68,19 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
     const onTouchEnd = () => handleEnd();
 
     const isOverdue = (date: string | Date) => {
-        return new Date(date) < new Date();
+        const dueDate = new Date(date);
+        if (Number.isNaN(dueDate.getTime())) return false;
+        return isBefore(startOfDay(dueDate), startOfDay(new Date()));
     };
 
     const getPriorityColor = (priority: string) => {
-        switch (priority) {
+        const normalizedPriority = priority
+            ?.trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        switch (normalizedPriority) {
             case 'alta': return 'text-red-500 bg-red-50 dark:bg-red-900/20';
             case 'media': return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20';
             case 'baixa': return 'text-blue-500 bg-blue-50 dark:bg-blue-900/20';
@@ -79,18 +89,22 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
     };
 
     const overdue = isOverdue(notification.dataVencimento);
+    const swipeProgress = Math.min(Math.max((-offsetX) / SWIPE_ACTION_WIDTH, 0), 1);
 
     return (
-        <div className="relative overflow-hidden w-full border-b border-gray-100 dark:border-gray-700 last:border-b-0 select-none">
+        <div className="relative overflow-hidden w-full border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0 select-none">
             {/* Background for delete action */}
-            <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-4">
+            <div
+                className="absolute inset-y-0 right-0 w-[72px] bg-red-600 flex items-center justify-center pointer-events-none"
+                style={{ opacity: swipeProgress, transition: isDragging ? 'none' : 'opacity 0.15s ease-out' }}
+            >
                 <Trash2 className="text-white" size={20} />
             </div>
 
             {/* Foreground content */}
             <div
                 ref={itemRef}
-                className="relative bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-full cursor-pointer"
+                className="relative z-10 w-full cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 style={{ transform: `translateX(${offsetX}px)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}
                 onMouseDown={onMouseDown}
                 onMouseMove={onMouseMove}
@@ -109,12 +123,12 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
             >
                 <div className="w-full px-4 py-3 text-left">
                     <div className="flex gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${overdue ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${overdue ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'}`}>
                             {overdue ? <AlertCircle size={16} /> : <Calendar size={16} />}
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start mb-1">
-                                <p className={`text-sm font-medium truncate ${overdue ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                                <p className={`text-sm font-medium truncate ${overdue ? 'text-amber-700 dark:text-amber-300' : 'text-gray-900 dark:text-white'}`}>
                                     {notification.titulo}
                                 </p>
                                 {notification.prioridade && (
@@ -154,8 +168,8 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
 
 export function NotificationDropdown({ notifications, isLoading, onClose, onSelect, onClearAll, onDismiss }: NotificationProps) {
     return (
-        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-96 overflow-hidden z-50 flex flex-col">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 sticky top-0 z-10">
+        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 crm-card max-h-96 overflow-hidden z-50 flex flex-col">
+            <div className="p-3 crm-table-head flex justify-between items-center sticky top-0 z-10">
                 <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>
                     <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium">

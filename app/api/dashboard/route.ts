@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
       valorTotalAgg,
       valorGanhosAgg,
       valorPerdidosAgg,
-      oportunidadesStatusGroups
+      oportunidadesStatusGroups,
+      tarefasStatusGroups
     ] = await Promise.all([
       // Contagens baseadas em criação (novos no período)
       prisma.cliente.count({
@@ -92,7 +93,17 @@ export async function GET(request: NextRequest) {
           userId,
           createdAt: dateFilter
         }
-      })
+      }),
+
+      // Task status distribution (Baseado em criacao no periodo)
+      prisma.tarefa.groupBy({
+        by: ['status'],
+        _count: { status: true },
+        where: {
+          userId,
+          createdAt: dateFilter
+        }
+      }),
     ])
 
     const valorTotal = valorTotalAgg._sum.valor || 0
@@ -100,6 +111,11 @@ export async function GET(request: NextRequest) {
     const valorPerdidos = valorPerdidosAgg._sum.valor || 0
 
     const oportunidadesPorStatus = oportunidadesStatusGroups.map((group) => ({
+      status: group.status,
+      _count: group._count.status,
+    }))
+
+    const tarefasPorStatus = tarefasStatusGroups.map((group) => ({
       status: group.status,
       _count: group._count.status,
     }))
@@ -112,6 +128,7 @@ export async function GET(request: NextRequest) {
       valorGanhos,
       valorPerdidos,
       oportunidadesPorStatus,
+      tarefasPorStatus,
     })
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard:', error)
@@ -121,4 +138,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

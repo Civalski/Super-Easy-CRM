@@ -93,7 +93,7 @@ export function MultiSelect({
                     type="button"
                     onClick={() => !disabled && setIsOpen(!isOpen)}
                     disabled={disabled}
-                    className={`w-full px-4 py-3 text-left bg-white dark:bg-gray-800 border rounded-xl shadow-sm transition-colors flex items-center justify-between
+                    className={`w-full px-4 py-3 text-left crm-card-soft transition-colors flex items-center justify-between
                         ${disabled
                             ? 'bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-70'
                             : 'border-gray-300 dark:border-gray-600 hover:border-purple-500 dark:hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400'
@@ -113,7 +113,7 @@ export function MultiSelect({
                 </button>
 
                 {isOpen && !disabled && (
-                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute z-50 w-full mt-2 crm-card overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                         {/* Campo de Busca */}
                         <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                             <div className="relative">
@@ -123,7 +123,7 @@ export function MultiSelect({
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={searchPlaceholder}
-                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 text-gray-900 dark:text-white placeholder-gray-400"
+                                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 text-gray-900 dark:text-white placeholder-gray-400"
                                     autoFocus
                                 />
                             </div>

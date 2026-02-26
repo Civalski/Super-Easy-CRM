@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/common'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 interface Cliente {
   id: string
@@ -57,7 +58,7 @@ export default function EditarOportunidadePage() {
 
         if (!oportunidadeResponse.ok) {
           const error = await oportunidadeResponse.json().catch(() => null)
-          alert(error?.error || 'Erro ao carregar oportunidade')
+          Swal.fire({ icon: 'error', title: 'Erro', text: error?.error || 'Erro ao carregar oportunidade', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
           router.push('/oportunidades')
           return
         }
@@ -87,7 +88,7 @@ export default function EditarOportunidadePage() {
         }
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
-        alert('Erro ao carregar oportunidade. Tente novamente.')
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao carregar oportunidade. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
         router.push('/oportunidades')
       } finally {
         setCarregando(false)
@@ -130,7 +131,7 @@ export default function EditarOportunidadePage() {
     if (!trimmed) return
     const result = await addMotivo(trimmed)
     if (!result.ok) {
-      alert(result.error || 'Nao foi possivel adicionar o motivo')
+      Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Não foi possível adicionar o motivo', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       return
     }
     setFormData((prev) => ({ ...prev, motivoPerda: result.motivo || trimmed }))
@@ -151,12 +152,12 @@ export default function EditarOportunidadePage() {
 
 
     if (!formData.clienteId || formData.clienteId.trim() === '') {
-      alert('Por favor, selecione um cliente')
+      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um cliente', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       return
     }
 
     if (formData.status === 'perdida' && (!formData.motivoPerda || formData.motivoPerda.trim() === '')) {
-      alert('Informe o motivo da perda')
+      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe o motivo da perda', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       return
     }
 
@@ -178,14 +179,27 @@ export default function EditarOportunidadePage() {
       })
 
       if (response.ok) {
+        const result = await response.json()
+        if (result.statusAutoAtualizado) {
+          await Swal.fire({ icon: 'success', title: 'Proposta Salva!', text: 'O status foi atualizado automaticamente para "Negociação" pois o valor foi alterado.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        } else if (formData.status === 'fechada' && result.prospectoConvertidoAutomaticamente) {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Venda Fechada! 🎉',
+            html: 'A proposta foi fechada com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado foi automaticamente promovido a cliente.',
+            confirmButtonColor: '#16a34a',
+            background: '#1f2937',
+            color: '#f3f4f6',
+          })
+        }
         router.push('/oportunidades')
       } else {
         const error = await response.json()
-        alert(error.error || 'Erro ao atualizar oportunidade')
+        Swal.fire({ icon: 'error', title: 'Erro', text: error.error || 'Erro ao atualizar oportunidade', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       }
     } catch (error) {
       console.error('Erro ao atualizar oportunidade:', error)
-      alert('Erro ao atualizar oportunidade. Tente novamente.')
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao atualizar oportunidade. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
     } finally {
       setLoading(false)
     }
@@ -220,7 +234,7 @@ export default function EditarOportunidadePage() {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="crm-card p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">

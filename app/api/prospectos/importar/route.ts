@@ -67,7 +67,7 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
         telefone2: empresa['TELEFONE 2'] || null,
         fax: empresa.FAX || null,
         email: empresa['CORREIO ELETRONICO'] || null,
-        status: 'novo',
+        status: 'lead_frio',
         prioridade: 0,
     };
 }

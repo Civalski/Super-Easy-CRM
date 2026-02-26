@@ -26,7 +26,7 @@ export function TarefasFilters({
     const temFiltrosAtivos = (activeTab === 'pendentes' && filtroStatus !== '') || filtroPrioridade !== ''
 
     return (
-        <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <div className="mb-6 crm-card p-4">
             <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Filter size={18} className="text-gray-500 dark:text-gray-400" />

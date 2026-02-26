@@ -15,7 +15,7 @@ interface TarefasEmptyStateProps {
 export function TarefasEmptyState({ activeTab }: TarefasEmptyStateProps) {
     if (activeTab === 'pendentes') {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <div className="crm-card p-12 text-center">
                 <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     Nenhuma tarefa pendente
@@ -34,7 +34,7 @@ export function TarefasEmptyState({ activeTab }: TarefasEmptyStateProps) {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <div className="crm-card p-12 text-center">
             <History size={48} className="mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Nenhuma tarefa concluída

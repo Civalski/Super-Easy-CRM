@@ -18,7 +18,7 @@ export function ProspectosEstatisticas({
 }: ProspectosEstatisticasProps) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="crm-card-soft p-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
             </div>
@@ -26,7 +26,7 @@ export function ProspectosEstatisticas({
                 <div
                     key={status.value}
                     onClick={() => onStatusFilterChange(statusFilter === status.value ? '' : status.value)}
-                    className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 cursor-pointer transition-all ${statusFilter === status.value ? 'ring-2 ring-purple-500' : 'hover:shadow-md'
+                    className={`crm-card-soft p-4 cursor-pointer transition-all ${statusFilter === status.value ? 'ring-2 ring-purple-500' : 'hover:shadow-md'
                         }`}
                 >
                     <p className="text-sm text-gray-600 dark:text-gray-400">{status.label}</p>

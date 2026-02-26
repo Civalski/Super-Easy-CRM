@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common'
-import { Loader2, Plus, Trash2, Pencil, Target } from 'lucide-react'
+import {
+  Loader2, Plus, Trash2, Pencil, Target, TrendingUp,
+  CheckCircle2, Clock, BarChart3, Phone, Save, X as XIcon,
+  AlertTriangle, Flame, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import Swal from 'sweetalert2'
 
 type GoalMetricType =
@@ -14,6 +18,7 @@ type GoalMetricType =
   | 'QUALIFICACAO'
   | 'NEGOCIACAO'
   | 'PROSPECCAO'
+  | 'FATURAMENTO'
 
 type GoalPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
 
@@ -46,18 +51,36 @@ interface GoalFormState {
   useDateRange: boolean
 }
 
+interface DebitDay {
+  data: string
+  meta: number
+  feitos: number
+  faltam: number
+}
+
+interface MetaContatoData {
+  ativo: boolean
+  metaDiaria: number
+  contatosHoje: number
+  progressoHoje: number
+  debito: DebitDay[]
+  debitoTotal: number
+  hoje: string
+}
+
 const metricOptions: Array<{ value: GoalMetricType; label: string }> = [
   { value: 'CLIENTES_CONTATADOS', label: 'Clientes contatados' },
   { value: 'PROPOSTAS', label: 'Propostas' },
   { value: 'CLIENTES_CADASTRADOS', label: 'Clientes cadastrados' },
-  { value: 'VENDAS', label: 'Leads' },
-  { value: 'QUALIFICACAO', label: 'Qualificacao' },
-  { value: 'NEGOCIACAO', label: 'Negociacao' },
-  { value: 'PROSPECCAO', label: 'Prospeccao' },
+  { value: 'VENDAS', label: 'Vendas (qtd. fechadas)' },
+  { value: 'FATURAMENTO', label: 'Faturamento (R$)' },
+  { value: 'QUALIFICACAO', label: 'Qualificação' },
+  { value: 'NEGOCIACAO', label: 'Negociação' },
+  { value: 'PROSPECCAO', label: 'Prospecção' },
 ]
 
 const periodOptions: Array<{ value: GoalPeriodType; label: string }> = [
-  { value: 'DAILY', label: 'Diaria' },
+  { value: 'DAILY', label: 'Diária' },
   { value: 'WEEKLY', label: 'Semanal' },
   { value: 'MONTHLY', label: 'Mensal' },
   { value: 'CUSTOM', label: 'Personalizada' },
@@ -69,7 +92,7 @@ const weekDayOptions = [
   { value: 3, label: 'Qua' },
   { value: 4, label: 'Qui' },
   { value: 5, label: 'Sex' },
-  { value: 6, label: 'Sab' },
+  { value: 6, label: 'Sáb' },
   { value: 0, label: 'Dom' },
 ]
 
@@ -132,6 +155,25 @@ function formatDate(value?: string | null) {
   }).format(date)
 }
 
+function formatDateShort(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function getProgressColor(value: number, completed: boolean) {
+  if (completed) return 'from-emerald-500 to-green-400'
+  if (value >= 75) return 'from-blue-500 to-indigo-400'
+  if (value >= 40) return 'from-amber-500 to-yellow-400'
+  return 'from-red-500 to-rose-400'
+}
+
+function getProgressBg(value: number, completed: boolean) {
+  if (completed) return 'text-emerald-600 dark:text-emerald-400'
+  if (value >= 75) return 'text-blue-600 dark:text-blue-400'
+  if (value >= 40) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
+}
+
 export default function MetasPage() {
   const initialDates = useMemo(() => getDefaultDates('DAILY'), [])
   const router = useRouter()
@@ -150,6 +192,15 @@ export default function MetasPage() {
     weekDays: [],
     useDateRange: false,
   })
+  const [showForm, setShowForm] = useState(false)
+
+  // Meta Diária de Contatos state
+  const [metaData, setMetaData] = useState<MetaContatoData | null>(null)
+  const [metaLoading, setMetaLoading] = useState(true)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [editMetaValue, setEditMetaValue] = useState('')
+  const [savingMeta, setSavingMeta] = useState(false)
+  const [showDebt, setShowDebt] = useState(false)
 
   const swalBase = {
     background: '#0f172a',
@@ -159,7 +210,7 @@ export default function MetasPage() {
   }
 
   const handleUnauthorized = () => {
-    setError('Sua sessao expirou. Entre novamente para continuar.')
+    setError('Sua sessão expirou. Entre novamente para continuar.')
     router.push('/login')
   }
 
@@ -174,7 +225,6 @@ export default function MetasPage() {
       if (Array.isArray(data)) {
         setGoals(data)
       } else {
-        console.error('API de metas retornou dados em formato inesperado:', data)
         setGoals([])
       }
     } catch (err) {
@@ -185,8 +235,24 @@ export default function MetasPage() {
     }
   }
 
+  const fetchMetaDiaria = async () => {
+    try {
+      const response = await fetch('/api/metas/contatos-diarios')
+      if (response.ok) {
+        const result = await response.json()
+        setMetaData(result)
+        setEditMetaValue(String(result.metaDiaria))
+      }
+    } catch (error) {
+      console.error('Erro ao buscar meta de contatos:', error)
+    } finally {
+      setMetaLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchGoals()
+    fetchMetaDiaria()
   }, [])
 
   const resetForm = () => {
@@ -202,6 +268,7 @@ export default function MetasPage() {
       useDateRange: false,
     })
     setEditingId(null)
+    setShowForm(false)
   }
 
   const handlePeriodTypeChange = (periodType: GoalPeriodType) => {
@@ -268,13 +335,15 @@ export default function MetasPage() {
       weekDays: goal.weekDays ?? [],
       useDateRange: goal.periodType === 'CUSTOM' ? true : hasDateRange,
     })
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleDelete = async (goalId: string) => {
     const resultado = await Swal.fire({
       ...swalBase,
       title: 'Excluir meta?',
-      text: 'Essa acao nao pode ser desfeita.',
+      text: 'Essa ação não pode ser desfeita.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Excluir',
@@ -308,12 +377,6 @@ export default function MetasPage() {
       }
     } catch (err) {
       console.error('Erro ao excluir meta:', err)
-      await Swal.fire({
-        ...swalBase,
-        icon: 'error',
-        title: 'Erro ao excluir',
-        text: 'Erro ao excluir meta. Tente novamente.',
-      })
     }
   }
 
@@ -362,10 +425,105 @@ export default function MetasPage() {
     }
   }
 
+  // Meta diária handlers
+  const handleSaveMeta = async () => {
+    const newValue = parseInt(editMetaValue)
+    if (!newValue || newValue < 1) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Valor inválido',
+        text: 'A meta deve ser um número maior que zero.',
+        confirmButtonColor: '#6366f1',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+      return
+    }
+
+    setSavingMeta(true)
+    try {
+      const response = await fetch('/api/metas/contatos-diarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: newValue }),
+      })
+      if (response.ok) {
+        setEditingMeta(false)
+        await fetchMetaDiaria()
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: `Meta atualizada para ${newValue} contatos/dia`,
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true,
+          background: '#1f2937',
+          color: '#f3f4f6',
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar meta:', error)
+    } finally {
+      setSavingMeta(false)
+    }
+  }
+
+  const handleDismissDay = async (dateStr: string) => {
+    const result = await Swal.fire({
+      title: 'Esquecer meta deste dia?',
+      html: `<p style="color: #e5e7eb;">A meta do dia <strong>${formatDateShort(dateStr)}</strong> será ignorada.</p>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#6366f1',
+      cancelButtonColor: '#4b5563',
+      confirmButtonText: 'Sim, esquecer',
+      cancelButtonText: 'Cancelar',
+      background: '#1f2937',
+      color: '#f3f4f6',
+    })
+    if (result.isConfirmed) {
+      try {
+        await fetch('/api/metas/contatos-diarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'esquecer', data: dateStr }),
+        })
+        await fetchMetaDiaria()
+      } catch (error) {
+        console.error('Erro ao esquecer meta:', error)
+      }
+    }
+  }
+
+  const handleDismissAll = async () => {
+    const result = await Swal.fire({
+      title: 'Esquecer todas as metas pendentes?',
+      html: `<p style="color: #e5e7eb;">Todas as metas acumuladas dos dias anteriores serão ignoradas.</p>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6366f1',
+      cancelButtonColor: '#4b5563',
+      confirmButtonText: 'Sim, esquecer tudo',
+      cancelButtonText: 'Cancelar',
+      background: '#1f2937',
+      color: '#f3f4f6',
+    })
+    if (result.isConfirmed) {
+      try {
+        await fetch('/api/metas/contatos-diarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'esquecer_todos' }),
+        })
+        await fetchMetaDiaria()
+      } catch (error) {
+        console.error('Erro ao esquecer metas:', error)
+      }
+    }
+  }
+
   const activeGoals = goals.filter((goal) => goal.active !== false)
-  const automaticGoals = activeGoals.filter(
-    (goal) => !goal.startDate && !goal.endDate && goal.periodType !== 'CUSTOM'
-  )
   const completedGoals = activeGoals.filter((goal) => (goal.progress ?? 0) >= 100)
   const averageProgress = activeGoals.length
     ? Math.round(
@@ -374,291 +532,323 @@ export default function MetasPage() {
     )
     : 0
 
+  // Include meta diária in total count if active
+  const totalMetasCount = activeGoals.length + (metaData?.ativo ? 1 : 0)
+  const metaDiariaProgress = metaData?.ativo ? metaData.progressoHoje : 0
+  const metaDiariaCompleted = metaData?.ativo && (metaData.contatosHoje >= metaData.metaDiaria)
+
+  const allGoalsForAvg = [
+    ...activeGoals.map(g => g.progress ?? 0),
+    ...(metaData?.ativo ? [metaDiariaProgress] : []),
+  ]
+  const overallAvg = allGoalsForAvg.length
+    ? Math.round(allGoalsForAvg.reduce((a, b) => a + b, 0) / allGoalsForAvg.length)
+    : 0
+  const totalCompleted = completedGoals.length + (metaDiariaCompleted ? 1 : 0)
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-6">
-        {/* Header Padronizado */}
+    <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl shadow-lg shadow-emerald-500/25">
+          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/20">
             <Target className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Metas e Objetivos
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Metas e Objetivos</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Defina e acompanhe suas metas automáticas e personalizadas
+              Defina e acompanhe suas metas de desempenho
             </p>
           </div>
         </div>
+        <button
+          onClick={() => { setShowForm(!showForm); setEditingId(null) }}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
+        >
+          <Plus size={16} />
+          Nova Meta
+        </button>
+      </div>
 
-        {/* Grid de Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Metas Ativas</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              {activeGoals.length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Automáticas</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              {automaticGoals.length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Concluídas</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              {completedGoals.length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Média de Progresso</p>
-            <div className="flex items-end gap-2">
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                {averageProgress}%
-              </p>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2 ml-2">
-                <div
-                  className="h-1.5 rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${Math.min(averageProgress, 100)}%` }}
-                />
-              </div>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="crm-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Ativas</span>
+            <div className="p-1.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
+              <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{totalMetasCount}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">metas em andamento</p>
+        </div>
+
+        <div className="crm-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concluídas</span>
+            <div className="p-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{totalCompleted}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">no período atual</p>
+        </div>
+
+        <div className="crm-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Em Progresso</span>
+            <div className="p-1.5 bg-amber-50 dark:bg-amber-500/10 rounded-lg">
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+            {totalMetasCount - totalCompleted}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">aguardando conclusão</p>
+        </div>
+
+        <div className="crm-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progresso Geral</span>
+            <div className="p-1.5 bg-purple-50 dark:bg-purple-500/10 rounded-lg">
+              <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{overallAvg}%</p>
+          <div className="mt-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+            <div
+              className="h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all"
+              style={{ width: `${Math.min(overallAvg, 100)}%` }}
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4 h-fit xl:col-span-4"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {editingId ? 'Editar meta' : 'Nova meta'}
+      {/* Form (collapses) */}
+      {showForm && (
+        <div className="crm-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {editingId ? 'Editar Meta' : 'Nova Meta'}
             </h2>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Cancelar edicao
-              </button>
-            )}
+            <button
+              onClick={resetForm}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <XIcon size={16} />
+            </button>
           </div>
 
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+          <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {error && (
+              <div className="md:col-span-2 lg:col-span-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                {error}
+              </div>
+            )}
 
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Titulo (opcional)
-            <input
-              type="text"
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex: Meta personalizada"
-            />
-          </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Título (opcional)
+              <input
+                type="text"
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="Ex: Meta personalizada"
+              />
+            </label>
 
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Tipo de meta
-            <select
-              value={form.metricType}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, metricType: event.target.value as GoalMetricType }))
-              }
-              className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {metricOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tipo de meta
+              <select
+                value={form.metricType}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, metricType: event.target.value as GoalMetricType }))
+                }
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                {metricOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Periodo
-            <select
-              value={form.periodType}
-              onChange={(event) => handlePeriodTypeChange(event.target.value as GoalPeriodType)}
-              className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {periodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Período
+              <select
+                value={form.periodType}
+                onChange={(event) => handlePeriodTypeChange(event.target.value as GoalPeriodType)}
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                {periodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          {form.periodType !== 'CUSTOM' && (
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {form.metricType === 'FATURAMENTO' ? 'Meta de Faturamento (R$)' : 'Meta (quantidade)'}
+              <input
+                type="number"
+                min="1"
+                step={form.metricType === 'FATURAMENTO' ? '0.01' : '1'}
+                value={form.target}
+                onChange={(event) => setForm((prev) => ({ ...prev, target: event.target.value }))}
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder={form.metricType === 'FATURAMENTO' ? 'Ex: 50000' : 'Ex: 10'}
+                required
+              />
+            </label>
+
+            {form.periodType === 'WEEKLY' && (
+              <div className="md:col-span-2 space-y-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dias da semana</p>
+                <div className="flex flex-wrap gap-2">
+                  {weekDayOptions.map((day) => {
+                    const active = form.weekDays.includes(day.value)
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => toggleWeekDay(day.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${active
+                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                          : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600'
+                          }`}
+                      >
+                        {day.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {form.periodType !== 'CUSTOM' && (
+              <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 px-4 py-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Limitar por datas
-                    </p>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.useDateRange
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-                        }`}
-                    >
-                      {form.useDateRange ? 'Ativo' : 'Automatico'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Desmarcado = meta automatica, sem inicio ou fim.
-                  </p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Limitar por datas</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Desmarcado = meta automática contínua</p>
                 </div>
                 <button
                   type="button"
                   onClick={toggleDateRange}
                   aria-pressed={form.useDateRange}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${form.useDateRange
-                    ? 'bg-blue-600'
-                    : 'bg-gray-300 dark:bg-gray-700'
-                    }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${form.useDateRange ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
                 >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${form.useDateRange ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                  />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.useDateRange ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
-            </div>
-          )}
-
-          {form.periodType === 'WEEKLY' && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Dias da semana
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {weekDayOptions.map((day) => {
-                  const active = form.weekDays.includes(day.value)
-                  return (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => toggleWeekDay(day.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-                        }`}
-                    >
-                      {day.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Se nenhum dia for selecionado, a meta conta todos os dias da semana.
-              </p>
-            </div>
-          )}
-
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Meta
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={form.target}
-              onChange={(event) => setForm((prev) => ({ ...prev, target: event.target.value }))}
-              className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </label>
-
-          {(form.periodType === 'CUSTOM' || form.useDateRange) && (
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Inicio
-                <input
-                  type="date"
-                  value={form.startDate}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, startDate: event.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Fim
-                <input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, endDate: event.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </label>
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? (
-              <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Plus size={16} className="mr-2" />
-                {editingId ? 'Atualizar meta' : 'Criar meta'}
-              </>
             )}
-          </Button>
-        </form>
 
-        <div className="space-y-4 xl:col-span-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Metas registradas
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Acompanhe o periodo atual e o historico fica salvo para relatorios.
-              </p>
+            {(form.periodType === 'CUSTOM' || form.useDateRange) && (
+              <div className="grid grid-cols-2 gap-3 md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Início
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Fim
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    required
+                  />
+                </label>
+              </div>
+            )}
+
+            <div className="lg:col-span-3 flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <button type="button" onClick={resetForm} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <Button type="submit" disabled={submitting} className="min-w-[160px]">
+                {submitting ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={14} className="mr-2" />
+                    {editingId ? 'Atualizar meta' : 'Criar meta'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Metas Registradas */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Metas Registradas</h2>
+          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
+            {totalMetasCount} {totalMetasCount === 1 ? 'meta' : 'metas'}
+          </span>
+        </div>
+
+        {loading || metaLoading ? (
+          <div className="flex items-center justify-center min-h-[200px] crm-card">
+            <div className="text-center">
+              <Loader2 className="animate-spin mx-auto mb-3 text-emerald-500" size={28} />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Carregando metas...</p>
             </div>
           </div>
-          {loading ? (
-            <div className="flex items-center justify-center min-h-[200px]">
-              <div className="text-center">
-                <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={32} />
-                <p className="text-gray-600 dark:text-gray-400">Carregando metas...</p>
-              </div>
+        ) : totalMetasCount === 0 ? (
+          <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-12 text-center">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-4">
+              <Target className="w-7 h-7 text-emerald-500" />
             </div>
-          ) : goals.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-600 dark:text-gray-400">
-              <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
-                <Target size={22} />
-              </div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                Nenhuma meta criada ainda
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Use o formulario ao lado para adicionar a primeira meta automatica.
-              </p>
-            </div>
-          ) : (
-            goals.map((goal) => {
-              const periodStart = goal.periodStart ?? goal.startDate
-              const periodEnd = goal.periodEnd ?? goal.endDate
+            <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Nenhuma meta criada ainda</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">
+              Comece clicando em &quot;Nova Meta&quot; para definir seus objetivos.
+            </p>
+            <button
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-colors"
+            >
+              <Plus size={15} />
+              Criar primeira meta
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Meta Diária de Contatos — sempre primeiro se ativa */}
+            {metaData?.ativo && (
+              <MetaDiariaCard
+                metaData={metaData}
+                editing={editingMeta}
+                editValue={editMetaValue}
+                saving={savingMeta}
+                showDebt={showDebt}
+                onEditStart={() => setEditingMeta(true)}
+                onEditCancel={() => { setEditingMeta(false); setEditMetaValue(String(metaData.metaDiaria)) }}
+                onEditValueChange={setEditMetaValue}
+                onSave={handleSaveMeta}
+                onToggleDebt={() => setShowDebt(!showDebt)}
+                onDismissDay={handleDismissDay}
+                onDismissAll={handleDismissAll}
+              />
+            )}
+
+            {/* Demais metas */}
+            {goals.map((goal) => {
               const progressValue = typeof goal.progress === 'number' ? goal.progress : 0
               const current = goal.current ?? 0
+              const isCompleted = progressValue >= 100
               const metricLabel =
                 metricOptions.find((option) => option.value === goal.metricType)?.label ??
                 goal.metricType
@@ -668,6 +858,8 @@ export default function MetasPage() {
               const isAutomatic =
                 !goal.startDate && !goal.endDate && goal.periodType !== 'CUSTOM'
               const displayTitle = goal.title?.trim() || metricLabel
+              const periodStart = goal.periodStart ?? goal.startDate
+              const periodEnd = goal.periodEnd ?? goal.endDate
               const weekDaysLabel =
                 goal.weekDays && goal.weekDays.length > 0
                   ? weekDayOptions
@@ -679,94 +871,292 @@ export default function MetasPage() {
               return (
                 <div
                   key={goal.id}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4"
+                  className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                           {displayTitle}
                         </h3>
-                        <span
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${isAutomatic
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
-                            }`}
-                        >
-                          {isAutomatic ? 'Automatica' : 'Com periodo'}
+                        <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${isAutomatic
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                          }`}>
+                          {isAutomatic ? 'Automática' : 'Com período'}
                         </span>
+                        {isCompleted && (
+                          <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                            ✓ Concluída
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60">
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60 text-gray-600 dark:text-gray-400">
                           {metricLabel}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60 text-gray-600 dark:text-gray-400">
                           {periodLabel}
                         </span>
                         {goal.periodType === 'WEEKLY' && (
-                          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900/60 text-gray-600 dark:text-gray-400">
                             {weekDaysLabel}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
                         onClick={() => handleEdit(goal)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                        title="Editar"
                       >
-                        <Pencil size={14} className="mr-2" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
+                        <Pencil size={14} />
+                      </button>
+                      <button
                         onClick={() => handleDelete(goal.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                        title="Excluir"
                       >
-                        <Trash2 size={14} className="mr-2" />
-                        Excluir
-                      </Button>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                  {/* Progress */}
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                       <span>
-                        Progresso: {current}/{goal.target}
+                        {goal.metricType === 'FATURAMENTO'
+                          ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)} de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(goal.target)}`
+                          : `${current} de ${goal.target} concluídos`
+                        }
                       </span>
-                      <span>{progressValue}%</span>
+                      <span className={`font-semibold ${getProgressBg(progressValue, isCompleted)}`}>
+                        {progressValue}%
+                      </span>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                       <div
-                        className="h-2 rounded-full bg-blue-600 transition-all"
+                        className={`h-2 rounded-full bg-gradient-to-r transition-all ${getProgressColor(progressValue, isCompleted)}`}
                         style={{ width: `${Math.min(progressValue, 100)}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600 dark:text-gray-400">
-                    <div>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
-                        Periodo atual:
-                      </span>{' '}
-                      {formatDate(periodStart)} - {formatDate(periodEnd)}
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">Dias:</span>{' '}
-                      {goal.periodType === 'WEEKLY' ? weekDaysLabel : 'N/A'}
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">Status:</span>{' '}
+                  {/* Info Row */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    {(periodStart || periodEnd) && (
+                      <span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Período:</span>{' '}
+                        {formatDate(periodStart)} — {formatDate(periodEnd)}
+                      </span>
+                    )}
+                    <span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Status:</span>{' '}
                       {goal.active === false ? 'Inativa' : 'Ativa'}
-                    </div>
+                    </span>
                   </div>
                 </div>
               )
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
 }
+
+// ── Meta Diária de Contatos Card ──────────────────────────────────────────────
+
+interface MetaDiariaCardProps {
+  metaData: MetaContatoData
+  editing: boolean
+  editValue: string
+  saving: boolean
+  showDebt: boolean
+  onEditStart: () => void
+  onEditCancel: () => void
+  onEditValueChange: (v: string) => void
+  onSave: () => void
+  onToggleDebt: () => void
+  onDismissDay: (date: string) => void
+  onDismissAll: () => void
+}
+
+function MetaDiariaCard({
+  metaData,
+  editing,
+  editValue,
+  saving,
+  showDebt,
+  onEditStart,
+  onEditCancel,
+  onEditValueChange,
+  onSave,
+  onToggleDebt,
+  onDismissDay,
+  onDismissAll,
+}: MetaDiariaCardProps) {
+  const { metaDiaria, contatosHoje, progressoHoje, debito, debitoTotal } = metaData
+  const metaBatida = contatosHoje >= metaDiaria
+  const hasDebt = debito.length > 0
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl ${metaBatida ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-purple-50 dark:bg-purple-500/10'}`}>
+            {metaBatida
+              ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              : <Phone className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            }
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Meta Diária de Contatos</h3>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+                Automática
+              </span>
+              {metaBatida && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                  ✓ Concluída
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Contatos via &quot;Iniciar Contato&quot; na aba Leads
+            </p>
+          </div>
+        </div>
+
+        {/* Edit target */}
+        <div className="flex shrink-0 items-center gap-2">
+          {editing ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min="1"
+                value={editValue}
+                onChange={(e) => onEditValueChange(e.target.value)}
+                className="w-16 px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-center"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSave()
+                  if (e.key === 'Escape') onEditCancel()
+                }}
+              />
+              <button onClick={onSave} disabled={saving}
+                className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 hover:bg-purple-200 transition-colors disabled:opacity-50"
+              >
+                <Save size={14} />
+              </button>
+              <button onClick={onEditCancel}
+                className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <XIcon size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <span className={`text-xl font-bold ${metaBatida ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                  {contatosHoje}
+                </span>
+                <span className="text-sm text-gray-400 dark:text-gray-500">/{metaDiaria}</span>
+              </div>
+              <button onClick={onEditStart}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                title="Editar meta diária"
+              >
+                <Pencil size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="space-y-1.5 mb-3">
+        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span>
+            {contatosHoje < metaDiaria
+              ? `Faltam ${metaDiaria - contatosHoje} contatos`
+              : `🎉 ${contatosHoje - metaDiaria} a mais que a meta!`
+            }
+          </span>
+          <span className={`font-semibold ${metaBatida ? 'text-emerald-600 dark:text-emerald-400' : progressoHoje >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+            {progressoHoje}%
+          </span>
+        </div>
+        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+          <div
+            className={`h-2 rounded-full transition-all duration-500 ${metaBatida ? 'bg-gradient-to-r from-emerald-500 to-green-400' : progressoHoje >= 60 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-rose-400'}`}
+            style={{ width: `${Math.min(100, progressoHoje)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Debt row */}
+      {hasDebt && (
+        <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/10 overflow-hidden">
+          <button
+            onClick={onToggleDebt}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                {debitoTotal} contatos pendentes de {debito.length} dia{debito.length > 1 ? 's' : ''} anteriores
+              </span>
+            </div>
+            {showDebt
+              ? <ChevronUp className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              : <ChevronDown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            }
+          </button>
+
+          {showDebt && (
+            <div className="px-4 pb-3 space-y-2">
+              {debito.map((day) => (
+                <div
+                  key={day.data}
+                  className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-amber-100 dark:border-amber-800/40"
+                >
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {formatDateShort(day.data)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({day.feitos}/{day.meta})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                      -{day.faltam}
+                    </span>
+                    <button
+                      onClick={() => onDismissDay(day.data)}
+                      className="text-xs px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                    >
+                      Esquecer
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={onDismissAll}
+                className="w-full text-xs py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors font-semibold"
+              >
+                Esquecer todas as pendências
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+

@@ -58,7 +58,7 @@ export function ProspectosList({
 }: ProspectosListProps) {
     if (loading) {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="crm-card-soft">
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
                 </div>
@@ -68,7 +68,7 @@ export function ProspectosList({
 
     if (error) {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="crm-card-soft">
                 <div className="text-center py-12 text-red-600 dark:text-red-400">
                     {error}
                 </div>
@@ -78,11 +78,11 @@ export function ProspectosList({
 
     if (prospectos.length === 0) {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="crm-card-soft">
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">Nenhum prospecto encontrado</p>
-                    <p className="text-sm mt-1">Importe leads da aba Leads para comecar</p>
+                    <p className="font-medium">Nenhum lead encontrado</p>
+                    <p className="text-sm mt-1">Importe um arquivo XLSX para adicionar leads frios</p>
                 </div>
             </div>
         );
@@ -96,10 +96,10 @@ export function ProspectosList({
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="crm-card overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] table-fixed">
-                    <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                    <thead className="crm-table-head">
                         <tr>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[48px]">
                                 Sel.
@@ -120,14 +120,15 @@ export function ProspectosList({
                                 Status
                             </th>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
-                                Ações
+                                A??es
                             </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {prospectos.map(prospecto => {
                             const isSelected = selectedIds.has(prospecto.id);
-                            const isContacted = prospecto.status !== 'novo';
+                            const isLeadFrio = prospecto.status === 'lead_frio';
+                            const isContacted = prospecto.status !== 'novo' && !isLeadFrio;
                             const canToggleContato = prospecto.status === 'novo' || prospecto.status === 'em_contato';
                             const canQualificar = prospecto.status === 'novo' || prospecto.status === 'em_contato';
 
@@ -166,7 +167,7 @@ export function ProspectosList({
                                                         <MapPin className="w-3 h-3" />
                                                         {prospecto.municipio}/{prospecto.uf}
                                                     </span>
-                                                    <span className="text-gray-300 dark:text-gray-600">•</span>
+                                                    <span className="text-gray-300 dark:text-gray-600">?</span>
                                                     <span className="truncate">{prospecto.cnpj}</span>
                                                 </div>
                                             </div>
@@ -208,7 +209,7 @@ export function ProspectosList({
                                             )}
                                             {prospecto.ultimoContato && (
                                                 <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                                                    Último contato: {formatDate(prospecto.ultimoContato)}
+                                                    ?ltimo contato: {formatDate(prospecto.ultimoContato)}
                                                 </span>
                                             )}
                                         </div>
@@ -291,7 +292,7 @@ export function ProspectosList({
                                                 </button>
 
                                                 {openMenuId === prospecto.id && (
-                                                    <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                                                    <div className="absolute right-0 mt-1 w-48 crm-card-soft z-10">
                                                         <button
                                                             onClick={() => {
                                                                 onEditObservacao(prospecto.id, prospecto.observacoes || '');
@@ -300,7 +301,7 @@ export function ProspectosList({
                                                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         >
                                                             <MessageSquare className="w-4 h-4" />
-                                                            Adicionar ObservaÃ§Ã£o
+                                                            Adicionar Observa??o
                                                         </button>
 
                                                         {prospecto.status !== 'convertido' && (
@@ -340,3 +341,4 @@ export function ProspectosList({
         </div>
     );
 }
+

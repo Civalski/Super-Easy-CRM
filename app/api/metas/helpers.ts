@@ -267,6 +267,36 @@ export async function computeGoalProgress(goal: {
     return { current, periodStart, periodEnd, active }
   }
 
+  if (metricType === GoalMetricType.FATURAMENTO) {
+    // Soma o valor das oportunidades fechadas no período
+    if (!weekDays || weekDays.length === 0) {
+      const result = await prisma.oportunidade.aggregate({
+        _sum: { valor: true },
+        where: {
+          ...baseWhere,
+          status: 'fechada',
+          updatedAt: { gte: periodStart, lte: periodEnd },
+        },
+      })
+      const current = Math.round(result._sum.valor ?? 0)
+      return { current, periodStart, periodEnd, active }
+    }
+
+    const items = await prisma.oportunidade.findMany({
+      select: { updatedAt: true, valor: true },
+      where: {
+        ...baseWhere,
+        status: 'fechada',
+        updatedAt: { gte: periodStart, lte: periodEnd },
+      },
+    })
+    const filtered = weekDays.length === 0
+      ? items
+      : items.filter((item) => isAllowedDay(item.updatedAt, weekDays))
+    const current = Math.round(filtered.reduce((sum, item) => sum + (item.valor ?? 0), 0))
+    return { current, periodStart, periodEnd, active }
+  }
+
   if (metricsRequiringStatus.has(metricType)) {
     const status = metricStatusMap[metricType]
     if (!status) return { current: 0, periodStart, periodEnd, active }

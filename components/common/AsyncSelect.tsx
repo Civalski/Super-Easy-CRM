@@ -206,7 +206,7 @@ export default function AsyncSelect({
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 crm-card shadow-lg max-h-60 overflow-y-auto">
                     {loading && (
                         <div className="flex items-center justify-center p-4 text-gray-500 dark:text-gray-400">
                             <Loader2 size={20} className="animate-spin mr-2" />

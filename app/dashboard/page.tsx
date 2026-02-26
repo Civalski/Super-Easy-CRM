@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   DashboardHeader,
   DashboardStatsGrid,
   DashboardGoals,
   OportunidadesChart,
+  ValorPipelineChart,
+  TarefasStatusChart,
   AtividadesRecentes,
   DashboardLoading,
 } from '@/components/features/dashboard'
@@ -18,6 +20,10 @@ interface DashboardData {
   valorGanhos: number
   valorPerdidos: number
   oportunidadesPorStatus: Array<{
+    status: string
+    _count: number
+  }>
+  tarefasPorStatus: Array<{
     status: string
     _count: number
   }>
@@ -54,7 +60,7 @@ export default function Dashboard() {
 
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsRefreshing(true)
       setGoalsLoading(true)
@@ -86,11 +92,11 @@ export default function Dashboard() {
       setIsRefreshing(false)
       setGoalsLoading(false)
     }
-  }
+  }, [dateFilter, selectedDate])
 
   useEffect(() => {
     fetchDashboardData()
-  }, [dateFilter, selectedDate])
+  }, [fetchDashboardData])
 
 
 
@@ -115,10 +121,23 @@ export default function Dashboard() {
         <DashboardGoals goals={goals} loading={goalsLoading} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <OportunidadesChart
           data={data.oportunidadesPorStatus}
           totalOportunidades={data.oportunidadesCount}
+        />
+        <ValorPipelineChart
+          valorTotal={data.valorTotal}
+          valorGanhos={data.valorGanhos}
+          valorPerdidos={data.valorPerdidos}
+          oportunidadesPorStatus={data.oportunidadesPorStatus}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <TarefasStatusChart
+          tarefasPorStatus={data.tarefasPorStatus}
+          oportunidadesCount={data.oportunidadesCount}
         />
         <AtividadesRecentes refreshTrigger={lastUpdate} onRefreshRequest={fetchDashboardData} />
       </div>

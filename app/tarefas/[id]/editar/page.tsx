@@ -177,7 +177,7 @@ export default function EditarTarefaPage() {
         <p className="text-gray-600 dark:text-gray-400">Atualize os dados da tarefa</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="crm-card p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">

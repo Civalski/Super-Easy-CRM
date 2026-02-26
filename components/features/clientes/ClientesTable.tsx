@@ -57,9 +57,9 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="crm-card overflow-hidden">
             <table className="w-full table-fixed">
-                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <thead className="crm-table-head">
                     <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[22%]">
                             Cliente

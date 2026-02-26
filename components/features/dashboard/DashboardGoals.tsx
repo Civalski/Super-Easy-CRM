@@ -78,7 +78,7 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 animate-pulse">
+      <div className="crm-card p-5 animate-pulse">
         <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
@@ -97,7 +97,7 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+    <div className="crm-card p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">

@@ -16,6 +16,7 @@ import {
   DollarSign,
   Info,
 } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 interface Oportunidade {
   id: string
@@ -136,6 +137,23 @@ export default function PropostasPage() {
   )
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    // Confirmação ao fechar uma venda
+    if (newStatus === 'fechada') {
+      const confirm = await Swal.fire({
+        icon: 'question',
+        title: 'Fechar Venda',
+        text: 'Confirmar o fechamento desta proposta como venda? O lead vinculado será convertido em cliente automaticamente, caso ainda não seja.',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, fechar venda!',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+      if (!confirm.isConfirmed) return
+    }
+
     try {
       const response = await fetch(`/api/oportunidades/${id}`, {
         method: 'PATCH',
@@ -143,10 +161,37 @@ export default function PropostasPage() {
         body: JSON.stringify({ status: newStatus }),
       })
       if (response.ok) {
+        const data = await response.json()
         fetchOportunidades()
+
+        if (newStatus === 'fechada') {
+          if (data.prospectoConvertidoAutomaticamente) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Venda Fechada! 🎉',
+              html: 'A proposta foi fechada com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado a esta proposta foi automaticamente promovido a cliente.',
+              confirmButtonColor: '#16a34a',
+              background: '#1f2937',
+              color: '#f3f4f6',
+            })
+          } else {
+            Swal.fire({
+              icon: 'success',
+              title: 'Venda Fechada! 🎉',
+              text: 'A proposta foi fechada com sucesso.',
+              confirmButtonColor: '#16a34a',
+              background: '#1f2937',
+              color: '#f3f4f6',
+            })
+          }
+        }
+      } else {
+        const data = await response.json()
+        Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao atualizar status', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error)
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao atualizar status. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
     }
   }
 
@@ -185,28 +230,28 @@ export default function PropostasPage() {
 
       {/* Estatísticas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
             <Briefcase size={16} />
             <span className="text-xs font-medium">Em Aberto</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.abertas}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
             <DollarSign size={16} />
             <span className="text-xs font-medium">Valor Total</span>
           </div>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(stats.valorTotal)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-1">
             <FileText size={16} />
             <span className="text-xs font-medium">Proposta</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.emProposta}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
             <Handshake size={16} />
             <span className="text-xs font-medium">Negociação</span>
@@ -253,7 +298,7 @@ export default function PropostasPage() {
       {!loading && activeTab === 'abertas' && (
         <div>
           {propostasAbertas.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[300px] bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center justify-center min-h-[300px] crm-card">
               <Briefcase size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
               <p className="text-gray-600 dark:text-gray-400 mb-2">Nenhuma proposta em aberto</p>
               <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
@@ -273,7 +318,7 @@ export default function PropostasPage() {
                 return (
                   <div
                     key={oportunidade.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+                    className="crm-card p-4 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
@@ -338,7 +383,7 @@ export default function PropostasPage() {
       {!loading && activeTab === 'historico' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Vendas */}
-          <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <section className="crm-card p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <DollarSign className="text-green-600 dark:text-green-400" size={18} />
@@ -391,7 +436,7 @@ export default function PropostasPage() {
           </section>
 
           {/* Perdidas */}
-          <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <section className="crm-card p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <X className="text-red-600 dark:text-red-400" size={18} />
@@ -511,7 +556,7 @@ function CreatePropostaModal({
     e.preventDefault()
 
     if (!selectedPerson) {
-      alert('Por favor, selecione um cliente ou lead')
+      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um cliente ou lead', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       return
     }
 
@@ -565,14 +610,14 @@ function CreatePropostaModal({
         if (result.statusAutoAtualizado) {
           msg += ` Status definido como "${result.status === 'negociacao' ? 'Negociação' : 'Proposta'}".`
         }
-        alert(msg)
+        await Swal.fire({ icon: 'success', title: 'Proposta Criada!', text: msg, confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
         onCreated()
       } else {
-        alert(result.error || 'Erro ao criar proposta')
+        Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Erro ao criar proposta', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       }
     } catch (error: any) {
       console.error('Erro ao criar proposta:', error)
-      alert(error.message || 'Erro ao criar proposta. Tente novamente.')
+      Swal.fire({ icon: 'error', title: 'Erro', text: error.message || 'Erro ao criar proposta. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
     } finally {
       setLoading(false)
     }
@@ -580,7 +625,7 @@ function CreatePropostaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="crm-card w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
@@ -722,3 +767,4 @@ function CreatePropostaModal({
     </div>
   )
 }
+

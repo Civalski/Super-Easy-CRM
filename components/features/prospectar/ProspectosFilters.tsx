@@ -68,7 +68,7 @@ export function ProspectosFilters({
     return (
         <div className="space-y-3">
             {/* Filtros */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="crm-card-soft p-4">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -99,26 +99,28 @@ export function ProspectosFilters({
                             </div>
                         )}
 
-                        {/* Filtro por Status */}
-                        <div className="flex items-center gap-2">
-                            <Filter className="w-4 h-4 text-gray-400" />
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => onStatusFilterChange(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            >
-                                <option value="">Todos os Status</option>
-                                {STATUS_OPTIONS.map(s => (
-                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Filtro por Status (oculto na aba Leads, pois só mostra lead_frio) */}
+                        {statusFilter !== 'lead_frio' && (
+                            <div className="flex items-center gap-2">
+                                <Filter className="w-4 h-4 text-gray-400" />
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => onStatusFilterChange(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                >
+                                    <option value="">Todos os Status</option>
+                                    {STATUS_OPTIONS.map(s => (
+                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Barra de seleção e ações em massa */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
+            <div className="crm-card-soft p-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <button

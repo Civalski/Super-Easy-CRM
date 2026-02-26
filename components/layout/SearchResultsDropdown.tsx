@@ -22,7 +22,7 @@ export function SearchResultsDropdown({
     onOportunidadeClick,
 }: SearchResultsDropdownProps) {
     return (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 crm-card max-h-96 overflow-y-auto z-50">
             {carregando ? (
                 <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     Buscando...
@@ -36,7 +36,7 @@ export function SearchResultsDropdown({
                     {/* Clientes */}
                     {resultados?.clientes && resultados.clientes.length > 0 && (
                         <div>
-                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                            <div className="px-4 py-2 crm-table-head">
                                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                                     Clientes ({resultados.clientes.length})
                                 </h3>
@@ -45,7 +45,7 @@ export function SearchResultsDropdown({
                                 <button
                                     key={cliente.id}
                                     onClick={() => onClienteClick(cliente.id)}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                    className="w-full px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
@@ -70,7 +70,7 @@ export function SearchResultsDropdown({
                     {/* Oportunidades */}
                     {resultados?.oportunidades && resultados.oportunidades.length > 0 && (
                         <div>
-                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                            <div className="px-4 py-2 crm-table-head">
                                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                                     Oportunidades ({resultados.oportunidades.length})
                                 </h3>
@@ -79,7 +79,7 @@ export function SearchResultsDropdown({
                                 <button
                                     key={oportunidade.id}
                                     onClick={() => onOportunidadeClick(oportunidade.id)}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                    className="w-full px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">

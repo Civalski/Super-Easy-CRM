@@ -5,7 +5,7 @@
 'use client'
 
 import { RefreshCw, LayoutDashboard, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
-import { format, addMonths, subMonths, isSameMonth } from 'date-fns'
+import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useEffect } from 'react'
 
@@ -77,7 +77,7 @@ export function DashboardHeader({
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl shadow-lg shadow-orange-500/20 ring-1 ring-black/5">
+                <div className="rounded-2xl bg-gradient-to-br from-slate-600 to-indigo-500 p-3 shadow-lg shadow-slate-900/45 ring-1 ring-white/10">
                     <LayoutDashboard className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -92,15 +92,15 @@ export function DashboardHeader({
 
             <div className="flex flex-wrap items-center gap-3">
                 {/* Controls Container */}
-                <div className="flex items-center bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm z-20">
+                <div className="flex items-center crm-card-soft p-1.5 z-20">
                     {/* Today Button */}
                     <button
                         onClick={handleTodayClick}
                         className={`
                             px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200
                             ${filterType === 'day'
-                                ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 ring-1 ring-orange-200 dark:ring-orange-800'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                                ? 'bg-slate-700/80 text-slate-100 ring-1 ring-slate-500/60'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-slate-700/45 hover:text-slate-100'
                             }
                         `}
                     >
@@ -113,7 +113,7 @@ export function DashboardHeader({
                     <div className="flex items-center gap-1 relative month-picker-container">
                         <button
                             onClick={() => navigateMonth('prev')}
-                            className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                            className="p-1.5 rounded-lg text-gray-500 transition-colors hover:bg-slate-700/45 hover:text-slate-100"
                             title="Mês anterior"
                         >
                             <ChevronLeft size={18} />
@@ -130,15 +130,15 @@ export function DashboardHeader({
                             className={`
                                 relative px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none
                                 ${filterType === 'month'
-                                    ? 'bg-orange-50 dark:bg-orange-900/20 ring-1 ring-orange-200 dark:ring-orange-800'
-                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    ? 'bg-slate-700/80 ring-1 ring-slate-500/60'
+                                    : 'hover:bg-slate-700/45'
                                 }
                             `}
                         >
                             <div className="flex items-center gap-2">
-                                <CalendarIcon size={16} className={filterType === 'month' ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400'} />
+                                <CalendarIcon size={16} className={filterType === 'month' ? 'text-indigo-200' : 'text-gray-400'} />
                                 <span className={`text-sm font-semibold capitalize ${filterType === 'month'
-                                    ? 'text-orange-700 dark:text-orange-300'
+                                    ? 'text-slate-100'
                                     : 'text-gray-700 dark:text-gray-300'
                                     }`}>
                                     {formattedMonth}
@@ -176,9 +176,9 @@ export function DashboardHeader({
                                                 className={`
                                                     py-2 text-xs font-semibold rounded-lg transition-colors
                                                     ${isSelected
-                                                        ? 'bg-orange-500 text-white'
+                                                        ? 'bg-slate-700 text-white'
                                                         : isCurrentMonth
-                                                            ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20'
+                                                            ? 'text-indigo-200 bg-slate-700/45'
                                                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                                     }
                                                 `}
@@ -193,7 +193,7 @@ export function DashboardHeader({
 
                         <button
                             onClick={() => navigateMonth('next')}
-                            className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                            className="p-1.5 rounded-lg text-gray-500 transition-colors hover:bg-slate-700/45 hover:text-slate-100"
                             title="Próximo mês"
                         >
                             <ChevronRight size={18} />
@@ -205,7 +205,7 @@ export function DashboardHeader({
                 <button
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="flex items-center justify-center p-3 text-gray-500 hover:text-orange-600 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-orange-50 dark:hover:bg-gray-700 hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="flex items-center justify-center rounded-xl border border-slate-300/70 bg-slate-50/85 p-3 text-gray-500 shadow-sm transition-all hover:bg-slate-200/65 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/65 dark:bg-slate-900/60 dark:hover:border-slate-500 dark:hover:bg-slate-800/75 dark:hover:text-slate-100"
                     title="Atualizar dados"
                 >
                     <RefreshCw className={isRefreshing ? 'animate-spin' : ''} size={20} />

@@ -323,7 +323,7 @@ export default function ClienteDetalhesPage() {
       )}
 
       {!cliente ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <div className="crm-card p-8 text-center">
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Não foi possível carregar os dados do cliente.
           </p>
@@ -335,7 +335,7 @@ export default function ClienteDetalhesPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="crm-card p-6">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                     <span className="text-xl font-semibold text-blue-600 dark:text-blue-300">
@@ -388,7 +388,7 @@ export default function ClienteDetalhesPage() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="crm-card p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin size={18} className="text-gray-400" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -433,7 +433,7 @@ export default function ClienteDetalhesPage() {
 
               {/* Dados Empresariais (do Prospecto) */}
               {cliente.prospecto && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="crm-card p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Building size={18} className="text-purple-500" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -589,7 +589,7 @@ export default function ClienteDetalhesPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="crm-card p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Estatísticas
                 </h3>
@@ -623,7 +623,7 @@ export default function ClienteDetalhesPage() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="crm-card p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Metadados
                 </h3>
@@ -652,7 +652,7 @@ export default function ClienteDetalhesPage() {
           </div>
 
           {editMode && (
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="mt-8 crm-card p-6">
               <div className="flex items-center gap-2 mb-6">
                 <Edit2 size={18} className="text-gray-400" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

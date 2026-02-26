@@ -1,44 +1,66 @@
 'use client'
 
-import { useState } from 'react'
+import type { CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
+const SIDEBAR_COLLAPSED_WIDTH = '4.5rem'
+const SIDEBAR_EXPANDED_WIDTH = '16rem'
+
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [pathname])
 
   if (pathname === '/login' || pathname === '/register') {
     return <>{children}</>
   }
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+  const layoutStyle = {
+    '--sidebar-width': isSidebarHovered ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
+  } as CSSProperties
 
-      <div className="flex flex-1">
+  return (
+    <div className="crm-shell">
+      <div className="relative flex min-h-screen">
         {/* Sidebar Desktop */}
         <div className="hidden lg:block">
-          <Sidebar />
+          <Sidebar
+            collapsed={!isSidebarHovered}
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseLeave={() => setIsSidebarHovered(false)}
+          />
         </div>
 
         {/* Sidebar Mobile */}
-        {sidebarOpen && (
+        {mobileSidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div
-              className="fixed inset-0 bg-black bg-opacity-50"
-              onClick={() => setSidebarOpen(false)}
+              className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+              onClick={() => setMobileSidebarOpen(false)}
             ></div>
-            <div className="fixed left-0 top-0 bottom-0">
-              <Sidebar />
-            </div>
+            <Sidebar
+              isMobile
+              onClose={() => setMobileSidebarOpen(false)}
+            />
           </div>
         )}
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-64">
-          <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-          <main className="flex-1 p-6 overflow-auto">
+        <div
+          style={layoutStyle}
+          className="flex min-w-0 flex-1 flex-col transition-[padding-left] duration-300 lg:pl-[var(--sidebar-width)]"
+        >
+          <Header
+            onMobileMenuClick={() => setMobileSidebarOpen((prev) => !prev)}
+          />
+          <main className="flex-1 overflow-auto px-4 pb-6 pt-[calc(var(--top-bar-height)+1rem)] md:px-6 md:pb-8 lg:px-8">
             {children}
           </main>
         </div>

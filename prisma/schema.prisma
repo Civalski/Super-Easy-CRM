@@ -20,6 +20,7 @@ enum GoalMetricType {
   QUALIFICACAO
   NEGOCIACAO
   PROSPECCAO
+  FATURAMENTO
 }
 
 enum GoalPeriodType {
@@ -47,6 +48,8 @@ model User {
   oportunidades         Oportunidade[]
   tarefas               Tarefa[]
   prospectos            Prospecto[]
+  prospectoAgendamentos ProspectoEnvioAgendado[]
+  metaContato           MetaContatoConfig?
 
   @@map("users")
 }
@@ -265,4 +268,49 @@ model Prospecto {
   @@unique([userId, cnpj])
   @@index([userId])
   @@map("prospectos")
+}
+
+model ProspectoEnvioAgendado {
+  id         String    @id @default(cuid())
+  userId     String
+  lote       String?
+  dataEnvio  String // YYYY-MM-DD in Brazil timezone
+  status     String    @default("pendente") // pendente | processando | processado | cancelado | erro
+  enviados   Int       @default(0)
+  executadoEm DateTime?
+  erro       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dataEnvio, status])
+  @@index([userId, lote, status])
+  @@map("prospecto_envio_agendado")
+}
+
+model MetaContatoConfig {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  metaDiaria Int      @default(25)
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  diasEsquecidos MetaContatoDiaEsquecido[]
+
+  @@map("meta_contato_config")
+}
+
+model MetaContatoDiaEsquecido {
+  id        String   @id @default(cuid())
+  configId  String
+  data      String // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+
+  config MetaContatoConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, data])
+  @@map("meta_contato_dias_esquecidos")
 }

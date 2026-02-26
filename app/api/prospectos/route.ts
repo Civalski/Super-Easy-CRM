@@ -39,12 +39,27 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // Se nenhum status específico for solicitado, excluir os convertidos por padrão
-        // (pois prospectos convertidos já são clientes e não devem aparecer na lista de prospecção)
+        const origem = searchParams.get('origem'); // 'leads' = mostrar apenas lead_frio
+
+        // Se nenhum status específico for solicitado:
+        // - origem=leads → leads frios + novos sem contato (aba Leads, retrocompatível)
+        // - sem origem → excluir lead_frio e convertido (funil normal)
         if (status) {
             where.status = status;
+        } else if (origem === 'leads') {
+            // Aba Leads: mostrar lead_frio E novo sem ultimoContato (nunca contatados)
+            where.OR = [
+                { status: 'lead_frio' },
+                { status: 'novo', ultimoContato: null },
+            ];
+            delete where.status;
         } else {
-            where.status = { not: 'convertido' };
+            // Funil: exclui lead_frio, convertidos, E novo sem contato (que estão na aba Leads)
+            where.AND = [
+                { status: { notIn: ['convertido', 'lead_frio'] } },
+                { NOT: { status: 'novo', ultimoContato: null } },
+            ];
+            delete where.status;
         }
 
         if (uf) where.uf = uf;
@@ -66,31 +81,25 @@ export async function GET(request: NextRequest) {
             prisma.prospecto.count({ where })
         ]);
 
-        // Estatísticas por status
-        const estatisticas = await prisma.prospecto.groupBy({
-            by: ['status'],
-            where,
-            _count: { status: true }
-        });
-
         // Buscar lotes únicos usando raw query (compatível mesmo antes do prisma generate)
         let lotes: string[] = [];
         try {
-            const lotesResult = await prisma.$queryRaw<{ lote: string | null }[]>`
-                SELECT DISTINCT lote FROM prospectos 
-                WHERE lote IS NOT NULL 
-                  AND status != 'convertido'
-                  AND "userId" = ${userId}
-                ORDER BY lote ASC
-            `;
+            const statusClause = origem === 'leads'
+                ? `AND (status = 'lead_frio' OR (status = 'novo' AND "ultimoContato" IS NULL))`
+                : `AND status NOT IN ('convertido', 'lead_frio')`;
+            const lotesResult = await prisma.$queryRawUnsafe<{ lote: string | null }[]>(
+                `SELECT DISTINCT lote FROM prospectos WHERE lote IS NOT NULL ${statusClause} AND "userId" = '${userId}' ORDER BY lote ASC`
+            );
             lotes = lotesResult.map(l => l.lote).filter((l): l is string => l !== null);
         } catch {
             // Campo lote pode não existir ainda se o DB não foi migrado
             lotes = [];
         }
 
-        const stats = {
+        // Estatísticas por status - usando countBy separado para evitar limitações do groupBy com OR/AND
+        let stats = {
             total,
+            lead_frio: 0,
             novo: 0,
             em_contato: 0,
             qualificado: 0,
@@ -99,12 +108,28 @@ export async function GET(request: NextRequest) {
             lotes,
         };
 
-        estatisticas.forEach((e: { status: string; _count: { status: number } }) => {
-            const key = e.status as keyof typeof stats;
-            if (key in stats && typeof stats[key] === 'number') {
-                (stats as Record<string, number | string[]>)[key] = e._count.status;
-            }
-        });
+        if (origem === 'leads') {
+            // Na aba Leads: contar lead_frio + novo sem contato e somar em lead_frio
+            const [countLeadFrio, countNovos] = await Promise.all([
+                prisma.prospecto.count({ where: { userId, status: 'lead_frio' } }),
+                prisma.prospecto.count({ where: { userId, status: 'novo', ultimoContato: null } }),
+            ]);
+            stats.lead_frio = countLeadFrio + countNovos;
+        } else {
+            // No funil: groupBy normal pelos status disponíveis
+            const grupoPorStatus = await prisma.prospecto.groupBy({
+                by: ['status'],
+                where,
+                _count: { status: true }
+            });
+            grupoPorStatus.forEach((e: { status: string; _count: { status: number } }) => {
+                const key = e.status as keyof typeof stats;
+                if (key in stats && typeof stats[key] === 'number') {
+                    (stats as Record<string, number | string[]>)[key] = e._count.status;
+                }
+            });
+        }
+
 
         return NextResponse.json({
             prospectos,

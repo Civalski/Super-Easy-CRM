@@ -289,7 +289,7 @@ export default function ActivityModal({
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-gray-700 overflow-hidden transform transition-all scale-100 flex flex-col max-h-[90vh]"
+                className="crm-card w-full max-w-lg overflow-hidden transform transition-all scale-100 flex flex-col max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -364,3 +364,4 @@ export default function ActivityModal({
         </div>
     );
 }
+

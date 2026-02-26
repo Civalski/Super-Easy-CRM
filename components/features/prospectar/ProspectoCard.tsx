@@ -170,7 +170,7 @@ export function ProspectoCard({
                         </button>
 
                         {openMenuId === prospecto.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                            <div className="absolute right-0 mt-1 w-48 crm-card-soft z-10">
                                 <button
                                     onClick={() => {
                                         onEditObservacao(prospecto.id, prospecto.observacoes || '');
@@ -213,3 +213,4 @@ export function ProspectoCard({
         </div>
     );
 }
+

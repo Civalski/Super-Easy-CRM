@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, Handshake } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, Handshake, MessageCircle } from 'lucide-react'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
 
 // Fallback for formatCurrency if not found
@@ -38,21 +38,21 @@ interface Meta {
 
 const TABS = [
     { label: 'Prospecção', value: 'prospeccao', icon: Target },
+    { label: 'Contatado', value: 'contatado', icon: MessageCircle },
     { label: 'Qualificado', value: 'qualificacao', icon: Layers },
     { label: 'Propostas', value: 'proposta', icon: Briefcase },
     { label: 'Negociação', value: 'negociacao', icon: Handshake },
-    { label: 'Vendas', value: 'fechada', icon: DollarSign },
-    { label: 'Perdidas', value: 'perdida', icon: X },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
     prospeccao: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700',
+    contatado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-700',
     qualificacao: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-700',
     proposta: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800 border-yellow-200 dark:border-yellow-700',
     negociacao: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-800 border-orange-200 dark:border-orange-700',
-    fechada: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-700',
-    perdida: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800 border-red-200 dark:border-red-700',
 }
+
+const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
 
 export default function GruposPage() {
     const [activeTab, setActiveTab] = useState('prospeccao')
@@ -69,6 +69,9 @@ export default function GruposPage() {
     // Detail modal state
     const [detailModal, setDetailModal] = useState<any | null>(null)
     const [detailLoading, setDetailLoading] = useState(false)
+    const [showMessageConfig, setShowMessageConfig] = useState(false)
+    const [whatsAppMessages, setWhatsAppMessages] = useState<string[]>(['', '', ''])
+    const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<string[]>(['', '', ''])
 
     const handleViewDetails = useCallback(async (item: Oportunidade) => {
         if (item.type === 'prospecto') {
@@ -128,15 +131,86 @@ export default function GruposPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, page])
 
+    useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem(WHATSAPP_MESSAGES_STORAGE_KEY)
+            if (!raw) return
+
+            const parsed = JSON.parse(raw)
+            if (!Array.isArray(parsed)) return
+
+            const normalized = [0, 1, 2].map((index) => {
+                const value = parsed[index]
+                return typeof value === 'string' ? value : ''
+            })
+
+            setWhatsAppMessages(normalized)
+            setDraftWhatsAppMessages(normalized)
+        } catch (error) {
+            console.error('Erro ao carregar mensagens de WhatsApp:', error)
+        }
+    }, [])
+
     const handleTabChange = (value: string) => {
         setActiveTab(value)
         setPage(1) // Reset page on tab change
     }
 
-    const handleStartContact = async (id: string) => {
-        setUpdatingId(id)
+    const getRandomWhatsappMessage = (item: Oportunidade) => {
+        const activeMessages = whatsAppMessages
+            .map((message) => message.trim())
+            .filter((message) => message.length > 0)
+
+        if (activeMessages.length === 0) return ''
+
+        const selected = activeMessages[Math.floor(Math.random() * activeMessages.length)]
+        const nome = item.cliente.nome || ''
+        const empresa = item.cliente.empresa || item.cliente.nome || ''
+
+        return selected
+            .replace(/\{nome\}/gi, nome)
+            .replace(/\{empresa\}/gi, empresa)
+    }
+
+    const handleOpenMessageConfig = () => {
+        setDraftWhatsAppMessages(whatsAppMessages)
+        setShowMessageConfig(true)
+    }
+
+    const handleCancelMessageConfig = () => {
+        setDraftWhatsAppMessages(whatsAppMessages)
+        setShowMessageConfig(false)
+    }
+
+    const handleSaveMessageConfig = () => {
+        const normalized = [0, 1, 2].map((index) => (draftWhatsAppMessages[index] || '').trim())
+
+        setWhatsAppMessages(normalized)
+        setDraftWhatsAppMessages(normalized)
+
+        const hasAnyMessage = normalized.some((message) => message.length > 0)
+        if (hasAnyMessage) {
+            window.localStorage.setItem(WHATSAPP_MESSAGES_STORAGE_KEY, JSON.stringify(normalized))
+        } else {
+            window.localStorage.removeItem(WHATSAPP_MESSAGES_STORAGE_KEY)
+        }
+
+        setShowMessageConfig(false)
+    }
+
+    const handleStartContact = async (item: Oportunidade) => {
+        // Open WhatsApp link with the lead's phone number
+        if (item.cliente.telefone) {
+            const cleanPhone = item.cliente.telefone.replace(/\D/g, '')
+            const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
+            const message = getRandomWhatsappMessage(item)
+            const messageQuery = message ? `?text=${encodeURIComponent(message)}` : ''
+            window.open(`https://wa.me/${phoneWithCountry}${messageQuery}`, '_blank')
+        }
+
+        setUpdatingId(item.id)
         try {
-            const response = await fetch(`/api/prospectos/${id}`, {
+            const response = await fetch(`/api/prospectos/${item.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'em_contato' })
@@ -246,11 +320,19 @@ export default function GruposPage() {
     }
 
     const getAvailableActions = (currentStatus: string) => {
-        return TABS.filter((tab) => tab.value !== currentStatus).map((tab) => ({
+        const tabActions = TABS.filter((tab) => tab.value !== currentStatus).map((tab) => ({
             label: tab.label,
             value: tab.value,
         }))
+        // Add final statuses (managed in Propostas page) as dropdown options
+        const extraActions = [
+            { label: 'Vendas', value: 'fechada' },
+            { label: 'Perdida', value: 'perdida' },
+        ].filter((a) => a.value !== currentStatus)
+        return [...tabActions, ...extraActions]
     }
+
+    const activeMessageCount = whatsAppMessages.filter((message) => message.trim().length > 0).length
 
     return (
         <div className="space-y-6">
@@ -264,11 +346,74 @@ export default function GruposPage() {
                             Gestão de Leads
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Gerencie seus leads e histórico de vendas
+                            Gerencie seus leads e pipeline de vendas
                         </p>
                     </div>
                 </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleOpenMessageConfig}
+                        className="inline-flex items-center px-3 py-2 border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+                    >
+                        Personalizar mensagem
+                    </button>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {activeMessageCount > 0
+                            ? `${activeMessageCount} mensagem(ns) ativa(s)`
+                            : 'Sem mensagem personalizada'}
+                    </span>
+                </div>
             </div>
+
+            {showMessageConfig && (
+                <div className="crm-card p-4 space-y-3">
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            Mensagens aleatorias do WhatsApp
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Configure ate 3 mensagens. Ao clicar em &quot;Iniciar Contato&quot;, o sistema envia uma delas de forma aleatoria.
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Dica: use {'{nome}'} e {'{empresa}'} para personalizar o texto.
+                        </p>
+                    </div>
+
+                    {[0, 1, 2].map((index) => (
+                        <div key={index}>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                Mensagem {index + 1}
+                            </label>
+                            <textarea
+                                value={draftWhatsAppMessages[index] || ''}
+                                onChange={(e) => {
+                                    const next = [...draftWhatsAppMessages]
+                                    next[index] = e.target.value
+                                    setDraftWhatsAppMessages(next)
+                                }}
+                                rows={3}
+                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="Digite uma mensagem para usar no WhatsApp..."
+                            />
+                        </div>
+                    ))}
+
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            onClick={handleCancelMessageConfig}
+                            className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSaveMessageConfig}
+                            className="px-3 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700"
+                        >
+                            Salvar mensagens
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="border-b border-gray-200 dark:border-gray-700">
@@ -341,19 +486,7 @@ export default function GruposPage() {
                                                         {item.cliente.empresa}
                                                     </span>
                                                 )}
-                                                {item.type === 'prospecto' && activeTab === 'prospeccao' && (
-                                                    <div className="mt-1">
-                                                        {item.subStatus === 'novo' ? (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                                                                Frio
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
-                                                                Contatado
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
+
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -375,7 +508,7 @@ export default function GruposPage() {
                                                 </button>
                                                 {item.type === 'prospecto' && item.subStatus === 'novo' && (
                                                     <button
-                                                        onClick={() => handleStartContact(item.id)}
+                                                        onClick={() => handleStartContact(item)}
                                                         disabled={updatingId === item.id}
                                                         className="inline-flex items-center px-2.5 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-xs font-medium rounded text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
                                                     >
@@ -451,7 +584,7 @@ export default function GruposPage() {
             {/* Detail Modal */}
             {detailModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                    <div className="crm-card w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-xl">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Detalhes do Lead</h2>
@@ -765,3 +898,4 @@ export default function GruposPage() {
         </div>
     )
 }
+

@@ -24,16 +24,17 @@ export async function GET(request: NextRequest) {
             )
         }
 
-        // Lazy Cleanup: Delete prospects older than 30 days that are not qualified/converted
-        // Status: novo, em_contato
+        // Lazy Cleanup: Delete prospects older than 30 days that are stil "cold" (never contacted)
+        // Only remove leads with status='novo' that have NO ultimoContato (never sent to funnel)
+        // Leads with ultimoContato set were intentionally sent to the funnel and must NOT be deleted
         const date30DaysAgo = new Date()
         date30DaysAgo.setDate(date30DaysAgo.getDate() - 30)
 
-        // Run cleanup asynchronously (fire and forget effectively, or await if critical)
         await prisma.prospecto.deleteMany({
             where: {
                 userId,
-                status: { in: ['novo', 'em_contato'] },
+                status: 'novo',
+                ultimoContato: null,       // Só remove leads frios nunca enviados ao funil
                 createdAt: { lt: date30DaysAgo }
             }
         }).catch(err => console.error('Error cleaning up prospects:', err))
@@ -46,14 +47,20 @@ export async function GET(request: NextRequest) {
         // qualificacao -> Prospecto (qualificado)
         // others -> Oportunidade (status matches)
 
-        if (status === 'prospeccao' || status === 'qualificacao') {
+        if (status === 'prospeccao' || status === 'contatado' || status === 'qualificacao') {
             const prospectoStatus = status === 'prospeccao'
-                ? { in: ['novo', 'em_contato'] }
-                : 'qualificado'
+                ? 'novo'
+                : status === 'contatado'
+                    ? 'em_contato'
+                    : 'qualificado'
 
             const whereProspecto: any = {
                 userId,
-                status: prospectoStatus
+                status: prospectoStatus,
+                // Para "prospeccao" (status=novo): excluir leads frios que ainda não foram
+                // enviados ao funil (ultimoContato=null). Esses ficam na aba Leads.
+                // Leads com ultimoContato definido foram enviados explicitamente ao Funil.
+                ...(prospectoStatus === 'novo' ? { NOT: { ultimoContato: null } } : {}),
             }
 
             const [prospectos, count] = await prisma.$transaction([
