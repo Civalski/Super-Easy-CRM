@@ -1,4 +1,6 @@
-﻿/**
+export const dynamic = 'force-dynamic'
+
+/**
  * API para importacao em lote de prospectos do arquivo .parquet
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +39,7 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
 
     /**
      * Mapeamento de campos
-     * Chaves compatíveis com o formato do arquivo .xlsx de exemplo e .parquet
+     * Chaves compat�veis com o formato do arquivo .xlsx de exemplo e .parquet
      */
     return {
         cnpj,
@@ -49,8 +51,8 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
         capitalSocial: empresa['CAPITAL SOCIAL'] || null,
         porte: empresa['PORTE DA EMPRESA'] || null,
         naturezaJuridica: empresa['NATUREZA JURIDICA'] || null,
-        situacaoCadastral: empresa['SITUAÇÃO CADASTRAL'] || null,
-        dataAbertura: empresa['DATA DE INÍCIO DE ATIVIDADE'] || null,
+        situacaoCadastral: empresa['SITUA��O CADASTRAL'] || null,
+        dataAbertura: empresa['DATA DE IN�CIO DE ATIVIDADE'] || null,
         matrizFilial: empresa['MATRIZ/FILIAL'] || null,
         cnaePrincipal: empresa['COD ATIVIDADE PRINCIPAL'] || null,
         cnaePrincipalDesc: empresa['ATIVIDADE PRINCIPAL'] || null,

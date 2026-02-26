@@ -9,6 +9,8 @@ import {
   recordGoalSnapshot,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const userId = await getUserId(req)

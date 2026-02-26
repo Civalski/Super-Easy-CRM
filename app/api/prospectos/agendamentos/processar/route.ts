@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
 
+export const dynamic = 'force-dynamic'
+
 function getBrazilDateString(date: Date) {
     return new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Sao_Paulo',

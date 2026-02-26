@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { GoalMetricType, GoalPeriodType } from '@prisma/client'
 import {
+
+export const dynamic = 'force-dynamic'
   computeGoalProgress,
   getUserId,
   parseDateInput,

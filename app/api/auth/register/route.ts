@@ -3,6 +3,8 @@ import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 function normalizeCode(code: string) {
   return code.replace(/\s+/g, '').toUpperCase()
 }

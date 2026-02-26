@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API para operacoes em massa de prospectos
  * DELETE /api/prospectos/bulk - Exclui multiplos prospectos

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API de resumo de lotes de leads frios
  * GET /api/prospectos/lotes - Retorna lotes com contagem de leads

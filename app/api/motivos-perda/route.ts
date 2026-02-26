@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserId } from '@/app/api/metas/helpers'
 
+export const dynamic = 'force-dynamic'
+
 const DEFAULT_MOTIVOS = [
   'Prazo de entrega',
   'Preco',

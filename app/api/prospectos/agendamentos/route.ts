@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { normalizeLote } from '@/lib/prospectos/enviarAoFunil';
 
+export const dynamic = 'force-dynamic'
+
 type AgendamentoInput = {
     lote?: string | null;
     dataEnvio?: string;
