@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Helper to get Brazil date string YYYY-MM-DD
  */

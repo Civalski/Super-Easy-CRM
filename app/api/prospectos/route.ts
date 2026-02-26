@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API para listagem e criação de prospectos
  */

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(request)

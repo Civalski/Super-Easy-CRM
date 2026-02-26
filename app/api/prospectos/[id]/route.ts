@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API para operações em um prospecto específico
  */

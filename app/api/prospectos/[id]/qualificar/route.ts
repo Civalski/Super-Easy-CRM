@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API para qualificar prospecto (apenas alterar status para qualificado)
  */

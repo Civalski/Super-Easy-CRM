@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * API para promover prospecto (converter em oportunidade de Negociação)
  */
