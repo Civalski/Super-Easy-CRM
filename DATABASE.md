@@ -17,7 +17,7 @@ DATABASE_URL="postgresql://user:password@host:6543/postgres?pgbouncer=true"
 # Conexao direta (CLI / migrations)
 DIRECT_URL="postgresql://user:password@host:5432/postgres"
 ```
-
+a
 ---
 
 ## Desenvolvimento
