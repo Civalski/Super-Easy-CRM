@@ -3,16 +3,10 @@
  */
 'use client'
 
-interface OportunidadesPorStatus {
-  status: string
-  _count: number
-}
-
 interface ValorPipelineChartProps {
   valorTotal: number
   valorGanhos: number
   valorPerdidos: number
-  oportunidadesPorStatus: OportunidadesPorStatus[]
 }
 
 const formatCurrency = (value: number) =>
@@ -26,7 +20,6 @@ export function ValorPipelineChart({
   valorTotal,
   valorGanhos,
   valorPerdidos,
-  oportunidadesPorStatus,
 }: ValorPipelineChartProps) {
   const valorEmAberto = Math.max(valorTotal - valorGanhos, 0)
   const totalComposicao = valorEmAberto + valorGanhos + valorPerdidos
@@ -78,16 +71,6 @@ export function ValorPipelineChart({
       .join(', ')})`
     : 'conic-gradient(#cbd5e1 0% 100%)'
 
-  const byStatus = new Map(oportunidadesPorStatus.map((item) => [item.status, item._count]))
-  const fechadas = byStatus.get('fechada') ?? 0
-  const perdidas = byStatus.get('perdida') ?? 0
-  const encerradas = fechadas + perdidas
-
-  const taxaWinRate = encerradas > 0 ? (fechadas / encerradas) * 100 : 0
-  const taxaRetornoFinanceiro = valorGanhos + valorPerdidos > 0
-    ? (valorGanhos / (valorGanhos + valorPerdidos)) * 100
-    : 0
-
   return (
     <div className="crm-card p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Composicao de Valor</h3>
@@ -120,17 +103,6 @@ export function ValorPipelineChart({
               </span>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-emerald-300/60 bg-emerald-100/50 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
-          <p className="text-xs uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">Win rate (qtd)</p>
-          <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{taxaWinRate.toFixed(1)}%</p>
-        </div>
-        <div className="rounded-xl border border-sky-300/60 bg-sky-100/50 p-3 dark:border-sky-500/30 dark:bg-sky-500/10">
-          <p className="text-xs uppercase tracking-wide text-sky-700/80 dark:text-sky-300/80">Eficiencia (valor)</p>
-          <p className="text-xl font-bold text-sky-700 dark:text-sky-300">{taxaRetornoFinanceiro.toFixed(1)}%</p>
         </div>
       </div>
     </div>

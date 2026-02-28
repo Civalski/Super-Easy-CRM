@@ -5,6 +5,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
+function parseLimit(value: string | null, fallback = 50) {
+    if (!value) return fallback
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed)) return fallback
+    return Math.min(200, Math.max(1, parsed))
+}
+
 export async function GET(request: NextRequest) {
     try {
         await ensureDatabaseInitialized()
@@ -17,6 +24,9 @@ export async function GET(request: NextRequest) {
         // Calcular data limite (próximos 2 dias)
         const dataLimite = new Date()
         dataLimite.setDate(dataLimite.getDate() + 2)
+
+        const { searchParams } = new URL(request.url)
+        const limit = parseLimit(searchParams.get('limit'))
 
         const tarefasProximas = await prisma.tarefa.findMany({
             where: {
@@ -33,7 +43,15 @@ export async function GET(request: NextRequest) {
             orderBy: {
                 dataVencimento: 'asc',
             },
-            include: {
+            take: limit,
+            select: {
+                id: true,
+                titulo: true,
+                descricao: true,
+                prioridade: true,
+                status: true,
+                dataVencimento: true,
+                notificar: true,
                 cliente: {
                     select: {
                         nome: true
@@ -47,7 +65,11 @@ export async function GET(request: NextRequest) {
             }
         })
 
-        return NextResponse.json(tarefasProximas)
+        return NextResponse.json(tarefasProximas, {
+            headers: {
+                'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+            },
+        })
     } catch (error) {
         console.error('Erro ao buscar notificações:', error)
         return NextResponse.json(

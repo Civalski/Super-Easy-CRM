@@ -11,6 +11,12 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+function normalizeGoalMetricType(metricType: GoalMetricType) {
+  return metricType === GoalMetricType.NEGOCIACAO
+    ? GoalMetricType.PROPOSTAS
+    : metricType
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -29,8 +35,10 @@ export async function GET(
       return NextResponse.json({ error: 'Meta nao encontrada' }, { status: 404 })
     }
 
+    const normalizedMetricType = normalizeGoalMetricType(goal.metricType)
+
     const progressResult = await computeGoalProgress({
-      metricType: goal.metricType,
+      metricType: normalizedMetricType,
       startDate: goal.startDate,
       endDate: goal.endDate,
       weekDays: goal.weekDays ?? [],
@@ -51,6 +59,7 @@ export async function GET(
 
     return NextResponse.json({
       ...goal,
+      metricType: normalizedMetricType,
       current: progressResult.current,
       progress: Math.min(progress, 100),
       periodStart: progressResult.periodStart,
@@ -102,11 +111,18 @@ export async function PATCH(
     }
 
     if (body.metricType !== undefined) {
-      const metricType = body.metricType as GoalMetricType
-      if (!Object.values(GoalMetricType).includes(metricType)) {
+      const metricTypeInput = body.metricType as GoalMetricType
+      if (!Object.values(GoalMetricType).includes(metricTypeInput)) {
         return NextResponse.json({ error: 'Tipo de meta invalido' }, { status: 400 })
       }
-      updateData.metricType = metricType
+      updateData.metricType = normalizeGoalMetricType(metricTypeInput)
+    }
+
+    if (
+      body.metricType === undefined &&
+      existing.metricType === GoalMetricType.NEGOCIACAO
+    ) {
+      updateData.metricType = GoalMetricType.PROPOSTAS
     }
 
     if (body.periodType !== undefined) {

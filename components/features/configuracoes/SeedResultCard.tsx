@@ -65,7 +65,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                                 {result.resumo.oportunidades}
                                             </div>
                                             <div className="text-xs text-green-700 dark:text-green-400">
-                                                Oportunidades
+                                                Orçamentos
                                             </div>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-2 rounded">

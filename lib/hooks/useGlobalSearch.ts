@@ -31,6 +31,8 @@ export function useGlobalSearch() {
 
     // Busca com debounce
     useEffect(() => {
+        const controller = new AbortController();
+
         const buscar = async () => {
             if (busca.trim().length < 2) {
                 setResultados(null);
@@ -40,7 +42,9 @@ export function useGlobalSearch() {
 
             setCarregando(true);
             try {
-                const response = await fetch(`/api/busca?q=${encodeURIComponent(busca)}`);
+                const response = await fetch(`/api/busca?q=${encodeURIComponent(busca)}`, {
+                    signal: controller.signal,
+                });
                 const data = await response.json();
 
                 // Garantir que clientes e oportunidades sejam sempre arrays
@@ -52,15 +56,21 @@ export function useGlobalSearch() {
                 setResultados(resultadosValidados);
                 setMostrarResultados(true);
             } catch (error) {
+                if (controller.signal.aborted) return;
                 console.error('Erro ao buscar:', error);
                 setResultados({ clientes: [], oportunidades: [] });
             } finally {
-                setCarregando(false);
+                if (!controller.signal.aborted) {
+                    setCarregando(false);
+                }
             }
         };
 
         const timeoutId = setTimeout(buscar, 300);
-        return () => clearTimeout(timeoutId);
+        return () => {
+            clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [busca]);
 
     const totalResultados = (resultados?.clientes.length || 0) + (resultados?.oportunidades.length || 0);

@@ -16,6 +16,7 @@ import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
 import TaskNotificationModal from '@/components/features/tarefas/TaskNotificationModal'
 import { useSession } from 'next-auth/react'
+import type { TaskNotification } from '@/types/notifications'
 
 interface HeaderProps {
   onMobileMenuClick: () => void
@@ -29,9 +30,9 @@ export default function Header({
   const notificacaoRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
 
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<TaskNotification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
-  const [selectedNotification, setSelectedNotification] = useState<any>(null)
+  const [selectedNotification, setSelectedNotification] = useState<TaskNotification | null>(null)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
 
   const {
@@ -49,10 +50,10 @@ export default function Header({
   const fetchNotifications = async () => {
     try {
       setIsLoadingNotifications(true)
-      const response = await fetch('/api/notificacoes')
+      const response = await fetch('/api/notificacoes?limit=50')
       if (response.ok) {
         const data = await response.json()
-        setNotifications(data)
+        setNotifications(Array.isArray(data) ? data : [])
       }
     } catch (error) {
       console.error('Erro ao buscar notificacoes:', error)
@@ -142,7 +143,7 @@ export default function Header({
   }
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 lg:left-[var(--sidebar-width)]">
+    <header className="fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:left-[var(--sidebar-width)]">
       <div className="min-h-[var(--top-bar-height)] border-b border-[color:var(--shell-border)] bg-[var(--shell-tint)] backdrop-blur-sm">
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
           <div className="flex items-center gap-2">
@@ -163,7 +164,7 @@ export default function Header({
               />
               <input
                 type="text"
-                placeholder="Buscar clientes, oportunidades..."
+                placeholder="Buscar clientes, orçamentos..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}

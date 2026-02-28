@@ -19,10 +19,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Button from '@/components/common/Button';
 import Swal from 'sweetalert2';
+import type { DashboardActivity, DashboardActivityDetails } from '@/types/dashboard';
 
 interface ActivityModalProps {
     isOpen: boolean;
-    activity: any; // Using any for flexibility with Tasks, Opportunities, Clients
+    activity: DashboardActivity | null;
     type: 'tarefa' | 'oportunidade' | 'cliente';
     onClose: () => void;
     onUpdate: () => void; // Used for "Finalizar" or "Deleting" to refresh list
@@ -41,7 +42,26 @@ export default function ActivityModal({
     if (!isOpen || !activity) return null;
 
     // Use 'details' if available (from dashboard API), otherwise fallback to the activity object itself (for notification modal compat if needed)
-    const data = activity.details || activity;
+    const data: DashboardActivityDetails = activity.details || {
+        id: activity.id,
+        titulo: activity.title,
+        descricao: activity.description,
+    };
+
+    const sanitizeMockText = (value?: string | null) =>
+        (value || '')
+            .replace(/\bmock\b/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .replace(/^[\s\-:|•]+|[\s\-:|•]+$/g, '')
+            .trim();
+
+    const headerTitle =
+        sanitizeMockText(data.titulo) ||
+        sanitizeMockText(data.nome) ||
+        sanitizeMockText(activity.title) ||
+        'Atividade';
+
+    const clientLabel = sanitizeMockText(data.cliente?.nome) || 'Sem cliente vinculado';
 
     const handleComplete = async () => {
         try {
@@ -92,7 +112,7 @@ export default function ActivityModal({
     };
 
     const handleDelete = async () => {
-        const itemTypeLabel = type === 'tarefa' ? 'tarefa' : type === 'oportunidade' ? 'oportunidade' : 'cliente';
+        const itemTypeLabel = type === 'tarefa' ? 'tarefa' : type === 'oportunidade' ? 'orçamento' : 'cliente';
 
         const result = await Swal.fire({
             title: `Excluir ${itemTypeLabel}?`,
@@ -211,7 +231,7 @@ export default function ActivityModal({
         <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-                    Oportunidade
+                    Orçamento
                 </span>
                 {data.probabilidade !== undefined && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
@@ -296,13 +316,13 @@ export default function ActivityModal({
                 <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start bg-gray-50/50 dark:bg-gray-800/50">
                     <div className="flex-1 pr-4">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
-                            {data.titulo || data.nome}
+                            {headerTitle}
                         </h2>
                         {/* Subtitle / Context */}
                         {(data.cliente || data.empresa) && type !== 'cliente' && (
                             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                 <User size={14} className="mr-1.5" />
-                                {data.cliente?.nome || 'Sem cliente vinculado'}
+                                {clientLabel}
                             </div>
                         )}
                     </div>
@@ -364,4 +384,5 @@ export default function ActivityModal({
         </div>
     );
 }
+
 

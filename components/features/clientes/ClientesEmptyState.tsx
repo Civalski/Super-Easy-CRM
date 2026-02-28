@@ -7,7 +7,11 @@ import Link from 'next/link'
 import { Button } from '@/components/common'
 import { Plus, Users } from 'lucide-react'
 
-export function ClientesEmptyState() {
+interface ClientesEmptyStateProps {
+    onCreateClick?: () => void
+}
+
+export function ClientesEmptyState({ onCreateClick }: ClientesEmptyStateProps) {
     return (
         <div className="crm-card p-12 text-center">
             <Users size={48} className="mx-auto text-gray-400 mb-4" />
@@ -17,12 +21,19 @@ export function ClientesEmptyState() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Comece adicionando seu primeiro cliente ao sistema.
             </p>
-            <Link href="/clientes/novo">
-                <Button>
+            {onCreateClick ? (
+                <Button onClick={onCreateClick}>
                     <Plus size={20} className="mr-2" />
                     Adicionar Cliente
                 </Button>
-            </Link>
+            ) : (
+                <Link href="/clientes/novo">
+                    <Button>
+                        <Plus size={20} className="mr-2" />
+                        Adicionar Cliente
+                    </Button>
+                </Link>
+            )}
         </div>
     )
 }

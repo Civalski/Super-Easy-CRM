@@ -4,8 +4,40 @@ import { getUserIdFromRequest } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
+function canRunDestructiveSeed(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return {
+      allowed: false,
+      reason: 'Operacao indisponivel em producao',
+    }
+  }
+
+  const requiredToken = process.env.SEED_ADMIN_TOKEN?.trim()
+  if (!requiredToken) {
+    return { allowed: true as const }
+  }
+
+  const providedToken = request.headers.get('x-seed-token')?.trim()
+  if (providedToken !== requiredToken) {
+    return {
+      allowed: false,
+      reason: 'Token de seed invalido',
+    }
+  }
+
+  return { allowed: true as const }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
+    const seedPermission = canRunDestructiveSeed(request)
+    if (!seedPermission.allowed) {
+      return NextResponse.json(
+        { error: seedPermission.reason },
+        { status: 403 }
+      )
+    }
+
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

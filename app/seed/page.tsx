@@ -48,7 +48,7 @@ export default function SeedPage() {
           </h1>
 
           <p className="text-gray-600 mb-6">
-            Esta ferramenta cria dados fake de clientes, oportunidades, contatos e tarefas
+            Esta ferramenta cria dados fake de clientes, orçamentos, contatos e tarefas
             para você testar as funcionalidades do CRM.
           </p>
 
@@ -96,7 +96,7 @@ export default function SeedPage() {
                           <ul className="text-sm text-green-800 space-y-1">
                             <li>• {result.resumo.clientes} clientes</li>
                             <li>• {result.resumo.contatos} contatos</li>
-                            <li>• {result.resumo.oportunidades} oportunidades</li>
+                            <li>• {result.resumo.oportunidades} orçamentos</li>
                             <li>• {result.resumo.tarefas} tarefas</li>
                           </ul>
                         </div>
@@ -115,7 +115,7 @@ export default function SeedPage() {
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• 10 clientes com informações completas</li>
               <li>• 7 contatos relacionados aos clientes</li>
-              <li>• 20 oportunidades em diferentes status do pipeline</li>
+              <li>• 20 orçamentos em diferentes status do pipeline</li>
               <li>• 25 tarefas com diferentes prioridades e status</li>
             </ul>
             <p className="text-xs text-blue-700 mt-3">

@@ -1,26 +1,36 @@
-# Script para limpar portas usadas pelo projeto
-# Mata processos na porta 3000 (Next.js)
+# Script para limpar porta usada pelo Next.js no desenvolvimento
 
-Write-Host "🔄 Limpando portas do projeto Arker CRM..." -ForegroundColor Yellow
-
-# Tentar liberar porta 3000 especificamente (Next.js)
+Write-Host "Limpando portas do projeto Arker CRM..." -ForegroundColor Yellow
 Write-Host "Verificando porta 3000..." -ForegroundColor Cyan
-$port3000 = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
-if ($port3000) {
-    foreach ($conn in $port3000) {
-        $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
-        if ($proc) {
-            Write-Host "  Matando processo $($proc.Name) (PID: $($proc.Id)) na porta 3000" -ForegroundColor Red
-            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-        }
-    }
+
+# Considera apenas processo escutando na porta (evita conexoes antigas/TIME_WAIT)
+$connections = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
+$pids = @(
+    $connections |
+    Select-Object -ExpandProperty OwningProcess -Unique |
+    Where-Object { $_ -gt 4 }
+)
+
+if ($pids.Count -eq 0) {
+    Write-Host "  Porta 3000 esta livre" -ForegroundColor Green
 } else {
-    Write-Host "  Porta 3000 está livre" -ForegroundColor Green
+    foreach ($pid in $pids) {
+        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        if (-not $proc) {
+            continue
+        }
+
+        Write-Host "  Matando processo $($proc.Name) (PID: $($proc.Id)) na porta 3000" -ForegroundColor Red
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    }
 }
 
-# Aguardar um pouco para a porta ser liberada
-Start-Sleep -Seconds 2
+Start-Sleep -Milliseconds 800
 
-Write-Host ""
-Write-Host "✅ Portas limpas! Agora execute: npm run dev" -ForegroundColor Green
-
+$remaining = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
+if ($remaining) {
+    Write-Host "  Aviso: ainda existe processo escutando na porta 3000" -ForegroundColor Yellow
+} else {
+    Write-Host ""
+    Write-Host "Porta 3000 liberada. Iniciando o Next.js..." -ForegroundColor Green
+}

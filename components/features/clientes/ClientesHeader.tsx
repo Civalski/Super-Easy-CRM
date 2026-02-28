@@ -8,7 +8,11 @@ import Link from 'next/link'
 import { Button } from '@/components/common'
 import { Plus, Users } from 'lucide-react'
 
-export function ClientesHeader() {
+interface ClientesHeaderProps {
+    onCreateClick?: () => void
+}
+
+export function ClientesHeader({ onCreateClick }: ClientesHeaderProps) {
     return (
         <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
@@ -24,12 +28,19 @@ export function ClientesHeader() {
                     </p>
                 </div>
             </div>
-            <Link href="/clientes/novo">
-                <Button>
+            {onCreateClick ? (
+                <Button onClick={onCreateClick}>
                     <Plus size={20} className="mr-2" />
                     Novo Cliente
                 </Button>
-            </Link>
+            ) : (
+                <Link href="/clientes/novo">
+                    <Button>
+                        <Plus size={20} className="mr-2" />
+                        Novo Cliente
+                    </Button>
+                </Link>
+            )}
         </div>
     )
 }

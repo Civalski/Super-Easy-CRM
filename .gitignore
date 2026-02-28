@@ -26,6 +26,11 @@ parquet
 # misc
 .DS_Store
 *.pem
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # debug
 npm-debug.log*
@@ -37,6 +42,7 @@ yarn-error.log*
 .env
 .env*.development
 .env.development
+backend/.env
 
 # vercel
 .vercel

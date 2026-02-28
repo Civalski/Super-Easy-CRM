@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  // 🌐 PostgreSQL - Supabase (Produção e Desenvolvimento)
+  // PostgreSQL - Supabase
   provider = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
@@ -46,10 +46,19 @@ model User {
   clientes              Cliente[]
   contatos              Contato[]
   oportunidades         Oportunidade[]
+  pedidos               Pedido[]
   tarefas               Tarefa[]
   prospectos            Prospecto[]
   prospectoAgendamentos ProspectoEnvioAgendado[]
   metaContato           MetaContatoConfig?
+  workspacesOwned       Workspace[]              @relation("WorkspaceOwner")
+  workspaceMemberships  WorkspaceMember[]
+  followUpTemplates     FollowUpTemplate[]
+  followUpAttempts      FollowUpAttempt[]
+  produtosServicos      ProdutoServico[]
+  pedidoItens           PedidoItem[]
+  contasReceber         ContaReceber[]
+  movimentosFinanceiros MovimentoFinanceiro[]
 
   @@map("users")
 }
@@ -103,18 +112,24 @@ model GoalSnapshot {
 }
 
 model Cliente {
-  id        String   @id @default(cuid())
-  userId    String
-  nome      String
-  email     String?
-  telefone  String?
-  empresa   String?
-  endereco  String?
-  cidade    String?
-  estado    String?
-  cep       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String
+  nome                 String
+  email                String?
+  telefone             String?
+  empresa              String?
+  endereco             String?
+  cidade               String?
+  estado               String?
+  cep                  String?
+  cargo                String?
+  documento            String?
+  website              String?
+  dataNascimento       String?
+  observacoes          String?
+  camposPersonalizados Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   contatos      Contato[]
   oportunidades Oportunidade[]
@@ -122,8 +137,10 @@ model Cliente {
   prospecto     Prospecto?
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([id, userId])
   @@unique([userId, email])
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("clientes")
 }
 
@@ -138,7 +155,7 @@ model Contato {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cliente Cliente @relation(fields: [clienteId, userId], references: [id, userId], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -146,26 +163,68 @@ model Contato {
 }
 
 model Oportunidade {
-  id             String    @id @default(cuid())
-  userId         String
-  titulo         String
-  descricao      String?
-  valor          Float?
-  status         String    @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
-  statusAnterior String?
-  motivoPerda    String?
-  probabilidade  Int       @default(0) // 0-100
-  dataFechamento DateTime?
-  clienteId      String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                     String    @id @default(cuid())
+  userId                 String
+  titulo                 String
+  descricao              String?
+  valor                  Float?
+  status                 String    @default("orcamento") // sem_contato, em_potencial, orcamento, fechada, perdida
+  statusAnterior         String?
+  motivoPerda            String?
+  probabilidade          Int       @default(0) // 0-100
+  dataFechamento         DateTime?
+  formaPagamento         String?
+  parcelas               Int?
+  desconto               Float?
+  proximaAcaoEm          DateTime?
+  canalProximaAcao       String?
+  responsavelProximaAcao String?
+  lembreteProximaAcao    Boolean   @default(false)
+  clienteId              String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  tarefas Tarefa[]
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cliente          Cliente           @relation(fields: [clienteId, userId], references: [id, userId], onDelete: Cascade)
+  tarefas          Tarefa[]
+  pedido           Pedido?
+  contasReceber    ContaReceber[]
+  followUpAttempts FollowUpAttempt[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([id, userId])
   @@index([userId])
+  @@index([userId, status, createdAt])
   @@map("oportunidades")
+}
+
+model Pedido {
+  id                  String    @id @default(cuid())
+  numero              Int       @unique @default(autoincrement())
+  userId              String
+  oportunidadeId      String    @unique
+  statusEntrega       String    @default("pendente") // pendente, em_preparacao, enviado, entregue
+  pagamentoConfirmado Boolean   @default(false)
+  formaPagamento      String?
+  dataEntrega         DateTime?
+  dataAprovacao       DateTime  @default(now())
+  observacoes         String?
+  totalBruto          Float     @default(0)
+  totalDesconto       Float     @default(0)
+  totalLiquido        Float     @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oportunidade  Oportunidade   @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
+  itens         PedidoItem[]
+  contasReceber ContaReceber[]
+
+  @@unique([id, userId])
+  @@unique([oportunidadeId, userId])
+  @@index([userId, statusEntrega])
+  @@index([userId, dataEntrega])
+  @@index([userId, createdAt])
+  @@map("pedidos")
 }
 
 model MotivoPerda {
@@ -199,11 +258,12 @@ model Tarefa {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  cliente      Cliente?      @relation(fields: [clienteId, userId], references: [id, userId], onDelete: Cascade)
+  oportunidade Oportunidade? @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, status, prioridade, createdAt])
   @@map("tarefas")
 }
 
@@ -262,25 +322,27 @@ model Prospecto {
 
   // Referência para cliente (após conversão)
   clienteId String?  @unique
-  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+  cliente   Cliente? @relation(fields: [clienteId, userId], references: [id, userId])
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, cnpj])
+  @@unique([clienteId, userId])
   @@index([userId])
+  @@index([userId, status, createdAt])
   @@map("prospectos")
 }
 
 model ProspectoEnvioAgendado {
-  id         String    @id @default(cuid())
-  userId     String
-  lote       String?
-  dataEnvio  String // YYYY-MM-DD in Brazil timezone
-  status     String    @default("pendente") // pendente | processando | processado | cancelado | erro
-  enviados   Int       @default(0)
+  id          String    @id @default(cuid())
+  userId      String
+  lote        String?
+  dataEnvio   String // YYYY-MM-DD in Brazil timezone
+  status      String    @default("pendente") // pendente | processando | processado | cancelado | erro
+  enviados    Int       @default(0)
   executadoEm DateTime?
-  erro       String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  erro        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -313,4 +375,185 @@ model MetaContatoDiaEsquecido {
 
   @@unique([configId, data])
   @@map("meta_contato_dias_esquecidos")
+}
+
+model FollowUpTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  etapa     String
+  canal     String
+  titulo    String?
+  mensagem  String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts FollowUpAttempt[]
+
+  @@unique([id, userId])
+  @@index([userId, etapa, canal, ativo])
+  @@map("followup_templates")
+}
+
+model FollowUpAttempt {
+  id             String   @id @default(cuid())
+  userId         String
+  oportunidadeId String
+  templateId     String?
+  canal          String
+  mensagem       String
+  resultado      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oportunidade Oportunidade      @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
+  template     FollowUpTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([userId, oportunidadeId, createdAt])
+  @@map("followup_attempts")
+}
+
+model ProdutoServico {
+  id                  String   @id @default(cuid())
+  userId              String
+  codigo              String?
+  nome                String
+  categoria           String?
+  marca               String?
+  codigoBarras        String?
+  tipo                String   @default("servico") // produto | servico
+  unidade             String   @default("UN") // UN | CX | KG | M | M2 | M3 | L | HORA | DIARIA | MES
+  descricao           String?
+  observacoesInternas String?
+  precoPadrao         Float    @default(0)
+  custoPadrao         Float    @default(0)
+  comissaoPercentual  Float    @default(0)
+  controlaEstoque     Boolean  @default(false)
+  estoqueAtual        Float    @default(0)
+  estoqueMinimo       Float    @default(0)
+  tempoPadraoMinutos  Int?
+  garantiaDias        Int?
+  prazoEntregaDias    Int?
+  ativo               Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedidoItens PedidoItem[]
+
+  @@unique([id, userId])
+  @@unique([userId, codigo])
+  @@index([userId, ativo])
+  @@index([userId, tipo, ativo])
+  @@index([userId, categoria])
+  @@index([userId, marca])
+  @@map("produtos_servicos")
+}
+
+model PedidoItem {
+  id               String   @id @default(cuid())
+  userId           String
+  pedidoId         String
+  produtoServicoId String?
+  descricao        String
+  quantidade       Float    @default(1)
+  precoUnitario    Float    @default(0)
+  desconto         Float    @default(0)
+  subtotal         Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedido         Pedido          @relation(fields: [pedidoId, userId], references: [id, userId], onDelete: Cascade)
+  produtoServico ProdutoServico? @relation(fields: [produtoServicoId], references: [id], onDelete: SetNull)
+
+  @@index([userId, pedidoId])
+  @@index([pedidoId])
+  @@map("pedido_itens")
+}
+
+model ContaReceber {
+  id                       String    @id @default(cuid())
+  userId                   String
+  pedidoId                 String?   @unique
+  oportunidadeId           String?
+  tipo                     String    @default("receber") // receber | pagar
+  descricao                String?
+  valorTotal               Float
+  valorRecebido            Float     @default(0)
+  autoDebito               Boolean   @default(false)
+  grupoParcelaId           String?
+  numeroParcela            Int?
+  totalParcelas            Int?
+  recorrenteMensal         Boolean   @default(false)
+  recorrenciaAtiva         Boolean   @default(false)
+  recorrenciaDiaVencimento Int?
+  dataVencimento           DateTime?
+  status                   String    @default("pendente") // pendente | parcial | pago | atrasado | cancelado
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedido       Pedido?               @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  oportunidade Oportunidade?         @relation(fields: [oportunidadeId], references: [id], onDelete: SetNull)
+  movimentos   MovimentoFinanceiro[]
+
+  @@unique([id, userId])
+  @@index([userId, tipo, status, dataVencimento])
+  @@index([userId, recorrenteMensal, recorrenciaAtiva])
+  @@index([userId, createdAt])
+  @@index([userId, grupoParcelaId])
+  @@map("contas_receber")
+}
+
+model MovimentoFinanceiro {
+  id             String   @id @default(cuid())
+  userId         String
+  contaReceberId String
+  tipo           String   @default("entrada") // entrada | estorno
+  valor          Float
+  dataMovimento  DateTime @default(now())
+  observacoes    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contaReceber ContaReceber @relation(fields: [contaReceberId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId, dataMovimento])
+  @@index([contaReceberId])
+  @@index([contaReceberId, createdAt])
+  @@map("movimentos_financeiros")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members WorkspaceMember[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   @default("vendedor") // owner | gestor | vendedor
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
 }

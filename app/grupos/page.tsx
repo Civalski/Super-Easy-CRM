@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, Handshake, MessageCircle } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle } from 'lucide-react'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
 
 // Fallback for formatCurrency if not found
@@ -37,25 +37,16 @@ interface Meta {
 }
 
 const TABS = [
-    { label: 'Prospecção', value: 'prospeccao', icon: Target },
+    { label: 'Sem contato', value: 'sem_contato', icon: Target },
     { label: 'Contatado', value: 'contatado', icon: MessageCircle },
-    { label: 'Qualificado', value: 'qualificacao', icon: Layers },
-    { label: 'Propostas', value: 'proposta', icon: Briefcase },
-    { label: 'Negociação', value: 'negociacao', icon: Handshake },
+    { label: 'Em potencial', value: 'em_potencial', icon: Layers },
+    { label: 'Orçamento', value: 'orcamento', icon: Briefcase },
 ]
-
-const STATUS_COLORS: Record<string, string> = {
-    prospeccao: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700',
-    contatado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-700',
-    qualificacao: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-700',
-    proposta: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800 border-yellow-200 dark:border-yellow-700',
-    negociacao: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-800 border-orange-200 dark:border-orange-700',
-}
 
 const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
 
 export default function GruposPage() {
-    const [activeTab, setActiveTab] = useState('prospeccao')
+    const [activeTab, setActiveTab] = useState('sem_contato')
     const [page, setPage] = useState(1)
     const [data, setData] = useState<Oportunidade[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
@@ -108,7 +99,7 @@ export default function GruposPage() {
         }
     }, [])
 
-    const fetchGrupos = async () => {
+    const fetchGrupos = useCallback(async () => {
         setLoading(true)
         try {
             const response = await fetch(`/api/grupos?status=${activeTab}&page=${page}&limit=10`)
@@ -124,12 +115,11 @@ export default function GruposPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [activeTab, page])
 
     useEffect(() => {
         fetchGrupos()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, page])
+    }, [fetchGrupos])
 
     useEffect(() => {
         try {
@@ -228,7 +218,7 @@ export default function GruposPage() {
         }
     }
 
-    const updateOportunidadeStatus = async (id: string, payload: Record<string, any>) => {
+    const updateOportunidadeStatus = async (id: string, payload: Record<string, unknown>) => {
         setUpdatingId(id)
         try {
             const response = await fetch(`/api/oportunidades/${id}`, {
@@ -239,14 +229,13 @@ export default function GruposPage() {
                 body: JSON.stringify(payload),
             })
 
-            if (response.ok) {
-                await fetchGrupos()
-            } else {
-                alert('Erro ao atualizar status')
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => null)
+                throw new Error(errorPayload?.error || 'Erro ao atualizar status')
             }
         } catch (error) {
             console.error('Erro ao atualizar status:', error)
-            alert('Erro ao atualizar status')
+            throw error
         } finally {
             setUpdatingId(null)
         }
@@ -263,21 +252,31 @@ export default function GruposPage() {
         setUpdatingId(item.id)
         try {
             if (item.type === 'prospecto') {
-                if (newStatus === 'qualificacao') {
-                    await fetch(`/api/prospectos/${item.id}/qualificar`, { method: 'POST' })
-                } else if (['proposta', 'negociacao', 'fechada'].includes(newStatus)) {
-                    await fetch(`/api/prospectos/${item.id}/promover`, {
+                if (newStatus === 'em_potencial') {
+                    const response = await fetch(`/api/prospectos/${item.id}/qualificar`, { method: 'POST' })
+                    if (!response.ok) {
+                        const errorPayload = await response.json().catch(() => null)
+                        throw new Error(errorPayload?.error || 'Erro ao qualificar prospecto')
+                    }
+                } else if (['orcamento', 'fechada'].includes(newStatus)) {
+                    const response = await fetch(`/api/prospectos/${item.id}/promover`, {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ status: newStatus })
                     })
+                    if (!response.ok) {
+                        const errorPayload = await response.json().catch(() => null)
+                        throw new Error(errorPayload?.error || 'Erro ao promover prospecto')
+                    }
                 }
+                await fetchGrupos()
             } else {
                 await updateOportunidadeStatus(item.id, { status: newStatus })
+                await fetchGrupos()
             }
-            await fetchGrupos()
         } catch (error) {
             console.error('Erro ao atualizar status:', error)
-            alert('Erro ao atualizar status')
+            alert(error instanceof Error ? error.message : 'Erro ao atualizar status')
         } finally {
             setUpdatingId(null)
         }
@@ -289,7 +288,7 @@ export default function GruposPage() {
 
         try {
             if (motivoItemType === 'prospecto') {
-                await fetch(`/api/prospectos/${motivoOportunidadeId}`, {
+                const response = await fetch(`/api/prospectos/${motivoOportunidadeId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -297,12 +296,17 @@ export default function GruposPage() {
                         observacoes: `Motivo da perda: ${motivo}`
                     })
                 })
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => null)
+                    throw new Error(errorPayload?.error || 'Erro ao atualizar prospecto')
+                }
                 await fetchGrupos()
             } else {
                 await updateOportunidadeStatus(motivoOportunidadeId, {
                     status: 'perdida',
                     motivoPerda: motivo,
                 })
+                await fetchGrupos()
             }
         } catch (error) {
             console.error('Error updating status', error)
@@ -324,7 +328,7 @@ export default function GruposPage() {
             label: tab.label,
             value: tab.value,
         }))
-        // Add final statuses (managed in Propostas page) as dropdown options
+        // Add final statuses (managed in Orçamentos page) as dropdown options
         const extraActions = [
             { label: 'Vendas', value: 'fechada' },
             { label: 'Perdida', value: 'perdida' },
@@ -407,7 +411,7 @@ export default function GruposPage() {
                         </button>
                         <button
                             onClick={handleSaveMessageConfig}
-                            className="px-3 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700"
+                            className="px-3 py-2 text-sm font-medium rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
                         >
                             Salvar mensagens
                         </button>
@@ -463,7 +467,7 @@ export default function GruposPage() {
                                         Cliente / Empresa
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Oportunidade
+                                        Orçamento
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Valor
@@ -843,7 +847,7 @@ export default function GruposPage() {
                                             <div className="flex items-center gap-3">
                                                 <Calendar size={18} className="text-gray-400" />
                                                 <div>
-                                                    <p className="text-xs uppercase">Último Contato</p>
+                                                    <p className="text-xs uppercase">?ltimo Contato</p>
                                                     <p className="text-gray-900 dark:text-white">
                                                         {new Date(detailModal.ultimoContato).toLocaleDateString('pt-BR')}
                                                     </p>
@@ -898,4 +902,6 @@ export default function GruposPage() {
         </div>
     )
 }
+
+
 

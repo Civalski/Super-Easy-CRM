@@ -38,11 +38,15 @@ export default function EditarOportunidadePage() {
     titulo: '',
     descricao: '',
     valor: '',
-    status: 'proposta',
+    status: 'orcamento',
     probabilidade: '0',
     dataFechamento: '',
     motivoPerda: '',
     clienteId: '',
+    proximaAcaoEm: '',
+    canalProximaAcao: '',
+    responsavelProximaAcao: '',
+    lembreteProximaAcao: false,
   })
 
   useEffect(() => {
@@ -53,12 +57,12 @@ export default function EditarOportunidadePage() {
       try {
         const [oportunidadeResponse, clientesResponse] = await Promise.all([
           fetch(`/api/oportunidades/${oportunidadeId}`),
-          fetch('/api/clientes'),
+          fetch('/api/clientes?mode=options&limit=300'),
         ])
 
         if (!oportunidadeResponse.ok) {
           const error = await oportunidadeResponse.json().catch(() => null)
-          Swal.fire({ icon: 'error', title: 'Erro', text: error?.error || 'Erro ao carregar oportunidade', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+          Swal.fire({ icon: 'error', title: 'Erro', text: error?.error || 'Erro ao carregar orçamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
           router.push('/oportunidades')
           return
         }
@@ -70,7 +74,7 @@ export default function EditarOportunidadePage() {
           titulo: oportunidade.titulo || '',
           descricao: oportunidade.descricao || '',
           valor: oportunidade.valor ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(oportunidade.valor) : '',
-          status: oportunidade.status || 'proposta',
+          status: oportunidade.status || 'orcamento',
           probabilidade:
             typeof oportunidade.probabilidade === 'number'
               ? String(oportunidade.probabilidade)
@@ -78,6 +82,10 @@ export default function EditarOportunidadePage() {
           dataFechamento: formatDateInput(oportunidade.dataFechamento),
           motivoPerda: oportunidade.motivoPerda || '',
           clienteId: oportunidade.clienteId || '',
+          proximaAcaoEm: formatDateInput(oportunidade.proximaAcaoEm),
+          canalProximaAcao: oportunidade.canalProximaAcao || '',
+          responsavelProximaAcao: oportunidade.responsavelProximaAcao || '',
+          lembreteProximaAcao: oportunidade.lembreteProximaAcao === true,
         })
 
         if (Array.isArray(clientesData)) {
@@ -88,7 +96,7 @@ export default function EditarOportunidadePage() {
         }
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
-        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao carregar oportunidade. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao carregar orçamento. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
         router.push('/oportunidades')
       } finally {
         setCarregando(false)
@@ -101,6 +109,15 @@ export default function EditarOportunidadePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    if (e.target.name === 'lembreteProximaAcao') {
+      const target = e.target as HTMLInputElement
+      setFormData((prev) => ({
+        ...prev,
+        lembreteProximaAcao: target.checked,
+      }))
+      return
+    }
+
     if (e.target.name === 'status' && e.target.value !== 'perdida') {
       setFormData((prev) => ({
         ...prev,
@@ -175,18 +192,22 @@ export default function EditarOportunidadePage() {
           clienteId: formData.clienteId || null,
           dataFechamento: formData.dataFechamento || null,
           motivoPerda: formData.motivoPerda || null,
+          proximaAcaoEm: formData.proximaAcaoEm || null,
+          canalProximaAcao: formData.canalProximaAcao || null,
+          responsavelProximaAcao: formData.responsavelProximaAcao || null,
+          lembreteProximaAcao: formData.lembreteProximaAcao,
         }),
       })
 
       if (response.ok) {
         const result = await response.json()
         if (result.statusAutoAtualizado) {
-          await Swal.fire({ icon: 'success', title: 'Proposta Salva!', text: 'O status foi atualizado automaticamente para "Negociação" pois o valor foi alterado.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+          await Swal.fire({ icon: 'success', title: 'Orçamento salvo!', text: 'O status foi ajustado automaticamente para "Orçamento".', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
         } else if (formData.status === 'fechada' && result.prospectoConvertidoAutomaticamente) {
           await Swal.fire({
             icon: 'success',
             title: 'Venda Fechada! 🎉',
-            html: 'A proposta foi fechada com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado foi automaticamente promovido a cliente.',
+            html: 'O orçamento foi fechado com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado foi automaticamente promovido a cliente.',
             confirmButtonColor: '#16a34a',
             background: '#1f2937',
             color: '#f3f4f6',
@@ -195,11 +216,11 @@ export default function EditarOportunidadePage() {
         router.push('/oportunidades')
       } else {
         const error = await response.json()
-        Swal.fire({ icon: 'error', title: 'Erro', text: error.error || 'Erro ao atualizar oportunidade', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        Swal.fire({ icon: 'error', title: 'Erro', text: error.error || 'Erro ao atualizar orçamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       }
     } catch (error) {
-      console.error('Erro ao atualizar oportunidade:', error)
-      Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao atualizar oportunidade. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      console.error('Erro ao atualizar orçamento:', error)
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao atualizar orçamento. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
     } finally {
       setLoading(false)
     }
@@ -210,7 +231,7 @@ export default function EditarOportunidadePage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={32} />
-          <p className="text-gray-600 dark:text-gray-400">Carregando oportunidade...</p>
+          <p className="text-gray-600 dark:text-gray-400">Carregando orçamento...</p>
         </div>
       </div>
     )
@@ -224,13 +245,13 @@ export default function EditarOportunidadePage() {
           className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
         >
           <ArrowLeft size={16} className="mr-2" />
-          Voltar para Oportunidades
+          Voltar para Orçamentos
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Editar Oportunidade
+          Editar Orçamento
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Atualize os dados da oportunidade
+          Atualize os dados do orçamento
         </p>
       </div>
 
@@ -242,7 +263,7 @@ export default function EditarOportunidadePage() {
                 htmlFor="titulo"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Titulo <span className="text-red-500">*</span>
+                Título <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -252,7 +273,7 @@ export default function EditarOportunidadePage() {
                 value={formData.titulo}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Titulo da oportunidade"
+                placeholder="Título do orçamento"
               />
             </div>
 
@@ -261,7 +282,7 @@ export default function EditarOportunidadePage() {
                 htmlFor="descricao"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Descricao
+                Descrição
               </label>
               <textarea
                 id="descricao"
@@ -270,7 +291,7 @@ export default function EditarOportunidadePage() {
                 value={formData.descricao}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Descricao detalhada da oportunidade"
+                placeholder="Descrição detalhada do orçamento"
               />
             </div>
 
@@ -403,9 +424,85 @@ export default function EditarOportunidadePage() {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
               />
             </div>
+
+            <div>
+              <label
+                htmlFor="proximaAcaoEm"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Proxima Acao
+              </label>
+              <input
+                type="date"
+                id="proximaAcaoEm"
+                name="proximaAcaoEm"
+                value={formData.proximaAcaoEm}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="canalProximaAcao"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Canal da Proxima Acao
+              </label>
+              <select
+                id="canalProximaAcao"
+                name="canalProximaAcao"
+                value={formData.canalProximaAcao}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">Email</option>
+                <option value="ligacao">Ligacao</option>
+                <option value="reuniao">Reuniao</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label
+                htmlFor="responsavelProximaAcao"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Responsavel pela Proxima Acao
+              </label>
+              <input
+                type="text"
+                id="responsavelProximaAcao"
+                name="responsavelProximaAcao"
+                value={formData.responsavelProximaAcao}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: Joao"
+              />
+            </div>
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              name="lembreteProximaAcao"
+              checked={formData.lembreteProximaAcao}
+              onChange={handleChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+            />
+            Ativar lembrete da proxima acao
+          </label>
+
           <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            {oportunidadeId && (
+              <Link href={`/oportunidades/${oportunidadeId}/followups`}>
+                <Button type="button" variant="outline" disabled={loading}>
+                  Follow-ups
+                </Button>
+              </Link>
+            )}
             <Link href="/oportunidades">
               <Button type="button" variant="outline" disabled={loading}>
                 Cancelar
@@ -417,7 +514,7 @@ export default function EditarOportunidadePage() {
               ) : (
                 <>
                   <Save size={20} className="mr-2" />
-                  Salvar Alteracoes
+                  Salvar Alterações
                 </>
               )}
             </Button>
@@ -427,3 +524,4 @@ export default function EditarOportunidadePage() {
     </div>
   )
 }
+

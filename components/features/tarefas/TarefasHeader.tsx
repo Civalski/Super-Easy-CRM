@@ -8,7 +8,11 @@ import Link from 'next/link'
 import { Button } from '@/components/common'
 import { Plus, CheckSquare } from 'lucide-react'
 
-export function TarefasHeader() {
+interface TarefasHeaderProps {
+    onCreateClick?: () => void
+}
+
+export function TarefasHeader({ onCreateClick }: TarefasHeaderProps) {
     return (
         <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
@@ -24,12 +28,19 @@ export function TarefasHeader() {
                     </p>
                 </div>
             </div>
-            <Link href="/tarefas/nova">
-                <Button>
+            {onCreateClick ? (
+                <Button onClick={onCreateClick}>
                     <Plus size={20} className="mr-2" />
                     Nova Tarefa
                 </Button>
-            </Link>
+            ) : (
+                <Link href="/tarefas/nova">
+                    <Button>
+                        <Plus size={20} className="mr-2" />
+                        Nova Tarefa
+                    </Button>
+                </Link>
+            )}
         </div>
     )
 }

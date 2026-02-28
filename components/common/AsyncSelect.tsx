@@ -8,7 +8,7 @@ export interface AsyncSelectOption {
     nome: string
     subtitulo?: string
     tipo: 'cliente' | 'prospecto' | 'outro'
-    original?: any
+    original?: unknown
 }
 
 interface AsyncSelectProps {
@@ -56,26 +56,40 @@ export default function AsyncSelect({
     // Pre-load default options on open
     useEffect(() => {
         if (isOpen && query.length === 0 && options.length === 0) {
+            const controller = new AbortController()
             setLoading(true)
-            fetch(fetchUrl)
+            fetch(fetchUrl, { signal: controller.signal })
                 .then(res => res.ok ? res.json() : [])
                 .then(data => {
                     if (Array.isArray(data)) {
                         setOptions(data)
                     }
                 })
-                .catch(err => console.error('Error fetching default options:', err))
-                .finally(() => setLoading(false))
+                .catch(err => {
+                    if (!controller.signal.aborted) {
+                        console.error('Error fetching default options:', err)
+                    }
+                })
+                .finally(() => {
+                    if (!controller.signal.aborted) {
+                        setLoading(false)
+                    }
+                })
+
+            return () => controller.abort()
         }
-    }, [isOpen, query, fetchUrl])
+    }, [isOpen, query, fetchUrl, options.length])
 
     // Debounce search
     useEffect(() => {
+        const controller = new AbortController()
         const timer = setTimeout(async () => {
             if (query.trim().length >= 2) {
                 setLoading(true)
                 try {
-                    const res = await fetch(`${fetchUrl}?q=${encodeURIComponent(query)}`)
+                    const res = await fetch(`${fetchUrl}?q=${encodeURIComponent(query)}`, {
+                        signal: controller.signal,
+                    })
                     if (res.ok) {
                         const data = await res.json()
                         setOptions(Array.isArray(data) ? data : [])
@@ -84,27 +98,43 @@ export default function AsyncSelect({
                         setOptions([])
                     }
                 } catch (err) {
-                    console.error('Error fetching options:', err)
-                    setOptions([])
+                    if (!controller.signal.aborted) {
+                        console.error('Error fetching options:', err)
+                        setOptions([])
+                    }
                 } finally {
-                    setLoading(false)
+                    if (!controller.signal.aborted) {
+                        setLoading(false)
+                    }
                 }
             } else if (query.trim().length === 0 && isOpen) {
                 // If query cleared, fetch defaults again?
                 // The previous effect handles "on open", but if I type then backspace to empty...
                 setLoading(true)
-                fetch(fetchUrl)
+                fetch(fetchUrl, { signal: controller.signal })
                     .then(res => res.ok ? res.json() : [])
                     .then(data => {
                         if (Array.isArray(data)) {
                             setOptions(data)
                         }
                     })
-                    .finally(() => setLoading(false))
+                    .catch(err => {
+                        if (!controller.signal.aborted) {
+                            console.error('Error fetching default options:', err)
+                        }
+                    })
+                    .finally(() => {
+                        if (!controller.signal.aborted) {
+                            setLoading(false)
+                        }
+                    })
             }
         }, 500)
 
-        return () => clearTimeout(timer)
+        return () => {
+            clearTimeout(timer)
+            controller.abort()
+        }
     }, [query, fetchUrl, isOpen])
 
     // Close when clicking outside
@@ -135,7 +165,7 @@ export default function AsyncSelect({
     }
 
     return (
-        <div className={`relative ${className}`} ref={wrapperRef}>
+        <div className={`relative min-w-0 ${className}`} ref={wrapperRef}>
             {label && (
                 <label
                     htmlFor={id}
@@ -153,12 +183,12 @@ export default function AsyncSelect({
         `}
                 onClick={() => !disabled && setIsOpen(true)}
             >
-                <div className="flex items-center px-4 py-2 min-h-[42px]">
+                <div className="flex min-w-0 items-center px-4 py-2 min-h-[42px]">
                     {/* Search Icon */}
                     <Search size={16} className="text-gray-400 mr-2 flex-shrink-0" />
 
                     {/* Input Area */}
-                    <div className="flex-1 relative">
+                    <div className="relative min-w-0 flex-1">
                         {/* If we have a value and query is empty, allow showing the label but make it look like an input value.
                  Actually, typical pattern:
                  If isOpen: show Input.

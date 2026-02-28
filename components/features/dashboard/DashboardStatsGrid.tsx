@@ -39,7 +39,7 @@ export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
                 color="blue"
             />
             <StatCard
-                title="Oportunidades"
+                title="Orçamentos"
                 value={data.oportunidadesCount}
                 icon={Briefcase}
                 color="green"

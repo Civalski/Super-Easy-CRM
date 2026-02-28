@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { logBusinessEvent } from '@/lib/observability/audit';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -80,6 +81,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 clienteId: cliente.id
             }
         });
+
+        logBusinessEvent({
+            event: 'prospecto.convertido',
+            userId,
+            entity: 'prospecto',
+            entityId: id,
+            from: prospecto.status,
+            to: 'convertido',
+            metadata: {
+                clienteId: cliente.id,
+            },
+        })
 
         return NextResponse.json({
             success: true,

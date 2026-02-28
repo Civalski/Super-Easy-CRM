@@ -10,9 +10,10 @@ import type { TabType } from './TarefasTypes'
 
 interface TarefasEmptyStateProps {
     activeTab: TabType
+    onCreateClick?: () => void
 }
 
-export function TarefasEmptyState({ activeTab }: TarefasEmptyStateProps) {
+export function TarefasEmptyState({ activeTab, onCreateClick }: TarefasEmptyStateProps) {
     if (activeTab === 'pendentes') {
         return (
             <div className="crm-card p-12 text-center">
@@ -23,12 +24,19 @@ export function TarefasEmptyState({ activeTab }: TarefasEmptyStateProps) {
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                     Todas as suas tarefas estão concluídas! Parabéns!
                 </p>
-                <Link href="/tarefas/nova">
-                    <Button>
+                {onCreateClick ? (
+                    <Button onClick={onCreateClick}>
                         <Plus size={20} className="mr-2" />
                         Criar Nova Tarefa
                     </Button>
-                </Link>
+                ) : (
+                    <Link href="/tarefas/nova">
+                        <Button>
+                            <Plus size={20} className="mr-2" />
+                            Criar Nova Tarefa
+                        </Button>
+                    </Link>
+                )}
             </div>
         )
     }

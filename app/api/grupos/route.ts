@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
+import {
+    mapOpportunityStatusForResponse,
+    normalizeOpportunityStatus,
+    expandOpportunityStatuses,
+} from '@/lib/domain/status'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,40 +31,27 @@ export async function GET(request: NextRequest) {
             )
         }
 
-        // Lazy Cleanup: Delete prospects older than 30 days that are stil "cold" (never contacted)
-        // Only remove leads with status='novo' that have NO ultimoContato (never sent to funnel)
-        // Leads with ultimoContato set were intentionally sent to the funnel and must NOT be deleted
-        const date30DaysAgo = new Date()
-        date30DaysAgo.setDate(date30DaysAgo.getDate() - 30)
-
-        await prisma.prospecto.deleteMany({
-            where: {
-                userId,
-                status: 'novo',
-                ultimoContato: null,       // Só remove leads frios nunca enviados ao funil
-                createdAt: { lt: date30DaysAgo }
-            }
-        }).catch(err => console.error('Error cleaning up prospects:', err))
+        const normalizedStatus = normalizeOpportunityStatus(status) || status
 
         let data = []
         let total = 0
 
         // Mapping of frontend listing status to logic
-        // prospeccao -> Prospecto (novo, em_contato)
-        // qualificacao -> Prospecto (qualificado)
-        // others -> Oportunidade (status matches)
-
-        if (status === 'prospeccao' || status === 'contatado' || status === 'qualificacao') {
-            const prospectoStatus = status === 'prospeccao'
+        // sem_contato -> Prospecto (novo)
+        // contatado -> Prospecto (em_contato)
+        // em_potencial -> Prospecto (qualificado)
+        // others -> Oportunidade
+        if (normalizedStatus === 'sem_contato' || normalizedStatus === 'contatado' || normalizedStatus === 'em_potencial') {
+            const prospectoStatus = normalizedStatus === 'sem_contato'
                 ? 'novo'
-                : status === 'contatado'
+                : normalizedStatus === 'contatado'
                     ? 'em_contato'
                     : 'qualificado'
 
-            const whereProspecto: any = {
+            const whereProspecto: Record<string, unknown> = {
                 userId,
                 status: prospectoStatus,
-                // Para "prospeccao" (status=novo): excluir leads frios que ainda não foram
+                // Para "sem_contato" (status=novo): excluir leads frios que ainda não foram
                 // enviados ao funil (ultimoContato=null). Esses ficam na aba Leads.
                 // Leads com ultimoContato definido foram enviados explicitamente ao Funil.
                 ...(prospectoStatus === 'novo' ? { NOT: { ultimoContato: null } } : {}),
@@ -77,14 +69,14 @@ export async function GET(request: NextRequest) {
                 prisma.prospecto.count({ where: whereProspecto }),
             ])
 
-            data = prospectos.map(p => ({
+            data = prospectos.map((p) => ({
                 id: p.id,
                 titulo: p.nomeFantasia || p.razaoSocial,
                 valor: null,
-                status: status,
-                subStatus: p.status, // Pass the original prospect status (novo/em_contato)
+                status: normalizedStatus,
+                subStatus: p.status,
                 createdAt: p.createdAt.toISOString(),
-                type: 'prospecto', // Flag to identify origin
+                type: 'prospecto',
                 cliente: {
                     nome: p.nomeFantasia || p.razaoSocial,
                     email: p.email,
@@ -93,11 +85,14 @@ export async function GET(request: NextRequest) {
                 },
             }))
             total = count
-
         } else {
-            const whereOportunidade = {
+            const statusFilter = normalizeOpportunityStatus(normalizedStatus)
+                ? expandOpportunityStatuses([normalizeOpportunityStatus(normalizedStatus)!])
+                : [normalizedStatus]
+
+            const whereOportunidade: Record<string, unknown> = {
                 userId,
-                status,
+                status: { in: statusFilter },
             }
 
             const [oportunidades, count] = await prisma.$transaction([
@@ -117,15 +112,15 @@ export async function GET(request: NextRequest) {
                                 empresa: true,
                             },
                         },
-
                     },
                 }),
                 prisma.oportunidade.count({ where: whereOportunidade }),
             ])
 
-            data = oportunidades.map(o => ({
+            data = oportunidades.map((o) => ({
                 ...o,
-                type: 'oportunidade'
+                status: mapOpportunityStatusForResponse(o.status),
+                type: 'oportunidade',
             }))
             total = count
         }

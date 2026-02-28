@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
 
 // GET /api/prospectos - Lista todos os prospectos com filtros
 export async function GET(request: NextRequest) {
@@ -26,21 +27,6 @@ export async function GET(request: NextRequest) {
 
         // Construir filtros
         const where: Record<string, unknown> = { userId };
-
-        // Limpeza automática: Remover prospectos "em_contato" com mais de 30 dias sem qualificação
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        await prisma.prospecto.deleteMany({
-            where: {
-                userId,
-                status: 'em_contato',
-                ultimoContato: {
-                    lt: thirtyDaysAgo
-                }
-            }
-        });
-
         const origem = searchParams.get('origem'); // 'leads' = mostrar apenas lead_frio
 
         // Se nenhum status específico for solicitado:
@@ -83,14 +69,21 @@ export async function GET(request: NextRequest) {
             prisma.prospecto.count({ where })
         ]);
 
-        // Buscar lotes únicos usando raw query (compatível mesmo antes do prisma generate)
+        // Buscar lotes unicos com SQL parametrizado (evita SQL injection).
         let lotes: string[] = [];
         try {
             const statusClause = origem === 'leads'
-                ? `AND (status = 'lead_frio' OR (status = 'novo' AND "ultimoContato" IS NULL))`
-                : `AND status NOT IN ('convertido', 'lead_frio')`;
-            const lotesResult = await prisma.$queryRawUnsafe<{ lote: string | null }[]>(
-                `SELECT DISTINCT lote FROM prospectos WHERE lote IS NOT NULL ${statusClause} AND "userId" = '${userId}' ORDER BY lote ASC`
+                ? Prisma.sql`AND (status = 'lead_frio' OR (status = 'novo' AND "ultimoContato" IS NULL))`
+                : Prisma.sql`AND status NOT IN ('convertido', 'lead_frio')`;
+            const lotesResult = await prisma.$queryRaw<{ lote: string | null }[]>(
+                Prisma.sql`
+                    SELECT DISTINCT lote
+                    FROM prospectos
+                    WHERE lote IS NOT NULL
+                    ${statusClause}
+                    AND "userId" = ${userId}
+                    ORDER BY lote ASC
+                `
             );
             lotes = lotesResult.map(l => l.lote).filter((l): l is string => l !== null);
         } catch {
@@ -189,3 +182,4 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+

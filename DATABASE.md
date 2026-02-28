@@ -17,7 +17,7 @@ DATABASE_URL="postgresql://user:password@host:6543/postgres?pgbouncer=true"
 # Conexao direta (CLI / migrations)
 DIRECT_URL="postgresql://user:password@host:5432/postgres"
 ```
-a
+
 ---
 
 ## Desenvolvimento
@@ -26,11 +26,11 @@ a
 # Gerar Prisma Client
 npm run db:generate
 
-# Criar migrations (recomendado)
+# Criar/aplicar migrations (recomendado)
 npm run db:migrate
 
-# Aplicar schema rapidamente (somente dev/prototipo)
-npm run db:push
+# Sincronizar schema sem migration (somente prototipo local)
+npm run db:push:dev
 
 # Seed (opcional)
 npm run db:seed
@@ -38,6 +38,10 @@ npm run db:seed
 # Iniciar projeto
 npm run dev
 ```
+
+Observacao:
+- `npm run dev` nao executa mais `db push` automaticamente.
+- Isso evita resets acidentais quando houver mudancas destrutivas no schema.
 
 ---
 
@@ -47,7 +51,13 @@ npm run dev
 2. Aplique migrations:
 
 ```bash
-npx prisma migrate deploy
+npm run db:deploy
+```
+
+3. (Opcional recomendado) Verifique status antes do deploy:
+
+```bash
+npm run db:status
 ```
 
 ---
@@ -56,8 +66,11 @@ npx prisma migrate deploy
 
 ```bash
 npm run db:generate   # Gerar Prisma Client
-npm run db:push       # Enviar schema direto (dev)
-npm run db:migrate    # Criar migration (dev)
+npm run db:push       # Enviar schema direto (apenas prototipo)
+npm run db:push:dev   # Push local + regenerate client
+npm run db:migrate    # Criar/aplicar migration (dev)
+npm run db:deploy     # Aplicar migrations em producao
+npm run db:status     # Verificar estado das migrations
 npm run db:studio     # Prisma Studio
 npm run db:seed       # Seed inicial
 ```

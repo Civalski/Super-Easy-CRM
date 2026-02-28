@@ -93,7 +93,7 @@ export function TarefasStatusChart({ tarefasPorStatus, oportunidadesCount }: Tar
         <div className="rounded-xl border border-amber-300/60 bg-amber-100/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
           <p className="text-xs uppercase tracking-wide text-amber-700/80 dark:text-amber-300/80">Tarefas em aberto</p>
           <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{pendentes}</p>
-          <p className="text-xs text-amber-700/80 dark:text-amber-200/80">{tarefasPorOportunidade.toFixed(2)} por oportunidade</p>
+          <p className="text-xs text-amber-700/80 dark:text-amber-200/80">{tarefasPorOportunidade.toFixed(2)} por orçamento</p>
         </div>
       </div>
     </div>

@@ -1,8 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
+
+type CampoPersonalizado = {
+  label: string
+  value: string
+}
+
+const normalizeOptionalString = (
+  value: unknown,
+  options: { maxLength?: number; upperCase?: boolean } = {}
+) => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const normalized = options.upperCase ? trimmed.toUpperCase() : trimmed
+  if (options.maxLength && normalized.length > options.maxLength) {
+    return normalized.slice(0, options.maxLength)
+  }
+  return normalized
+}
+
+const sanitizeCamposPersonalizados = (value: unknown): CampoPersonalizado[] | null => {
+  if (!Array.isArray(value)) return null
+
+  const campos = value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const field = item as { label?: unknown; value?: unknown }
+      const label = normalizeOptionalString(field.label, { maxLength: 80 })
+      if (!label) return null
+      const fieldValue = normalizeOptionalString(field.value, { maxLength: 500 }) ?? ''
+      return { label, value: fieldValue }
+    })
+    .filter((item): item is CampoPersonalizado => item !== null)
+    .slice(0, 20)
+
+  return campos.length > 0 ? campos : null
+}
 
 export async function GET(
   request: NextRequest,
@@ -25,22 +63,20 @@ export async function GET(
         },
         prospecto: true,
       },
-    });
+    })
 
     if (cliente) {
-      return NextResponse.json(cliente);
+      return NextResponse.json(cliente)
     }
 
-    // Se não encontrar cliente, procura por prospecto
     const prospecto = await prisma.prospecto.findFirst({
       where: { id: params.id, userId },
-    });
+    })
 
-    // Se encontrar prospecto, retorna formatado como cliente "virtual"
     if (prospecto) {
       const enderecoCompleto = prospecto.logradouro
         ? `${prospecto.tipoLogradouro || ''} ${prospecto.logradouro}, ${prospecto.numero || ''} ${prospecto.complemento || ''}`.trim()
-        : null;
+        : null
 
       const virtualCliente = {
         id: prospecto.id,
@@ -52,29 +88,35 @@ export async function GET(
         cidade: prospecto.municipio,
         estado: prospecto.uf,
         cep: prospecto.cep,
+        cargo: null,
+        documento: null,
+        website: null,
+        dataNascimento: null,
+        observacoes: null,
+        camposPersonalizados: null,
         createdAt: prospecto.createdAt,
         updatedAt: prospecto.updatedAt,
         _count: {
           oportunidades: 0,
           contatos: 0,
         },
-        prospecto: prospecto, // Mantém os dados originais do prospecto
-        isVirtual: true, // Flag para indicar que é um prospecto visualizado como cliente
-      };
+        prospecto,
+        isVirtual: true,
+      }
 
-      return NextResponse.json(virtualCliente);
+      return NextResponse.json(virtualCliente)
     }
 
     return NextResponse.json(
-      { error: 'Cliente ou Prospecto não encontrado' },
+      { error: 'Cliente ou Prospecto nao encontrado' },
       { status: 404 }
-    );
+    )
   } catch (error) {
-    console.error('Erro ao buscar cliente:', error);
+    console.error('Erro ao buscar cliente:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar cliente' },
       { status: 500 }
-    );
+    )
   }
 }
 
@@ -89,46 +131,80 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { nome, email, telefone, empresa, endereco, cidade, estado, cep } = body
+    const {
+      nome,
+      email,
+      telefone,
+      empresa,
+      endereco,
+      cidade,
+      estado,
+      cep,
+      cargo,
+      documento,
+      website,
+      dataNascimento,
+      observacoes,
+      camposPersonalizados,
+    } = body
 
-    // Verifica se o cliente existe
     const clienteExistente = await prisma.cliente.findFirst({
       where: { id: params.id, userId },
     })
 
     if (!clienteExistente) {
       return NextResponse.json(
-        { error: 'Cliente não encontrado' },
+        { error: 'Cliente nao encontrado' },
         { status: 404 }
       )
     }
 
-    // Verifica se o email já está em uso por outro cliente
-    if (email && email.trim() !== '') {
+    const nomeNormalizado = nome !== undefined ? normalizeOptionalString(nome, { maxLength: 120 }) : undefined
+    if (nome !== undefined && !nomeNormalizado) {
+      return NextResponse.json(
+        { error: 'Nome e obrigatorio' },
+        { status: 400 }
+      )
+    }
+
+    const emailNormalizado = email !== undefined
+      ? normalizeOptionalString(email, { maxLength: 120 })
+      : undefined
+
+    if (emailNormalizado) {
       const emailEmUso = await prisma.cliente.findFirst({
         where: {
-          email: email.trim(),
+          email: emailNormalizado,
           id: { not: params.id },
           userId,
         },
       })
       if (emailEmUso) {
         return NextResponse.json(
-          { error: 'Já existe um cliente com este email' },
+          { error: 'Ja existe um cliente com este email' },
           { status: 400 }
         )
       }
     }
 
     const updateData = {
-      ...(nome !== undefined && { nome: nome.trim() }),
-      ...(email !== undefined && { email: email && email.trim() !== '' ? email.trim() : null }),
-      ...(telefone !== undefined && { telefone: telefone && telefone.trim() !== '' ? telefone.trim() : null }),
-      ...(empresa !== undefined && { empresa: empresa && empresa.trim() !== '' ? empresa.trim() : null }),
-      ...(endereco !== undefined && { endereco: endereco && endereco.trim() !== '' ? endereco.trim() : null }),
-      ...(cidade !== undefined && { cidade: cidade && cidade.trim() !== '' ? cidade.trim() : null }),
-      ...(estado !== undefined && { estado: estado && estado.trim() !== '' ? estado.trim().toUpperCase() : null }),
-      ...(cep !== undefined && { cep: cep && cep.trim() !== '' ? cep.trim() : null }),
+      ...(nome !== undefined && { nome: nomeNormalizado as string }),
+      ...(email !== undefined && { email: emailNormalizado ?? null }),
+      ...(telefone !== undefined && { telefone: normalizeOptionalString(telefone, { maxLength: 30 }) }),
+      ...(empresa !== undefined && { empresa: normalizeOptionalString(empresa, { maxLength: 120 }) }),
+      ...(endereco !== undefined && { endereco: normalizeOptionalString(endereco, { maxLength: 200 }) }),
+      ...(cidade !== undefined && { cidade: normalizeOptionalString(cidade, { maxLength: 80 }) }),
+      ...(estado !== undefined && { estado: normalizeOptionalString(estado, { maxLength: 2, upperCase: true }) }),
+      ...(cep !== undefined && { cep: normalizeOptionalString(cep, { maxLength: 12 }) }),
+      ...(cargo !== undefined && { cargo: normalizeOptionalString(cargo, { maxLength: 100 }) }),
+      ...(documento !== undefined && { documento: normalizeOptionalString(documento, { maxLength: 30 }) }),
+      ...(website !== undefined && { website: normalizeOptionalString(website, { maxLength: 200 }) }),
+      ...(dataNascimento !== undefined && { dataNascimento: normalizeOptionalString(dataNascimento, { maxLength: 20 }) }),
+      ...(observacoes !== undefined && { observacoes: normalizeOptionalString(observacoes, { maxLength: 2000 }) }),
+      ...(camposPersonalizados !== undefined && {
+        camposPersonalizados:
+          sanitizeCamposPersonalizados(camposPersonalizados) ?? Prisma.DbNull,
+      }),
     }
 
     const updated = await prisma.cliente.updateMany({
@@ -138,7 +214,7 @@ export async function PATCH(
 
     if (updated.count === 0) {
       return NextResponse.json(
-        { error: 'Cliente não encontrado' },
+        { error: 'Cliente nao encontrado' },
         { status: 404 }
       )
     }
@@ -156,17 +232,18 @@ export async function PATCH(
     })
 
     return NextResponse.json(clienteAtualizado)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao atualizar cliente:', error)
-    if (error.code === 'P2025') {
+    const prismaError = error as { code?: string }
+    if (prismaError.code === 'P2025') {
       return NextResponse.json(
-        { error: 'Cliente não encontrado' },
+        { error: 'Cliente nao encontrado' },
         { status: 404 }
       )
     }
-    if (error.code === 'P2002') {
+    if (prismaError.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Já existe um cliente com este email' },
+        { error: 'Ja existe um cliente com este email' },
         { status: 400 }
       )
     }
@@ -193,17 +270,18 @@ export async function DELETE(
 
     if (result.count === 0) {
       return NextResponse.json(
-        { error: 'Cliente não encontrado' },
+        { error: 'Cliente nao encontrado' },
         { status: 404 }
       )
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao deletar cliente:', error)
-    if (error.code === 'P2025') {
+    const prismaError = error as { code?: string }
+    if (prismaError.code === 'P2025') {
       return NextResponse.json(
-        { error: 'Cliente não encontrado' },
+        { error: 'Cliente nao encontrado' },
         { status: 404 }
       )
     }

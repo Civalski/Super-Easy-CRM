@@ -15,11 +15,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Button from '@/components/common/Button';
 import Swal from 'sweetalert2';
+import type { TaskNotification } from '@/types/notifications';
 
 
 interface TaskNotificationModalProps {
     isOpen: boolean;
-    task: any; // Using any to match existing flexibility, or Tarefa if strictly typed
+    task: TaskNotification | null;
     onClose: () => void;
     onUpdate: () => void;
 }
@@ -138,7 +139,8 @@ export default function TaskNotificationModal({
         router.push(`/tarefas/${task.id}/editar`);
     };
 
-    const isOverdue = new Date(task.dataVencimento) < new Date();
+    const dueDate = task.dataVencimento ? new Date(task.dataVencimento) : null;
+    const isOverdue = dueDate ? dueDate < new Date() : false;
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {

@@ -12,15 +12,20 @@ import {
   Settings,
   BarChart3,
   Trophy,
+  ClipboardList,
   LogOut,
   Layers,
   Target,
   X,
+  Package,
+  Wallet,
+  MessageSquareText,
 } from 'lucide-react'
 
 interface SidebarProps {
   collapsed?: boolean
   isMobile?: boolean
+  mobileOpen?: boolean
   onClose?: () => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
@@ -43,7 +48,7 @@ const menuItems = [
     icon: Users,
   },
   {
-    name: 'Oportunidades',
+    name: 'Orçamentos',
     href: '/oportunidades',
     icon: Briefcase,
   },
@@ -51,6 +56,26 @@ const menuItems = [
     name: 'Tarefas',
     href: '/tarefas',
     icon: Calendar,
+  },
+  {
+    name: 'Pedidos',
+    href: '/pedidos',
+    icon: ClipboardList,
+  },
+  {
+    name: 'Templates',
+    href: '/followups/templates',
+    icon: MessageSquareText,
+  },
+  {
+    name: 'Produtos',
+    href: '/produtos',
+    icon: Package,
+  },
+  {
+    name: 'Financeiro',
+    href: '/financeiro',
+    icon: Wallet,
   },
   {
     name: 'Funil',
@@ -68,7 +93,7 @@ const menuItems = [
     icon: BarChart3,
   },
   {
-    name: 'Configuracoes',
+    name: 'Configurações',
     href: '/configuracoes',
     icon: Settings,
   },
@@ -77,6 +102,7 @@ const menuItems = [
 export default function Sidebar({
   collapsed = false,
   isMobile = false,
+  mobileOpen = false,
   onClose,
   onMouseEnter,
   onMouseLeave,
@@ -85,10 +111,15 @@ export default function Sidebar({
   const isCompact = collapsed && !isMobile
   const sidebarWidthClass = isCompact ? 'w-[4.5rem]' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
   const topBarLayoutClass = isCompact ? 'justify-center' : isMobile ? 'justify-between' : 'justify-center'
+  const mobileTransformClass = isMobile
+    ? mobileOpen
+      ? 'translate-x-0'
+      : '-translate-x-full'
+    : ''
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 ${sidebarWidthClass} text-slate-100 transition-[width] duration-300`}
+      className={`fixed inset-y-0 left-0 z-50 ${sidebarWidthClass} ${mobileTransformClass} text-slate-100 transition-[width,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]`}
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
@@ -107,12 +138,12 @@ export default function Sidebar({
                 alt="Arker CRM"
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-2xl object-contain"
+                className="h-10 w-10 rounded-2xl object-contain transition-opacity group-hover:opacity-90"
                 priority
               />
             ) : (
               <Image
-                src="/arker10.png"
+                src="/arkercorelogo.png"
                 alt="Arker CRM"
                 width={156}
                 height={52}
@@ -146,22 +177,23 @@ export default function Sidebar({
                     href={item.href}
                     title={item.name}
                     onClick={onClose}
-                    className={`group flex items-center rounded-xl transition-all duration-200 ${isCompact ? 'h-11 justify-center px-0' : 'h-11 gap-3 px-3.5'} ${isActive
+                    className={`group flex items-center rounded-xl transition-all duration-200 ${isCompact ? 'h-11 justify-center px-0' : 'h-11 justify-start px-3.5'} ${isActive
                       ? 'border border-indigo-300/16 bg-indigo-400/10 text-white shadow-[0_10px_20px_-16px_rgba(99,102,241,0.25)]'
                       : 'text-slate-200/90 hover:bg-slate-700/55 hover:text-white'
                       }`}
                   >
                     <Icon
                       size={18}
-                      className={isActive ? 'text-indigo-200' : 'text-slate-300 group-hover:text-slate-100'}
+                      className={`shrink-0 ${isActive ? 'text-indigo-200' : 'text-slate-300 group-hover:text-slate-100'}`}
                     />
-                    {!isCompact && (
-                      <>
-                        <span className="truncate text-sm font-medium tracking-wide">
-                          {item.name}
-                        </span>
-                      </>
-                    )}
+                    <span
+                      className={`overflow-hidden whitespace-nowrap text-sm font-medium tracking-wide transition-[max-width,opacity,transform,margin-left] duration-200 ease-out ${isCompact
+                        ? 'ml-0 max-w-0 -translate-x-1 opacity-0'
+                        : 'ml-3 max-w-[9rem] translate-x-0 opacity-100'
+                        }`}
+                    >
+                      {item.name}
+                    </span>
                   </Link>
                 </li>
               )
@@ -173,10 +205,17 @@ export default function Sidebar({
               type="button"
               onClick={() => signOut()}
               title="Sair"
-              className={`flex h-11 w-full items-center rounded-xl border border-slate-500/30 text-slate-200 transition-colors hover:border-red-300/30 hover:bg-red-500/14 hover:text-red-100 ${isCompact ? 'justify-center px-0' : 'gap-3 px-3.5'}`}
+              className={`flex h-11 w-full items-center rounded-xl border border-slate-500/30 text-slate-200 transition-all duration-200 hover:border-red-300/30 hover:bg-red-500/14 hover:text-red-100 ${isCompact ? 'justify-center px-0' : 'justify-start px-3.5'}`}
             >
-              <LogOut size={18} />
-              {!isCompact && <span className="text-sm font-medium">Sair</span>}
+              <LogOut size={18} className="shrink-0" />
+              <span
+                className={`overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity,transform,margin-left] duration-200 ease-out ${isCompact
+                  ? 'ml-0 max-w-0 -translate-x-1 opacity-0'
+                  : 'ml-3 max-w-[9rem] translate-x-0 opacity-100'
+                  }`}
+              >
+                Sair
+              </span>
             </button>
           </div>
         </nav>

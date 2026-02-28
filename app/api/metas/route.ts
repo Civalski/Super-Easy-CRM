@@ -11,6 +11,12 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+function normalizeGoalMetricType(metricType: GoalMetricType) {
+  return metricType === GoalMetricType.NEGOCIACAO
+    ? GoalMetricType.PROPOSTAS
+    : metricType
+}
+
 export async function GET(req: NextRequest) {
   try {
     const userId = await getUserId(req)
@@ -25,8 +31,9 @@ export async function GET(req: NextRequest) {
 
     const goalsWithProgress = await Promise.all(
       goals.map(async (goal) => {
+        const normalizedMetricType = normalizeGoalMetricType(goal.metricType)
         const progressResult = await computeGoalProgress({
-          metricType: goal.metricType,
+          metricType: normalizedMetricType,
           startDate: goal.startDate,
           endDate: goal.endDate,
           weekDays: goal.weekDays ?? [],
@@ -46,6 +53,7 @@ export async function GET(req: NextRequest) {
 
         return {
           ...goal,
+          metricType: normalizedMetricType,
           current: progressResult.current,
           progress: Math.min(progress, 100),
           periodStart: progressResult.periodStart,
@@ -73,13 +81,14 @@ export async function POST(req: NextRequest) {
     const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
     const title = rawTitle ? rawTitle : null
     const target = Number(body.target)
-    const metricType = body.metricType as GoalMetricType
+    const metricTypeInput = body.metricType as GoalMetricType
+    const metricType = normalizeGoalMetricType(metricTypeInput)
     const periodType = body.periodType as GoalPeriodType
     const startDate = parseDateInput(body.startDate, false)
     const endDate = parseDateInput(body.endDate, true)
     const rawWeekDays = parseWeekDays(body.weekDays)
 
-    if (!Object.values(GoalMetricType).includes(metricType)) {
+    if (!Object.values(GoalMetricType).includes(metricTypeInput)) {
       return NextResponse.json({ error: 'Tipo de meta invalido' }, { status: 400 })
     }
 

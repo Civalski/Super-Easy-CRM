@@ -277,10 +277,10 @@ export function ProspectosList({
                                                 onClick={() => onQualificar(prospecto.id)}
                                                 disabled={!canQualificar}
                                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-600 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 transition-colors"
-                                                title={canQualificar ? 'Mover para qualificado' : 'Marque como contatado primeiro'}
+                                                title={canQualificar ? 'Mover para em potencial' : 'Marque como contatado primeiro'}
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                                Qualificar
+                                                Em potencial
                                             </button>
 
                                             <div className="relative">

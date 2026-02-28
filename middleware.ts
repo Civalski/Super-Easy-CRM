@@ -15,6 +15,11 @@ function isAdminOnly(pathname: string) {
 export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
 
+    // Allow public static files (e.g. /arkercorelogo.png) without auth.
+    if (/\.[^/]+$/.test(pathname)) {
+        return NextResponse.next()
+    }
+
     if (pathname.startsWith('/api/auth')) {
         return NextResponse.next()
     }
@@ -58,6 +63,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
     matcher: [
-        "/((?!_next/static|_next/image|favicon.ico).*)",
+        "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
     ],
 }

@@ -2,20 +2,22 @@ import { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
 import { GoalMetricType, GoalPeriodType } from '@prisma/client'
+import {
+  expandOpportunityStatuses,
+  OpportunityStatus,
+} from '@/lib/domain/status'
 
-const metricStatusMap: Partial<Record<GoalMetricType, string>> = {
-  PROPOSTAS: 'proposta',
-  VENDAS: 'fechada',
-  QUALIFICACAO: 'qualificacao',
-  NEGOCIACAO: 'negociacao',
-  PROSPECCAO: 'prospeccao',
+const metricStatusMap: Partial<Record<GoalMetricType, OpportunityStatus[]>> = {
+  PROPOSTAS: ['orcamento'],
+  VENDAS: ['fechada'],
+  QUALIFICACAO: ['em_potencial'],
+  PROSPECCAO: ['sem_contato'],
 }
 
 const metricsRequiringStatus = new Set<GoalMetricType>([
   GoalMetricType.PROPOSTAS,
   GoalMetricType.VENDAS,
   GoalMetricType.QUALIFICACAO,
-  GoalMetricType.NEGOCIACAO,
   GoalMetricType.PROSPECCAO,
 ])
 
@@ -298,14 +300,19 @@ export async function computeGoalProgress(goal: {
   }
 
   if (metricsRequiringStatus.has(metricType)) {
-    const status = metricStatusMap[metricType]
-    if (!status) return { current: 0, periodStart, periodEnd, active }
+    const canonicalStatuses = metricStatusMap[metricType]
+    const statuses = canonicalStatuses
+      ? expandOpportunityStatuses(canonicalStatuses)
+      : undefined
+    if (!statuses || statuses.length === 0) {
+      return { current: 0, periodStart, periodEnd, active }
+    }
 
     if (!weekDays || weekDays.length === 0) {
       const current = await prisma.oportunidade.count({
         where: {
           ...baseWhere,
-          status,
+          status: { in: statuses },
           updatedAt: { gte: periodStart, lte: periodEnd },
         },
       })
@@ -316,7 +323,7 @@ export async function computeGoalProgress(goal: {
       select: { updatedAt: true },
       where: {
         ...baseWhere,
-        status,
+        status: { in: statuses },
         updatedAt: { gte: periodStart, lte: periodEnd },
       },
     })

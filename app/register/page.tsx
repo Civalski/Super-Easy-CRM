@@ -58,6 +58,13 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
       <div className="max-w-md w-full space-y-8 bg-gray-900 p-8 rounded-xl border border-gray-800 shadow-2xl">
         <div className="text-center">
+          <img
+            src="/arkercorelogo.png"
+            alt="Arker CRM"
+            width={182}
+            height={42}
+            className="mx-auto h-10 w-auto object-contain"
+          />
           <h2 className="mt-6 text-3xl font-bold text-white tracking-tight">
             Criar conta
           </h2>
@@ -173,7 +180,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="group relative w-full flex justify-center py-3 px-4 border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Criando conta...' : 'Criar conta'}
             </button>
@@ -190,3 +197,4 @@ export default function RegisterPage() {
     </div>
   )
 }
+

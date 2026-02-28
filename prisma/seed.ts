@@ -118,14 +118,14 @@ const contatosData = [
 ]
 
 // Status possíveis para oportunidades
-const statusOportunidades = ['prospeccao', 'qualificacao', 'proposta', 'negociacao', 'fechada', 'perdida']
+const statusOportunidades = ['sem_contato', 'em_potencial', 'orcamento', 'fechada', 'perdida']
 
 // Status possíveis para tarefas
 const statusTarefas = ['pendente', 'em_andamento', 'concluida']
 const prioridadesTarefas = ['baixa', 'media', 'alta']
 
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...')
+  console.log('?? Iniciando seed do banco de dados...')
 
   const existingUser = await prisma.user.findFirst()
   const seedUser =
@@ -146,7 +146,7 @@ async function main() {
 
 
   // Criar clientes
-  console.log('👥 Criando clientes...')
+  console.log('?? Criando clientes...')
   const clientesCriados = []
   for (const clienteData of clientesData) {
     const clienteExistente = await prisma.cliente.findFirst({
@@ -161,15 +161,15 @@ async function main() {
         },
       })
       clientesCriados.push(cliente)
-      console.log(`  ✓ Cliente criado: ${cliente.nome}`)
+      console.log(`  ? Cliente criado: ${cliente.nome}`)
     } else {
       clientesCriados.push(clienteExistente)
-      console.log(`  → Cliente já existe: ${clienteData.nome}`)
+      console.log(`  ? Cliente já existe: ${clienteData.nome}`)
     }
   }
 
   // Criar contatos para alguns clientes
-  console.log('📞 Criando contatos...')
+  console.log('?? Criando contatos...')
   for (let i = 0; i < Math.min(contatosData.length, clientesCriados.length); i++) {
     const contatoData = contatosData[i]
     const cliente = clientesCriados[i]
@@ -190,14 +190,14 @@ async function main() {
           userId,
         },
       })
-      console.log(`  ✓ Contato criado: ${contatoData.nome} (${cliente.nome})`)
+      console.log(`  ? Contato criado: ${contatoData.nome} (${cliente.nome})`)
     } else {
-      console.log(`  → Contato já existe: ${contatoData.nome}`)
+      console.log(`  ? Contato já existe: ${contatoData.nome}`)
     }
   }
 
   // Criar oportunidades
-  console.log('💼 Criando oportunidades...')
+  console.log('?? Criando oportunidades...')
   const oportunidadesTitulos = [
     'Implementação de Sistema ERP',
     'Desenvolvimento de App Mobile',
@@ -242,17 +242,14 @@ async function main() {
     // Calcular probabilidade baseada no status
     let probabilidade = 0
     switch (status) {
-      case 'prospeccao':
+      case 'sem_contato':
         probabilidade = Math.floor(Math.random() * 20) + 10 // 10-30%
         break
-      case 'qualificacao':
+      case 'em_potencial':
         probabilidade = Math.floor(Math.random() * 20) + 30 // 30-50%
         break
-      case 'proposta':
+      case 'orcamento':
         probabilidade = Math.floor(Math.random() * 20) + 50 // 50-70%
-        break
-      case 'negociacao':
-        probabilidade = Math.floor(Math.random() * 20) + 70 // 70-90%
         break
       case 'fechada':
         probabilidade = 100
@@ -265,9 +262,9 @@ async function main() {
     // Calcular valor aleatório entre 10k e 500k
     const valor = Math.floor(Math.random() * 490000) + 10000
 
-    // Data de fechamento para oportunidades fechadas ou em negociação
+    // Data de fechamento para oportunidades fechadas
     let dataFechamento: Date | null = null
-    if (status === 'fechada' || status === 'negociacao') {
+    if (status === 'fechada') {
       const diasFuturos = Math.floor(Math.random() * 60) + 1
       dataFechamento = new Date()
       dataFechamento.setDate(dataFechamento.getDate() + diasFuturos)
@@ -287,14 +284,14 @@ async function main() {
       },
     })
     oportunidadesCriadas.push(oportunidade)
-    console.log(`  ✓ Oportunidade criada: ${oportunidade.titulo} (${status})`)
+    console.log(`  ? Oportunidade criada: ${oportunidade.titulo} (${status})`)
   }
 
   // Criar tarefas
-  console.log('✅ Criando tarefas...')
+  console.log('? Criando tarefas...')
   const tarefasTitulos = [
     'Reunião inicial com cliente',
-    'Enviar proposta comercial',
+    'Enviar orcamento comercial',
     'Apresentação de produto',
     'Follow-up pós reunião',
     'Preparar contrato',
@@ -305,7 +302,7 @@ async function main() {
     'Validar requisitos',
     'Preparar demonstração',
     'Análise de viabilidade',
-    'Revisar proposta',
+    'Revisar orcamento',
     'Contato telefônico',
     'Enviar email de follow-up',
     'Preparar apresentação executiva',
@@ -317,18 +314,18 @@ async function main() {
 
   const tarefasDescricoes = [
     'Agendar e realizar reunião inicial para entender necessidades',
-    'Preparar e enviar proposta comercial detalhada',
+    'Preparar e enviar orcamento comercial detalhado',
     'Apresentar funcionalidades principais do produto',
     'Fazer follow-up após reunião para manter relacionamento',
     'Preparar documento de contrato com termos e condições',
     'Negociar valores, prazos e condições de pagamento',
-    'Solicitar e analisar feedback do cliente sobre a proposta',
+    'Solicitar e analisar feedback do cliente sobre o orcamento',
     'Agendar próxima reunião para dar continuidade',
     'Enviar documentação técnica e especificações',
     'Validar todos os requisitos com o cliente',
     'Preparar demonstração personalizada do produto',
     'Realizar análise de viabilidade técnica e financeira',
-    'Revisar proposta antes de enviar ao cliente',
+    'Revisar orcamento antes de enviar ao cliente',
     'Realizar contato telefônico para alinhamento',
     'Enviar email de follow-up com próximos passos',
     'Preparar apresentação para diretoria executiva',
@@ -363,11 +360,11 @@ async function main() {
         oportunidadeId: oportunidade?.id,
       },
     })
-    console.log(`  ✓ Tarefa criada: ${tarefasTitulos[i]} (${status})`)
+    console.log(`  ? Tarefa criada: ${tarefasTitulos[i]} (${status})`)
   }
 
-  console.log('\n✨ Seed concluído com sucesso!')
-  console.log(`📊 Resumo:`)
+  console.log('\n? Seed concluído com sucesso!')
+  console.log(`?? Resumo:`)
   console.log(`   - ${clientesCriados.length} clientes`)
   console.log(`   - ${oportunidadesCriadas.length} oportunidades`)
   console.log(`   - ${tarefasTitulos.length} tarefas`)
@@ -375,10 +372,11 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('❌ Erro ao executar seed:', e)
+    console.error('? Erro ao executar seed:', e)
     process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
   })
+
 

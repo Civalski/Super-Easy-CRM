@@ -38,8 +38,8 @@ interface GoalSummary {
   | 'CLIENTES_CADASTRADOS'
   | 'VENDAS'
   | 'QUALIFICACAO'
-  | 'NEGOCIACAO'
   | 'PROSPECCAO'
+  | 'FATURAMENTO'
   periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
   target: number
   current?: number
@@ -130,7 +130,6 @@ export default function Dashboard() {
           valorTotal={data.valorTotal}
           valorGanhos={data.valorGanhos}
           valorPerdidos={data.valorPerdidos}
-          oportunidadesPorStatus={data.oportunidadesPorStatus}
         />
       </div>
 

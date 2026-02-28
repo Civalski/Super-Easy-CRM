@@ -211,7 +211,7 @@ export default function ProspectarPage() {
     const handleQualificar = async (id: string) => {
         const result = await Swal.fire({
             title: 'Qualificar Prospecto?',
-            text: 'Isso marcará o prospecto como qualificado e criará uma proposta comercial.',
+            text: 'Isso marcara o prospecto como em potencial.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#9333ea',
@@ -240,8 +240,8 @@ export default function ProspectarPage() {
 
             // Mostrar mensagem de sucesso
             await Swal.fire({
-                title: 'Prospecto Qualificado!',
-                text: 'Oportunidade criada com sucesso na etapa de Qualificação.',
+                title: 'Prospecto em potencial!',
+                text: 'Lead movido para a etapa Em potencial com sucesso.',
                 icon: 'success',
                 confirmButtonColor: '#9333ea',
                 confirmButtonText: 'Ótimo',
@@ -628,7 +628,7 @@ export default function ProspectarPage() {
         const confirm = await Swal.fire({
             icon: 'question',
             title: 'Enviar Lote ao Funil',
-            html: `Deseja enviar todos os leads do lote <strong>"${lote}"</strong> para o Funil de Prospecção?`,
+            html: `Deseja enviar todos os leads do lote <strong>"${lote}"</strong> para o Funil de Vendas?`,
             showCancelButton: true,
             confirmButtonText: 'Sim, enviar!',
             cancelButtonText: 'Cancelar',
@@ -887,7 +887,7 @@ export default function ProspectarPage() {
         const confirm = await Swal.fire({
             icon: 'question',
             title: 'Enviar ao Funil',
-            html: `Deseja enviar ${descricao} para o Funil de Prospecção? Eles aparecerão como <strong>"Prospectar"</strong> no funil.`,
+            html: `Deseja enviar ${descricao} para o Funil de Vendas? Eles aparecerao como <strong>"Sem contato"</strong> no funil.`,
             showCancelButton: true,
             confirmButtonText: 'Sim, enviar!',
             cancelButtonText: 'Cancelar',
@@ -922,7 +922,7 @@ export default function ProspectarPage() {
                             <div style="font-size: 32px; font-weight: bold; color: #c4b5fd;">${data.atualizados?.toLocaleString('pt-BR') || 0}</div>
                             <div style="font-size: 12px; color: #a78bfa;">leads enviados ao funil</div>
                         </div>
-                        <p style="margin-top: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 13px;">Acesse o Funil para ver os leads na etapa de Prospecção.</p>
+                        <p style="margin-top: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 13px;">Acesse o Funil para ver os leads na etapa de Sem contato.</p>
                     </div>
                 `,
                 confirmButtonColor: '#7c3aed',
@@ -1253,3 +1253,4 @@ export default function ProspectarPage() {
         </div>
     );
 }
+

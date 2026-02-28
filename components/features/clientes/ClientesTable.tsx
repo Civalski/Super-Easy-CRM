@@ -11,6 +11,7 @@ import {
     Users,
     Eye,
     Edit2,
+    FileText,
     Trash2,
     BadgeDollarSign,
     Tag,
@@ -97,7 +98,7 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                                         </div>
                                         {/* Estatísticas inline */}
                                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                                            <span className="flex items-center" title="Oportunidades">
+                                            <span className="flex items-center" title="Orçamentos">
                                                 <Briefcase size={10} className="mr-0.5" />
                                                 {cliente._count.oportunidades}
                                             </span>
@@ -167,6 +168,20 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                                     >
                                         <Edit2 size={14} className="mr-0.5" />
                                         Editar
+                                    </Link>
+                                    <Link
+                                        href={{
+                                            pathname: '/oportunidades',
+                                            query: {
+                                                novoOrcamento: '1',
+                                                clienteId: cliente.id,
+                                                clienteNome: cliente.nome,
+                                            },
+                                        }}
+                                        className="inline-flex items-center text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                    >
+                                        <FileText size={14} className="mr-0.5" />
+                                        Orcamento
                                     </Link>
                                     <button
                                         type="button"

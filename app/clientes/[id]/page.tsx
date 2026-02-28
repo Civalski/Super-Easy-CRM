@@ -17,6 +17,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Plus,
   Save,
   Scale,
   Tag,
@@ -56,6 +57,11 @@ interface Prospecto {
   lote: string | null
 }
 
+interface CampoPersonalizado {
+  label: string
+  value: string
+}
+
 interface Cliente {
   id: string
   nome: string
@@ -66,6 +72,12 @@ interface Cliente {
   cidade: string | null
   estado: string | null
   cep: string | null
+  cargo: string | null
+  documento: string | null
+  website: string | null
+  dataNascimento: string | null
+  observacoes: string | null
+  camposPersonalizados: CampoPersonalizado[] | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -85,6 +97,12 @@ interface ClienteFormData {
   cidade: string
   estado: string
   cep: string
+  cargo: string
+  documento: string
+  website: string
+  dataNascimento: string
+  observacoes: string
+  camposPersonalizados: CampoPersonalizado[]
 }
 
 export default function ClienteDetalhesPage() {
@@ -104,6 +122,12 @@ export default function ClienteDetalhesPage() {
     cidade: '',
     estado: '',
     cep: '',
+    cargo: '',
+    documento: '',
+    website: '',
+    dataNascimento: '',
+    observacoes: '',
+    camposPersonalizados: [],
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -126,6 +150,17 @@ export default function ClienteDetalhesPage() {
       cidade: clienteInfo.cidade || '',
       estado: clienteInfo.estado || '',
       cep: clienteInfo.cep || '',
+      cargo: clienteInfo.cargo || '',
+      documento: clienteInfo.documento || '',
+      website: clienteInfo.website || '',
+      dataNascimento: clienteInfo.dataNascimento || '',
+      observacoes: clienteInfo.observacoes || '',
+      camposPersonalizados: Array.isArray(clienteInfo.camposPersonalizados)
+        ? clienteInfo.camposPersonalizados.map((campo) => ({
+            label: campo.label || '',
+            value: campo.value || '',
+          }))
+        : [],
     })
   }
 
@@ -145,8 +180,8 @@ export default function ClienteDetalhesPage() {
         throw new Error(data?.error || 'Erro ao carregar cliente')
       }
       setCliente(data)
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao carregar cliente')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar cliente')
     } finally {
       setLoading(false)
     }
@@ -168,11 +203,38 @@ export default function ClienteDetalhesPage() {
     }
   }, [searchParams])
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }))
+  }
+
+  const handleCustomFieldChange = (
+    index: number,
+    field: keyof CampoPersonalizado,
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      camposPersonalizados: prev.camposPersonalizados.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
+    }))
+  }
+
+  const handleAddCustomField = () => {
+    setFormData((prev) => ({
+      ...prev,
+      camposPersonalizados: [...prev.camposPersonalizados, { label: '', value: '' }],
+    }))
+  }
+
+  const handleRemoveCustomField = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      camposPersonalizados: prev.camposPersonalizados.filter((_, itemIndex) => itemIndex !== index),
     }))
   }
 
@@ -196,8 +258,8 @@ export default function ClienteDetalhesPage() {
       }
       setCliente(data)
       setEditMode(false)
-    } catch (err: any) {
-      const message = err?.message || 'Erro ao atualizar cliente'
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao atualizar cliente'
       setError(message)
       alert(message)
     } finally {
@@ -219,8 +281,8 @@ export default function ClienteDetalhesPage() {
       }
       setDeleteDialogOpen(false)
       router.push('/clientes')
-    } catch (err: any) {
-      const message = err?.message || 'Erro ao excluir cliente'
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao excluir cliente'
       setError(message)
       alert(message)
     } finally {
@@ -431,6 +493,81 @@ export default function ClienteDetalhesPage() {
                 </div>
               </div>
 
+              <div className="crm-card p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText size={18} className="text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Mais informacoes
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                      Cargo
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {cliente.cargo || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                      Documento
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {cliente.documento || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                      Website
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-white break-all">
+                      {cliente.website || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                      Data de nascimento
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {cliente.dataNascimento ? formatDate(cliente.dataNascimento) : '-'}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">
+                      Observacoes
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                      {cliente.observacoes || '-'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">
+                    Campos personalizados
+                  </p>
+                  {Array.isArray(cliente.camposPersonalizados) &&
+                  cliente.camposPersonalizados.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {cliente.camposPersonalizados.map((campo, index) => (
+                        <div
+                          key={`cliente-custom-read-${index}`}
+                          className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900"
+                        >
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{campo.label}</p>
+                          <p className="text-sm text-gray-900 dark:text-white">{campo.value || '-'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Nenhum campo personalizado.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Dados Empresariais (do Prospecto) */}
               {cliente.prospecto && (
                 <div className="crm-card p-6">
@@ -599,7 +736,7 @@ export default function ClienteDetalhesPage() {
                       <Briefcase size={20} className="text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Oportunidades
+                          Orçamentos
                         </p>
                         <p className="text-xl font-semibold text-gray-900 dark:text-white">
                           {cliente._count.oportunidades}
@@ -730,12 +867,12 @@ export default function ClienteDetalhesPage() {
                       placeholder="Nome da empresa"
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label
                       htmlFor="endereco"
                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Endereço
+                      Endereco
                     </label>
                     <input
                       type="text"
@@ -744,7 +881,7 @@ export default function ClienteDetalhesPage() {
                       value={formData.endereco}
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Rua, número"
+                      placeholder="Rua, numero"
                     />
                   </div>
                   <div>
@@ -800,6 +937,156 @@ export default function ClienteDetalhesPage() {
                     />
                   </div>
                 </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Mais informacoes
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label
+                        htmlFor="cargo"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        Cargo
+                      </label>
+                      <input
+                        type="text"
+                        id="cargo"
+                        name="cargo"
+                        value={formData.cargo}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Cargo ou funcao"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="documento"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        Documento
+                      </label>
+                      <input
+                        type="text"
+                        id="documento"
+                        name="documento"
+                        value={formData.documento}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="CPF ou CNPJ"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="website"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        Website
+                      </label>
+                      <input
+                        type="url"
+                        id="website"
+                        name="website"
+                        value={formData.website}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="dataNascimento"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        Data de nascimento
+                      </label>
+                      <input
+                        type="date"
+                        id="dataNascimento"
+                        name="dataNascimento"
+                        value={formData.dataNascimento}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor="observacoes"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        Observacoes
+                      </label>
+                      <textarea
+                        id="observacoes"
+                        name="observacoes"
+                        value={formData.observacoes}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                        placeholder="Informacoes adicionais sobre o cliente"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Campos personalizados
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomField}
+                      className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Novo campo
+                    </button>
+                  </div>
+
+                  {formData.camposPersonalizados.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Nenhum campo personalizado.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {formData.camposPersonalizados.map((campo, index) => (
+                        <div
+                          key={`detail-edit-custom-field-${index}`}
+                          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2"
+                        >
+                          <input
+                            type="text"
+                            value={campo.label}
+                            onChange={(event) =>
+                              handleCustomFieldChange(index, 'label', event.target.value)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Nome do campo"
+                          />
+                          <input
+                            type="text"
+                            value={campo.value}
+                            onChange={(event) =>
+                              handleCustomFieldChange(index, 'value', event.target.value)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Valor"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomField(index)}
+                            className="inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+                            aria-label="Remover campo"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button
                     type="button"
@@ -841,3 +1128,5 @@ export default function ClienteDetalhesPage() {
     </div>
   )
 }
+
+

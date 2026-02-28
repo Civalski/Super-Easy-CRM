@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Button, AsyncSelect } from '@/components/common'
+import { Suspense, useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button, AsyncSelect, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { OportunidadeHistoricoCard } from '@/components/features/oportunidades'
 import {
@@ -12,9 +13,10 @@ import {
   Briefcase,
   History,
   FileText,
-  Handshake,
   DollarSign,
   Info,
+  ClipboardList,
+  type LucideIcon,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 
@@ -23,21 +25,60 @@ interface Oportunidade {
   titulo: string
   descricao: string | null
   valor: number | null
+  formaPagamento?: string | null
+  parcelas?: number | null
+  desconto?: number | null
   status: string
   statusAnterior?: string | null
   motivoPerda?: string | null
   probabilidade: number
   dataFechamento?: string | null
+  proximaAcaoEm?: string | null
+  canalProximaAcao?: string | null
+  responsavelProximaAcao?: string | null
+  lembreteProximaAcao?: boolean
   createdAt?: string
   updatedAt?: string
+  pedido?: {
+    id: string
+    numero?: number
+  } | null
   cliente: {
     nome: string
   }
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  proposta: { label: 'Proposta', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300', icon: FileText },
-  negociacao: { label: 'Negociação', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', icon: Handshake },
+interface ProdutoServico {
+  id: string
+  codigo?: string | null
+  nome: string
+  tipo: 'produto' | 'servico'
+  unidade?: string | null
+  precoPadrao: number
+}
+
+interface ItemForm {
+  produtoServicoId: string
+  descricao: string
+  quantidade: number
+  precoUnitario: number
+  desconto: number
+}
+
+interface DraftCreateItem extends ItemForm {
+  id: string
+  subtotal: number
+}
+
+interface PaginationMeta {
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+  orcamento: { label: 'Orçamento', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300', icon: FileText },
   fechada: { label: 'Fechada', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: DollarSign },
   perdida: { label: 'Perdida', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', icon: X },
 }
@@ -50,6 +91,12 @@ const formatCurrency = (value: number | null) => {
   }).format(value)
 }
 
+const currency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value)
+
 const formatDate = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
@@ -57,14 +104,76 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString('pt-BR')
 }
 
+const LIST_PAGE_SIZE = 20
 const HISTORICO_PAGE_SIZE = 10
 
-export default function PropostasPage() {
+const buildItemForm = (): ItemForm => ({
+  produtoServicoId: '',
+  descricao: '',
+  quantidade: 1,
+  precoUnitario: 0,
+  desconto: 0,
+})
+
+const toNumber = (value: string, fallback = 0) => {
+  const parsed = Number(value.replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const calculateSubtotal = (quantidade: number, precoUnitario: number, desconto: number) =>
+  Math.max(0, quantidade * precoUnitario - desconto)
+
+function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico | null {
+  if (!option || !option.original || typeof option.original !== 'object') {
+    return null
+  }
+
+  const raw = option.original as Partial<ProdutoServico>
+  if (!raw.id || !raw.nome) {
+    return null
+  }
+
+  return {
+    id: raw.id,
+    nome: raw.nome,
+    tipo: raw.tipo === 'servico' ? 'servico' : 'produto',
+    codigo: raw.codigo || null,
+    unidade: raw.unidade || null,
+    precoPadrao: Number(raw.precoPadrao || 0),
+  }
+}
+
+function OrcamentosPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'abertas' | 'historico'>('abertas')
-  const [oportunidades, setOportunidades] = useState<Oportunidade[]>([])
+  const [orcamentosAbertos, setOrcamentosAbertos] = useState<Oportunidade[]>([])
+  const [historicoVendas, setHistoricoVendas] = useState<Oportunidade[]>([])
+  const [historicoPerdidas, setHistoricoPerdidas] = useState<Oportunidade[]>([])
+  const [metaAbertas, setMetaAbertas] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: LIST_PAGE_SIZE,
+    pages: 1,
+  })
+  const [metaVendas, setMetaVendas] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: HISTORICO_PAGE_SIZE,
+    pages: 1,
+  })
+  const [metaPerdidas, setMetaPerdidas] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: HISTORICO_PAGE_SIZE,
+    pages: 1,
+  })
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [prefillPerson, setPrefillPerson] = useState<AsyncSelectOption | null>(null)
+  const [creatingPedidoById, setCreatingPedidoById] = useState<Record<string, boolean>>({})
 
+  const [pageAbertas, setPageAbertas] = useState(1)
   // Paginação do histórico
   const [pageVendas, setPageVendas] = useState(1)
   const [pagePerdidas, setPagePerdidas] = useState(1)
@@ -72,69 +181,122 @@ export default function PropostasPage() {
   const fetchOportunidades = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/oportunidades')
-      const data = await response.json()
-      if (Array.isArray(data)) {
-        setOportunidades(data)
+      if (activeTab === 'abertas') {
+        const response = await fetch(
+          `/api/oportunidades?status=orcamento&paginated=true&page=${pageAbertas}&limit=${LIST_PAGE_SIZE}`
+        )
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(payload?.error || 'Erro ao carregar orcamentos')
+
+        const data = Array.isArray(payload?.data) ? payload.data : []
+        const meta: PaginationMeta = {
+          total: Number(payload?.meta?.total || 0),
+          page: Number(payload?.meta?.page || pageAbertas),
+          limit: Number(payload?.meta?.limit || LIST_PAGE_SIZE),
+          pages: Number(payload?.meta?.pages || 1),
+        }
+
+        if (data.length === 0 && pageAbertas > 1 && meta.total > 0) {
+          setPageAbertas((prev) => Math.max(1, prev - 1))
+          return
+        }
+
+        setOrcamentosAbertos(data)
+        setMetaAbertas(meta)
       } else {
-        setOportunidades([])
+        const [vendasResponse, perdidasResponse] = await Promise.all([
+          fetch(
+            `/api/oportunidades?status=fechada&paginated=true&page=${pageVendas}&limit=${HISTORICO_PAGE_SIZE}`
+          ),
+          fetch(
+            `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}`
+          ),
+        ])
+
+        const [vendasPayload, perdidasPayload] = await Promise.all([
+          vendasResponse.json().catch(() => null),
+          perdidasResponse.json().catch(() => null),
+        ])
+
+        if (!vendasResponse.ok) {
+          throw new Error(vendasPayload?.error || 'Erro ao carregar vendas fechadas')
+        }
+        if (!perdidasResponse.ok) {
+          throw new Error(perdidasPayload?.error || 'Erro ao carregar perdidas')
+        }
+
+        const vendasData = Array.isArray(vendasPayload?.data) ? vendasPayload.data : []
+        const perdidasData = Array.isArray(perdidasPayload?.data) ? perdidasPayload.data : []
+
+        const vendasMeta: PaginationMeta = {
+          total: Number(vendasPayload?.meta?.total || 0),
+          page: Number(vendasPayload?.meta?.page || pageVendas),
+          limit: Number(vendasPayload?.meta?.limit || HISTORICO_PAGE_SIZE),
+          pages: Number(vendasPayload?.meta?.pages || 1),
+        }
+
+        const perdidasMeta: PaginationMeta = {
+          total: Number(perdidasPayload?.meta?.total || 0),
+          page: Number(perdidasPayload?.meta?.page || pagePerdidas),
+          limit: Number(perdidasPayload?.meta?.limit || HISTORICO_PAGE_SIZE),
+          pages: Number(perdidasPayload?.meta?.pages || 1),
+        }
+
+        if (vendasData.length === 0 && pageVendas > 1 && vendasMeta.total > 0) {
+          setPageVendas((prev) => Math.max(1, prev - 1))
+          return
+        }
+        if (perdidasData.length === 0 && pagePerdidas > 1 && perdidasMeta.total > 0) {
+          setPagePerdidas((prev) => Math.max(1, prev - 1))
+          return
+        }
+
+        setHistoricoVendas(vendasData)
+        setHistoricoPerdidas(perdidasData)
+        setMetaVendas(vendasMeta)
+        setMetaPerdidas(perdidasMeta)
       }
     } catch (error) {
-      console.error('Erro ao carregar propostas:', error)
-      setOportunidades([])
+      console.error('Erro ao carregar orçamentos:', error)
+      if (activeTab === 'abertas') {
+        setOrcamentosAbertos([])
+        setMetaAbertas((prev) => ({ ...prev, total: 0, page: pageAbertas, pages: 1 }))
+      } else {
+        setHistoricoVendas([])
+        setHistoricoPerdidas([])
+        setMetaVendas((prev) => ({ ...prev, total: 0, page: pageVendas, pages: 1 }))
+        setMetaPerdidas((prev) => ({ ...prev, total: 0, page: pagePerdidas, pages: 1 }))
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeTab, pageAbertas, pagePerdidas, pageVendas])
 
   useEffect(() => {
-    fetchOportunidades()
+    void fetchOportunidades()
   }, [fetchOportunidades])
 
-  // Propostas em aberto: somente proposta e negociação
-  const propostasAbertas = useMemo(
-    () => oportunidades.filter((o) => ['proposta', 'negociacao'].includes(o.status)),
-    [oportunidades]
-  )
+  useEffect(() => {
+    const shouldOpen = searchParams.get('novoOrcamento') === '1'
+    const clienteId = searchParams.get('clienteId')
+    if (!shouldOpen || !clienteId) return
+
+    const clienteNome = searchParams.get('clienteNome') || 'Cliente selecionado'
+    setPrefillPerson({
+      id: clienteId,
+      nome: clienteNome,
+      tipo: 'cliente',
+    })
+    setShowCreateModal(true)
+  }, [searchParams])
 
   // Estatísticas
   const stats = useMemo(() => {
-    const abertas = propostasAbertas.length
-    const valorTotal = propostasAbertas.reduce((acc, o) => acc + (o.valor || 0), 0)
-    const emNegociacao = propostasAbertas.filter((o) => o.status === 'negociacao').length
-    const emProposta = propostasAbertas.filter((o) => o.status === 'proposta').length
-    return { abertas, valorTotal, emNegociacao, emProposta }
-  }, [propostasAbertas])
-
-  // Histórico: fechadas e perdidas
-  const getTimestamp = (opp: Oportunidade) => {
-    const rawDate = opp.dataFechamento || opp.updatedAt || opp.createdAt || ''
-    const date = rawDate ? new Date(rawDate) : null
-    if (!date || Number.isNaN(date.getTime())) return 0
-    return date.getTime()
-  }
-
-  const historicoVendas = useMemo(
-    () => oportunidades.filter((o) => o.status === 'fechada').sort((a, b) => getTimestamp(b) - getTimestamp(a)),
-    [oportunidades]
-  )
-
-  const historicoPerdidas = useMemo(
-    () => oportunidades.filter((o) => o.status === 'perdida').sort((a, b) => getTimestamp(b) - getTimestamp(a)),
-    [oportunidades]
-  )
-
-  const vendasTotalPages = Math.max(1, Math.ceil(historicoVendas.length / HISTORICO_PAGE_SIZE))
-  const perdidasTotalPages = Math.max(1, Math.ceil(historicoPerdidas.length / HISTORICO_PAGE_SIZE))
-
-  const vendasPageItems = historicoVendas.slice(
-    (pageVendas - 1) * HISTORICO_PAGE_SIZE,
-    pageVendas * HISTORICO_PAGE_SIZE
-  )
-  const perdidasPageItems = historicoPerdidas.slice(
-    (pagePerdidas - 1) * HISTORICO_PAGE_SIZE,
-    pagePerdidas * HISTORICO_PAGE_SIZE
-  )
+    const abertas = metaAbertas.total
+    const valorTotal = orcamentosAbertos.reduce((acc, o) => acc + (o.valor || 0), 0)
+    const emOrcamento = metaAbertas.total
+    return { abertas, valorTotal, emOrcamento }
+  }, [metaAbertas.total, orcamentosAbertos])
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     // Confirmação ao fechar uma venda
@@ -142,7 +304,7 @@ export default function PropostasPage() {
       const confirm = await Swal.fire({
         icon: 'question',
         title: 'Fechar Venda',
-        text: 'Confirmar o fechamento desta proposta como venda? O lead vinculado será convertido em cliente automaticamente, caso ainda não seja.',
+        text: 'Confirmar o fechamento deste orçamento como venda? O lead vinculado será convertido em cliente automaticamente, caso ainda não seja.',
         showCancelButton: true,
         confirmButtonText: 'Sim, fechar venda!',
         cancelButtonText: 'Cancelar',
@@ -162,14 +324,14 @@ export default function PropostasPage() {
       })
       if (response.ok) {
         const data = await response.json()
-        fetchOportunidades()
+        void fetchOportunidades()
 
         if (newStatus === 'fechada') {
           if (data.prospectoConvertidoAutomaticamente) {
             Swal.fire({
               icon: 'success',
-              title: 'Venda Fechada! 🎉',
-              html: 'A proposta foi fechada com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado a esta proposta foi automaticamente promovido a cliente.',
+              title: 'Venda Fechada! ðŸŽ‰',
+              html: 'O orçamento foi fechado com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado a este orçamento foi automaticamente promovido a cliente.',
               confirmButtonColor: '#16a34a',
               background: '#1f2937',
               color: '#f3f4f6',
@@ -177,8 +339,8 @@ export default function PropostasPage() {
           } else {
             Swal.fire({
               icon: 'success',
-              title: 'Venda Fechada! 🎉',
-              text: 'A proposta foi fechada com sucesso.',
+              title: 'Venda Fechada! ðŸŽ‰',
+              text: 'O orçamento foi fechado com sucesso.',
               confirmButtonColor: '#16a34a',
               background: '#1f2937',
               color: '#f3f4f6',
@@ -200,9 +362,76 @@ export default function PropostasPage() {
     handleStatusChange(id, previousStatus)
   }
 
-  const handlePropostaCreated = () => {
+  const handleOrcamentoCreated = () => {
+    clearOrcamentoPrefillParams()
+    setPrefillPerson(null)
     setShowCreateModal(false)
-    fetchOportunidades()
+    void fetchOportunidades()
+  }
+
+  const clearOrcamentoPrefillParams = useCallback(() => {
+    if (!searchParams.get('novoOrcamento') && !searchParams.get('clienteId') && !searchParams.get('clienteNome')) {
+      return
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('novoOrcamento')
+    params.delete('clienteId')
+    params.delete('clienteNome')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/oportunidades?${nextQuery}` : '/oportunidades')
+  }, [router, searchParams])
+
+  const handleTransformarEmPedido = async (oportunidade: Oportunidade) => {
+    const confirm = await Swal.fire({
+      icon: 'question',
+      title: 'Transformar em pedido',
+      text: 'Este orçamento aprovado será convertido em pedido para acompanhamento de entrega e pagamento. Deseja continuar?',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, transformar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#6b7280',
+      background: '#1f2937',
+      color: '#f3f4f6',
+    })
+
+    if (!confirm.isConfirmed) return
+
+    try {
+      setCreatingPedidoById((prev) => ({ ...prev, [oportunidade.id]: true }))
+      const response = await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oportunidadeId: oportunidade.id }),
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao transformar orçamento em pedido')
+      }
+
+      void fetchOportunidades()
+      await Swal.fire({
+        icon: 'success',
+        title: data?.numero ? `Pedido #${data.numero} criado` : 'Pedido criado',
+        text: 'O orçamento foi transformado em pedido. Acompanhe em Pedidos.',
+        confirmButtonColor: '#2563eb',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+    } catch (error: unknown) {
+      console.error('Erro ao criar pedido:', error)
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: error instanceof Error ? error.message : 'Não foi possível transformar o orçamento em pedido.',
+        confirmButtonColor: '#6366f1',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+    } finally {
+      setCreatingPedidoById((prev) => ({ ...prev, [oportunidade.id]: false }))
+    }
   }
 
   return (
@@ -215,21 +444,21 @@ export default function PropostasPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Propostas
+              Orçamentos
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Gerencie suas propostas comerciais
+              Gerencie seus orçamentos comerciais
             </p>
           </div>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus size={20} className="mr-2" />
-          Nova Proposta
+          Novo Orçamento
         </Button>
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
             <Briefcase size={16} />
@@ -247,16 +476,9 @@ export default function PropostasPage() {
         <div className="crm-card p-4">
           <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-1">
             <FileText size={16} />
-            <span className="text-xs font-medium">Proposta</span>
+            <span className="text-xs font-medium">Orçamento</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.emProposta}</p>
-        </div>
-        <div className="crm-card p-4">
-          <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
-            <Handshake size={16} />
-            <span className="text-xs font-medium">Negociação</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.emNegociacao}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.emOrcamento}</p>
         </div>
       </div>
 
@@ -265,22 +487,22 @@ export default function PropostasPage() {
         <button
           onClick={() => setActiveTab('abertas')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'abertas'
-            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+            ? 'border-purple-700 text-purple-700 dark:border-purple-500 dark:text-purple-500'
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
           <Briefcase size={16} />
-          Propostas ({propostasAbertas.length})
+          Orçamentos ({metaAbertas.total})
         </button>
         <button
           onClick={() => setActiveTab('historico')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'historico'
-            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+            ? 'border-purple-700 text-purple-700 dark:border-purple-500 dark:text-purple-500'
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
           <History size={16} />
-          Histórico ({historicoVendas.length + historicoPerdidas.length})
+          Histórico ({metaVendas.total + metaPerdidas.total})
         </button>
       </div>
 
@@ -289,7 +511,7 @@ export default function PropostasPage() {
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="text-center">
             <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={32} />
-            <p className="text-gray-600 dark:text-gray-400">Carregando propostas...</p>
+            <p className="text-gray-600 dark:text-gray-400">Carregando orçamentos...</p>
           </div>
         </div>
       )}
@@ -297,22 +519,22 @@ export default function PropostasPage() {
       {/* Tab: Em Aberto */}
       {!loading && activeTab === 'abertas' && (
         <div>
-          {propostasAbertas.length === 0 ? (
+          {orcamentosAbertos.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[300px] crm-card">
               <Briefcase size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 mb-2">Nenhuma proposta em aberto</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">Nenhum orçamento em aberto</p>
               <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-                Crie sua primeira proposta para começar
+                Crie seu primeiro orçamento para começar
               </p>
               <Button onClick={() => setShowCreateModal(true)}>
                 <Plus size={20} className="mr-2" />
-                Nova Proposta
+                Novo Orçamento
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {propostasAbertas.map((oportunidade) => {
-                const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.proposta
+              {orcamentosAbertos.map((oportunidade) => {
+                const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.orcamento
                 const StatusIcon = statusInfo.icon
 
                 return (
@@ -353,17 +575,39 @@ export default function PropostasPage() {
                       <span className="text-[10px] text-gray-500 dark:text-gray-400">
                         Criada em {formatDate(oportunidade.createdAt)}
                         {oportunidade.dataFechamento && (
-                          <> • Previsão: {formatDate(oportunidade.dataFechamento)}</>
+                          <> ? Previsão: {formatDate(oportunidade.dataFechamento)}</>
+                        )}
+                        {oportunidade.proximaAcaoEm && (
+                          <> ? Proxima acao: {formatDate(oportunidade.proximaAcaoEm)}</>
                         )}
                       </span>
                       <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(oportunidade.id, 'fechada')}
-                        >
-                          Fechar Venda
-                        </Button>
+                        {oportunidade.pedido ? (
+                          <a href="/pedidos">
+                            <Button size="sm" variant="outline">
+                              <ClipboardList size={14} className="mr-1" />
+                              {oportunidade.pedido.numero
+                                ? `Abrir Pedido #${oportunidade.pedido.numero}`
+                                : 'Abrir Pedido'}
+                            </Button>
+                          </a>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleTransformarEmPedido(oportunidade)}
+                            disabled={Boolean(creatingPedidoById[oportunidade.id])}
+                          >
+                            {creatingPedidoById[oportunidade.id] ? (
+                              'Convertendo...'
+                            ) : (
+                              <>
+                                <ClipboardList size={14} className="mr-1" />
+                                Transformar em Pedido
+                              </>
+                            )}
+                          </Button>
+                        )}
                         <a href={`/oportunidades/${oportunidade.id}/editar`}>
                           <Button size="sm" variant="outline">
                             Editar
@@ -374,6 +618,29 @@ export default function PropostasPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+          {metaAbertas.pages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pageAbertas <= 1}
+                onClick={() => setPageAbertas((prev) => Math.max(1, prev - 1))}
+              >
+                Anterior
+              </Button>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Página {pageAbertas} de {metaAbertas.pages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pageAbertas >= metaAbertas.pages}
+                onClick={() => setPageAbertas((prev) => Math.min(metaAbertas.pages, prev + 1))}
+              >
+                Próxima
+              </Button>
             </div>
           )}
         </div>
@@ -392,7 +659,7 @@ export default function PropostasPage() {
                 </h2>
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                {historicoVendas.length}
+                {metaVendas.total}
               </span>
             </div>
             {historicoVendas.length === 0 ? (
@@ -401,7 +668,7 @@ export default function PropostasPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {vendasPageItems.map((oportunidade) => (
+                {historicoVendas.map((oportunidade) => (
                   <OportunidadeHistoricoCard
                     key={oportunidade.id}
                     oportunidade={oportunidade}
@@ -410,7 +677,7 @@ export default function PropostasPage() {
                 ))}
               </div>
             )}
-            {historicoVendas.length > HISTORICO_PAGE_SIZE && (
+            {metaVendas.pages > 1 && (
               <div className="mt-4 flex items-center justify-between">
                 <Button
                   size="sm"
@@ -421,13 +688,13 @@ export default function PropostasPage() {
                   Anterior
                 </Button>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Página {pageVendas} de {vendasTotalPages}
+                  Página {pageVendas} de {metaVendas.pages}
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={pageVendas >= vendasTotalPages}
-                  onClick={() => setPageVendas((prev) => Math.min(vendasTotalPages, prev + 1))}
+                  disabled={pageVendas >= metaVendas.pages}
+                  onClick={() => setPageVendas((prev) => Math.min(metaVendas.pages, prev + 1))}
                 >
                   Próxima
                 </Button>
@@ -445,16 +712,16 @@ export default function PropostasPage() {
                 </h2>
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full">
-                {historicoPerdidas.length}
+                {metaPerdidas.total}
               </span>
             </div>
             {historicoPerdidas.length === 0 ? (
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-8">
-                Nenhuma proposta perdida registrada.
+                Nenhum orçamento perdido registrado.
               </p>
             ) : (
               <div className="space-y-3">
-                {perdidasPageItems.map((oportunidade) => (
+                {historicoPerdidas.map((oportunidade) => (
                   <OportunidadeHistoricoCard
                     key={oportunidade.id}
                     oportunidade={oportunidade}
@@ -463,7 +730,7 @@ export default function PropostasPage() {
                 ))}
               </div>
             )}
-            {historicoPerdidas.length > HISTORICO_PAGE_SIZE && (
+            {metaPerdidas.pages > 1 && (
               <div className="mt-4 flex items-center justify-between">
                 <Button
                   size="sm"
@@ -474,13 +741,13 @@ export default function PropostasPage() {
                   Anterior
                 </Button>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Página {pagePerdidas} de {perdidasTotalPages}
+                  Página {pagePerdidas} de {metaPerdidas.pages}
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={pagePerdidas >= perdidasTotalPages}
-                  onClick={() => setPagePerdidas((prev) => Math.min(perdidasTotalPages, prev + 1))}
+                  disabled={pagePerdidas >= metaPerdidas.pages}
+                  onClick={() => setPagePerdidas((prev) => Math.min(metaPerdidas.pages, prev + 1))}
                 >
                   Próxima
                 </Button>
@@ -490,42 +757,109 @@ export default function PropostasPage() {
         </div>
       )}
 
-      {/* Modal de Criar Proposta */}
+      {/* Modal de Criar Orçamento */}
       {showCreateModal && (
-        <CreatePropostaModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={handlePropostaCreated}
+        <CreateOrcamentoModal
+          onClose={() => {
+            clearOrcamentoPrefillParams()
+            setPrefillPerson(null)
+            setShowCreateModal(false)
+          }}
+          onCreated={handleOrcamentoCreated}
+          initialPerson={prefillPerson}
         />
       )}
     </div>
   )
 }
 
+export default function OrcamentosPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+          Carregando orcamentos...
+        </div>
+      }
+    >
+      <OrcamentosPageContent />
+    </Suspense>
+  )
+}
+
 // ============================================
-// Modal de criação de proposta
+// Modal de criacao de orcamento
 // ============================================
-function CreatePropostaModal({
+function CreateOrcamentoModal({
   onClose,
   onCreated,
+  initialPerson,
 }: {
   onClose: () => void
   onCreated: () => void
+  initialPerson?: AsyncSelectOption | null
 }) {
   const [loading, setLoading] = useState(false)
-  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(null)
+  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(initialPerson || null)
   const [statusInfo, setStatusInfo] = useState<string | null>(null)
+  const [selectedProdutoLabel, setSelectedProdutoLabel] = useState('')
+  const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
+  const [itens, setItens] = useState<DraftCreateItem[]>([])
+  const [showCarrinhoDrawer, setShowCarrinhoDrawer] = useState(false)
+  const [quickAddCode, setQuickAddCode] = useState('')
+  const [quickAddCodeLoading, setQuickAddCodeLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
     valor: '',
+    formaPagamento: '',
+    parcelas: '',
+    desconto: '',
     probabilidade: '0',
     dataFechamento: new Date().toISOString().split('T')[0],
+    proximaAcaoEm: '',
+    canalProximaAcao: '',
+    responsavelProximaAcao: '',
+    lembreteProximaAcao: false,
   })
+
+  const totalCarrinho = useMemo(
+    () => itens.reduce((sum, item) => sum + item.subtotal, 0),
+    [itens]
+  )
+
+  useEffect(() => {
+    if (!initialPerson) return
+    setSelectedPerson(initialPerson)
+    setStatusInfo(initialPerson.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null)
+  }, [initialPerson])
+
+  const fieldClass =
+    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+  const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300'
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    if (e.target.name === 'lembreteProximaAcao') {
+      const target = e.target as HTMLInputElement
+      setFormData({
+        ...formData,
+        lembreteProximaAcao: target.checked,
+      })
+      return
+    }
+
+    if (e.target.name === 'formaPagamento' && e.target.value !== 'parcelado') {
+      setFormData({
+        ...formData,
+        formaPagamento: e.target.value,
+        parcelas: '',
+      })
+      return
+    }
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -543,20 +877,139 @@ function CreatePropostaModal({
     setFormData({ ...formData, valor: formatted })
   }
 
+  const handleDiscountCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '')
+    if (!rawValue) {
+      setFormData({ ...formData, desconto: '' })
+      return
+    }
+    const numericValue = parseInt(rawValue, 10) / 100
+    const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue)
+    setFormData({ ...formData, desconto: formatted })
+  }
+
   const handlePersonChange = (option: AsyncSelectOption | null) => {
     setSelectedPerson(option)
     setStatusInfo(null)
 
     if (option && option.tipo === 'prospecto') {
-      setStatusInfo('Este lead será convertido em cliente automaticamente.')
+      setStatusInfo('Este lead sera convertido em cliente automaticamente.')
     }
+  }
+
+  const handleItemForm = (field: keyof ItemForm, value: string) => {
+    setItemForm((prev) => {
+      if (field === 'descricao' || field === 'produtoServicoId') {
+        return { ...prev, [field]: value }
+      }
+      return { ...prev, [field]: toNumber(value, 0) }
+    })
+  }
+
+  const handleSelectProduto = (option: AsyncSelectOption | null) => {
+    const selected = getProdutoFromOption(option)
+    setItemForm((prev) => ({
+      ...prev,
+      produtoServicoId: selected?.id || '',
+      descricao: selected ? selected.nome : prev.descricao,
+      precoUnitario: selected ? selected.precoPadrao : prev.precoUnitario,
+    }))
+    setSelectedProdutoLabel(option?.nome || '')
+  }
+
+  const appendDraftItem = (draft: ItemForm) => {
+    const descricao = draft.descricao.trim()
+    if (!descricao || draft.quantidade <= 0) {
+      return false
+    }
+
+    const subtotal = calculateSubtotal(
+      draft.quantidade,
+      draft.precoUnitario,
+      draft.desconto
+    )
+
+    setItens((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        ...draft,
+        descricao,
+        subtotal,
+      },
+    ])
+
+    return true
+  }
+
+  const handleAddDraftItem = () => {
+    if (!appendDraftItem(itemForm)) return
+
+    setItemForm(buildItemForm())
+    setSelectedProdutoLabel('')
+  }
+
+  const handleQuickAddByCode = async () => {
+    const codigo = quickAddCode.trim()
+    if (!codigo) return
+
+    setQuickAddCodeLoading(true)
+    try {
+      const response = await fetch(
+        `/api/produtos-servicos/busca?codigo=${encodeURIComponent(codigo)}`
+      )
+      if (!response.ok) {
+        throw new Error('Nao foi possivel buscar o produto pelo codigo')
+      }
+
+      const options = await response.json()
+      const selected = Array.isArray(options) ? options[0] : null
+      const produto = getProdutoFromOption(selected)
+
+      if (!produto) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Codigo nao encontrado',
+          text: 'Nenhum produto/servico ativo foi encontrado com esse codigo.',
+          confirmButtonColor: '#6366f1',
+          background: '#1f2937',
+          color: '#f3f4f6',
+        })
+        return
+      }
+
+      appendDraftItem({
+        produtoServicoId: produto.id,
+        descricao: produto.nome,
+        quantidade: 1,
+        precoUnitario: produto.precoPadrao,
+        desconto: 0,
+      })
+      setQuickAddCode('')
+    } catch (error) {
+      console.error('Erro ao buscar produto por codigo:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: error instanceof Error ? error.message : 'Nao foi possivel adicionar por codigo.',
+        confirmButtonColor: '#6366f1',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+    } finally {
+      setQuickAddCodeLoading(false)
+    }
+  }
+
+  const handleRemoveDraftItem = (id: string) => {
+    setItens((prev) => prev.filter((item) => item.id !== id))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!selectedPerson) {
-      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um cliente ou lead', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      Swal.fire({ icon: 'warning', title: 'Atencao', text: 'Por favor, selecione um cliente ou lead', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       return
     }
 
@@ -566,7 +1019,6 @@ function CreatePropostaModal({
       let finalClienteId = selectedPerson.tipo === 'cliente' ? selectedPerson.id : null
       const prospectoId = selectedPerson.tipo === 'prospecto' ? selectedPerson.id : null
 
-      // Se for prospecto, converte primeiro
       if (selectedPerson.tipo === 'prospecto') {
         const convRes = await fetch(`/api/prospectos/${selectedPerson.id}/converter`, {
           method: 'POST',
@@ -585,8 +1037,12 @@ function CreatePropostaModal({
       }
 
       if (!finalClienteId) {
-        throw new Error('Não foi possível identificar o cliente')
+        throw new Error('Nao foi possivel identificar o cliente')
       }
+
+      const valorManual = formData.valor
+        ? parseFloat(formData.valor.replace(/\./g, '').replace(',', '.'))
+        : null
 
       const response = await fetch('/api/oportunidades', {
         method: 'POST',
@@ -594,11 +1050,23 @@ function CreatePropostaModal({
         body: JSON.stringify({
           titulo: formData.titulo,
           descricao: formData.descricao || null,
-          valor: formData.valor ? parseFloat(formData.valor.replace(/\./g, '').replace(',', '.')) : null,
+          valor: itens.length > 0 ? totalCarrinho : valorManual,
+          formaPagamento: formData.formaPagamento || null,
+          parcelas:
+            formData.formaPagamento === 'parcelado' && formData.parcelas
+              ? parseInt(formData.parcelas, 10)
+              : null,
+          desconto: formData.desconto
+            ? parseFloat(formData.desconto.replace(/\./g, '').replace(',', '.'))
+            : null,
           probabilidade: parseInt(formData.probabilidade) || 0,
-          status: 'proposta',
+          status: 'orcamento',
           clienteId: finalClienteId,
           dataFechamento: formData.dataFechamento || null,
+          proximaAcaoEm: formData.proximaAcaoEm || null,
+          canalProximaAcao: formData.canalProximaAcao || null,
+          responsavelProximaAcao: formData.responsavelProximaAcao || null,
+          lembreteProximaAcao: formData.lembreteProximaAcao,
           prospectoId,
         }),
       })
@@ -606,104 +1074,195 @@ function CreatePropostaModal({
       const result = await response.json()
 
       if (response.ok) {
-        let msg = 'Proposta criada com sucesso!'
-        if (result.statusAutoAtualizado) {
-          msg += ` Status definido como "${result.status === 'negociacao' ? 'Negociação' : 'Proposta'}".`
+        let carrinhoError: string | null = null
+
+        if (itens.length > 0 && result?.id) {
+          const createPedidoResponse = await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              oportunidadeId: result.id,
+              itens: itens.map((item) => ({
+                produtoServicoId: item.produtoServicoId || null,
+                descricao: item.descricao,
+                quantidade: item.quantidade,
+                precoUnitario: item.precoUnitario,
+                desconto: item.desconto,
+              })),
+            }),
+          })
+
+          if (!createPedidoResponse.ok) {
+            const pedidoResult = await createPedidoResponse.json().catch(() => null)
+            carrinhoError =
+              pedidoResult?.error || 'Orcamento criado, mas nao foi possivel anexar os produtos.'
+          }
         }
-        await Swal.fire({ icon: 'success', title: 'Proposta Criada!', text: msg, confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+
+        let msg = 'Orcamento criado com sucesso!'
+        if (result.statusAutoAtualizado) {
+          msg += ' Status ajustado para Orcamento.'
+        }
+        if (itens.length > 0 && !carrinhoError) {
+          msg += ' Carrinho de produtos anexado.'
+        }
+
+        await Swal.fire({
+          icon: carrinhoError ? 'warning' : 'success',
+          title: carrinhoError ? 'Orcamento criado com ressalva' : 'Orcamento Criado!',
+          text: carrinhoError || msg,
+          confirmButtonColor: '#6366f1',
+          background: '#1f2937',
+          color: '#f3f4f6',
+        })
         onCreated()
       } else {
-        Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Erro ao criar proposta', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Erro ao criar orcamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
       }
-    } catch (error: any) {
-      console.error('Erro ao criar proposta:', error)
-      Swal.fire({ icon: 'error', title: 'Erro', text: error.message || 'Erro ao criar proposta. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+    } catch (error: unknown) {
+      console.error('Erro ao criar orcamento:', error)
+      Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao criar orcamento. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="crm-card w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+    <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-3xl">
+      <div className="h-full overflow-y-auto p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nova Proposta</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              O status será definido automaticamente
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Novo Orcamento</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              O status sera definido automaticamente
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
           >
-            <X size={20} className="text-gray-500" />
+            <X className="h-3.5 w-3.5" />
+            Fechar
           </button>
         </div>
 
-        {/* Info */}
-        <div className="mx-6 mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
           <div className="flex items-start gap-2">
             <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-blue-700 dark:text-blue-400">
-              <span className="font-medium">Classificação automática:</span> Se o lead está em prospecção/qualificação → <strong>Proposta</strong>. Se já tem proposta → <strong>Negociação</strong>.
+              <span className="font-medium">Classificacao automatica:</span> Leads em <strong>Sem contato</strong> ou <strong>Em potencial</strong> entram como <strong>Orcamento</strong>.
             </div>
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Título <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="titulo"
-              required
-              value={formData.titulo}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex: Proposta de serviço para empresa X"
-            />
+        <form onSubmit={handleSubmit} className="mx-auto w-full max-w-3xl space-y-4">
+          <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Identificacao
+            </p>
+            <div className="mt-3 space-y-4">
+              <div>
+                <label className={labelClass}>
+              Titulo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="titulo"
+                  required
+                  value={formData.titulo}
+                  onChange={handleChange}
+                  className={fieldClass}
+                  placeholder="Ex: Orcamento de servico para empresa X"
+                />
+              </div>
+
+              <div>
+                <AsyncSelect
+                  label="Cliente / Lead"
+                  placeholder="Busque por nome, email ou empresa..."
+                  value={selectedPerson ? selectedPerson.id : ''}
+                  initialLabel={selectedPerson ? selectedPerson.nome : ''}
+                  onChange={handlePersonChange}
+                  fetchUrl="/api/pessoas/busca"
+                  required
+                />
+                {statusInfo && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                    <Info size={12} />
+                    {statusInfo}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className={labelClass}>Descricao</label>
+                <textarea
+                  name="descricao"
+                  rows={3}
+                  value={formData.descricao}
+                  onChange={handleChange}
+                  className={fieldClass}
+                  placeholder="Descricao detalhada do orcamento"
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <AsyncSelect
-              label="Cliente / Lead"
-              placeholder="Busque por nome, email ou empresa..."
-              value={selectedPerson ? selectedPerson.id : ''}
-              initialLabel={selectedPerson ? selectedPerson.nome : ''}
-              onChange={handlePersonChange}
-              fetchUrl="/api/pessoas/busca"
-              required
-            />
-            {statusInfo && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
-                <Info size={12} />
-                {statusInfo}
-              </p>
-            )}
+          <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Produtos
+            </p>
+            <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {itens.length > 0 ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Total atual: {currency(totalCarrinho)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowCarrinhoDrawer(true)}
+                >
+                  {itens.length > 0 ? 'Editar carrinho' : 'Incluir produtos'}
+                </Button>
+              </div>
+              {itens.length > 0 && (
+                <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
+                  {itens.slice(0, 4).map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
+                    >
+                      <span className="truncate pr-2">{item.descricao}</span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {item.quantidade}x
+                      </span>
+                      <span>{currency(item.subtotal)}</span>
+                    </div>
+                  ))}
+                  {itens.length > 4 && (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      +{itens.length - 4} item(ns) no carrinho.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Descrição
-            </label>
-            <textarea
-              name="descricao"
-              rows={3}
-              value={formData.descricao}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Descrição detalhada da proposta"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Comercial e acompanhamento
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={labelClass}>
                 Valor (R$)
               </label>
               <input
@@ -711,13 +1270,46 @@ function CreatePropostaModal({
                 name="valor"
                 value={formData.valor}
                 onChange={handleCurrencyChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={itens.length > 0}
+                className={fieldClass}
+                placeholder={itens.length > 0 ? 'Calculado pelo carrinho' : '0,00'}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Forma de Pagamento
+              </label>
+              <select
+                name="formaPagamento"
+                value={formData.formaPagamento}
+                onChange={handleChange}
+                className={fieldClass}
+              >
+                <option value="">Selecione</option>
+                <option value="pix">Pix</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="cartao">Cartao</option>
+                <option value="parcelado">Parcelado</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Desconto (R$)
+              </label>
+              <input
+                type="text"
+                name="desconto"
+                value={formData.desconto}
+                onChange={handleDiscountCurrencyChange}
+                className={fieldClass}
                 placeholder="0,00"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={labelClass}>
                 Probabilidade (%)
               </label>
               <input
@@ -727,13 +1319,30 @@ function CreatePropostaModal({
                 max="100"
                 value={formData.probabilidade}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={fieldClass}
                 placeholder="0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={labelClass}>
+                Parcelas
+              </label>
+              <input
+                type="number"
+                name="parcelas"
+                min="2"
+                max="24"
+                value={formData.parcelas}
+                onChange={handleChange}
+                disabled={formData.formaPagamento !== 'parcelado'}
+                className={`${fieldClass} disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800`}
+                placeholder={formData.formaPagamento === 'parcelado' ? 'Ex: 3' : 'Somente parcelado'}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
                 Data Prevista
               </label>
               <input
@@ -741,12 +1350,69 @@ function CreatePropostaModal({
                 name="dataFechamento"
                 value={formData.dataFechamento}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
+                className={`${fieldClass} dark:[color-scheme:dark]`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Proxima Acao
+              </label>
+              <input
+                type="date"
+                name="proximaAcaoEm"
+                value={formData.proximaAcaoEm}
+                onChange={handleChange}
+                className={`${fieldClass} dark:[color-scheme:dark]`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Canal da Acao
+              </label>
+              <select
+                name="canalProximaAcao"
+                value={formData.canalProximaAcao}
+                onChange={handleChange}
+                className={fieldClass}
+              >
+                <option value="">Selecione</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">Email</option>
+                <option value="ligacao">Ligacao</option>
+                <option value="reuniao">Reuniao</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Responsavel
+              </label>
+              <input
+                type="text"
+                name="responsavelProximaAcao"
+                value={formData.responsavelProximaAcao}
+                onChange={handleChange}
+                className={fieldClass}
+                placeholder="Ex: Joao"
               />
             </div>
           </div>
+          </div>
 
-          {/* Footer */}
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              name="lembreteProximaAcao"
+              checked={formData.lembreteProximaAcao}
+              onChange={handleChange}
+              className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 dark:border-gray-600"
+            />
+            Gerar lembrete para a proxima acao
+          </label>
+
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancelar
@@ -757,14 +1423,191 @@ function CreatePropostaModal({
               ) : (
                 <>
                   <Save size={18} className="mr-2" />
-                  Criar Proposta
+                  Criar Orcamento
                 </>
               )}
             </Button>
           </div>
         </form>
       </div>
-    </div>
+
+      {showCarrinhoDrawer && (
+        <SideCreateDrawer
+          open
+          onClose={() => setShowCarrinhoDrawer(false)}
+          maxWidthClass="max-w-4xl"
+          zIndexClass="z-[10010]"
+        >
+          <div className="h-full overflow-y-auto p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Carrinho de Produtos
+                </h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Monte o carrinho do orcamento em uma tela dedicada.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCarrinhoDrawer(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                <X className="h-3.5 w-3.5" />
+                Fechar
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {itens.length} item(ns) no carrinho
+                </p>
+                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  Total: {currency(totalCarrinho)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Adicao rapida por codigo
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={quickAddCode}
+                  onChange={(e) => setQuickAddCode(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      handleQuickAddByCode()
+                    }
+                  }}
+                  className={fieldClass}
+                  placeholder="Digite somente o codigo do produto/servico"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleQuickAddByCode}
+                  disabled={quickAddCodeLoading || !quickAddCode.trim()}
+                  className="sm:self-end"
+                >
+                  {quickAddCodeLoading ? 'Buscando...' : 'Adicionar por codigo'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Adicionar manualmente
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
+                <AsyncSelect
+                  className="min-w-0 sm:col-span-2 lg:col-span-2"
+                  placeholder="Buscar produto/servico..."
+                  value={itemForm.produtoServicoId || ''}
+                  initialLabel={selectedProdutoLabel}
+                  onChange={handleSelectProduto}
+                  fetchUrl="/api/produtos-servicos/busca"
+                />
+                <input
+                  value={itemForm.descricao}
+                  onChange={(e) => handleItemForm('descricao', e.target.value)}
+                  placeholder="Descricao"
+                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 sm:col-span-2 lg:col-span-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={itemForm.quantidade}
+                  onChange={(e) => handleItemForm('quantidade', e.target.value)}
+                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={itemForm.precoUnitario}
+                  onChange={(e) => handleItemForm('precoUnitario', e.target.value)}
+                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={itemForm.desconto}
+                  onChange={(e) => handleItemForm('desconto', e.target.value)}
+                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddDraftItem}
+                  className="sm:col-span-2 lg:col-span-1"
+                >
+                  Adicionar
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Itens do carrinho
+                </p>
+                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  {currency(totalCarrinho)}
+                </p>
+              </div>
+              {itens.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Nenhum item adicionado.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {itens.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="truncate font-medium text-gray-800 dark:text-gray-100">
+                          {item.descricao}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {item.quantidade} x {currency(item.precoUnitario)}
+                          {item.desconto > 0 ? ` | Desc: ${currency(item.desconto)}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold">{currency(item.subtotal)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDraftItem(item.id)}
+                          className="rounded border border-red-300 px-2 py-0.5 text-red-600"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end border-t border-gray-200 pt-3 dark:border-gray-700">
+              <Button type="button" variant="outline" onClick={() => setShowCarrinhoDrawer(false)}>
+                Concluir carrinho
+              </Button>
+            </div>
+          </div>
+        </SideCreateDrawer>
+      )}
+    </SideCreateDrawer>
   )
 }
+
 

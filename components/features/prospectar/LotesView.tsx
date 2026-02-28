@@ -208,17 +208,23 @@ function LoteCard({
     const handleEnviar = async (e: React.MouseEvent) => {
         e.stopPropagation();
         setEnviandoEste(true);
-        await onEnviarLote(lote.lote);
-        setLeads([]);
-        setExpandido(false);
-        setEnviandoEste(false);
+        try {
+            await onEnviarLote(lote.lote);
+            setLeads([]);
+            setExpandido(false);
+        } finally {
+            setEnviandoEste(false);
+        }
     };
 
     const handleExcluir = async (e: React.MouseEvent) => {
         e.stopPropagation();
         setExcluindoEste(true);
-        await onExcluirLote(lote.lote);
-        setExcluindoEste(false);
+        try {
+            await onExcluirLote(lote.lote);
+        } finally {
+            setExcluindoEste(false);
+        }
     };
 
     const isBusy = isSending || isDeleting || enviandoEste || excluindoEste;
@@ -269,7 +275,7 @@ function LoteCard({
                         onClick={handleEnviar}
                         disabled={isBusy}
                         title={`Enviar lote "${lote.lote}" ao funil`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 disabled:bg-purple-900/50 disabled:text-purple-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium rounded-lg transition-colors"
                     >
                         {enviandoEste
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -627,3 +633,4 @@ export function LotesView({
         </div>
     );
 }
+

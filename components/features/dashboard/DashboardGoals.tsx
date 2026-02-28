@@ -11,7 +11,6 @@ import {
   UserPlus,
   DollarSign,
   CheckCircle2,
-  Briefcase,
   Search,
   ArrowRight,
 } from 'lucide-react'
@@ -22,8 +21,8 @@ type GoalMetricType =
   | 'CLIENTES_CADASTRADOS'
   | 'VENDAS'
   | 'QUALIFICACAO'
-  | 'NEGOCIACAO'
   | 'PROSPECCAO'
+  | 'FATURAMENTO'
 
 type GoalPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
 
@@ -51,18 +50,18 @@ const metricIcons: Record<GoalMetricType, React.ElementType> = {
   CLIENTES_CADASTRADOS: UserPlus,
   VENDAS: DollarSign,
   QUALIFICACAO: CheckCircle2,
-  NEGOCIACAO: Briefcase,
   PROSPECCAO: Search,
+  FATURAMENTO: DollarSign,
 }
 
 const metricLabels: Record<GoalMetricType, string> = {
   CLIENTES_CONTATADOS: 'Contatos',
-  PROPOSTAS: 'Propostas',
+  PROPOSTAS: 'Orçamentos',
   CLIENTES_CADASTRADOS: 'Cadastros',
   VENDAS: 'Vendas',
-  QUALIFICACAO: 'Qualificação',
-  NEGOCIACAO: 'Negociação',
-  PROSPECCAO: 'Prospecção',
+  QUALIFICACAO: 'Em potencial',
+  PROSPECCAO: 'Sem contato',
+  FATURAMENTO: 'Faturamento',
 }
 
 const periodLabels: Record<GoalPeriodType, string> = {
@@ -71,6 +70,26 @@ const periodLabels: Record<GoalPeriodType, string> = {
   MONTHLY: 'Mensal',
   CUSTOM: 'Personalizada',
 }
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value)
+
+const formatGoalValue = (metricType: GoalMetricType, value: number) => {
+  if (metricType === 'FATURAMENTO') {
+    return formatCurrency(value)
+  }
+  return new Intl.NumberFormat('pt-BR').format(value)
+}
+
+const sanitizeMockText = (value?: string | null) =>
+  (value || '')
+    .replace(/\bmock\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s\-:|•]+|[\s\-:|•]+$/g, '')
+    .trim()
 
 export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   const activeGoals = goals.filter((goal) => goal.active !== false)
@@ -133,6 +152,8 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
             // Low progress warning color could be added here if desired
           }
 
+          const sanitizedTitle = sanitizeMockText(goal.title) || metricLabels[goal.metricType]
+
           return (
             <div
               key={goal.id}
@@ -150,9 +171,9 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
               <div>
                 <div className="flex items-end justify-between mb-1">
                   <span className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
-                    {currentValue}
+                    {formatGoalValue(goal.metricType, currentValue)}
                     <span className="text-sm font-normal text-gray-400 dark:text-gray-500 ml-1">
-                      / {goal.target}
+                      / {formatGoalValue(goal.metricType, goal.target)}
                     </span>
                   </span>
                   <span className={`text-xs font-bold ${progressValue >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
@@ -160,8 +181,8 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
                   </span>
                 </div>
 
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 truncate" title={goal.title || metricLabels[goal.metricType]}>
-                  {goal.title?.trim() || metricLabels[goal.metricType]}
+                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 truncate" title={sanitizedTitle}>
+                  {sanitizedTitle}
                 </h3>
 
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
@@ -178,3 +199,4 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
     </div>
   )
 }
+

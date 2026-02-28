@@ -51,10 +51,9 @@ const formatDate = (value?: string | null) => {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  prospeccao: 'Prospecao',
-  qualificacao: 'Qualificacao',
-  proposta: 'Proposta',
-  negociacao: 'Negociacao',
+  sem_contato: 'Sem contato',
+  em_potencial: 'Em potencial',
+  orcamento: 'Orçamento',
   fechada: 'Fechada',
   perdida: 'Perdida',
 }
@@ -79,7 +78,7 @@ export default function OportunidadeHistoricoCard({
 
   const fallbackStatus =
     oportunidade.status === 'fechada' || oportunidade.status === 'perdida'
-      ? 'negociacao'
+      ? 'orcamento'
       : null
   const statusToReturn = oportunidade.statusAnterior || fallbackStatus
   const isFallback = !oportunidade.statusAnterior && Boolean(fallbackStatus)
@@ -143,7 +142,7 @@ export default function OportunidadeHistoricoCard({
               }
             }}
           >
-            Reabrir Proposta
+            Reabrir Orçamento
           </Button>
         </div>
       </div>

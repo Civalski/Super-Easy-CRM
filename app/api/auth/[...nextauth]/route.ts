@@ -24,8 +24,8 @@ const handler = NextAuth({
                 const user = await prisma.user.findFirst({
                     where: {
                         OR: [
-                            { username: identifier },
-                            { email: identifier },
+                            { username: { equals: identifier, mode: 'insensitive' } },
+                            { email: { equals: identifier, mode: 'insensitive' } },
                         ],
                     },
                 })
@@ -75,7 +75,7 @@ const handler = NextAuth({
     session: {
         strategy: "jwt",
     },
-    debug: process.env.NODE_ENV === 'development',
+    debug: process.env.NEXTAUTH_DEBUG === 'true',
 })
 
 export { handler as GET, handler as POST }

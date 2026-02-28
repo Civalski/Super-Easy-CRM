@@ -1,5 +1,5 @@
 /**
- * Grafico de distribuicao de oportunidades no funil comercial.
+ * Grafico de distribuicao de orçamentos no funil comercial.
  */
 'use client'
 
@@ -20,34 +20,28 @@ type StatusConfig = {
 }
 
 const STATUS_ORDER = [
-  'prospeccao',
-  'qualificacao',
-  'proposta',
-  'negociacao',
+  'sem_contato',
+  'em_potencial',
+  'orcamento',
   'fechada',
   'perdida',
 ] as const
 
 const STATUS_CONFIG: Record<string, StatusConfig> = {
-  prospeccao: {
-    label: 'Prospeccao',
+  sem_contato: {
+    label: 'Sem contato',
     colorClass: 'text-slate-700 dark:text-slate-300',
     barClass: 'from-slate-500 to-slate-400',
   },
-  qualificacao: {
-    label: 'Qualificacao',
+  em_potencial: {
+    label: 'Em potencial',
     colorClass: 'text-blue-700 dark:text-blue-300',
     barClass: 'from-blue-500 to-cyan-400',
   },
-  proposta: {
-    label: 'Proposta',
+  orcamento: {
+    label: 'Orçamento',
     colorClass: 'text-amber-700 dark:text-amber-300',
     barClass: 'from-amber-500 to-yellow-400',
-  },
-  negociacao: {
-    label: 'Negociacao',
-    colorClass: 'text-orange-700 dark:text-orange-300',
-    barClass: 'from-orange-500 to-orange-400',
   },
   fechada: {
     label: 'Fechada',
@@ -64,8 +58,12 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
 export function OportunidadesChart({ data, totalOportunidades }: OportunidadesChartProps) {
   const byStatus = new Map(data.map((item) => [item.status, item._count]))
 
+  const getStatusCount = (status: (typeof STATUS_ORDER)[number]) => {
+    return byStatus.get(status) ?? 0
+  }
+
   const normalizedData = STATUS_ORDER.map((status) => {
-    const value = byStatus.get(status) ?? 0
+    const value = getStatusCount(status)
     const config = STATUS_CONFIG[status]
     const percent = totalOportunidades > 0 ? (value / totalOportunidades) * 100 : 0
 
@@ -86,7 +84,7 @@ export function OportunidadesChart({ data, totalOportunidades }: OportunidadesCh
     <div className="crm-card p-6">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Funil de Oportunidades</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Funil de Orçamentos</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">Distribuicao por etapa no periodo selecionado</p>
         </div>
         <div className="rounded-xl border border-emerald-300/60 bg-emerald-100/50 px-3 py-2 text-right dark:border-emerald-500/30 dark:bg-emerald-500/10">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
+import { mapOpportunityStatusForResponse } from '@/lib/domain/status'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,9 +113,16 @@ export async function GET(request: NextRequest) {
     const valorGanhos = valorGanhosAgg._sum.valor || 0
     const valorPerdidos = valorPerdidosAgg._sum.valor || 0
 
-    const oportunidadesPorStatus = oportunidadesStatusGroups.map((group) => ({
-      status: group.status,
-      _count: group._count.status,
+    const oportunidadesPorStatusMap = new Map<string, number>()
+    for (const group of oportunidadesStatusGroups) {
+      const normalizedStatus = mapOpportunityStatusForResponse(group.status) || 'desconhecido'
+      const currentValue = oportunidadesPorStatusMap.get(normalizedStatus) || 0
+      oportunidadesPorStatusMap.set(normalizedStatus, currentValue + group._count.status)
+    }
+
+    const oportunidadesPorStatus = Array.from(oportunidadesPorStatusMap.entries()).map(([status, count]) => ({
+      status,
+      _count: count,
     }))
 
     const tarefasPorStatus = tarefasStatusGroups.map((group) => ({

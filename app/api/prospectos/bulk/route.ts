@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
+import { Prisma } from '@prisma/client';
 
 // PATCH /api/prospectos/bulk - Atualiza status em massa (ex: enviar ao funil)
 export async function PATCH(request: NextRequest) {
@@ -62,7 +63,7 @@ export async function DELETE(request: NextRequest) {
         const all = searchParams.get('all') === 'true';
 
         // Construir filtros
-        const where: Record<string, any> = { userId };
+        const where: Prisma.ProspectoWhereInput = { userId };
 
         if (lote) {
             where.lote = lote;

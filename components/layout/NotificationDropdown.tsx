@@ -2,19 +2,20 @@ import React, { useState, useRef } from 'react';
 import { Calendar, AlertCircle, CheckCircle2, Trash2, X } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import type { TaskNotification } from '@/types/notifications';
 
 interface NotificationProps {
-    notifications: any[];
+    notifications: TaskNotification[];
     isLoading: boolean;
     onClose: () => void;
-    onSelect: (notification: any) => void;
+    onSelect: (notification: TaskNotification) => void;
     onClearAll: () => void;
     onDismiss: (id: string) => void;
 }
 
 interface SwipeableItemProps {
-    notification: any;
-    onSelect: (n: any) => void;
+    notification: TaskNotification;
+    onSelect: (n: TaskNotification) => void;
     onDismiss: (id: string) => void;
     onClose: () => void;
 }
@@ -67,7 +68,8 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
     const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
     const onTouchEnd = () => handleEnd();
 
-    const isOverdue = (date: string | Date) => {
+    const isOverdue = (date: string | Date | null) => {
+        if (!date) return false;
         const dueDate = new Date(date);
         if (Number.isNaN(dueDate.getTime())) return false;
         return isBefore(startOfDay(dueDate), startOfDay(new Date()));
@@ -145,7 +147,9 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
                                     </p>
                                 )}
                                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                                    Vence em: {format(new Date(notification.dataVencimento), "dd 'de' MMM", { locale: ptBR })}
+                                    Vence em: {notification.dataVencimento
+                                        ? format(new Date(notification.dataVencimento), "dd 'de' MMM", { locale: ptBR })
+                                        : 'Sem data'}
                                 </p>
                             </div>
                         </div>

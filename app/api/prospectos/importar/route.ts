@@ -39,7 +39,7 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
 
     /**
      * Mapeamento de campos
-     * Chaves compat�veis com o formato do arquivo .xlsx de exemplo e .parquet
+     * Chaves compatíveis com o formato do arquivo .xlsx de exemplo e .parquet
      */
     return {
         cnpj,

@@ -67,12 +67,12 @@ export function SearchResultsDropdown({
                         </div>
                     )}
 
-                    {/* Oportunidades */}
+                    {/* Orçamentos */}
                     {resultados?.oportunidades && resultados.oportunidades.length > 0 && (
                         <div>
                             <div className="px-4 py-2 crm-table-head">
                                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                                    Oportunidades ({resultados.oportunidades.length})
+                                    Orçamentos ({resultados.oportunidades.length})
                                 </h3>
                             </div>
                             {resultados.oportunidades.map((oportunidade) => (

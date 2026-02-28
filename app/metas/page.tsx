@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/common'
+import { Button, SideCreateDrawer } from '@/components/common'
 import {
   Loader2, Plus, Trash2, Pencil, Target, TrendingUp,
   CheckCircle2, Clock, BarChart3, Phone, Save, X as XIcon,
@@ -16,7 +16,6 @@ type GoalMetricType =
   | 'CLIENTES_CADASTRADOS'
   | 'VENDAS'
   | 'QUALIFICACAO'
-  | 'NEGOCIACAO'
   | 'PROSPECCAO'
   | 'FATURAMENTO'
 
@@ -70,13 +69,12 @@ interface MetaContatoData {
 
 const metricOptions: Array<{ value: GoalMetricType; label: string }> = [
   { value: 'CLIENTES_CONTATADOS', label: 'Clientes contatados' },
-  { value: 'PROPOSTAS', label: 'Propostas' },
+  { value: 'PROPOSTAS', label: 'Orçamentos' },
   { value: 'CLIENTES_CADASTRADOS', label: 'Clientes cadastrados' },
   { value: 'VENDAS', label: 'Vendas (qtd. fechadas)' },
   { value: 'FATURAMENTO', label: 'Faturamento (R$)' },
-  { value: 'QUALIFICACAO', label: 'Qualificação' },
-  { value: 'NEGOCIACAO', label: 'Negociação' },
-  { value: 'PROSPECCAO', label: 'Prospecção' },
+  { value: 'QUALIFICACAO', label: 'Em potencial' },
+  { value: 'PROSPECCAO', label: 'Sem contato' },
 ]
 
 const periodOptions: Array<{ value: GoalPeriodType; label: string }> = [
@@ -209,12 +207,12 @@ export default function MetasPage() {
     cancelButtonColor: '#6b7280',
   }
 
-  const handleUnauthorized = () => {
+  const handleUnauthorized = useCallback(() => {
     setError('Sua sessão expirou. Entre novamente para continuar.')
     router.push('/login')
-  }
+  }, [router])
 
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     try {
       const response = await fetch('/api/metas', { credentials: 'include' })
       if (response.status === 401) {
@@ -233,9 +231,9 @@ export default function MetasPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [handleUnauthorized])
 
-  const fetchMetaDiaria = async () => {
+  const fetchMetaDiaria = useCallback(async () => {
     try {
       const response = await fetch('/api/metas/contatos-diarios')
       if (response.ok) {
@@ -248,12 +246,12 @@ export default function MetasPage() {
     } finally {
       setMetaLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchGoals()
     fetchMetaDiaria()
-  }, [])
+  }, [fetchGoals, fetchMetaDiaria])
 
   const resetForm = () => {
     const defaults = getDefaultDates('DAILY')
@@ -563,7 +561,7 @@ export default function MetasPage() {
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setEditingId(null) }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
         >
           <Plus size={16} />
           Nova Meta
@@ -626,6 +624,8 @@ export default function MetasPage() {
 
       {/* Form (collapses) */}
       {showForm && (
+        <SideCreateDrawer open={showForm} onClose={resetForm} maxWidthClass="max-w-4xl">
+        <div className="h-full overflow-y-auto p-4 md:p-6">
         <div className="crm-card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">
@@ -789,6 +789,8 @@ export default function MetasPage() {
             </div>
           </form>
         </div>
+        </div>
+        </SideCreateDrawer>
       )}
 
       {/* Metas Registradas */}
@@ -818,7 +820,7 @@ export default function MetasPage() {
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
             >
               <Plus size={15} />
               Criar primeira meta
@@ -1158,5 +1160,3 @@ function MetaDiariaCard({
     </div>
   )
 }
-
-

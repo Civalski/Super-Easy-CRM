@@ -103,7 +103,7 @@ export function ProspectarHeader({
                                 <button
                                     onClick={() => onEnviarAoFunil('selecionados')}
                                     disabled={isSending}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm font-medium rounded-lg transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 text-sm font-medium rounded-lg transition-colors"
                                 >
                                     {isSending ? (
                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -146,3 +146,4 @@ export function ProspectarHeader({
         </div>
     );
 }
+

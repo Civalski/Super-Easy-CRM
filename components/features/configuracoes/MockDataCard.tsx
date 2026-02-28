@@ -1,5 +1,5 @@
 /**
- * Card para geração de dados mockados
+ * Card para geracao de dados mockados
  */
 'use client'
 
@@ -40,7 +40,7 @@ export function MockDataCard() {
         const isDark = document.documentElement.classList.contains('dark')
         const confirmacao = await Swal.fire({
             title: 'Excluir todos os dados?',
-            text: 'Esta acao remove clientes, contatos, oportunidades, tarefas, prospectos e metas da sua conta. Usuarios nao serao apagados.',
+            text: 'Esta acao remove clientes, contatos, orcamentos, tarefas, prospectos e metas da sua conta. Usuarios nao serao apagados.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -100,22 +100,24 @@ export function MockDataCard() {
             </div>
 
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Gere dados mockados atualizados de clientes, oportunidades, contatos e tarefas
-                para testar as funcionalidades do CRM.
+                Gere dados mockados completos para testar os fluxos do CRM:
+                comercial, prospectos, pedidos, financeiro, metas e follow-ups.
             </p>
 
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-2">
-                    Dados que serão criados:
+                    Dados que serao criados:
                 </h3>
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>• 10 clientes com informações completas</li>
+                    <li>• 10 clientes com informacoes completas</li>
                     <li>• 7 contatos relacionados aos clientes</li>
-                    <li>• 20 oportunidades em diferentes status do pipeline</li>
-                    <li>• 25 tarefas com diferentes prioridades e status</li>
+                    <li>• Oportunidades e tarefas em status variados</li>
+                    <li>• Prospectos, lotes e agendamentos de envio</li>
+                    <li>• Produtos/servicos, pedidos, itens e contas financeiras</li>
+                    <li>• Metas, snapshots e templates/historico de follow-up</li>
                 </ul>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
-                    <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes), eles não serão duplicados.
+                    <strong>Nota:</strong> Parte dos dados e atualizada de forma idempotente para facilitar novos testes.
                 </p>
             </div>
 
