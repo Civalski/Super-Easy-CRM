@@ -1,0 +1,9 @@
+/**
+ * Componentes da feature Configurações
+ * Preferências e configurações do sistema
+ */
+export { ConfiguracoesHeader } from './ConfiguracoesHeader';
+export { MockDataCard } from './MockDataCard';
+export { SeedResultCard } from './SeedResultCard';
+export { ConfiguracoesEmptyState } from './ConfiguracoesEmptyState';
+export type { SeedResult } from './ConfiguracoesTypes';

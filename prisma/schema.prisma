@@ -1,0 +1,316 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // 🌐 PostgreSQL - Supabase (Produção e Desenvolvimento)
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum GoalMetricType {
+  CLIENTES_CONTATADOS
+  PROPOSTAS
+  CLIENTES_CADASTRADOS
+  VENDAS
+  QUALIFICACAO
+  NEGOCIACAO
+  PROSPECCAO
+  FATURAMENTO
+}
+
+enum GoalPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String?  @unique
+  username     String   @unique
+  passwordHash String
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  usedRegistrationCodes RegistrationCode[]
+  goals                 Goal[]
+  motivosPerda          MotivoPerda[]
+  clientes              Cliente[]
+  contatos              Contato[]
+  oportunidades         Oportunidade[]
+  tarefas               Tarefa[]
+  prospectos            Prospecto[]
+  prospectoAgendamentos ProspectoEnvioAgendado[]
+  metaContato           MetaContatoConfig?
+
+  @@map("users")
+}
+
+model RegistrationCode {
+  id        String    @id @default(cuid())
+  codeHash  String    @unique
+  usedAt    DateTime?
+  usedById  String?
+  createdAt DateTime  @default(now())
+
+  usedBy User? @relation(fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@map("registration_codes")
+}
+
+model Goal {
+  id         String         @id @default(cuid())
+  userId     String
+  title      String?
+  metricType GoalMetricType
+  periodType GoalPeriodType
+  target     Int
+  startDate  DateTime?
+  endDate    DateTime?
+  weekDays   Int[]          @default([])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots GoalSnapshot[]
+
+  @@map("goals")
+}
+
+model GoalSnapshot {
+  id          String   @id @default(cuid())
+  goalId      String
+  periodStart DateTime
+  periodEnd   DateTime
+  current     Int
+  target      Int
+  progress    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, periodStart, periodEnd])
+  @@map("goal_snapshots")
+}
+
+model Cliente {
+  id        String   @id @default(cuid())
+  userId    String
+  nome      String
+  email     String?
+  telefone  String?
+  empresa   String?
+  endereco  String?
+  cidade    String?
+  estado    String?
+  cep       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contatos      Contato[]
+  oportunidades Oportunidade[]
+  tarefas       Tarefa[]
+  prospecto     Prospecto?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@map("clientes")
+}
+
+model Contato {
+  id        String   @id @default(cuid())
+  userId    String
+  nome      String
+  email     String?
+  telefone  String?
+  cargo     String?
+  clienteId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("contatos")
+}
+
+model Oportunidade {
+  id             String    @id @default(cuid())
+  userId         String
+  titulo         String
+  descricao      String?
+  valor          Float?
+  status         String    @default("prospeccao") // prospeccao, qualificacao, proposta, negociacao, fechada, perdida
+  statusAnterior String?
+  motivoPerda    String?
+  probabilidade  Int       @default(0) // 0-100
+  dataFechamento DateTime?
+  clienteId      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tarefas Tarefa[]
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("oportunidades")
+}
+
+model MotivoPerda {
+  id        String   @id @default(cuid())
+  nome      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nome])
+  @@index([userId])
+  @@map("motivos_perda")
+}
+
+model Tarefa {
+  id             String    @id @default(cuid())
+  userId         String
+  titulo         String
+  descricao      String?
+  status         String    @default("pendente") // pendente, em_andamento, concluida
+  prioridade     String    @default("media") // baixa, media, alta
+  dataVencimento DateTime?
+  clienteId      String?
+  oportunidadeId String?
+
+  notificar           Boolean @default(false)
+  notificacaoExcluida Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tarefas")
+}
+
+model Prospecto {
+  id     String @id @default(cuid())
+  userId String
+
+  // Dados de identificação
+  cnpj       String
+  cnpjBasico String
+  cnpjOrdem  String
+  cnpjDv     String
+
+  // Dados da empresa
+  razaoSocial       String
+  nomeFantasia      String?
+  capitalSocial     String?
+  porte             String?
+  naturezaJuridica  String?
+  situacaoCadastral String?
+  dataAbertura      String?
+  matrizFilial      String?
+
+  // CNAE
+  cnaePrincipal     String?
+  cnaePrincipalDesc String?
+  cnaesSecundarios  String?
+
+  // Endereço
+  tipoLogradouro String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cep            String?
+  municipio      String
+  uf             String
+
+  // Contato
+  telefone1 String?
+  telefone2 String?
+  fax       String?
+  email     String?
+
+  // Controle de Prospecção
+  status      String  @default("novo") // novo | em_contato | qualificado | descartado | convertido
+  observacoes String?
+  prioridade  Int     @default(0) // 0-5 estrelas
+  lote        String? // Lote de importação
+
+  // Datas
+  dataImportacao DateTime  @default(now())
+  ultimoContato  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Referência para cliente (após conversão)
+  clienteId String?  @unique
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cnpj])
+  @@index([userId])
+  @@map("prospectos")
+}
+
+model ProspectoEnvioAgendado {
+  id         String    @id @default(cuid())
+  userId     String
+  lote       String?
+  dataEnvio  String // YYYY-MM-DD in Brazil timezone
+  status     String    @default("pendente") // pendente | processando | processado | cancelado | erro
+  enviados   Int       @default(0)
+  executadoEm DateTime?
+  erro       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dataEnvio, status])
+  @@index([userId, lote, status])
+  @@map("prospecto_envio_agendado")
+}
+
+model MetaContatoConfig {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  metaDiaria Int      @default(25)
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  diasEsquecidos MetaContatoDiaEsquecido[]
+
+  @@map("meta_contato_config")
+}
+
+model MetaContatoDiaEsquecido {
+  id        String   @id @default(cuid())
+  configId  String
+  data      String // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+
+  config MetaContatoConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, data])
+  @@map("meta_contato_dias_esquecidos")
+}
