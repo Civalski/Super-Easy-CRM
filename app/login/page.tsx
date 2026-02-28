@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import Script from 'next/script'
 import { ArrowRight } from 'lucide-react'
 
@@ -152,7 +153,7 @@ export default function LoginPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_76%_75%,rgba(124,58,237,0.14),transparent_46%)]" />
 
           <div className="relative z-10">
-            <img
+            <Image
               src="/arkercorelogo.png"
               alt="Arker CRM"
               width={240}

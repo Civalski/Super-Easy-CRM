@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -58,7 +59,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
       <div className="max-w-md w-full space-y-8 bg-gray-900 p-8 rounded-xl border border-gray-800 shadow-2xl">
         <div className="text-center">
-          <img
+          <Image
             src="/arkercorelogo.png"
             alt="Arker CRM"
             width={182}
