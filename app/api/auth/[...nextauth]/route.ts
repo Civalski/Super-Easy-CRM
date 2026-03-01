@@ -2,6 +2,13 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { extractClientIpFromHeaders } from "@/lib/security/client-ip"
+import {
+    consumeRateLimit,
+    loginRateLimitConfig,
+    resetRateLimit,
+} from "@/lib/security/rate-limit"
+import { verifyTurnstileToken } from "@/lib/security/turnstile"
 
 export const dynamic = 'force-dynamic'
 
@@ -11,13 +18,55 @@ const handler = NextAuth({
             name: "Credentials",
             credentials: {
                 username: { label: "Usuario ou email", type: "text" },
-                password: { label: "Senha", type: "password" }
+                password: { label: "Senha", type: "password" },
+                turnstileToken: { label: "Turnstile Token", type: "text" },
+                website: { label: "Website", type: "text" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, req) {
                 const identifier = credentials?.username?.trim().toLowerCase()
                 const password = credentials?.password
+                const turnstileToken =
+                    typeof credentials?.turnstileToken === "string"
+                        ? credentials.turnstileToken.trim()
+                        : ""
+                const honeypot =
+                    typeof credentials?.website === "string"
+                        ? credentials.website.trim()
+                        : ""
+                const clientIp = extractClientIpFromHeaders(
+                    (req as { headers?: Headers | Record<string, string | string[] | undefined> })?.headers
+                )
+                const byIpKey = `auth:login:ip:${clientIp}`
+                const byIdentifierKey = `auth:login:id:${clientIp}:${identifier || "unknown"}`
+
+                const byIpLimit = consumeRateLimit(byIpKey, loginRateLimitConfig)
+                const byIdentifierLimit = consumeRateLimit(byIdentifierKey, loginRateLimitConfig)
+
+                if (!byIpLimit.allowed || !byIdentifierLimit.allowed) {
+                    console.warn("Login bloqueado por rate limit", { clientIp, identifier })
+                    return null
+                }
+
+                if (honeypot.length > 0) {
+                    console.warn("Login rejeitado por honeypot", { clientIp })
+                    return null
+                }
 
                 if (!identifier || !password) {
+                    console.warn("Login rejeitado por payload incompleto", { clientIp, identifier })
+                    return null
+                }
+
+                const turnstileResult = await verifyTurnstileToken({
+                    token: turnstileToken,
+                    remoteIp: clientIp,
+                })
+                if (!turnstileResult.success) {
+                    console.warn("Login rejeitado por Turnstile", {
+                        clientIp,
+                        identifier,
+                        errors: turnstileResult.errorCodes,
+                    })
                     return null
                 }
 
@@ -39,6 +88,9 @@ const handler = NextAuth({
                 if (!valid) {
                     return null
                 }
+
+                resetRateLimit(byIpKey)
+                resetRateLimit(byIdentifierKey)
 
                 return {
                     id: user.id,

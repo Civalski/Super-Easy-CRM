@@ -3,6 +3,8 @@
 import {
   ConfiguracoesHeader,
   MockDataCard,
+  SidebarBehaviorCard,
+  ThemePreferenceCard,
   ConfiguracoesEmptyState,
 } from '@/components/features/configuracoes'
 
@@ -12,6 +14,8 @@ export default function ConfiguracoesPage() {
       <ConfiguracoesHeader />
 
       <div className="space-y-6">
+        <ThemePreferenceCard />
+        <SidebarBehaviorCard />
         <MockDataCard />
         <ConfiguracoesEmptyState />
       </div>

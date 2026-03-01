@@ -43,6 +43,10 @@ yarn-error.log*
 .env*.development
 .env.development
 backend/.env
+.env.example
+.env.production
+.env.development
+
 
 # vercel
 .vercel

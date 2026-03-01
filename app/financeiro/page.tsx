@@ -106,6 +106,16 @@ const CONTAS_PAGE_SIZE = 12
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
 
+const formatMonthLabel = (value: string) => {
+  const match = /^(\d{4})-(\d{2})$/.exec(value)
+  if (!match) return value
+
+  const year = match[1]
+  const monthIndex = Number(match[2]) - 1
+  const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+  return `${year}/${months[monthIndex] || match[2]}`
+}
+
 const formatDate = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
@@ -658,7 +668,7 @@ export default function FinanceiroPage() {
                 <tbody>
                   {fluxo.series.map((item) => (
                     <tr key={item.month} className="border-b border-gray-100 dark:border-gray-800">
-                      <td className="px-2 py-2 text-gray-800 dark:text-gray-100">{item.month}</td>
+                      <td className="px-2 py-2 text-gray-800 dark:text-gray-100">{formatMonthLabel(item.month)}</td>
                       <td className="px-2 py-2 text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(item.recebido)}
                       </td>

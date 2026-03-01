@@ -44,11 +44,11 @@ export default function SeedPage() {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Popular Banco de Dados com Dados Fake
+            Popular Banco de Dados com Dados de Apresentacao
           </h1>
 
           <p className="text-gray-600 mb-6">
-            Esta ferramenta cria dados fake de clientes, orçamentos, contatos e tarefas
+            Esta ferramenta cria dados de apresentacao de clientes, orçamentos, contatos e tarefas
             para você testar as funcionalidades do CRM.
           </p>
 
@@ -63,7 +63,7 @@ export default function SeedPage() {
                 Criando dados...
               </>
             ) : (
-              'Criar Dados Fake'
+              'Criar Dados de Apresentacao'
             )}
           </Button>
 
@@ -128,4 +128,5 @@ export default function SeedPage() {
     </div>
   )
 }
+
 

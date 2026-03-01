@@ -35,14 +35,9 @@ if (providerRegex.test(datasourceBlock)) {
     datasourceBlock = datasourceBlock.replace('datasource db {', 'datasource db {\n  provider = "postgresql"');
 }
 
-// Garantir url e directUrl
-if (!datasourceBlock.includes('url')) {
-    datasourceBlock = datasourceBlock.replace('datasource db {', 'datasource db {\n  url = env("DATABASE_URL")');
-}
-
-if (!datasourceBlock.includes('directUrl')) {
-    datasourceBlock = datasourceBlock.replace(/url\s*=\s*env\("DATABASE_URL"\)/, 'url = env("DATABASE_URL")\n  directUrl = env("DIRECT_URL")');
-}
+// Prisma v7: URLs sairam do schema.prisma e foram para prisma.config.ts
+datasourceBlock = datasourceBlock.replace(/\n\s*url\s*=\s*env\("DATABASE_URL"\)\s*/g, '\n');
+datasourceBlock = datasourceBlock.replace(/\n\s*directUrl\s*=\s*env\("DIRECT_URL"\)\s*/g, '\n');
 
 // Atualizar cabecalho do datasource
 if (!datasourceBlock.includes('PostgreSQL - Supabase')) {

@@ -1,5 +1,5 @@
 /**
- * Card para geracao de dados mockados
+ * Card para geracao de dados de apresentacao
  */
 'use client'
 
@@ -100,7 +100,7 @@ export function MockDataCard() {
             </div>
 
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Gere dados mockados completos para testar os fluxos do CRM:
+                Gere dados de apresentacao completos para demonstrar os fluxos do CRM:
                 comercial, prospectos, pedidos, financeiro, metas e follow-ups.
             </p>
 
@@ -137,7 +137,7 @@ export function MockDataCard() {
                     ) : (
                         <>
                             <Database className="w-5 h-5 mr-2" />
-                            Gerar Dados Mockados Atualizados
+                            Gerar Dados de Apresentacao Atualizados
                         </>
                     )}
                 </Button>
@@ -171,3 +171,4 @@ export function MockDataCard() {
         </div>
     )
 }
+

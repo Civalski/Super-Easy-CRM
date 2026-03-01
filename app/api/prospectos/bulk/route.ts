@@ -7,16 +7,19 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getAuthIdentityFromRequest } from '@/lib/auth';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
 import { Prisma } from '@prisma/client';
 
 // PATCH /api/prospectos/bulk - Atualiza status em massa (ex: enviar ao funil)
 export async function PATCH(request: NextRequest) {
     try {
-        const userId = await getUserIdFromRequest(request);
+        const { userId, role } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        if (role !== 'admin') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -52,9 +55,12 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/prospectos/bulk - Exclui todos ou por filtro
 export async function DELETE(request: NextRequest) {
     try {
-        const userId = await getUserIdFromRequest(request);
+        const { userId, role } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        if (role !== 'admin') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const { searchParams } = new URL(request.url);

@@ -9,8 +9,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X } from 'lucide-react'
+import { Search, Bell, Menu, X, Settings } from 'lucide-react'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -97,6 +98,11 @@ export default function Header({
     limparBusca()
   }
 
+  const handlePedidoClick = (id: string) => {
+    router.push(`/pedidos?pedidoId=${id}`)
+    limparBusca()
+  }
+
   const userInitial = session?.user?.name?.[0]?.toUpperCase() || 'U'
   const userName = session?.user?.name || 'Usuario'
   const userEmail = session?.user?.email
@@ -149,7 +155,7 @@ export default function Header({
           <div className="flex items-center gap-2">
             <button
               onClick={onMobileMenuClick}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600/65 text-slate-300 transition-colors hover:bg-slate-700/70 hover:text-slate-100 lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 lg:hidden"
               aria-label="Abrir menu"
             >
               <Menu size={19} />
@@ -159,21 +165,21 @@ export default function Header({
           <div className="flex-1 px-1 sm:px-3">
             <div ref={buscaRef} className="relative mx-auto w-full max-w-xl">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
                 size={19}
               />
               <input
                 type="text"
-                placeholder="Buscar clientes, orçamentos..."
+                placeholder="Buscar clientes, orcamentos, pedidos..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}
-                className="h-11 w-full rounded-xl border border-slate-600/65 bg-slate-900/55 pl-10 pr-10 text-sm text-slate-100 outline-none transition focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 placeholder:text-slate-400"
+                className="h-11 w-full rounded-xl border border-slate-300/70 bg-white/80 pl-10 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
               {busca && (
                 <button
                   onClick={limparBusca}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-slate-400 transition-colors hover:bg-slate-700/70 hover:text-slate-100"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
                   aria-label="Limpar busca"
                 >
                   <X size={17} />
@@ -187,6 +193,7 @@ export default function Header({
                   totalResultados={totalResultados}
                   onClienteClick={handleClienteClick}
                   onOportunidadeClick={handleOportunidadeClick}
+                  onPedidoClick={handlePedidoClick}
                 />
               )}
             </div>
@@ -196,7 +203,7 @@ export default function Header({
             <div ref={notificacaoRef} className="relative">
               <button
                 onClick={toggleNotifications}
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600/65 text-slate-300 transition-colors hover:bg-slate-700/70 hover:text-slate-100"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
                 aria-label="Notificacoes"
               >
                 <Bell size={18} />
@@ -219,14 +226,23 @@ export default function Header({
               )}
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-800/55">
+            <Link
+              href="/configuracoes"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+              aria-label="Configurações"
+              title="Configurações"
+            >
+              <Settings size={18} />
+            </Link>
+
+            <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45">
                 <span>{userInitial}</span>
               </div>
               <div className="hidden text-right md:block">
-                <p className="text-sm font-medium text-slate-100">{userName}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{userName}</p>
                 {userEmail && (
-                  <p className="text-xs text-slate-400">{userEmail}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{userEmail}</p>
                 )}
               </div>
             </div>

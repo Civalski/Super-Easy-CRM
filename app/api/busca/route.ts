@@ -18,8 +18,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         clientes: [],
         oportunidades: [],
+        pedidos: [],
       })
     }
+
+    const maxResultsPerType = 5
 
     const clientes = await prisma.cliente.findMany({
       where: {
@@ -40,7 +43,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: maxResultsPerType,
     })
 
     const oportunidades = await prisma.oportunidade.findMany({
@@ -61,12 +64,41 @@ export async function GET(request: NextRequest) {
 
       },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: maxResultsPerType,
+    })
+
+    const parsedNumero = Number(query)
+    const numeroFiltro = Number.isInteger(parsedNumero) ? parsedNumero : null
+
+    const pedidos = await prisma.pedido.findMany({
+      where: {
+        userId,
+        OR: [
+          { oportunidade: { titulo: { contains: query, mode: 'insensitive' } } },
+          { oportunidade: { cliente: { nome: { contains: query, mode: 'insensitive' } } } },
+          ...(numeroFiltro !== null ? [{ numero: numeroFiltro }] : []),
+        ],
+      },
+      include: {
+        oportunidade: {
+          select: {
+            titulo: true,
+            cliente: {
+              select: {
+                nome: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: maxResultsPerType,
     })
 
     return NextResponse.json({
       clientes,
       oportunidades,
+      pedidos,
     })
   } catch (error) {
     console.error('Erro ao buscar:', error)

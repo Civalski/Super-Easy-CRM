@@ -15,7 +15,7 @@ function isAdminOnly(pathname: string) {
 export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
 
-    // Allow public static files (e.g. /arkercorelogo.png) without auth.
+    // Allow public static files (e.g. /arker10.png) without auth.
     if (/\.[^/]+$/.test(pathname)) {
         return NextResponse.next()
     }

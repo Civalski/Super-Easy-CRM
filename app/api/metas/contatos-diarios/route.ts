@@ -53,24 +53,31 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Get or create config
-        let config = await prisma.metaContatoConfig.findUnique({
+        // Get config only (do not auto-create)
+        const config = await prisma.metaContatoConfig.findUnique({
             where: { userId },
             include: { diasEsquecidos: true },
         })
 
         if (!config) {
-            config = await prisma.metaContatoConfig.create({
-                data: { userId, metaDiaria: 25, ativo: true },
-                include: { diasEsquecidos: true },
+            return NextResponse.json({
+                ativo: false,
+                configurada: false,
+                metaDiaria: null,
+                contatosHoje: 0,
+                progressoHoje: 0,
+                debito: [],
+                debitoTotal: 0,
             })
         }
 
         if (!config.ativo) {
             return NextResponse.json({
                 ativo: false,
+                configurada: true,
                 metaDiaria: config.metaDiaria,
                 contatosHoje: 0,
+                progressoHoje: 0,
                 debito: [],
                 debitoTotal: 0,
             })
@@ -111,6 +118,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             ativo: true,
+            configurada: true,
             metaDiaria: config.metaDiaria,
             contatosHoje,
             progressoHoje: Math.min(100, Math.round((contatosHoje / config.metaDiaria) * 100)),
@@ -141,17 +149,14 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const { action, data } = body
 
-        let config = await prisma.metaContatoConfig.findUnique({
+        const config = await prisma.metaContatoConfig.findUnique({
             where: { userId },
         })
 
-        if (!config) {
-            config = await prisma.metaContatoConfig.create({
-                data: { userId, metaDiaria: 25, ativo: true },
-            })
-        }
-
         if (action === 'esquecer' && data) {
+            if (!config) {
+                return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
+            }
             // Dismiss a specific day's debt
             await prisma.metaContatoDiaEsquecido.upsert({
                 where: {
@@ -171,6 +176,9 @@ export async function POST(request: NextRequest) {
         }
 
         if (action === 'esquecer_todos') {
+            if (!config) {
+                return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
+            }
             // Dismiss all debt days (last 3 days)
             const now = new Date()
             const dates: string[] = []
@@ -210,10 +218,16 @@ export async function POST(request: NextRequest) {
                 )
             }
 
-            await prisma.metaContatoConfig.update({
-                where: { id: config.id },
-                data: { metaDiaria },
-            })
+            if (config) {
+                await prisma.metaContatoConfig.update({
+                    where: { id: config.id },
+                    data: { metaDiaria, ativo: true },
+                })
+            } else {
+                await prisma.metaContatoConfig.create({
+                    data: { userId, metaDiaria, ativo: true },
+                })
+            }
 
             return NextResponse.json({ success: true, metaDiaria })
         }

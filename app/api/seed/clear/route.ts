@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { getAuthIdentityFromRequest } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,9 +38,12 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const userId = await getUserIdFromRequest(request)
+    const { userId, role } = await getAuthIdentityFromRequest(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const resumo = await prisma.$transaction(async (tx) => {

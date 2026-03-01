@@ -6,6 +6,8 @@ import { Button, AsyncSelect, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { OportunidadeHistoricoCard } from '@/components/features/oportunidades'
 import {
+  Minus,
+  PackagePlus,
   Plus,
   X,
   Save,
@@ -16,6 +18,8 @@ import {
   DollarSign,
   Info,
   ClipboardList,
+  ShoppingCart,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -70,6 +74,8 @@ interface DraftCreateItem extends ItemForm {
   subtotal: number
 }
 
+type DraftEditableField = 'descricao' | 'quantidade' | 'precoUnitario' | 'desconto'
+
 interface PaginationMeta {
   total: number
   page: number
@@ -120,8 +126,38 @@ const toNumber = (value: string, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function normalizeItemNumbers(quantidade: number, precoUnitario: number, desconto: number) {
+  const quantidadeAjustada = Math.max(0, Number.isFinite(quantidade) ? quantidade : 0)
+  const precoAjustado = Math.max(0, Number.isFinite(precoUnitario) ? precoUnitario : 0)
+  const bruto = quantidadeAjustada * precoAjustado
+  const descontoAjustado = Math.min(Math.max(0, Number.isFinite(desconto) ? desconto : 0), bruto)
+  const subtotal = Math.max(0, bruto - descontoAjustado)
+
+  return {
+    quantidade: quantidadeAjustada,
+    precoUnitario: precoAjustado,
+    desconto: descontoAjustado,
+    bruto,
+    subtotal,
+  }
+}
+
 const calculateSubtotal = (quantidade: number, precoUnitario: number, desconto: number) =>
-  Math.max(0, quantidade * precoUnitario - desconto)
+  normalizeItemNumbers(quantidade, precoUnitario, desconto).subtotal
+
+function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'precoUnitario' | 'desconto'>>) {
+  return items.reduce(
+    (acc, item) => {
+      const normalized = normalizeItemNumbers(item.quantidade, item.precoUnitario, item.desconto)
+      acc.quantidadeTotal += normalized.quantidade
+      acc.totalBruto += normalized.bruto
+      acc.totalDesconto += normalized.desconto
+      acc.totalLiquido += normalized.subtotal
+      return acc
+    },
+    { quantidadeTotal: 0, totalBruto: 0, totalDesconto: 0, totalLiquido: 0 }
+  )
+}
 
 function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico | null {
   if (!option || !option.original || typeof option.original !== 'object') {
@@ -824,10 +860,10 @@ function CreateOrcamentoModal({
     lembreteProximaAcao: false,
   })
 
-  const totalCarrinho = useMemo(
-    () => itens.reduce((sum, item) => sum + item.subtotal, 0),
-    [itens]
-  )
+  const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
+  const totalCarrinho = cartSummary.totalLiquido
+  const draftSubtotal = calculateSubtotal(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
+  const hasCartItems = itens.length > 0
 
   useEffect(() => {
     if (!initialPerson) return
@@ -902,7 +938,15 @@ function CreateOrcamentoModal({
       if (field === 'descricao' || field === 'produtoServicoId') {
         return { ...prev, [field]: value }
       }
-      return { ...prev, [field]: toNumber(value, 0) }
+      const numericValue = toNumber(value, 0)
+      const next = { ...prev, [field]: numericValue }
+      const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+      return {
+        ...next,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+      }
     })
   }
 
@@ -923,11 +967,8 @@ function CreateOrcamentoModal({
       return false
     }
 
-    const subtotal = calculateSubtotal(
-      draft.quantidade,
-      draft.precoUnitario,
-      draft.desconto
-    )
+    const normalized = normalizeItemNumbers(draft.quantidade, draft.precoUnitario, draft.desconto)
+    if (normalized.quantidade <= 0) return false
 
     setItens((prev) => [
       ...prev,
@@ -935,7 +976,10 @@ function CreateOrcamentoModal({
         id: `${Date.now()}-${Math.random()}`,
         ...draft,
         descricao,
-        subtotal,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+        subtotal: normalized.subtotal,
       },
     ])
 
@@ -1005,6 +1049,43 @@ function CreateOrcamentoModal({
     setItens((prev) => prev.filter((item) => item.id !== id))
   }
 
+  const handleDraftItemField = (id: string, field: DraftEditableField, value: string) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        if (field === 'descricao') {
+          return { ...item, descricao: value }
+        }
+        const numericValue = toNumber(value, 0)
+        const next = { ...item, [field]: numericValue }
+        const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+        return {
+          ...next,
+          quantidade: normalized.quantidade,
+          precoUnitario: normalized.precoUnitario,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
+  }
+
+  const handleStepQuantity = (id: string, delta: number) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const nextQuantidade = Math.max(0, item.quantidade + delta)
+        const normalized = normalizeItemNumbers(nextQuantidade, item.precoUnitario, item.desconto)
+        return {
+          ...item,
+          quantidade: normalized.quantidade,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -1050,7 +1131,7 @@ function CreateOrcamentoModal({
         body: JSON.stringify({
           titulo: formData.titulo,
           descricao: formData.descricao || null,
-          valor: itens.length > 0 ? totalCarrinho : valorManual,
+          valor: hasCartItems ? totalCarrinho : valorManual,
           formaPagamento: formData.formaPagamento || null,
           parcelas:
             formData.formaPagamento === 'parcelado' && formData.parcelas
@@ -1214,41 +1295,49 @@ function CreateOrcamentoModal({
               Produtos
             </p>
             <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {itens.length > 0 ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Total atual: {currency(totalCarrinho)}
-                  </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowCarrinhoDrawer(true)}
-                >
-                  {itens.length > 0 ? 'Editar carrinho' : 'Incluir produtos'}
+                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                  <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
+                </div>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                  <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {hasCartItems ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
+                </p>
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowCarrinhoDrawer(true)}>
+                  {hasCartItems ? 'Editar carrinho' : 'Incluir produtos'}
                 </Button>
               </div>
-              {itens.length > 0 && (
+
+              {hasCartItems && (
                 <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
-                  {itens.slice(0, 4).map((item) => (
+                  {itens.slice(0, 3).map((item) => (
                     <div
                       key={item.id}
                       className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
                     >
                       <span className="truncate pr-2">{item.descricao}</span>
-                      <span className="text-gray-500 dark:text-gray-400">
-                        {item.quantidade}x
-                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">{item.quantidade}x</span>
                       <span>{currency(item.subtotal)}</span>
                     </div>
                   ))}
-                  {itens.length > 4 && (
+                  {itens.length > 3 && (
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      +{itens.length - 4} item(ns) no carrinho.
+                      +{itens.length - 3} item(ns) no carrinho.
                     </p>
                   )}
                 </div>
@@ -1270,9 +1359,9 @@ function CreateOrcamentoModal({
                 name="valor"
                 value={formData.valor}
                 onChange={handleCurrencyChange}
-                disabled={itens.length > 0}
+                disabled={hasCartItems}
                 className={fieldClass}
-                placeholder={itens.length > 0 ? 'Calculado pelo carrinho' : '0,00'}
+                placeholder={hasCartItems ? 'Calculado pelo carrinho' : '0,00'}
               />
             </div>
 
@@ -1458,14 +1547,22 @@ function CreateOrcamentoModal({
               </button>
             </div>
 
-            <div className="mb-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {itens.length} item(ns) no carrinho
-                </p>
-                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                  Total: {currency(totalCarrinho)}
-                </p>
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
               </div>
             </div>
 
@@ -1503,59 +1600,83 @@ function CreateOrcamentoModal({
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Adicionar manualmente
               </p>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
-                <AsyncSelect
-                  className="min-w-0 sm:col-span-2 lg:col-span-2"
-                  placeholder="Buscar produto/servico..."
-                  value={itemForm.produtoServicoId || ''}
-                  initialLabel={selectedProdutoLabel}
-                  onChange={handleSelectProduto}
-                  fetchUrl="/api/produtos-servicos/busca"
-                />
-                <input
-                  value={itemForm.descricao}
-                  onChange={(e) => handleItemForm('descricao', e.target.value)}
-                  placeholder="Descricao"
-                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 sm:col-span-2 lg:col-span-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={itemForm.quantidade}
-                  onChange={(e) => handleItemForm('quantidade', e.target.value)}
-                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={itemForm.precoUnitario}
-                  onChange={(e) => handleItemForm('precoUnitario', e.target.value)}
-                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={itemForm.desconto}
-                  onChange={(e) => handleItemForm('desconto', e.target.value)}
-                  className="min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                />
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-12">
+                <label className="md:col-span-4">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
+                  <AsyncSelect
+                    className="min-w-0"
+                    placeholder="Buscar produto/servico..."
+                    value={itemForm.produtoServicoId || ''}
+                    initialLabel={selectedProdutoLabel}
+                    onChange={handleSelectProduto}
+                    fetchUrl="/api/produtos-servicos/busca"
+                  />
+                </label>
+                <label className="md:col-span-4">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao</span>
+                  <input
+                    value={itemForm.descricao}
+                    onChange={(e) => handleItemForm('descricao', e.target.value)}
+                    placeholder="Nome do item"
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={itemForm.quantidade}
+                    onChange={(e) => handleItemForm('quantidade', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={itemForm.precoUnitario}
+                    onChange={(e) => handleItemForm('precoUnitario', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={itemForm.desconto}
+                    onChange={(e) => handleItemForm('desconto', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <div className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                  <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                    {currency(draftSubtotal)}
+                  </p>
+                </div>
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleAddDraftItem}
-                  className="sm:col-span-2 lg:col-span-1"
+                  disabled={!itemForm.descricao.trim() || itemForm.quantidade <= 0}
+                  className="md:col-span-12"
                 >
-                  Adicionar
+                  <PackagePlus size={14} className="mr-1.5" />
+                  Adicionar ao carrinho
                 </Button>
               </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  <ShoppingCart size={14} />
                   Itens do carrinho
                 </p>
                 <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -1567,28 +1688,81 @@ function CreateOrcamentoModal({
                   Nenhum item adicionado.
                 </p>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {itens.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <p className="truncate font-medium text-gray-800 dark:text-gray-100">
-                          {item.descricao}
-                        </p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          {item.quantidade} x {currency(item.precoUnitario)}
-                          {item.desconto > 0 ? ` | Desc: ${currency(item.desconto)}` : ''}
-                        </p>
+                    <div key={item.id} className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                        <label className="md:col-span-4">
+                          <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Item</span>
+                          <input
+                            value={item.descricao}
+                            onChange={(e) => handleDraftItemField(item.id, 'descricao', e.target.value)}
+                            className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </label>
+                        <div className="md:col-span-3">
+                          <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Quantidade</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStepQuantity(item.id, -1)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={item.quantidade}
+                              onChange={(e) => handleDraftItemField(item.id, 'quantidade', e.target.value)}
+                              className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleStepQuantity(item.id, 1)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        <label className="md:col-span-2">
+                          <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unitario</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.precoUnitario}
+                            onChange={(e) => handleDraftItemField(item.id, 'precoUnitario', e.target.value)}
+                            className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </label>
+                        <label className="md:col-span-2">
+                          <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.desconto}
+                            onChange={(e) => handleDraftItemField(item.id, 'desconto', e.target.value)}
+                            className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </label>
+                        <div className="md:col-span-1">
+                          <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                          <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                            {currency(item.subtotal)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold">{currency(item.subtotal)}</span>
+                      <div className="mt-2 flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => handleRemoveDraftItem(item.id)}
-                          className="rounded border border-red-300 px-2 py-0.5 text-red-600"
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20"
                         >
+                          <Trash2 size={12} />
                           Remover
                         </button>
                       </div>

@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react'
+import Link from 'next/link'
 
 interface StatCardProps {
   title: string
@@ -7,6 +8,8 @@ interface StatCardProps {
   change?: string
   changeType?: 'positive' | 'negative' | 'neutral'
   color?: 'blue' | 'green' | 'yellow' | 'purple' | 'red'
+  href?: string
+  hoverRing?: 'none' | 'purple'
 }
 
 const colorClasses = {
@@ -24,6 +27,8 @@ export default function StatCard({
   change,
   changeType = 'neutral',
   color = 'blue',
+  href,
+  hoverRing = 'none',
 }: StatCardProps) {
   const changeColorClass =
     changeType === 'positive'
@@ -32,8 +37,13 @@ export default function StatCard({
       ? 'text-red-600 dark:text-red-400'
       : 'text-gray-600 dark:text-gray-400'
 
-  return (
-    <div className="crm-card p-6">
+  const hoverRingClass =
+    hoverRing === 'purple'
+      ? 'transition hover:ring-1 hover:ring-purple-300 dark:hover:ring-purple-700'
+      : ''
+
+  const cardContent = (
+    <div className={`crm-card p-6 ${hoverRingClass}`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
           {title}
@@ -54,5 +64,19 @@ export default function StatCard({
       </div>
     </div>
   )
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="block transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-xl"
+        aria-label={`Ir para ${title}`}
+      >
+        {cardContent}
+      </Link>
+    )
+  }
+
+  return cardContent
 }
 

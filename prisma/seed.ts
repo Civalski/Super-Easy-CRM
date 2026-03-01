@@ -1,7 +1,16 @@
+import 'dotenv/config'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+const connectionString = process.env.DATABASE_URL
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL nao definida para executar o seed')
+}
+
+const adapter = new PrismaPg({ connectionString })
+const prisma = new PrismaClient({ adapter })
 
 
 // Dados fake para clientes
@@ -308,7 +317,7 @@ async function main() {
     'Preparar apresentação executiva',
     'Reunião de alinhamento',
     'Coletar assinaturas',
-    'Configurar ambiente de teste',
+    'Configurar ambiente de demonstracao',
     'Treinamento do time',
   ]
 
@@ -331,7 +340,7 @@ async function main() {
     'Preparar apresentação para diretoria executiva',
     'Realizar reunião de alinhamento com equipe interna',
     'Coletar assinaturas necessárias para fechamento',
-    'Configurar ambiente de teste para demonstração',
+    'Configurar ambiente de demonstracao para apresentacao',
     'Realizar treinamento da equipe do cliente',
   ]
 
@@ -378,5 +387,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+
 
 

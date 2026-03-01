@@ -135,6 +135,6 @@ export async function POST(request: NextRequest) {
     return processar(request);
 }
 
-export async function GET(request: NextRequest) {
-    return processar(request);
+export async function GET() {
+    return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }

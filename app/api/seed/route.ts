@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { GoalMetricType, GoalPeriodType } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { getAuthIdentityFromRequest } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +39,7 @@ function toYmd(date: Date) {
 }
 
 
-// Dados fake para clientes
+// Dados de demonstracao para clientes
 const clientesData = [
   {
     nome: 'TechCorp Solutions',
@@ -143,7 +143,7 @@ const clientesData = [
   },
 ]
 
-// Dados fake para contatos
+// Dados de demonstracao para contatos
 const contatosData = [
   { nome: 'Paulo Souza', email: 'paulo.souza@techcorp.com.br', telefone: '(11) 3456-7891', cargo: 'Gerente de TI' },
   { nome: 'Sandra Rodrigues', email: 'sandra.rodrigues@techcorp.com.br', telefone: '(11) 3456-7892', cargo: 'Diretora Comercial' },
@@ -173,9 +173,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userId = await getUserIdFromRequest(request)
+    const { userId, role } = await getAuthIdentityFromRequest(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
 
@@ -354,7 +357,7 @@ export async function POST(request: NextRequest) {
       'Preparar apresentação executiva',
       'Reunião de alinhamento',
       'Coletar assinaturas',
-      'Configurar ambiente de teste',
+      'Configurar ambiente de demonstracao',
       'Treinamento do time',
       'Reunião de kickoff',
       'Coletar documentos necessários',
@@ -382,7 +385,7 @@ export async function POST(request: NextRequest) {
       'Preparar apresentação para diretoria executiva',
       'Realizar reunião de alinhamento com equipe interna',
       'Coletar assinaturas necessárias para fechamento',
-      'Configurar ambiente de teste para demonstração',
+      'Configurar ambiente de demonstracao para demonstracao',
       'Realizar treinamento da equipe do cliente',
       'Realizar reunião de kickoff do projeto',
       'Coletar todos os documentos necessários do cliente',
@@ -424,12 +427,12 @@ export async function POST(request: NextRequest) {
     // Criar motivos de perda customizados
     console.log('?? Criando motivos de perda...')
     const motivosPerdaData = [
-      '[MOCK] Sem fit de escopo',
-      '[MOCK] Orcamento acima do esperado',
-      '[MOCK] Cliente adiou decisao',
-      '[MOCK] Concorrente com prazo menor',
-      '[MOCK] Projeto pausado internamente',
-      '[MOCK] Mudanca de prioridade',
+      'Sem fit de escopo',
+      'Orcamento acima do esperado',
+      'Cliente adiou decisao',
+      'Concorrente com prazo menor',
+      'Projeto pausado internamente',
+      'Mudanca de prioridade',
     ]
 
     let motivosPerdaCriados = 0
@@ -453,7 +456,7 @@ export async function POST(request: NextRequest) {
     // Criar prospectos para funil e leads
     console.log('?? Criando prospectos...')
     const prospectStatus = ['lead_frio', 'novo', 'em_contato', 'qualificado', 'descartado', 'convertido']
-    const loteOptions = ['[MOCK] LOTE A', '[MOCK] LOTE B', '[MOCK] LOTE C', null]
+    const loteOptions = ['LOTE A', 'LOTE B', 'LOTE C', null]
     let prospectosCriados = 0
     for (let i = 0; i < 18; i++) {
       const base = String(40000000 + i).padStart(8, '0')
@@ -473,8 +476,8 @@ export async function POST(request: NextRequest) {
           },
         },
         update: {
-          razaoSocial: `[MOCK] Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
-          nomeFantasia: `[MOCK] Negocio ${String(i + 1).padStart(2, '0')}`,
+          razaoSocial: `Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
+          nomeFantasia: `Negocio ${String(i + 1).padStart(2, '0')}`,
           municipio: cidade,
           uf,
           status,
@@ -492,8 +495,8 @@ export async function POST(request: NextRequest) {
           cnpjBasico: cnpj.slice(0, 8),
           cnpjOrdem: cnpj.slice(8, 12),
           cnpjDv: cnpj.slice(12, 14),
-          razaoSocial: `[MOCK] Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
-          nomeFantasia: `[MOCK] Negocio ${String(i + 1).padStart(2, '0')}`,
+          razaoSocial: `Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
+          nomeFantasia: `Negocio ${String(i + 1).padStart(2, '0')}`,
           capitalSocial: `${80000 + i * 15000}`,
           porte: i % 2 === 0 ? 'ME' : 'EPP',
           naturezaJuridica: 'Sociedade Empresaria Limitada',
@@ -504,19 +507,19 @@ export async function POST(request: NextRequest) {
           cnaePrincipalDesc: 'Desenvolvimento de software',
           cnaesSecundarios: '6204-0/00; 6311-9/00',
           tipoLogradouro: 'Rua',
-          logradouro: `[MOCK] Via ${i + 100}`,
+          logradouro: `Via ${i + 100}`,
           numero: `${100 + i}`,
           complemento: i % 4 === 0 ? 'Sala 12' : null,
-          bairro: `[MOCK] Bairro ${i % 7}`,
+          bairro: `Bairro ${i % 7}`,
           cep: `0${String(1500000 + i * 83).slice(0, 7)}`,
           municipio: cidade,
           uf,
           telefone1: `(11) 4${String(20000000 + i * 37).slice(0, 8)}`,
           telefone2: i % 3 === 0 ? `(11) 9${String(11000000 + i * 19).slice(0, 8)}` : null,
           fax: null,
-          email: `mock.prospecto.${String(i + 1).padStart(2, '0')}@arkercrm.test`,
+          email: `prospecto.${String(i + 1).padStart(2, '0')}@arkercrm.com.br`,
           status,
-          observacoes: '[MOCK] Prospecto criado via seed para teste de funil.',
+          observacoes: 'Prospecto criado para acompanhamento do funil.',
           prioridade: i % 6,
           lote: loteOptions[i % loteOptions.length],
           dataImportacao: new Date(Date.now() - (i % 30) * 86400000),
@@ -533,9 +536,9 @@ export async function POST(request: NextRequest) {
     // Criar agendamentos de envio de prospectos
     console.log('?? Criando agendamentos de prospectos...')
     const agendamentosData = [
-      { lote: '[MOCK] LOTE A', dataEnvio: toYmd(new Date(Date.now() + 86400000)), status: 'pendente' },
-      { lote: '[MOCK] LOTE B', dataEnvio: toYmd(new Date(Date.now() - 86400000)), status: 'processado' },
-      { lote: '[MOCK] LOTE C', dataEnvio: toYmd(new Date(Date.now() + 2 * 86400000)), status: 'cancelado' },
+      { lote: 'LOTE A', dataEnvio: toYmd(new Date(Date.now() + 86400000)), status: 'pendente' },
+      { lote: 'LOTE B', dataEnvio: toYmd(new Date(Date.now() - 86400000)), status: 'processado' },
+      { lote: 'LOTE C', dataEnvio: toYmd(new Date(Date.now() + 2 * 86400000)), status: 'cancelado' },
       { lote: null, dataEnvio: toYmd(new Date(Date.now() + 3 * 86400000)), status: 'erro' },
     ]
 
@@ -557,7 +560,7 @@ export async function POST(request: NextRequest) {
           data: {
             enviados: item.status === 'processado' ? 8 : 0,
             executadoEm: item.status === 'processado' ? new Date() : null,
-            erro: item.status === 'erro' ? '[MOCK] Falha simulada' : null,
+            erro: item.status === 'erro' ? 'Falha simulada' : null,
           },
         })
       } else {
@@ -569,7 +572,7 @@ export async function POST(request: NextRequest) {
             status: item.status,
             enviados: item.status === 'processado' ? 8 : 0,
             executadoEm: item.status === 'processado' ? new Date() : null,
-            erro: item.status === 'erro' ? '[MOCK] Falha simulada' : null,
+            erro: item.status === 'erro' ? 'Falha simulada' : null,
           },
         })
       }
@@ -581,7 +584,7 @@ export async function POST(request: NextRequest) {
     const produtosCriados = [] as Array<{ id: string; nome: string; precoPadrao: number }>
     for (let i = 0; i < 14; i++) {
       const tipo = i % 2 === 0 ? 'produto' : 'servico'
-      const codigo = `MOCK-PS-${String(i + 1).padStart(3, '0')}`
+      const codigo = `PS-${String(i + 1).padStart(3, '0')}`
       const precoPadrao = Number((120 + i * 35.8).toFixed(2))
       const custoPadrao = Number((precoPadrao * 0.62).toFixed(2))
 
@@ -593,7 +596,7 @@ export async function POST(request: NextRequest) {
           },
         },
         update: {
-          nome: `[MOCK] ${tipo === 'produto' ? 'Produto' : 'Servico'} ${String(i + 1).padStart(2, '0')}`,
+          nome: `${tipo === 'produto' ? 'Produto' : 'Servico'} ${String(i + 1).padStart(2, '0')}`,
           categoria: ['Software', 'Consultoria', 'Suporte', 'Equipamento'][i % 4],
           tipo,
           unidade: tipo === 'produto' ? 'UN' : 'HORA',
@@ -608,14 +611,14 @@ export async function POST(request: NextRequest) {
         create: {
           userId,
           codigo,
-          nome: `[MOCK] ${tipo === 'produto' ? 'Produto' : 'Servico'} ${String(i + 1).padStart(2, '0')}`,
+          nome: `${tipo === 'produto' ? 'Produto' : 'Servico'} ${String(i + 1).padStart(2, '0')}`,
           categoria: ['Software', 'Consultoria', 'Suporte', 'Equipamento'][i % 4],
           marca: ['Arker', 'Nexus', 'Prime', 'Nova'][i % 4],
           codigoBarras: tipo === 'produto' ? `789${String(100000000 + i).slice(0, 9)}` : null,
           tipo,
           unidade: tipo === 'produto' ? 'UN' : 'HORA',
-          descricao: '[MOCK] Item do catalogo para testes de pedido.',
-          observacoesInternas: '[MOCK] Gerado automaticamente.',
+          descricao: 'Item do catalogo para pedidos.',
+          observacoesInternas: 'Gerado automaticamente.',
           precoPadrao,
           custoPadrao,
           comissaoPercentual: 5 + (i % 8),
@@ -666,7 +669,7 @@ export async function POST(request: NextRequest) {
               pagamentoConfirmado,
               formaPagamento: ['pix', 'boleto', 'cartao', 'transferencia'][i % 4],
               dataEntrega: new Date(Date.now() + (i + 2) * 86400000),
-              observacoes: '[MOCK] Pedido atualizado pela seed.',
+              observacoes: 'Pedido atualizado pela seed.',
             },
             select: { id: true, numero: true, totalLiquido: true },
           })
@@ -678,7 +681,7 @@ export async function POST(request: NextRequest) {
               pagamentoConfirmado,
               formaPagamento: ['pix', 'boleto', 'cartao', 'transferencia'][i % 4],
               dataEntrega: new Date(Date.now() + (i + 2) * 86400000),
-              observacoes: '[MOCK] Pedido gerado pela seed.',
+              observacoes: 'Pedido gerado pela seed.',
             },
             select: { id: true, numero: true, totalLiquido: true },
           })
@@ -690,7 +693,7 @@ export async function POST(request: NextRequest) {
 
       for (let j = 0; j < 2; j++) {
         const produto = produtosCriados[(i + j) % produtosCriados.length]
-        const descricao = `[MOCK] Item ${j + 1} - ${produto.nome}`
+        const descricao = `Item ${j + 1} - ${produto.nome}`
         const quantidade = 1 + ((i + j) % 3)
         const precoUnitario = produto.precoPadrao
         const desconto = Number((precoUnitario * (j === 0 ? 0.05 : 0.02)).toFixed(2))
@@ -751,7 +754,7 @@ export async function POST(request: NextRequest) {
         update: {
           userId,
           tipo: 'receber',
-          descricao: `[MOCK] Recebimento pedido #${pedido.numero}`,
+          descricao: `Recebimento pedido #${pedido.numero}`,
           valorTotal: Number(totalLiquido.toFixed(2)),
           valorRecebido,
           status: pagamentoConfirmado ? 'parcial' : i % 3 === 0 ? 'atrasado' : 'pendente',
@@ -761,7 +764,7 @@ export async function POST(request: NextRequest) {
           userId,
           pedidoId: pedido.id,
           tipo: 'receber',
-          descricao: `[MOCK] Recebimento pedido #${pedido.numero}`,
+          descricao: `Recebimento pedido #${pedido.numero}`,
           valorTotal: Number(totalLiquido.toFixed(2)),
           valorRecebido,
           status: pagamentoConfirmado ? 'parcial' : i % 3 === 0 ? 'atrasado' : 'pendente',
@@ -772,7 +775,7 @@ export async function POST(request: NextRequest) {
       contasReceberCriadas++
 
       if (valorRecebido > 0) {
-        const observacoes = `[MOCK] Recebimento inicial pedido #${pedido.numero}`
+        const observacoes = `Recebimento inicial pedido #${pedido.numero}`
         const movimentoExistente = await prisma.movimentoFinanceiro.findFirst({
           where: {
             contaReceberId: conta.id,
@@ -796,7 +799,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Conta adicional para testes de saida/pagar
-    const contaPagarDesc = '[MOCK] Despesa operacional mensal'
+    const contaPagarDesc = 'Despesa operacional mensal'
     const contaPagarExistente = await prisma.contaReceber.findFirst({
       where: {
         userId,
@@ -835,7 +838,7 @@ export async function POST(request: NextRequest) {
             recorrenteMensal: true,
             recorrenciaAtiva: true,
             recorrenciaDiaVencimento: new Date().getDate(),
-            grupoParcelaId: `[MOCK]-REC-${randomUUID()}`,
+            grupoParcelaId: `REC-${randomUUID()}`,
           },
           select: { id: true },
         })
@@ -844,7 +847,7 @@ export async function POST(request: NextRequest) {
     const movimentoSaidaExistente = await prisma.movimentoFinanceiro.findFirst({
       where: {
         contaReceberId: contaPagar.id,
-        observacoes: '[MOCK] Debito automatico simulado',
+        observacoes: 'Debito automatico simulado',
       },
       select: { id: true },
     })
@@ -855,7 +858,7 @@ export async function POST(request: NextRequest) {
           contaReceberId: contaPagar.id,
           tipo: 'saida',
           valor: 980,
-          observacoes: '[MOCK] Debito automatico simulado',
+          observacoes: 'Debito automatico simulado',
         },
       })
       movimentosFinanceirosCriados++
@@ -864,13 +867,13 @@ export async function POST(request: NextRequest) {
     // Criar metas e snapshots
     console.log('?? Criando metas e snapshots...')
     const metasSeed = [
-      { title: '[MOCK] Meta clientes cadastrados', metricType: GoalMetricType.CLIENTES_CADASTRADOS, periodType: GoalPeriodType.MONTHLY, target: 30, weekDays: [] as number[] },
-      { title: '[MOCK] Meta clientes contatados', metricType: GoalMetricType.CLIENTES_CONTATADOS, periodType: GoalPeriodType.WEEKLY, target: 20, weekDays: [1, 2, 3, 4, 5] },
-      { title: '[MOCK] Meta propostas', metricType: GoalMetricType.PROPOSTAS, periodType: GoalPeriodType.MONTHLY, target: 15, weekDays: [] as number[] },
-      { title: '[MOCK] Meta vendas', metricType: GoalMetricType.VENDAS, periodType: GoalPeriodType.MONTHLY, target: 8, weekDays: [] as number[] },
-      { title: '[MOCK] Meta qualificacao', metricType: GoalMetricType.QUALIFICACAO, periodType: GoalPeriodType.WEEKLY, target: 10, weekDays: [1, 2, 3, 4, 5] },
-      { title: '[MOCK] Meta prospeccao', metricType: GoalMetricType.PROSPECCAO, periodType: GoalPeriodType.DAILY, target: 6, weekDays: [] as number[] },
-      { title: '[MOCK] Meta faturamento', metricType: GoalMetricType.FATURAMENTO, periodType: GoalPeriodType.CUSTOM, target: 220000, weekDays: [] as number[] },
+      { title: 'Meta clientes cadastrados', metricType: GoalMetricType.CLIENTES_CADASTRADOS, periodType: GoalPeriodType.MONTHLY, target: 30, weekDays: [] as number[] },
+      { title: 'Meta clientes contatados', metricType: GoalMetricType.CLIENTES_CONTATADOS, periodType: GoalPeriodType.WEEKLY, target: 20, weekDays: [1, 2, 3, 4, 5] },
+      { title: 'Meta propostas', metricType: GoalMetricType.PROPOSTAS, periodType: GoalPeriodType.MONTHLY, target: 15, weekDays: [] as number[] },
+      { title: 'Meta vendas', metricType: GoalMetricType.VENDAS, periodType: GoalPeriodType.MONTHLY, target: 8, weekDays: [] as number[] },
+      { title: 'Meta qualificacao', metricType: GoalMetricType.QUALIFICACAO, periodType: GoalPeriodType.WEEKLY, target: 10, weekDays: [1, 2, 3, 4, 5] },
+      { title: 'Meta prospeccao', metricType: GoalMetricType.PROSPECCAO, periodType: GoalPeriodType.DAILY, target: 6, weekDays: [] as number[] },
+      { title: 'Meta faturamento', metricType: GoalMetricType.FATURAMENTO, periodType: GoalPeriodType.CUSTOM, target: 220000, weekDays: [] as number[] },
     ]
 
     let metasCriadas = 0
@@ -1025,8 +1028,8 @@ export async function POST(request: NextRequest) {
 
     for (const etapa of statusOportunidades) {
       for (const canal of canais) {
-        const titulo = `[MOCK] Template ${etapa} ${canal}`
-        const mensagem = `[MOCK] Mensagem ${canal} para etapa ${etapa}`
+        const titulo = `Template ${etapa} ${canal}`
+        const mensagem = `Mensagem ${canal} para etapa ${etapa}`
         const existente = await prisma.followUpTemplate.findFirst({
           where: { userId, titulo },
           select: { id: true },
@@ -1112,7 +1115,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Dados mockados completos criados com sucesso!',
+      message: 'Dados de demonstracao completos criados com sucesso!',
       resumo,
     })
   } catch (error) {
@@ -1120,12 +1123,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Erro ao criar dados fake',
+        error: 'Erro ao criar dados de demonstracao',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }
     )
   }
 }
+
 
 

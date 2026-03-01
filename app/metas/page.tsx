@@ -58,13 +58,14 @@ interface DebitDay {
 }
 
 interface MetaContatoData {
+  configurada?: boolean
   ativo: boolean
-  metaDiaria: number
+  metaDiaria: number | null
   contatosHoje: number
   progressoHoje: number
   debito: DebitDay[]
   debitoTotal: number
-  hoje: string
+  hoje?: string
 }
 
 const metricOptions: Array<{ value: GoalMetricType; label: string }> = [
@@ -239,7 +240,11 @@ export default function MetasPage() {
       if (response.ok) {
         const result = await response.json()
         setMetaData(result)
-        setEditMetaValue(String(result.metaDiaria))
+        if (typeof result.metaDiaria === 'number' && Number.isFinite(result.metaDiaria)) {
+          setEditMetaValue(String(result.metaDiaria))
+        } else {
+          setEditMetaValue('')
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar meta de contatos:', error)
@@ -521,6 +526,43 @@ export default function MetasPage() {
     }
   }
 
+  const handleCreateMetaDiaria = async () => {
+    const result = await Swal.fire({
+      ...swalBase,
+      title: 'Criar meta diária de contatos',
+      input: 'number',
+      inputLabel: 'Meta diária',
+      inputValue: 25,
+      inputAttributes: { min: '1', step: '1' },
+      showCancelButton: true,
+      confirmButtonText: 'Criar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => {
+        const numericValue = Number(value)
+        if (!Number.isInteger(numericValue) || numericValue < 1) {
+          return 'Informe um número inteiro maior que zero.'
+        }
+        return undefined
+      },
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const response = await fetch('/api/metas/contatos-diarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: Number(result.value) }),
+      })
+
+      if (response.ok) {
+        await fetchMetaDiaria()
+      }
+    } catch (error) {
+      console.error('Erro ao criar meta diária:', error)
+    }
+  }
+
   const activeGoals = goals.filter((goal) => goal.active !== false)
   const completedGoals = activeGoals.filter((goal) => (goal.progress ?? 0) >= 100)
   const averageProgress = activeGoals.length
@@ -531,13 +573,16 @@ export default function MetasPage() {
     : 0
 
   // Include meta diária in total count if active
-  const totalMetasCount = activeGoals.length + (metaData?.ativo ? 1 : 0)
-  const metaDiariaProgress = metaData?.ativo ? metaData.progressoHoje : 0
-  const metaDiariaCompleted = metaData?.ativo && (metaData.contatosHoje >= metaData.metaDiaria)
+  const hasMetaDiariaAtiva = Boolean(metaData?.ativo && typeof metaData.metaDiaria === 'number')
+  const totalMetasCount = activeGoals.length + (hasMetaDiariaAtiva ? 1 : 0)
+  const metaDiariaProgress = hasMetaDiariaAtiva ? metaData!.progressoHoje : 0
+  const metaDiariaCompleted = hasMetaDiariaAtiva
+    ? metaData!.contatosHoje >= (metaData!.metaDiaria as number)
+    : false
 
   const allGoalsForAvg = [
     ...activeGoals.map(g => g.progress ?? 0),
-    ...(metaData?.ativo ? [metaDiariaProgress] : []),
+    ...(hasMetaDiariaAtiva ? [metaDiariaProgress] : []),
   ]
   const overallAvg = allGoalsForAvg.length
     ? Math.round(allGoalsForAvg.reduce((a, b) => a + b, 0) / allGoalsForAvg.length)
@@ -559,13 +604,24 @@ export default function MetasPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null) }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
-        >
-          <Plus size={16} />
-          Nova Meta
-        </button>
+        <div className="flex items-center gap-2">
+          {!metaLoading && !metaData?.configurada && (
+            <button
+              onClick={handleCreateMetaDiaria}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 shadow-sm text-sm font-semibold text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+            >
+              <Phone size={16} />
+              Criar meta diária
+            </button>
+          )}
+          <button
+            onClick={() => { setShowForm(!showForm); setEditingId(null) }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
+          >
+            <Plus size={16} />
+            Nova Meta
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -829,15 +885,21 @@ export default function MetasPage() {
         ) : (
           <div className="space-y-3">
             {/* Meta Diária de Contatos — sempre primeiro se ativa */}
-            {metaData?.ativo && (
+            {hasMetaDiariaAtiva && (
               <MetaDiariaCard
-                metaData={metaData}
+                metaData={{
+                  ...metaData!,
+                  metaDiaria: metaData!.metaDiaria as number,
+                }}
                 editing={editingMeta}
                 editValue={editMetaValue}
                 saving={savingMeta}
                 showDebt={showDebt}
                 onEditStart={() => setEditingMeta(true)}
-                onEditCancel={() => { setEditingMeta(false); setEditMetaValue(String(metaData.metaDiaria)) }}
+                onEditCancel={() => {
+                  setEditingMeta(false)
+                  setEditMetaValue(String(metaData?.metaDiaria ?? ''))
+                }}
                 onEditValueChange={setEditMetaValue}
                 onSave={handleSaveMeta}
                 onToggleDebt={() => setShowDebt(!showDebt)}
@@ -972,7 +1034,7 @@ export default function MetasPage() {
 // ── Meta Diária de Contatos Card ──────────────────────────────────────────────
 
 interface MetaDiariaCardProps {
-  metaData: MetaContatoData
+  metaData: MetaContatoData & { metaDiaria: number }
   editing: boolean
   editValue: string
   saving: boolean

@@ -1,5 +1,5 @@
 /**
- * Card de resultado da geração de dados mockados
+ * Card de resultado da geracao de dados de apresentacao
  */
 'use client'
 
@@ -90,3 +90,4 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
         </div>
     )
 }
+

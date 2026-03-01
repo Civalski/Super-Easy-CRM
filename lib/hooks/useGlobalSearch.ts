@@ -1,5 +1,5 @@
 /**
- * Hook para busca global de clientes e oportunidades
+ * Hook para busca global de clientes, oportunidades e pedidos
  */
 import { useState, useEffect, useCallback } from 'react';
 
@@ -18,9 +18,73 @@ export interface OportunidadeResultado {
     };
 }
 
+export interface PedidoResultado {
+    id: string;
+    numero: number;
+    oportunidade: {
+        titulo: string;
+        cliente: {
+            nome: string;
+        };
+    };
+}
+
 export interface BuscaResultado {
     clientes: ClienteResultado[];
     oportunidades: OportunidadeResultado[];
+    pedidos: PedidoResultado[];
+}
+
+const MAX_RESULTADOS_GLOBAIS = 5;
+
+function limitarResultadosGlobais(resultados: BuscaResultado): BuscaResultado {
+    const clientes = [...resultados.clientes];
+    const oportunidades = [...resultados.oportunidades];
+    const pedidos = [...resultados.pedidos];
+
+    const limitados: BuscaResultado = {
+        clientes: [],
+        oportunidades: [],
+        pedidos: [],
+    };
+
+    let total = 0;
+    while (total < MAX_RESULTADOS_GLOBAIS) {
+        let adicionou = false;
+
+        if (clientes.length > 0 && total < MAX_RESULTADOS_GLOBAIS) {
+            const cliente = clientes.shift();
+            if (cliente) {
+                limitados.clientes.push(cliente);
+                total += 1;
+                adicionou = true;
+            }
+        }
+
+        if (oportunidades.length > 0 && total < MAX_RESULTADOS_GLOBAIS) {
+            const oportunidade = oportunidades.shift();
+            if (oportunidade) {
+                limitados.oportunidades.push(oportunidade);
+                total += 1;
+                adicionou = true;
+            }
+        }
+
+        if (pedidos.length > 0 && total < MAX_RESULTADOS_GLOBAIS) {
+            const pedido = pedidos.shift();
+            if (pedido) {
+                limitados.pedidos.push(pedido);
+                total += 1;
+                adicionou = true;
+            }
+        }
+
+        if (!adicionou) {
+            break;
+        }
+    }
+
+    return limitados;
 }
 
 export function useGlobalSearch() {
@@ -51,14 +115,15 @@ export function useGlobalSearch() {
                 const resultadosValidados: BuscaResultado = {
                     clientes: Array.isArray(data.clientes) ? data.clientes : [],
                     oportunidades: Array.isArray(data.oportunidades) ? data.oportunidades : [],
+                    pedidos: Array.isArray(data.pedidos) ? data.pedidos : [],
                 };
 
-                setResultados(resultadosValidados);
+                setResultados(limitarResultadosGlobais(resultadosValidados));
                 setMostrarResultados(true);
             } catch (error) {
                 if (controller.signal.aborted) return;
                 console.error('Erro ao buscar:', error);
-                setResultados({ clientes: [], oportunidades: [] });
+                setResultados({ clientes: [], oportunidades: [], pedidos: [] });
             } finally {
                 if (!controller.signal.aborted) {
                     setCarregando(false);
@@ -73,7 +138,10 @@ export function useGlobalSearch() {
         };
     }, [busca]);
 
-    const totalResultados = (resultados?.clientes.length || 0) + (resultados?.oportunidades.length || 0);
+    const totalResultados =
+        (resultados?.clientes.length || 0) +
+        (resultados?.oportunidades.length || 0) +
+        (resultados?.pedidos.length || 0);
 
     const limparBusca = useCallback(() => {
         setBusca('');

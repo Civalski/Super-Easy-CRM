@@ -12,8 +12,12 @@ import {
   CreditCard,
   Info,
   Loader2,
+  Minus,
+  PackagePlus,
   Plus,
   Save,
+  ShoppingCart,
+  Trash2,
   Truck,
   X,
 } from 'lucide-react'
@@ -70,6 +74,8 @@ interface DraftCreateItem extends ItemForm {
   subtotal: number
 }
 
+type DraftEditableField = 'descricao' | 'quantidade' | 'precoUnitario' | 'desconto'
+
 interface PaginationMeta {
   total: number
   page: number
@@ -118,8 +124,38 @@ const toNumber = (value: string, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function normalizeItemNumbers(quantidade: number, precoUnitario: number, desconto: number) {
+  const quantidadeAjustada = Math.max(0, Number.isFinite(quantidade) ? quantidade : 0)
+  const precoAjustado = Math.max(0, Number.isFinite(precoUnitario) ? precoUnitario : 0)
+  const bruto = quantidadeAjustada * precoAjustado
+  const descontoAjustado = Math.min(Math.max(0, Number.isFinite(desconto) ? desconto : 0), bruto)
+  const subtotal = Math.max(0, bruto - descontoAjustado)
+
+  return {
+    quantidade: quantidadeAjustada,
+    precoUnitario: precoAjustado,
+    desconto: descontoAjustado,
+    bruto,
+    subtotal,
+  }
+}
+
 const calculateSubtotal = (quantidade: number, precoUnitario: number, desconto: number) =>
-  Math.max(0, quantidade * precoUnitario - desconto)
+  normalizeItemNumbers(quantidade, precoUnitario, desconto).subtotal
+
+function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'precoUnitario' | 'desconto'>>) {
+  return items.reduce(
+    (acc, item) => {
+      const normalized = normalizeItemNumbers(item.quantidade, item.precoUnitario, item.desconto)
+      acc.quantidadeTotal += normalized.quantidade
+      acc.totalBruto += normalized.bruto
+      acc.totalDesconto += normalized.desconto
+      acc.totalLiquido += normalized.subtotal
+      return acc
+    },
+    { quantidadeTotal: 0, totalBruto: 0, totalDesconto: 0, totalLiquido: 0 }
+  )
+}
 
 function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico | null {
   if (!option || !option.original || typeof option.original !== 'object') {
@@ -291,9 +327,32 @@ export default function PedidosPage() {
         if (item.id !== itemId) return item
         if (field === 'descricao') return { ...item, descricao: value }
         const numeric = toNumber(value, 0)
-        if (field === 'quantidade') return { ...item, quantidade: numeric, subtotal: Math.max(0, numeric * item.precoUnitario - item.desconto) }
-        if (field === 'precoUnitario') return { ...item, precoUnitario: numeric, subtotal: Math.max(0, item.quantidade * numeric - item.desconto) }
-        if (field === 'desconto') return { ...item, desconto: numeric, subtotal: Math.max(0, item.quantidade * item.precoUnitario - numeric) }
+        if (field === 'quantidade') {
+          const normalized = normalizeItemNumbers(numeric, item.precoUnitario, item.desconto)
+          return {
+            ...item,
+            quantidade: normalized.quantidade,
+            desconto: normalized.desconto,
+            subtotal: normalized.subtotal,
+          }
+        }
+        if (field === 'precoUnitario') {
+          const normalized = normalizeItemNumbers(item.quantidade, numeric, item.desconto)
+          return {
+            ...item,
+            precoUnitario: normalized.precoUnitario,
+            desconto: normalized.desconto,
+            subtotal: normalized.subtotal,
+          }
+        }
+        if (field === 'desconto') {
+          const normalized = normalizeItemNumbers(item.quantidade, item.precoUnitario, numeric)
+          return {
+            ...item,
+            desconto: normalized.desconto,
+            subtotal: normalized.subtotal,
+          }
+        }
         return item
       }),
     }))
@@ -349,7 +408,18 @@ export default function PedidosPage() {
       if (field === 'descricao' || field === 'produtoServicoId') {
         return { ...prev, [pedidoId]: { ...current, [field]: value } }
       }
-      return { ...prev, [pedidoId]: { ...current, [field]: toNumber(value, 0) } }
+      const numericValue = toNumber(value, 0)
+      const next = { ...current, [field]: numericValue }
+      const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+      return {
+        ...prev,
+        [pedidoId]: {
+          ...next,
+          quantidade: normalized.quantidade,
+          precoUnitario: normalized.precoUnitario,
+          desconto: normalized.desconto,
+        },
+      }
     })
   }
 
@@ -562,57 +632,206 @@ function PedidoItemsModal({
   onSelectProduto: (option: AsyncSelectOption | null) => void
   onAddItem: () => void
 }) {
+  const totals = useMemo(() => summarizeCartItems(itens), [itens])
+  const draftSubtotal = calculateSubtotal(form.quantidade, form.precoUnitario, form.desconto)
+  const canAddItem = form.descricao.trim().length > 0 && form.quantidade > 0
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="crm-card mx-4 max-h-[90vh] w-full max-w-4xl overflow-y-auto p-6">
+      <div className="crm-card mx-4 max-h-[90vh] w-full max-w-5xl overflow-y-auto p-5 md:p-6">
         <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Produtos do Pedido #{pedido.numero}</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{pedido.oportunidade.titulo} - {pedido.oportunidade.cliente.nome}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {pedido.oportunidade.titulo} - {pedido.oportunidade.cliente.nome}
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700"><X size={18} className="text-gray-500" /></button>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <X size={18} className="text-gray-500" />
+          </button>
         </div>
-
-        {loading && <div className="flex min-h-[120px] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /></div>}
-
+        {loading && (
+          <div className="flex min-h-[120px] items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+          </div>
+        )}
         {!loading && (
-          <div className="space-y-3">
-            {itens.length === 0 && (
-              <p className="rounded-lg border border-dashed border-gray-300 p-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                Nenhum item adicionado ainda.
-              </p>
-            )}
-
-            {itens.map((item) => (
-              <div key={item.id} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 p-2 dark:border-gray-800 sm:grid-cols-2 lg:grid-cols-6">
-                <input value={item.descricao} onChange={(e) => onItemField(item.id, 'descricao', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:col-span-2 lg:col-span-2 dark:border-gray-600 dark:bg-gray-800" />
-                <input type="number" min={0} step="0.01" value={item.quantidade} onChange={(e) => onItemField(item.id, 'quantidade', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                <input type="number" min={0} step="0.01" value={item.precoUnitario} onChange={(e) => onItemField(item.id, 'precoUnitario', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                <input type="number" min={0} step="0.01" value={item.desconto} onChange={(e) => onItemField(item.id, 'desconto', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                <div className="flex items-center justify-between gap-2 sm:col-span-2 lg:col-span-1">
-                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">{currency(item.subtotal)}</span>
-                  <div className="flex gap-1">
-                    <button type="button" onClick={() => onSaveItem(item)} className="rounded border border-purple-300 dark:border-purple-600 shadow-sm px-2 py-1 text-[11px] text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800">Salvar</button>
-                    <button type="button" onClick={() => onDeleteItem(item.id)} className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600">Excluir</button>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{itens.length}</p>
               </div>
-            ))}
-
-            <div className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-gray-300 p-2 dark:border-gray-700 sm:grid-cols-2 lg:grid-cols-6">
-              <AsyncSelect
-                className="min-w-0 sm:col-span-2 lg:col-span-2"
-                placeholder="Buscar produto/servico..."
-                value={form.produtoServicoId || ''}
-                initialLabel={produtoLabel}
-                onChange={onSelectProduto}
-                fetchUrl="/api/produtos-servicos/busca"
-              />
-              <input value={form.descricao} onChange={(e) => onFormField('descricao', e.target.value)} placeholder="Descrição" className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:col-span-2 lg:col-span-2 dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={form.quantidade} onChange={(e) => onFormField('quantidade', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={form.precoUnitario} onChange={(e) => onFormField('precoUnitario', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={form.desconto} onChange={(e) => onFormField('desconto', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <button type="button" onClick={onAddItem} disabled={saving} className="rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-2 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2 lg:col-span-1">Adicionar</button>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{currency(totals.totalBruto)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(totals.totalDesconto)}</p>
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">Total liquido</p>
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totals.totalLiquido)}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <ShoppingCart size={14} />
+                Itens no carrinho
+              </div>
+              {itens.length === 0 && (
+                <p className="rounded-lg border border-dashed border-gray-300 p-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  Nenhum item adicionado ainda.
+                </p>
+              )}
+              <div className="space-y-2">
+                {itens.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                      <label className="md:col-span-4">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao</span>
+                        <input
+                          value={item.descricao}
+                          onChange={(e) => onItemField(item.id, 'descricao', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Quantidade</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.quantidade}
+                          onChange={(e) => onItemField(item.id, 'quantidade', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco unit.</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.precoUnitario}
+                          onChange={(e) => onItemField(item.id, 'precoUnitario', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.desconto}
+                          onChange={(e) => onItemField(item.id, 'desconto', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <div className="flex flex-col justify-end md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                        <p className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                          {currency(calculateSubtotal(item.quantidade, item.precoUnitario, item.desconto))}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onSaveItem(item)}
+                        className="rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-medium text-purple-700 shadow-sm hover:bg-purple-100 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                      >
+                        Salvar linha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteItem(item.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 size={12} />
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <PackagePlus size={14} />
+                Adicionar novo item
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                <label className="md:col-span-4">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
+                  <AsyncSelect
+                    className="min-w-0"
+                    placeholder="Buscar por nome, codigo, tipo..."
+                    value={form.produtoServicoId || ''}
+                    initialLabel={produtoLabel}
+                    onChange={onSelectProduto}
+                    fetchUrl="/api/produtos-servicos/busca"
+                  />
+                </label>
+                <label className="md:col-span-4">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao do item</span>
+                  <input
+                    value={form.descricao}
+                    onChange={(e) => onFormField('descricao', e.target.value)}
+                    placeholder="Ex: Kit manutencao trimestral"
+                    className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.quantidade}
+                    onChange={(e) => onFormField('quantidade', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.precoUnitario}
+                    onChange={(e) => onFormField('precoUnitario', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.desconto}
+                    onChange={(e) => onFormField('desconto', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                  />
+                </label>
+                <div className="flex flex-col justify-end md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                  <p className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                    {currency(draftSubtotal)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onAddItem}
+                  disabled={saving || !canAddItem}
+                  className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-sm hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                >
+                  <Plus size={14} />
+                  Adicionar ao carrinho
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -657,17 +876,24 @@ function CreatePedidoDiretoModal({
     observacoes: '',
   })
 
-  const totalCarrinho = useMemo(
-    () => itens.reduce((sum, item) => sum + item.subtotal, 0),
-    [itens]
-  )
+  const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
+  const draftSubtotal = calculateSubtotal(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
+  const hasCartItems = itens.length > 0
 
   const handleItemForm = (field: keyof ItemForm, value: string) => {
     setItemForm((prev) => {
       if (field === 'descricao' || field === 'produtoServicoId') {
         return { ...prev, [field]: value }
       }
-      return { ...prev, [field]: toNumber(value, 0) }
+      const numericValue = toNumber(value, 0)
+      const next = { ...prev, [field]: numericValue }
+      const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+      return {
+        ...next,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+      }
     })
   }
 
@@ -684,23 +910,59 @@ function CreatePedidoDiretoModal({
 
   const handleAddDraftItem = () => {
     if (!itemForm.descricao.trim()) return
-
-    const subtotal = calculateSubtotal(
-      itemForm.quantidade,
-      itemForm.precoUnitario,
-      itemForm.desconto
-    )
+    const normalized = normalizeItemNumbers(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
+    if (normalized.quantidade <= 0) return
 
     setItens((prev) => [
       ...prev,
       {
         id: `${Date.now()}-${Math.random()}`,
         ...itemForm,
-        subtotal,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+        subtotal: normalized.subtotal,
       },
     ])
     setItemForm(buildItemForm())
     setSelectedProdutoLabel('')
+  }
+
+  const handleDraftItemField = (id: string, field: DraftEditableField, value: string) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        if (field === 'descricao') {
+          return { ...item, descricao: value }
+        }
+        const numericValue = toNumber(value, 0)
+        const next = { ...item, [field]: numericValue }
+        const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+        return {
+          ...next,
+          quantidade: normalized.quantidade,
+          precoUnitario: normalized.precoUnitario,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
+  }
+
+  const handleStepQuantity = (id: string, delta: number) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const nextQuantidade = Math.max(0, item.quantidade + delta)
+        const normalized = normalizeItemNumbers(nextQuantidade, item.precoUnitario, item.desconto)
+        return {
+          ...item,
+          quantidade: normalized.quantidade,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
   }
 
   const handleRemoveDraftItem = (id: string) => {
@@ -738,7 +1000,7 @@ function CreatePedidoDiretoModal({
         body: JSON.stringify({
           titulo: form.titulo,
           descricao: form.descricao || null,
-          valor: itens.length > 0 ? totalCarrinho : valorManual,
+          valor: hasCartItems ? cartSummary.totalLiquido : valorManual,
           clienteId,
           statusEntrega: form.statusEntrega,
           pagamentoConfirmado: form.pagamentoConfirmado,
@@ -778,61 +1040,304 @@ function CreatePedidoDiretoModal({
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
           <div className="flex items-start gap-2"><Info size={14} className="mt-0.5" />A venda sera concluida com entrega em <strong>Entregue</strong> e pagamento confirmado.</div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input required value={form.titulo} onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))} placeholder="Titulo" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-          <AsyncSelect label="Cliente / Lead" placeholder="Busque por nome, email ou empresa..." value={selectedPerson ? selectedPerson.id : ''} initialLabel={selectedPerson ? selectedPerson.nome : ''} onChange={(option) => { setSelectedPerson(option); setStatusInfo(option?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null) }} fetchUrl="/api/pessoas/busca" required />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <label className="md:col-span-2">
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Titulo do pedido</span>
+              <input
+                required
+                value={form.titulo}
+                onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
+                placeholder="Ex: Renovacao plano anual"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Status de entrega</span>
+              <select
+                value={form.statusEntrega}
+                onChange={(e) => setForm((p) => ({ ...p, statusEntrega: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              >
+                {Object.entries(STATUS_ENTREGA_LABEL).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <AsyncSelect
+            label="Cliente / Lead"
+            placeholder="Busque por nome, email ou empresa..."
+            value={selectedPerson ? selectedPerson.id : ''}
+            initialLabel={selectedPerson ? selectedPerson.nome : ''}
+            onChange={(option) => {
+              setSelectedPerson(option)
+              setStatusInfo(option?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null)
+            }}
+            fetchUrl="/api/pessoas/busca"
+            required
+          />
           {statusInfo && <p className="text-xs text-blue-600 dark:text-blue-400">{statusInfo}</p>}
-          <textarea rows={2} value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} placeholder="Descricao" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input value={form.valor} onChange={(e) => setForm((p) => ({ ...p, valor: e.target.value }))} placeholder="Valor" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-            <select value={form.statusEntrega} onChange={(e) => setForm((p) => ({ ...p, statusEntrega: e.target.value }))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800">{Object.entries(STATUS_ENTREGA_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descricao geral</span>
+              <textarea
+                rows={2}
+                value={form.descricao}
+                onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))}
+                placeholder="Resumo curto do pedido"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Observacoes internas</span>
+              <textarea
+                rows={2}
+                value={form.observacoes}
+                onChange={(e) => setForm((p) => ({ ...p, observacoes: e.target.value }))}
+                placeholder="Notas para operacao"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </label>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input value={form.formaPagamento} onChange={(e) => setForm((p) => ({ ...p, formaPagamento: e.target.value }))} placeholder="Forma de pagamento" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-            <input type="date" value={form.dataEntrega} onChange={(e) => setForm((p) => ({ ...p, dataEntrega: e.target.value }))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:[color-scheme:dark]" />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor manual (sem carrinho)</span>
+              <input
+                value={form.valor}
+                onChange={(e) => setForm((p) => ({ ...p, valor: e.target.value }))}
+                placeholder={hasCartItems ? 'Calculado pelo carrinho' : 'Ex: 1500,00'}
+                disabled={hasCartItems}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:disabled:bg-gray-700"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Forma de pagamento</span>
+              <input
+                value={form.formaPagamento}
+                onChange={(e) => setForm((p) => ({ ...p, formaPagamento: e.target.value }))}
+                placeholder="Pix, boleto, cartao..."
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data de entrega</span>
+              <input
+                type="date"
+                value={form.dataEntrega}
+                onChange={(e) => setForm((p) => ({ ...p, dataEntrega: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:[color-scheme:dark]"
+              />
+            </label>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" checked={form.pagamentoConfirmado} onChange={(e) => setForm((p) => ({ ...p, pagamentoConfirmado: e.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-blue-600" />Pagamento confirmado</label>
-          <textarea rows={2} value={form.observacoes} onChange={(e) => setForm((p) => ({ ...p, observacoes: e.target.value }))} placeholder="Observacoes" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-          <div className="space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Carrinho de produtos</p>
-              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                Total: {currency(totalCarrinho)}
-              </p>
-            </div>
-            {itens.length > 0 && (
-              <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={form.pagamentoConfirmado}
+              onChange={(e) => setForm((p) => ({ ...p, pagamentoConfirmado: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            Pagamento confirmado
+          </label>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)]">
+            <div className="space-y-3 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <ShoppingCart size={14} />
+                  Carrinho
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{itens.length} item(ns)</p>
+              </div>
+              {itens.length === 0 && (
+                <p className="rounded-lg border border-dashed border-gray-300 p-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  Adicione produtos ou servicos para montar o pedido.
+                </p>
+              )}
+              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
                 {itens.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                    <span className="truncate pr-2">{item.descricao}</span>
-                    <div className="flex items-center gap-2">
-                      <span>{currency(item.subtotal)}</span>
+                  <div key={item.id} className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                      <label className="md:col-span-4">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Item</span>
+                        <input
+                          value={item.descricao}
+                          onChange={(e) => handleDraftItemField(item.id, 'descricao', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <div className="md:col-span-3">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Quantidade</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStepQuantity(item.id, -1)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.quantidade}
+                            onChange={(e) => handleDraftItemField(item.id, 'quantidade', e.target.value)}
+                            className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleStepQuantity(item.id, 1)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unitario</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.precoUnitario}
+                          onChange={(e) => handleDraftItemField(item.id, 'precoUnitario', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.desconto}
+                          onChange={(e) => handleDraftItemField(item.id, 'desconto', e.target.value)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                        />
+                      </label>
+                      <div className="md:col-span-1">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                        <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                          {currency(item.subtotal)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-end">
                       <button
                         type="button"
                         onClick={() => handleRemoveDraftItem(item.id)}
-                        className="rounded border border-red-300 px-2 py-0.5 text-red-600"
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20"
                       >
+                        <Trash2 size={12} />
                         Remover
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
-              <AsyncSelect
-                className="min-w-0 sm:col-span-2 lg:col-span-2"
-                placeholder="Buscar produto/servico..."
-                value={itemForm.produtoServicoId || ''}
-                initialLabel={selectedProdutoLabel}
-                onChange={handleSelectProduto}
-                fetchUrl="/api/produtos-servicos/busca"
-              />
-              <input value={itemForm.descricao} onChange={(e) => handleItemForm('descricao', e.target.value)} placeholder="Descrição" className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:col-span-2 lg:col-span-2 dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={itemForm.quantidade} onChange={(e) => handleItemForm('quantidade', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={itemForm.precoUnitario} onChange={(e) => handleItemForm('precoUnitario', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <input type="number" min={0} step="0.01" value={itemForm.desconto} onChange={(e) => handleItemForm('desconto', e.target.value)} className="min-w-0 rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-              <button type="button" onClick={handleAddDraftItem} className="rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-2 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 sm:col-span-2 lg:col-span-1">Adicionar</button>
+              <div className="rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700">
+                <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <PackagePlus size={14} />
+                  Adicionar item
+                </div>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                  <label className="md:col-span-4">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
+                    <AsyncSelect
+                      className="min-w-0"
+                      placeholder="Buscar produto/servico..."
+                      value={itemForm.produtoServicoId || ''}
+                      initialLabel={selectedProdutoLabel}
+                      onChange={handleSelectProduto}
+                      fetchUrl="/api/produtos-servicos/busca"
+                    />
+                  </label>
+                  <label className="md:col-span-4">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao</span>
+                    <input
+                      value={itemForm.descricao}
+                      onChange={(e) => handleItemForm('descricao', e.target.value)}
+                      placeholder="Nome exibido no pedido"
+                      className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                    />
+                  </label>
+                  <label className="md:col-span-1">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={itemForm.quantidade}
+                      onChange={(e) => handleItemForm('quantidade', e.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                    />
+                  </label>
+                  <label className="md:col-span-1">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={itemForm.precoUnitario}
+                      onChange={(e) => handleItemForm('precoUnitario', e.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                    />
+                  </label>
+                  <label className="md:col-span-1">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={itemForm.desconto}
+                      onChange={(e) => handleItemForm('desconto', e.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
+                    />
+                  </label>
+                  <div className="md:col-span-1">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                    <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                      {currency(draftSubtotal)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddDraftItem}
+                    disabled={!itemForm.descricao.trim() || itemForm.quantidade <= 0}
+                    className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-sm hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                  >
+                    <Plus size={14} />
+                    Adicionar ao carrinho
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Resumo</p>
+              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                <span>Itens</span>
+                <strong>{itens.length}</strong>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                <span>Quantidade total</span>
+                <strong>{cartSummary.quantidadeTotal.toFixed(2)}</strong>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                <span>Subtotal bruto</span>
+                <strong>{currency(cartSummary.totalBruto)}</strong>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                <span>Descontos</span>
+                <strong className="text-red-600 dark:text-red-400">-{currency(cartSummary.totalDesconto)}</strong>
+              </div>
+              <div className="flex items-center justify-between border-t border-gray-200 pt-2 text-sm font-semibold text-blue-700 dark:border-gray-700 dark:text-blue-300">
+                <span>Total do pedido</span>
+                <span>{currency(hasCartItems ? cartSummary.totalLiquido : toNumber(form.valor, 0))}</span>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                Quando ha itens no carrinho, o valor do pedido e calculado automaticamente.
+              </p>
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
@@ -844,5 +1349,3 @@ function CreatePedidoDiretoModal({
     </SideCreateDrawer>
   )
 }
-
-

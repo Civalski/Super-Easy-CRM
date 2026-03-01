@@ -1,5 +1,5 @@
 /**
- * Grid de cards de estatísticas do dashboard
+ * Grid de cards de estatisticas do dashboard
  */
 'use client'
 
@@ -37,18 +37,24 @@ export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
                 value={data.clientesCount}
                 icon={Users}
                 color="blue"
+                href="/clientes"
+                hoverRing="purple"
             />
             <StatCard
-                title="Orçamentos"
+                title="Orcamentos"
                 value={data.oportunidadesCount}
                 icon={Briefcase}
                 color="green"
+                href="/oportunidades"
+                hoverRing="purple"
             />
             <StatCard
                 title="Tarefas"
                 value={data.tarefasCount}
                 icon={Calendar}
                 color="yellow"
+                href="/tarefas"
+                hoverRing="purple"
             />
             <StatCard
                 title="Valor Total"

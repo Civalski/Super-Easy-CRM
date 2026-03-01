@@ -10,6 +10,7 @@ import {
   TarefasStatusChart,
   AtividadesRecentes,
   DashboardLoading,
+  FluxoCaixaResumo,
 } from '@/components/features/dashboard'
 
 interface DashboardData {
@@ -49,9 +50,30 @@ interface GoalSummary {
   active?: boolean
 }
 
+interface FluxoSerie {
+  month: string
+  recebido: number
+  saida: number
+  previstoReceber: number
+  previstoPagar: number
+  saldoProjetado: number
+}
+
+interface FluxoData {
+  totals: {
+    recebido: number
+    saida: number
+    previstoReceber: number
+    previstoPagar: number
+    saldoProjetado: number
+  }
+  series: FluxoSerie[]
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [goals, setGoals] = useState<GoalSummary[]>([])
+  const [fluxo, setFluxo] = useState<FluxoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [goalsLoading, setGoalsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -67,9 +89,10 @@ export default function Dashboard() {
 
       const dateParam = selectedDate.toISOString()
 
-      const [dashboardResponse, goalsResponse] = await Promise.all([
+      const [dashboardResponse, goalsResponse, fluxoResponse] = await Promise.all([
         fetch(`/api/dashboard?filter=${dateFilter}&date=${dateParam}`, { credentials: 'include' }),
         fetch('/api/metas', { credentials: 'include' }),
+        fetch('/api/financeiro/fluxo-caixa?months=6', { credentials: 'include' }),
       ])
 
       if (!dashboardResponse.ok) {
@@ -85,8 +108,16 @@ export default function Dashboard() {
       } else {
         setGoals([])
       }
+
+      if (fluxoResponse.ok) {
+        const fluxoData = await fluxoResponse.json()
+        setFluxo(fluxoData && typeof fluxoData === 'object' ? fluxoData : null)
+      } else {
+        setFluxo(null)
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
+      setFluxo(null)
     } finally {
       setLoading(false)
       setIsRefreshing(false)
@@ -119,6 +150,10 @@ export default function Dashboard() {
 
       <div className="mb-6">
         <DashboardGoals goals={goals} loading={goalsLoading} />
+      </div>
+
+      <div className="mb-6">
+        <FluxoCaixaResumo fluxo={fluxo} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
