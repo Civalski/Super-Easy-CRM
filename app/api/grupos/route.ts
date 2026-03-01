@@ -9,6 +9,20 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+function parsePage(value: string | null, fallback = 1) {
+    if (!value) return fallback
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed)) return fallback
+    return Math.max(1, parsed)
+}
+
+function parseLimit(value: string | null, fallback = 10, max = 50) {
+    if (!value) return fallback
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed)) return fallback
+    return Math.min(max, Math.max(1, parsed))
+}
+
 export async function GET(request: NextRequest) {
     try {
         await ensureDatabaseInitialized()
@@ -20,8 +34,8 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
-        const page = parseInt(searchParams.get('page') || '1')
-        const limit = parseInt(searchParams.get('limit') || '10')
+        const page = parsePage(searchParams.get('page'))
+        const limit = parseLimit(searchParams.get('limit'))
         const skip = (page - 1) * limit
 
         if (!status) {
@@ -131,7 +145,7 @@ export async function GET(request: NextRequest) {
                 total,
                 page,
                 limit,
-                pages: Math.ceil(total / limit),
+                pages: Math.max(1, Math.ceil(total / limit)),
             },
         })
     } catch (error) {

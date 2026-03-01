@@ -89,7 +89,7 @@ export default function OportunidadeHistoricoCard({
   const canReopen = Boolean(statusToReturn)
 
   return (
-    <div className="crm-card p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="crm-card p-4 shadow-xs hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">

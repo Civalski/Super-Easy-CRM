@@ -10,10 +10,28 @@ import { prisma } from '@/lib/prisma';
 import { getAuthIdentityFromRequest } from '@/lib/auth';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
 import { Prisma } from '@prisma/client';
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
+import { heavyRoutesDisabledResponse, isHeavyRoutesDisabled } from '@/lib/security/heavy-routes';
+
+const MAX_BULK_IDS = 500;
+const bulkPatchRateLimitConfig = {
+    windowMs: 60 * 1000,
+    maxAttempts: 5,
+    blockDurationMs: 60 * 1000,
+};
+const bulkDeleteRateLimitConfig = {
+    windowMs: 60 * 1000,
+    maxAttempts: 5,
+    blockDurationMs: 60 * 1000,
+};
 
 // PATCH /api/prospectos/bulk - Atualiza status em massa (ex: enviar ao funil)
 export async function PATCH(request: NextRequest) {
     try {
+        if (isHeavyRoutesDisabled()) {
+            return heavyRoutesDisabledResponse();
+        }
+
         const { userId, role } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,8 +40,24 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        const rateLimitResponse = enforceApiRateLimit({
+            key: `api:prospectos:bulk:patch:user:${userId}`,
+            config: bulkPatchRateLimitConfig,
+            error: 'Muitas operacoes em massa em pouco tempo. Aguarde um minuto.',
+        });
+        if (rateLimitResponse) {
+            return rateLimitResponse;
+        }
+
         const body = await request.json();
         const { ids, lote, todos, novoStatus = 'novo' } = body;
+
+        if (Array.isArray(ids) && ids.length > MAX_BULK_IDS) {
+            return NextResponse.json(
+                { error: `Limite de ${MAX_BULK_IDS} IDs por operacao em massa` },
+                { status: 400 }
+            );
+        }
 
         const atualizados = await enviarLeadsAoFunil({
             prisma,
@@ -55,12 +89,25 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/prospectos/bulk - Exclui todos ou por filtro
 export async function DELETE(request: NextRequest) {
     try {
+        if (isHeavyRoutesDisabled()) {
+            return heavyRoutesDisabledResponse();
+        }
+
         const { userId, role } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         if (role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const rateLimitResponse = enforceApiRateLimit({
+            key: `api:prospectos:bulk:delete:user:${userId}`,
+            config: bulkDeleteRateLimitConfig,
+            error: 'Muitas exclusoes em massa em pouco tempo. Aguarde um minuto.',
+        });
+        if (rateLimitResponse) {
+            return rateLimitResponse;
         }
 
         const { searchParams } = new URL(request.url);

@@ -20,9 +20,9 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
         >
             <div className="flex items-start">
                 {result.success ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 shrink-0" />
                 ) : (
-                    <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+                    <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 mt-0.5 shrink-0" />
                 )}
                 <div className="flex-1">
                     <h3
@@ -44,7 +44,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                         Resumo dos dados criados:
                                     </h4>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                                        <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                        <div className="bg-white dark:bg-gray-800 p-2 rounded-sm">
                                             <div className="font-semibold text-green-900 dark:text-green-300">
                                                 {result.resumo.clientes}
                                             </div>
@@ -52,7 +52,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                                 Clientes
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                        <div className="bg-white dark:bg-gray-800 p-2 rounded-sm">
                                             <div className="font-semibold text-green-900 dark:text-green-300">
                                                 {result.resumo.contatos}
                                             </div>
@@ -60,7 +60,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                                 Contatos
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                        <div className="bg-white dark:bg-gray-800 p-2 rounded-sm">
                                             <div className="font-semibold text-green-900 dark:text-green-300">
                                                 {result.resumo.oportunidades}
                                             </div>
@@ -68,7 +68,7 @@ export function SeedResultCard({ result }: SeedResultCardProps) {
                                                 Orçamentos
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                        <div className="bg-white dark:bg-gray-800 p-2 rounded-sm">
                                             <div className="font-semibold text-green-900 dark:text-green-300">
                                                 {result.resumo.tarefas}
                                             </div>

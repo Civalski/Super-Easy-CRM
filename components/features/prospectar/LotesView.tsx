@@ -230,19 +230,19 @@ function LoteCard({
     const isBusy = isSending || isDeleting || enviandoEste || excluindoEste;
 
     return (
-        <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-sm hover:shadow-lg hover:border-gray-600 transition-all duration-200">
+        <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-xs hover:shadow-lg hover:border-gray-600 transition-all duration-200">
             <div
                 className="flex items-center gap-4 p-4 cursor-pointer select-none bg-gray-800 hover:bg-[#2d3748] transition-colors duration-150"
                 onClick={carregarLeads}
             >
-                <span className="text-gray-500 flex-shrink-0">
+                <span className="text-gray-500 shrink-0">
                     {expandido
                         ? <ChevronDown className="w-5 h-5" />
                         : <ChevronRight className="w-5 h-5" />
                     }
                 </span>
 
-                <div className="p-2 bg-sky-900/40 rounded-lg flex-shrink-0">
+                <div className="p-2 bg-sky-900/40 rounded-lg shrink-0">
                     <Package className="w-5 h-5 text-sky-400" />
                 </div>
 
@@ -261,7 +261,7 @@ function LoteCard({
                     )}
                 </div>
 
-                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
                     <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
                         <div className="h-full bg-sky-500 rounded-full" style={{ width: '100%' }} />
                     </div>
@@ -270,12 +270,12 @@ function LoteCard({
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                     <button
                         onClick={handleEnviar}
                         disabled={isBusy}
                         title={`Enviar lote "${lote.lote}" ao funil`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-xs text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium rounded-lg transition-colors"
                     >
                         {enviandoEste
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -438,7 +438,7 @@ export function LotesView({
 
     return (
         <div className="space-y-3">
-            <div className="bg-gradient-to-r from-sky-900/30 to-indigo-900/30 border border-sky-800/50 rounded-xl p-4">
+            <div className="bg-linear-to-r from-sky-900/30 to-indigo-900/30 border border-sky-800/50 rounded-xl p-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
@@ -499,7 +499,7 @@ export function LotesView({
                                     value={dataInicio}
                                     min={getTodayInputDate()}
                                     onChange={(e) => setDataInicio(e.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                    className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                                 />
                             </div>
                             <div>
@@ -597,7 +597,7 @@ export function LotesView({
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <StatusBadge status={item.status} />
                                             {item.status !== 'processado' && item.status !== 'cancelado' && (
                                                 <button

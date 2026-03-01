@@ -8,7 +8,7 @@ interface ConfirmDialogProps {
   description?: string
   confirmLabel?: string
   cancelLabel?: string
-  confirmVariant?: 'primary' | 'secondary' | 'outline' | 'danger'
+  confirmVariant?: 'primary' | 'secondary' | 'outline-solid' | 'danger'
   confirmLoading?: boolean
   onConfirm: () => void
   onCancel: () => void

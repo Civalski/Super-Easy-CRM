@@ -38,7 +38,7 @@ export function TarefasFilters({
                         <select
                             value={filtroStatus}
                             onChange={(e) => onFiltroStatusChange(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">Todos os status</option>
                             <option value="pendente">Pendente</option>
@@ -51,7 +51,7 @@ export function TarefasFilters({
                     <select
                         value={filtroPrioridade}
                         onChange={(e) => onFiltroPrioridadeChange(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">Todas as prioridades</option>
                         <option value="baixa">Baixa</option>

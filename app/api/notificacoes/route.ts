@@ -5,11 +5,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
-function parseLimit(value: string | null, fallback = 50) {
+function parseLimit(value: string | null, fallback = 30) {
     if (!value) return fallback
     const parsed = Number(value)
     if (!Number.isInteger(parsed)) return fallback
-    return Math.min(200, Math.max(1, parsed))
+    return Math.min(100, Math.max(1, parsed))
 }
 
 export async function GET(request: NextRequest) {

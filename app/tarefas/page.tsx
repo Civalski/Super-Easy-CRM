@@ -175,8 +175,8 @@ export default function TarefasPage() {
   const loadCreateOptions = async () => {
     try {
       const [clientesRes, oportunidadesRes] = await Promise.all([
-        fetch('/api/clientes?mode=options&limit=200'),
-        fetch('/api/oportunidades?mode=options&limit=200'),
+        fetch('/api/clientes?mode=options&limit=50'),
+        fetch('/api/oportunidades?mode=options&limit=50'),
       ])
 
       const [clientesData, oportunidadesData] = await Promise.all([
@@ -509,7 +509,7 @@ export default function TarefasPage() {
                 required
                 value={createForm.titulo}
                 onChange={handleCreateField}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="Titulo da tarefa"
               />
             </div>
@@ -523,7 +523,7 @@ export default function TarefasPage() {
                 rows={4}
                 value={createForm.descricao}
                 onChange={handleCreateField}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="Descricao detalhada da tarefa"
               />
             </div>
@@ -535,7 +535,7 @@ export default function TarefasPage() {
                   name="status"
                   value={createForm.status}
                   onChange={handleCreateField}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="pendente">Pendente</option>
                   <option value="em_andamento">Em Andamento</option>
@@ -549,7 +549,7 @@ export default function TarefasPage() {
                   name="prioridade"
                   value={createForm.prioridade}
                   onChange={handleCreateField}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="baixa">Baixa</option>
                   <option value="media">Media</option>
@@ -567,7 +567,7 @@ export default function TarefasPage() {
                 name="dataVencimento"
                 value={createForm.dataVencimento}
                 onChange={handleCreateField}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               />
             </div>
 
@@ -578,7 +578,7 @@ export default function TarefasPage() {
                   name="clienteId"
                   value={createForm.clienteId}
                   onChange={handleCreateField}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="">Selecione um cliente</option>
                   {clientesOptions.map((cliente) => (
@@ -595,7 +595,7 @@ export default function TarefasPage() {
                   name="oportunidadeId"
                   value={createForm.oportunidadeId}
                   onChange={handleCreateField}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="">Selecione um orcamento</option>
                   {oportunidadesOptions.map((oportunidade) => (
@@ -613,7 +613,7 @@ export default function TarefasPage() {
                 name="notificar"
                 checked={createForm.notificar}
                 onChange={handleCreateField}
-                className="h-4 w-4 rounded border-gray-300 text-purple-600 dark:border-gray-600"
+                className="h-4 w-4 rounded-sm border-gray-300 text-purple-600 dark:border-gray-600"
               />
               Ativar notificacao
             </label>
@@ -632,7 +632,7 @@ export default function TarefasPage() {
               <button
                 type="submit"
                 disabled={creating}
-                className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 transition-colors hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
+                className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 transition-colors hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
               >
                 {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save size={16} className="mr-2" />}
                 Criar Tarefa

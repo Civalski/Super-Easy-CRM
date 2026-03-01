@@ -57,7 +57,7 @@ export default function EditarOportunidadePage() {
       try {
         const [oportunidadeResponse, clientesResponse] = await Promise.all([
           fetch(`/api/oportunidades/${oportunidadeId}`),
-          fetch('/api/clientes?mode=options&limit=300'),
+          fetch('/api/clientes?mode=options&limit=50'),
         ])
 
         if (!oportunidadeResponse.ok) {
@@ -272,7 +272,7 @@ export default function EditarOportunidadePage() {
                 required
                 value={formData.titulo}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="Título do orçamento"
               />
             </div>
@@ -290,7 +290,7 @@ export default function EditarOportunidadePage() {
                 rows={4}
                 value={formData.descricao}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="Descrição detalhada do orçamento"
               />
             </div>
@@ -308,7 +308,7 @@ export default function EditarOportunidadePage() {
                 required
                 value={formData.clienteId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione um cliente</option>
                 {clientes.map((cliente) => (
@@ -333,7 +333,7 @@ export default function EditarOportunidadePage() {
                 name="valor"
                 value={formData.valor}
                 onChange={handleCurrencyChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="0,00"
               />
             </div>
@@ -354,7 +354,7 @@ export default function EditarOportunidadePage() {
                   value={formData.motivoPerda}
                   onChange={handleChange}
                   disabled={motivosLoading}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">{motivosLoading ? 'Carregando...' : 'Selecione um motivo'}</option>
                   {motivosDisponiveis.map((motivo) => (
@@ -369,7 +369,7 @@ export default function EditarOportunidadePage() {
                     value={novoMotivo}
                     onChange={(event) => setNovoMotivo(event.target.value)}
                     placeholder="Nova categoria de motivo"
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                   <Button
                     type="button"
@@ -403,7 +403,7 @@ export default function EditarOportunidadePage() {
                 max="100"
                 value={formData.probabilidade}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
             </div>
@@ -421,7 +421,7 @@ export default function EditarOportunidadePage() {
                 name="dataFechamento"
                 value={formData.dataFechamento}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:scheme-dark"
               />
             </div>
 
@@ -438,7 +438,7 @@ export default function EditarOportunidadePage() {
                 name="proximaAcaoEm"
                 value={formData.proximaAcaoEm}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:scheme-dark"
               />
             </div>
 
@@ -454,7 +454,7 @@ export default function EditarOportunidadePage() {
                 name="canalProximaAcao"
                 value={formData.canalProximaAcao}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione</option>
                 <option value="whatsapp">WhatsApp</option>
@@ -478,7 +478,7 @@ export default function EditarOportunidadePage() {
                 name="responsavelProximaAcao"
                 value={formData.responsavelProximaAcao}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="Ex: Joao"
               />
             </div>
@@ -490,7 +490,7 @@ export default function EditarOportunidadePage() {
               name="lembreteProximaAcao"
               checked={formData.lembreteProximaAcao}
               onChange={handleChange}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+              className="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
             />
             Ativar lembrete da proxima acao
           </label>

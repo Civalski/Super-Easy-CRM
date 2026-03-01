@@ -12,7 +12,7 @@ function isAdminOnly(pathname: string) {
     return adminApiPrefixes.some((prefix) => pathname.startsWith(prefix))
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl
 
     // Allow public static files (e.g. /arker10.png) without auth.

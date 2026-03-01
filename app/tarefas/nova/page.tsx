@@ -46,8 +46,8 @@ export default function NovaTarefaPage() {
   useEffect(() => {
     // Carrega clientes e orçamentos para os selects
     Promise.all([
-      fetch('/api/clientes?mode=options&limit=200').then((res) => res.json()),
-      fetch('/api/oportunidades?mode=options&limit=200').then((res) => res.json()),
+      fetch('/api/clientes?mode=options&limit=50').then((res) => res.json()),
+      fetch('/api/oportunidades?mode=options&limit=50').then((res) => res.json()),
     ])
       .then(([clientesData, oportunidadesData]) => {
         // Garantir que ambos sejam arrays antes de definir o estado
@@ -149,7 +149,7 @@ export default function NovaTarefaPage() {
                 required
                 value={formData.titulo}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="Título da tarefa"
               />
             </div>
@@ -167,7 +167,7 @@ export default function NovaTarefaPage() {
                 rows={4}
                 value={formData.descricao}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 placeholder="Descrição detalhada da tarefa"
               />
             </div>
@@ -184,7 +184,7 @@ export default function NovaTarefaPage() {
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pendente">Pendente</option>
                 <option value="em_andamento">Em Andamento</option>
@@ -204,7 +204,7 @@ export default function NovaTarefaPage() {
                 name="prioridade"
                 value={formData.prioridade}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="baixa">Baixa</option>
                 <option value="media">Média</option>
@@ -225,7 +225,7 @@ export default function NovaTarefaPage() {
                 name="dataVencimento"
                 value={formData.dataVencimento}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
 
             </div>
@@ -242,7 +242,7 @@ export default function NovaTarefaPage() {
                 name="clienteId"
                 value={formData.clienteId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione um cliente</option>
                 {clientes.map((cliente) => (
@@ -265,7 +265,7 @@ export default function NovaTarefaPage() {
                 name="oportunidadeId"
                 value={formData.oportunidadeId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione um orçamento</option>
                 {oportunidades.map((oportunidade) => (

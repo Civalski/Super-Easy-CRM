@@ -149,8 +149,8 @@ export default function Header({
   }
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:left-[var(--sidebar-width)]">
-      <div className="min-h-[var(--top-bar-height)] border-b border-[color:var(--shell-border)] bg-[var(--shell-tint)] backdrop-blur-sm">
+    <header className="fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:left-(--sidebar-width)">
+      <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs">
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <button
@@ -174,7 +174,7 @@ export default function Header({
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}
-                className="h-11 w-full rounded-xl border border-slate-300/70 bg-white/80 pl-10 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400"
+                className="h-11 w-full rounded-xl border border-slate-300/70 bg-white/80 pl-10 pr-10 text-sm text-slate-900 outline-hidden transition placeholder:text-slate-500 focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
               {busca && (
                 <button
@@ -236,7 +236,7 @@ export default function Header({
             </Link>
 
             <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45">
                 <span>{userInitial}</span>
               </div>
               <div className="hidden text-right md:block">

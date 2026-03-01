@@ -76,7 +76,7 @@ export default function RelatoriosPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-rose-500 to-red-500 p-2.5 shadow-lg shadow-rose-500/25">
+          <div className="rounded-xl bg-linear-to-br from-rose-500 to-red-500 p-2.5 shadow-lg shadow-rose-500/25">
             <BarChart3 className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function RelatoriosPage() {
           <button
             type="button"
             onClick={fetchReports}
-            className="rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+            className="rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
           >
             Atualizar
           </button>

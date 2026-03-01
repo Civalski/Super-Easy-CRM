@@ -182,6 +182,12 @@ function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico 
 function OrcamentosPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
+  const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
+  const hasClienteFilter = clienteIdFilter.length > 0
+  const clienteQuery = hasClienteFilter
+    ? `&clienteId=${encodeURIComponent(clienteIdFilter)}`
+    : ''
   const [activeTab, setActiveTab] = useState<'abertas' | 'historico'>('abertas')
   const [orcamentosAbertos, setOrcamentosAbertos] = useState<Oportunidade[]>([])
   const [historicoVendas, setHistoricoVendas] = useState<Oportunidade[]>([])
@@ -219,7 +225,7 @@ function OrcamentosPageContent() {
       setLoading(true)
       if (activeTab === 'abertas') {
         const response = await fetch(
-          `/api/oportunidades?status=orcamento&paginated=true&page=${pageAbertas}&limit=${LIST_PAGE_SIZE}`
+          `/api/oportunidades?status=orcamento&paginated=true&page=${pageAbertas}&limit=${LIST_PAGE_SIZE}${clienteQuery}`
         )
         const payload = await response.json().catch(() => null)
         if (!response.ok) throw new Error(payload?.error || 'Erro ao carregar orcamentos')
@@ -242,10 +248,10 @@ function OrcamentosPageContent() {
       } else {
         const [vendasResponse, perdidasResponse] = await Promise.all([
           fetch(
-            `/api/oportunidades?status=fechada&paginated=true&page=${pageVendas}&limit=${HISTORICO_PAGE_SIZE}`
+            `/api/oportunidades?status=fechada&paginated=true&page=${pageVendas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
           ),
           fetch(
-            `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}`
+            `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
           ),
         ])
 
@@ -306,7 +312,7 @@ function OrcamentosPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, pageAbertas, pagePerdidas, pageVendas])
+  }, [activeTab, clienteQuery, pageAbertas, pagePerdidas, pageVendas])
 
   useEffect(() => {
     void fetchOportunidades()
@@ -324,6 +330,13 @@ function OrcamentosPageContent() {
       tipo: 'cliente',
     })
     setShowCreateModal(true)
+  }, [searchParams])
+
+  useEffect(() => {
+    const aba = searchParams.get('aba')
+    if (aba === 'historico') {
+      setActiveTab('historico')
+    }
   }, [searchParams])
 
   // Estatísticas
@@ -417,6 +430,18 @@ function OrcamentosPageContent() {
     router.replace(nextQuery ? `/oportunidades?${nextQuery}` : '/oportunidades')
   }, [router, searchParams])
 
+  const clearClienteFilter = useCallback(() => {
+    if (!searchParams.get('clienteId') && !searchParams.get('clienteNome') && !searchParams.get('aba')) {
+      return
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('clienteId')
+    params.delete('clienteNome')
+    params.delete('aba')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/oportunidades?${nextQuery}` : '/oportunidades')
+  }, [router, searchParams])
+
   const handleTransformarEmPedido = async (oportunidade: Oportunidade) => {
     const confirm = await Swal.fire({
       icon: 'question',
@@ -475,7 +500,7 @@ function OrcamentosPageContent() {
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/25">
+          <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/25">
             <Briefcase className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -492,6 +517,17 @@ function OrcamentosPageContent() {
           Novo Orçamento
         </Button>
       </div>
+
+      {hasClienteFilter && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-200">
+            Cliente: {clienteNomeFilter}
+          </span>
+          <Button size="sm" variant="outline" onClick={clearClienteFilter}>
+            Limpar filtro
+          </Button>
+        </div>
+      )}
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -598,7 +634,7 @@ function OrcamentosPageContent() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-right shrink-0">
                         <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                           {formatCurrency(oportunidade.valor)}
                         </p>
@@ -872,7 +908,7 @@ function CreateOrcamentoModal({
   }, [initialPerson])
 
   const fieldClass =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
   const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300'
 
   const handleChange = (
@@ -1230,7 +1266,7 @@ function CreateOrcamentoModal({
 
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
           <div className="flex items-start gap-2">
-            <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-700 dark:text-blue-400">
               <span className="font-medium">Classificacao automatica:</span> Leads em <strong>Sem contato</strong> ou <strong>Em potencial</strong> entram como <strong>Orcamento</strong>.
             </div>
@@ -1439,7 +1475,7 @@ function CreateOrcamentoModal({
                 name="dataFechamento"
                 value={formData.dataFechamento}
                 onChange={handleChange}
-                className={`${fieldClass} dark:[color-scheme:dark]`}
+                className={`${fieldClass} dark:scheme-dark`}
               />
             </div>
 
@@ -1452,7 +1488,7 @@ function CreateOrcamentoModal({
                 name="proximaAcaoEm"
                 value={formData.proximaAcaoEm}
                 onChange={handleChange}
-                className={`${fieldClass} dark:[color-scheme:dark]`}
+                className={`${fieldClass} dark:scheme-dark`}
               />
             </div>
 
@@ -1497,7 +1533,7 @@ function CreateOrcamentoModal({
               name="lembreteProximaAcao"
               checked={formData.lembreteProximaAcao}
               onChange={handleChange}
-              className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 dark:border-gray-600"
+              className="h-4 w-4 rounded-sm border-gray-300 text-violet-600 focus:ring-violet-500 dark:border-gray-600"
             />
             Gerar lembrete para a proxima acao
           </label>
@@ -1525,7 +1561,7 @@ function CreateOrcamentoModal({
           open
           onClose={() => setShowCarrinhoDrawer(false)}
           maxWidthClass="max-w-4xl"
-          zIndexClass="z-[10010]"
+          zIndexClass="z-10010"
         >
           <div className="h-full overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between gap-3">

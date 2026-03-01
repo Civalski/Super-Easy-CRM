@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Search, X, Check, Loader2, ChevronDown } from 'lucide-react'
 
 export interface AsyncSelectOption {
@@ -23,6 +23,41 @@ interface AsyncSelectProps {
     required?: boolean
     id?: string
     name?: string
+}
+
+const CACHE_TTL_MS = 90 * 1000
+const optionsCache = new Map<string, { data: AsyncSelectOption[]; expiresAt: number }>()
+
+function readCachedOptions(cacheKey: string) {
+    const cached = optionsCache.get(cacheKey)
+    if (!cached) return null
+
+    if (cached.expiresAt < Date.now()) {
+        optionsCache.delete(cacheKey)
+        return null
+    }
+
+    return cached.data
+}
+
+function writeCachedOptions(cacheKey: string, data: AsyncSelectOption[]) {
+    optionsCache.set(cacheKey, {
+        data,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+    })
+}
+
+async function fetchOptionsWithCache(cacheKey: string, signal: AbortSignal) {
+    const cached = readCachedOptions(cacheKey)
+    if (cached) return cached
+
+    const response = await fetch(cacheKey, { signal, cache: 'no-store' })
+    if (!response.ok) return []
+
+    const data = await response.json()
+    const parsed = Array.isArray(data) ? data : []
+    writeCachedOptions(cacheKey, parsed)
+    return parsed
 }
 
 export default function AsyncSelect({
@@ -58,8 +93,7 @@ export default function AsyncSelect({
         if (isOpen && query.length === 0 && options.length === 0) {
             const controller = new AbortController()
             setLoading(true)
-            fetch(fetchUrl, { signal: controller.signal })
-                .then(res => res.ok ? res.json() : [])
+            fetchOptionsWithCache(fetchUrl, controller.signal)
                 .then(data => {
                     if (Array.isArray(data)) {
                         setOptions(data)
@@ -87,16 +121,9 @@ export default function AsyncSelect({
             if (query.trim().length >= 2) {
                 setLoading(true)
                 try {
-                    const res = await fetch(`${fetchUrl}?q=${encodeURIComponent(query)}`, {
-                        signal: controller.signal,
-                    })
-                    if (res.ok) {
-                        const data = await res.json()
-                        setOptions(Array.isArray(data) ? data : [])
-                    } else {
-                        console.error('Failed to fetch options')
-                        setOptions([])
-                    }
+                    const cacheKey = `${fetchUrl}?q=${encodeURIComponent(query)}`
+                    const data = await fetchOptionsWithCache(cacheKey, controller.signal)
+                    setOptions(Array.isArray(data) ? data : [])
                 } catch (err) {
                     if (!controller.signal.aborted) {
                         console.error('Error fetching options:', err)
@@ -111,8 +138,7 @@ export default function AsyncSelect({
                 // If query cleared, fetch defaults again?
                 // The previous effect handles "on open", but if I type then backspace to empty...
                 setLoading(true)
-                fetch(fetchUrl, { signal: controller.signal })
-                    .then(res => res.ok ? res.json() : [])
+                fetchOptionsWithCache(fetchUrl, controller.signal)
                     .then(data => {
                         if (Array.isArray(data)) {
                             setOptions(data)
@@ -185,7 +211,7 @@ export default function AsyncSelect({
             >
                 <div className="flex min-w-0 items-center px-4 py-2 min-h-[42px]">
                     {/* Search Icon */}
-                    <Search size={16} className="text-gray-400 mr-2 flex-shrink-0" />
+                    <Search size={16} className="text-gray-400 mr-2 shrink-0" />
 
                     {/* Input Area */}
                     <div className="relative min-w-0 flex-1">
@@ -199,7 +225,7 @@ export default function AsyncSelect({
                         {isOpen ? (
                             <input
                                 type="text"
-                                className="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400 p-0"
+                                className="w-full bg-transparent border-none outline-hidden text-gray-900 dark:text-white placeholder-gray-400 p-0"
                                 placeholder={placeholder}
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
@@ -281,12 +307,12 @@ export default function AsyncSelect({
                                             )}
                                         </div>
                                         {option.tipo === 'prospecto' && (
-                                            <span className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                                            <span className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 py-0.5 rounded-sm border border-purple-200 dark:border-purple-800">
                                                 Lead
                                             </span>
                                         )}
                                         {option.tipo === 'cliente' && (
-                                            <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                            <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-1.5 py-0.5 rounded-sm border border-blue-200 dark:border-blue-800">
                                                 Cliente
                                             </span>
                                         )}

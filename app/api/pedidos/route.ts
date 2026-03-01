@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 import { roundMoney, sumMoney } from '@/lib/money'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,7 +116,7 @@ function parsePedidoItemsInput(value: unknown): {
   return { items }
 }
 
-function parseLimit(value: string | null, fallback = 20, max = 100) {
+function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
@@ -140,12 +141,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('statusEntrega')
+    const clienteIdFilter = searchParams.get('clienteId')?.trim()
     const paginated = searchParams.get('paginated') === 'true'
 
-    const where: {
-      userId: string
-      statusEntrega?: { in: string[] }
-    } = { userId }
+    const where: Prisma.PedidoWhereInput = { userId }
+
+    if (clienteIdFilter) {
+      where.oportunidade = {
+        is: {
+          userId,
+          clienteId: clienteIdFilter,
+        },
+      }
+    }
 
     if (statusFilter) {
       const statuses = Array.from(
@@ -213,7 +221,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const pedidos = await prisma.pedido.findMany(baseQuery)
+    const limit = parseLimit(searchParams.get('limit'))
+    const pedidos = await prisma.pedido.findMany({
+      ...baseQuery,
+      take: limit,
+    })
 
     return NextResponse.json(pedidos)
   } catch (error) {

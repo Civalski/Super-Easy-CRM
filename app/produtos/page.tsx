@@ -625,7 +625,7 @@ export default function ProdutosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 p-2.5 shadow-lg shadow-cyan-500/25">
+        <div className="rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 p-2.5 shadow-lg shadow-cyan-500/25">
           <Box className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1">
@@ -643,7 +643,7 @@ export default function ProdutosPage() {
             setForm(buildDefaultForm())
             setShowForm(true)
           }}
-          className="inline-flex items-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+          className="inline-flex items-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
         >
           <Plus className="h-4 w-4" />
           Novo produto/servico
@@ -718,7 +718,7 @@ export default function ProdutosPage() {
                   type="checkbox"
                   checked={form.ativo}
                   onChange={(e) => setForm((prev) => ({ ...prev, ativo: e.target.checked }))}
-                  className="h-4 w-4 rounded border-gray-300 text-cyan-600"
+                  className="h-4 w-4 rounded-sm border-gray-300 text-cyan-600"
                 />
                 Ativo
               </label>
@@ -847,7 +847,7 @@ export default function ProdutosPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, controlaEstoque: e.target.checked }))
                     }
-                    className="h-4 w-4 rounded border-gray-300 text-cyan-600"
+                    className="h-4 w-4 rounded-sm border-gray-300 text-cyan-600"
                   />
                   Controla estoque
                 </label>
@@ -905,7 +905,7 @@ export default function ProdutosPage() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex min-w-36 items-center justify-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
+              className="inline-flex min-w-36 items-center justify-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {editingId ? 'Salvar' : 'Cadastrar'}

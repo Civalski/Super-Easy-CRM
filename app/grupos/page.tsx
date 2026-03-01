@@ -342,7 +342,7 @@ export default function GruposPage() {
         <div className="space-y-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-500/25">
+                    <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-500/25">
                         <Layers className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -357,7 +357,7 @@ export default function GruposPage() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleOpenMessageConfig}
-                        className="inline-flex items-center px-3 py-2 border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+                        className="inline-flex items-center px-3 py-2 border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
                     >
                         Personalizar mensagem
                     </button>
@@ -396,7 +396,7 @@ export default function GruposPage() {
                                     setDraftWhatsAppMessages(next)
                                 }}
                                 rows={3}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                                 placeholder="Digite uma mensagem para usar no WhatsApp..."
                             />
                         </div>
@@ -411,7 +411,7 @@ export default function GruposPage() {
                         </button>
                         <button
                             onClick={handleSaveMessageConfig}
-                            className="px-3 py-2 text-sm font-medium rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+                            className="px-3 py-2 text-sm font-medium rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
                         >
                             Salvar mensagens
                         </button>
@@ -444,7 +444,7 @@ export default function GruposPage() {
             </div>
 
             {/* Content */}
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 shadow-xs rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                 {loading ? (
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
@@ -505,7 +505,7 @@ export default function GruposPage() {
                                             <div className="flex flex-wrap gap-2">
                                                 <button
                                                     onClick={() => handleViewDetails(item)}
-                                                    className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                                    className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-xs text-xs font-medium rounded-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                                                 >
                                                     <Eye className="w-3 h-3 mr-1.5" />
                                                     Ver mais
@@ -514,7 +514,7 @@ export default function GruposPage() {
                                                     <button
                                                         onClick={() => handleStartContact(item)}
                                                         disabled={updatingId === item.id}
-                                                        className="inline-flex items-center px-2.5 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-xs font-medium rounded text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+                                                        className="inline-flex items-center px-2.5 py-1.5 border border-purple-300 dark:border-purple-600 shadow-xs text-xs font-medium rounded-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
                                                     >
                                                         Iniciar Contato
                                                     </button>
@@ -529,7 +529,7 @@ export default function GruposPage() {
                                                         }}
                                                         value=""
                                                         disabled={updatingId === item.id}
-                                                        className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-1.5 pl-3 pr-8 rounded text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer disabled:opacity-50"
+                                                        className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-1.5 pl-3 pr-8 rounded-sm text-xs font-medium shadow-xs focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer disabled:opacity-50"
                                                     >
                                                         <option value="" disabled>Mover para...</option>
                                                         {getAvailableActions(item.status).map((action) => (
@@ -587,7 +587,7 @@ export default function GruposPage() {
 
             {/* Detail Modal */}
             {detailModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs">
                     <div className="crm-card w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-xl">
@@ -607,7 +607,7 @@ export default function GruposPage() {
                             <div className="p-6 space-y-6">
                                 {/* Avatar + Nome */}
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-14 h-14 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center shrink-0">
                                         <span className="text-xl font-semibold text-purple-600 dark:text-purple-300">
                                             {(detailModal.razaoSocial || detailModal.nome || '?').charAt(0).toUpperCase()}
                                         </span>
@@ -726,7 +726,7 @@ export default function GruposPage() {
                                             <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">CNAE Principal</p>
                                             <p className="text-sm text-gray-900 dark:text-white">
                                                 {detailModal.cnaePrincipal && (
-                                                    <span className="font-mono mr-2 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                                                    <span className="font-mono mr-2 px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
                                                         {detailModal.cnaePrincipal}
                                                     </span>
                                                 )}
@@ -823,7 +823,7 @@ export default function GruposPage() {
                                 {detailModal.cnaesSecundarios && (
                                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                                         <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">CNAEs Secundários</p>
-                                        <p className="text-sm text-gray-900 dark:text-white break-words">{detailModal.cnaesSecundarios}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white wrap-break-word">{detailModal.cnaesSecundarios}</p>
                                     </div>
                                 )}
 

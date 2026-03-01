@@ -116,38 +116,6 @@ export default function ProspectarPage() {
         }
     }, []);
 
-    const processarAgendamentosPendentes = useCallback(async () => {
-        try {
-            const res = await fetch('/api/prospectos/agendamentos/processar', {
-                method: 'POST',
-            });
-            if (!res.ok) return;
-
-            const data = await res.json();
-            if ((data.processados ?? 0) > 0) {
-                const isDark = document.documentElement.classList.contains('dark');
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: `${data.enviados ?? 0} lead(s) enviados automaticamente`,
-                    text: `${data.processados} agendamento(s) processado(s) hoje`,
-                    showConfirmButton: false,
-                    timer: 3500,
-                    timerProgressBar: true,
-                    background: isDark ? '#1f2937' : '#ffffff',
-                    color: isDark ? '#f3f4f6' : '#111827',
-                });
-            }
-        } catch {
-            // Falha silenciosa para nao travar carregamento da pagina
-        }
-    }, []);
-
-    useEffect(() => {
-        processarAgendamentosPendentes();
-    }, [processarAgendamentosPendentes]);
-
     useEffect(() => {
         if (viewMode === 'lista') {
             fetchProspectos();
@@ -1125,7 +1093,7 @@ export default function ProspectarPage() {
                 <button
                     onClick={() => setViewMode('lotes')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'lotes'
-                            ? 'bg-gray-700 text-sky-300 shadow-sm'
+                            ? 'bg-gray-700 text-sky-300 shadow-xs'
                             : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
                         }`}
                 >
@@ -1135,7 +1103,7 @@ export default function ProspectarPage() {
                 <button
                     onClick={() => setViewMode('lista')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'lista'
-                            ? 'bg-gray-700 text-sky-300 shadow-sm'
+                            ? 'bg-gray-700 text-sky-300 shadow-xs'
                             : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
                         }`}
                 >

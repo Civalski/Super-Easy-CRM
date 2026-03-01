@@ -14,7 +14,7 @@ function parsePositive(value: unknown, fallback = 0) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -23,7 +23,7 @@ export async function GET(
     }
 
     const pedido = await prisma.pedido.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       select: { id: true, totalBruto: true, totalDesconto: true, totalLiquido: true },
     })
 
@@ -32,7 +32,7 @@ export async function GET(
     }
 
     const itens = await prisma.pedidoItem.findMany({
-      where: { pedidoId: params.id, userId },
+      where: { pedidoId: (await params).id, userId },
       include: {
         produtoServico: {
           select: {
@@ -60,7 +60,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -92,7 +92,7 @@ export async function POST(
     }
 
     const pedido = await prisma.pedido.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       select: { id: true },
     })
     if (!pedido) {
@@ -119,7 +119,7 @@ export async function POST(
       const item = await tx.pedidoItem.create({
         data: {
           userId,
-          pedidoId: params.id,
+          pedidoId: (await params).id,
           produtoServicoId: produtoServicoId || null,
           descricao,
           quantidade,
@@ -129,7 +129,7 @@ export async function POST(
         },
       })
 
-      const totals = await recalculatePedidoTotals(tx, userId, params.id)
+      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
       return { item, totals }
     })
 
@@ -145,7 +145,7 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -165,7 +165,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.pedidoItem.findFirst({
-      where: { id: itemId, pedidoId: params.id, userId },
+      where: { id: itemId, pedidoId: (await params).id, userId },
     })
 
     if (!existing) {
@@ -200,7 +200,7 @@ export async function PATCH(
         },
       })
 
-      const totals = await recalculatePedidoTotals(tx, userId, params.id)
+      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
       return { item, totals }
     })
 
@@ -216,7 +216,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -232,12 +232,12 @@ export async function DELETE(
 
     const deleted = await prisma.$transaction(async (tx) => {
       const result = await tx.pedidoItem.deleteMany({
-        where: { id: itemId, userId, pedidoId: params.id },
+        where: { id: itemId, userId, pedidoId: (await params).id },
       })
 
       if (result.count === 0) return null
 
-      const totals = await recalculatePedidoTotals(tx, userId, params.id)
+      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
       return { deleted: result.count, totals }
     })
 
@@ -254,3 +254,4 @@ export async function DELETE(
     )
   }
 }
+

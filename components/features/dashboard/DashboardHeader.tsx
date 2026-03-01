@@ -77,7 +77,7 @@ export function DashboardHeader({
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-slate-600 to-indigo-500 p-3 shadow-lg shadow-slate-900/45 ring-1 ring-white/10">
+                <div className="rounded-2xl bg-linear-to-br from-slate-600 to-indigo-500 p-3 shadow-lg shadow-slate-900/45 ring-1 ring-white/10">
                     <LayoutDashboard className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -205,7 +205,7 @@ export function DashboardHeader({
                 <button
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="flex items-center justify-center rounded-xl border border-slate-300/70 bg-slate-50/85 p-3 text-gray-500 shadow-sm transition-all hover:bg-slate-200/65 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/65 dark:bg-slate-900/60 dark:hover:border-slate-500 dark:hover:bg-slate-800/75 dark:hover:text-slate-100"
+                    className="flex items-center justify-center rounded-xl border border-slate-300/70 bg-slate-50/85 p-3 text-gray-500 shadow-xs transition-all hover:bg-slate-200/65 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/65 dark:bg-slate-900/60 dark:hover:border-slate-500 dark:hover:bg-slate-800/75 dark:hover:text-slate-100"
                     title="Atualizar dados"
                 >
                     <RefreshCw className={isRefreshing ? 'animate-spin' : ''} size={20} />

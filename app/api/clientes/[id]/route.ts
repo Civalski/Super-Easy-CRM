@@ -10,6 +10,39 @@ type CampoPersonalizado = {
   value: string
 }
 
+type HistoricoComercial = {
+  resumo: {
+    orcamentosEmAberto: number
+    pedidosEmAberto: number
+    comprasConcluidas: number
+    cancelamentos: number
+  }
+  oportunidadesRecentes: Array<{
+    id: string
+    titulo: string
+    status: string
+    valor: number | null
+    motivoPerda: string | null
+    createdAt: Date
+    updatedAt: Date
+    pedidoId: string | null
+  }>
+  pedidosRecentes: Array<{
+    id: string
+    numero: number
+    statusEntrega: string
+    pagamentoConfirmado: boolean
+    totalLiquido: number
+    createdAt: Date
+    updatedAt: Date
+    oportunidade: {
+      id: string
+      titulo: string
+      status: string
+    }
+  }>
+}
+
 const normalizeOptionalString = (
   value: unknown,
   options: { maxLength?: number; upperCase?: boolean } = {}
@@ -44,7 +77,7 @@ const sanitizeCamposPersonalizados = (value: unknown): CampoPersonalizado[] | nu
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -52,8 +85,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const resolvedParams = await params
+
     const cliente = await prisma.cliente.findFirst({
-      where: { id: params.id, userId },
+      where: { id: resolvedParams.id, userId },
       include: {
         _count: {
           select: {
@@ -66,11 +101,131 @@ export async function GET(
     })
 
     if (cliente) {
-      return NextResponse.json(cliente)
+      const [orcamentosEmAberto, pedidosEmAberto, comprasConcluidas, cancelamentos, oportunidadesRecentes, pedidosRecentes] =
+        await Promise.all([
+          prisma.oportunidade.count({
+            where: {
+              userId,
+              clienteId: cliente.id,
+              status: 'orcamento',
+            },
+          }),
+          prisma.pedido.count({
+            where: {
+              userId,
+              oportunidade: {
+                is: {
+                  userId,
+                  clienteId: cliente.id,
+                },
+              },
+              OR: [
+                { statusEntrega: { not: 'entregue' } },
+                { pagamentoConfirmado: false },
+              ],
+            },
+          }),
+          prisma.pedido.count({
+            where: {
+              userId,
+              oportunidade: {
+                is: {
+                  userId,
+                  clienteId: cliente.id,
+                },
+              },
+              statusEntrega: 'entregue',
+              pagamentoConfirmado: true,
+            },
+          }),
+          prisma.oportunidade.count({
+            where: {
+              userId,
+              clienteId: cliente.id,
+              status: 'perdida',
+            },
+          }),
+          prisma.oportunidade.findMany({
+            where: {
+              userId,
+              clienteId: cliente.id,
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 8,
+            select: {
+              id: true,
+              titulo: true,
+              status: true,
+              valor: true,
+              motivoPerda: true,
+              createdAt: true,
+              updatedAt: true,
+              pedido: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          }),
+          prisma.pedido.findMany({
+            where: {
+              userId,
+              oportunidade: {
+                is: {
+                  userId,
+                  clienteId: cliente.id,
+                },
+              },
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 8,
+            select: {
+              id: true,
+              numero: true,
+              statusEntrega: true,
+              pagamentoConfirmado: true,
+              totalLiquido: true,
+              createdAt: true,
+              updatedAt: true,
+              oportunidade: {
+                select: {
+                  id: true,
+                  titulo: true,
+                  status: true,
+                },
+              },
+            },
+          }),
+        ])
+
+      const historicoComercial: HistoricoComercial = {
+        resumo: {
+          orcamentosEmAberto,
+          pedidosEmAberto,
+          comprasConcluidas,
+          cancelamentos,
+        },
+        oportunidadesRecentes: oportunidadesRecentes.map((oportunidade) => ({
+          id: oportunidade.id,
+          titulo: oportunidade.titulo,
+          status: oportunidade.status,
+          valor: oportunidade.valor,
+          motivoPerda: oportunidade.motivoPerda,
+          createdAt: oportunidade.createdAt,
+          updatedAt: oportunidade.updatedAt,
+          pedidoId: oportunidade.pedido?.id ?? null,
+        })),
+        pedidosRecentes,
+      }
+
+      return NextResponse.json({
+        ...cliente,
+        historicoComercial,
+      })
     }
 
     const prospecto = await prisma.prospecto.findFirst({
-      where: { id: params.id, userId },
+      where: { id: resolvedParams.id, userId },
     })
 
     if (prospecto) {
@@ -100,6 +255,16 @@ export async function GET(
           oportunidades: 0,
           contatos: 0,
         },
+        historicoComercial: {
+          resumo: {
+            orcamentosEmAberto: 0,
+            pedidosEmAberto: 0,
+            comprasConcluidas: 0,
+            cancelamentos: 0,
+          },
+          oportunidadesRecentes: [],
+          pedidosRecentes: [],
+        },
         prospecto,
         isVirtual: true,
       }
@@ -122,7 +287,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -149,7 +314,7 @@ export async function PATCH(
     } = body
 
     const clienteExistente = await prisma.cliente.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (!clienteExistente) {
@@ -175,7 +340,7 @@ export async function PATCH(
       const emailEmUso = await prisma.cliente.findFirst({
         where: {
           email: emailNormalizado,
-          id: { not: params.id },
+          id: { not: (await params).id },
           userId,
         },
       })
@@ -208,7 +373,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.cliente.updateMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       data: updateData,
     })
 
@@ -220,7 +385,7 @@ export async function PATCH(
     }
 
     const clienteAtualizado = await prisma.cliente.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       include: {
         _count: {
           select: {
@@ -256,7 +421,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -265,7 +430,7 @@ export async function DELETE(
     }
 
     const result = await prisma.cliente.deleteMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (result.count === 0) {
@@ -291,3 +456,4 @@ export async function DELETE(
     )
   }
 }
+

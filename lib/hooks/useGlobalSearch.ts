@@ -36,6 +36,27 @@ export interface BuscaResultado {
 }
 
 const MAX_RESULTADOS_GLOBAIS = 5;
+const SEARCH_CACHE_TTL_MS = 60 * 1000;
+const searchCache = new Map<string, { data: BuscaResultado; expiresAt: number }>();
+
+function readSearchCache(key: string) {
+    const cached = searchCache.get(key);
+    if (!cached) return null;
+
+    if (cached.expiresAt < Date.now()) {
+        searchCache.delete(key);
+        return null;
+    }
+
+    return cached.data;
+}
+
+function writeSearchCache(key: string, data: BuscaResultado) {
+    searchCache.set(key, {
+        data,
+        expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
+    });
+}
 
 function limitarResultadosGlobais(resultados: BuscaResultado): BuscaResultado {
     const clientes = [...resultados.clientes];
@@ -98,17 +119,29 @@ export function useGlobalSearch() {
         const controller = new AbortController();
 
         const buscar = async () => {
-            if (busca.trim().length < 2) {
+            const termo = busca.trim();
+            if (termo.length < 2) {
                 setResultados(null);
                 setMostrarResultados(false);
                 return;
             }
 
+            const cacheKey = termo.toLowerCase();
+            const cached = readSearchCache(cacheKey);
+            if (cached) {
+                setResultados(limitarResultadosGlobais(cached));
+                setMostrarResultados(true);
+                return;
+            }
+
             setCarregando(true);
             try {
-                const response = await fetch(`/api/busca?q=${encodeURIComponent(busca)}`, {
+                const response = await fetch(`/api/busca?q=${encodeURIComponent(termo)}`, {
                     signal: controller.signal,
                 });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 const data = await response.json();
 
                 // Garantir que clientes e oportunidades sejam sempre arrays
@@ -118,6 +151,7 @@ export function useGlobalSearch() {
                     pedidos: Array.isArray(data.pedidos) ? data.pedidos : [],
                 };
 
+                writeSearchCache(cacheKey, resultadosValidados);
                 setResultados(limitarResultadosGlobais(resultadosValidados));
                 setMostrarResultados(true);
             } catch (error) {

@@ -177,7 +177,7 @@ export default function MetaContatoDiaria() {
     if (loading) {
         return (
             <div className="crm-card p-6 animate-pulse">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4" />
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-sm w-48 mb-4" />
                 <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full w-full" />
             </div>
         )
@@ -201,7 +201,7 @@ export default function MetaContatoDiaria() {
     return (
         <div className="space-y-4">
             {/* Today's Progress Card */}
-            <div className={`rounded-xl border p-5 shadow-sm transition-all ${metaBatida
+            <div className={`rounded-xl border p-5 shadow-xs transition-all ${metaBatida
                 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                 : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                 }`}>
@@ -237,7 +237,7 @@ export default function MetaContatoDiaria() {
                                     min="1"
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
-                                    className="w-20 px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-center"
+                                    className="w-20 px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 text-center"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleSaveMeta()
@@ -314,7 +314,7 @@ export default function MetaContatoDiaria() {
 
             {/* Debt Warning */}
             {hasDebt && (
-                <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 shadow-sm">
+                <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 shadow-xs">
                     <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2.5">
                             <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">

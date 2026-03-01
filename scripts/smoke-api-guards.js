@@ -38,6 +38,14 @@ function includesAll(content, snippets) {
   return snippets.every((snippet) => content.includes(snippet))
 }
 
+function hasScopedIdWhere(content) {
+  return (
+    content.includes('where: { id: params.id, userId }') ||
+    content.includes('where: { id: (await params).id, userId }') ||
+    content.includes('where: { id, userId }')
+  )
+}
+
 const routeSeedClear = readFile('app/api/seed/clear/route.ts')
 const routeSeed = readFile('app/api/seed/route.ts')
 const routePedidosId = readFile('app/api/pedidos/[id]/route.ts')
@@ -78,13 +86,10 @@ const tests = [
     routePedidosId.includes('prisma.$transaction')
   ),
   check('DELETE de pedidos preserva escopo por userId', () =>
-    routePedidosId.includes('where: { id: params.id, userId }')
+    hasScopedIdWhere(routePedidosId)
   ),
   check('PATCH de oportunidade preserva escopo por userId', () =>
-    includesAll(routeOportunidadesId, [
-      'updateMany({',
-      'where: { id: params.id, userId }',
-    ])
+    routeOportunidadesId.includes('updateMany({') && hasScopedIdWhere(routeOportunidadesId)
   ),
   check('GET de prospectos nao possui delete automatico', () =>
     !routeProspectos.includes('deleteMany({')
@@ -93,10 +98,7 @@ const tests = [
     fs.existsSync(path.join(rootDir, 'app/api/users/me/data/route.ts'))
   ),
   check('DELETE de oportunidade preserva escopo por userId', () =>
-    includesAll(routeOportunidadesId, [
-      'deleteMany({',
-      'where: { id: params.id, userId }',
-    ])
+    routeOportunidadesId.includes('deleteMany({') && hasScopedIdWhere(routeOportunidadesId)
   ),
   check('Artefatos locais nao estao rastreados (pyc/venv/env/acidental)', () => {
     const trackedArtifacts = [

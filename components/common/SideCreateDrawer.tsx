@@ -16,7 +16,7 @@ export default function SideCreateDrawer({
   onClose,
   children,
   maxWidthClass = 'max-w-4xl',
-  zIndexClass = 'z-[9999]',
+  zIndexClass = 'z-9999',
 }: SideCreateDrawerProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -44,7 +44,7 @@ export default function SideCreateDrawer({
       />
 
       <aside
-        className={`absolute inset-y-0 right-0 h-dvh w-full ${maxWidthClass} min-w-0 overflow-hidden border-l border-purple-500/25 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl shadow-purple-900/30`}
+        className={`absolute inset-y-0 right-0 h-dvh w-full ${maxWidthClass} min-w-0 overflow-hidden border-l border-purple-500/25 bg-linear-to-b from-slate-900 to-slate-950 shadow-2xl shadow-purple-900/30`}
       >
         {children}
       </aside>

@@ -85,7 +85,7 @@ export function ValorPipelineChart({
             style={{ background: donutBackground }}
             aria-label="Grafico de pizza da composicao de valor"
           />
-          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border border-[color:var(--shell-border)] bg-[var(--background)] text-center">
+          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border border-(--shell-border) bg-(--background) text-center">
             <span className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Total</span>
             <span className="px-2 text-sm font-bold text-gray-900 dark:text-gray-100">{formatCurrency(totalComposicao)}</span>
           </div>

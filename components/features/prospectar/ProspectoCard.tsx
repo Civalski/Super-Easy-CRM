@@ -52,7 +52,7 @@ export function ProspectoCard({
                 {/* Checkbox de seleção */}
                 <button
                     onClick={() => onToggleSelect(prospecto.id)}
-                    className="mt-1 flex-shrink-0 focus:outline-none"
+                    className="mt-1 shrink-0 focus:outline-hidden"
                 >
                     {isSelected ? (
                         <CheckSquare className="w-5 h-5 text-purple-500" />
@@ -70,7 +70,7 @@ export function ProspectoCard({
 
                         {/* Badge do Lote */}
                         {prospecto.lote && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
+                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-sm text-xs font-semibold">
                                 Lote {prospecto.lote}
                             </span>
                         )}
@@ -81,7 +81,7 @@ export function ProspectoCard({
                                 <button
                                     key={star}
                                     onClick={() => onPrioridadeChange(prospecto.id, star === prospecto.prioridade ? 0 : star)}
-                                    className="focus:outline-none"
+                                    className="focus:outline-hidden"
                                 >
                                     <Star
                                         className={`w-4 h-4 ${star <= prospecto.prioridade

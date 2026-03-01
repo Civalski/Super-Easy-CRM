@@ -75,7 +75,7 @@ export function TarefasStatusChart({ tarefasPorStatus, oportunidadesCount }: Tar
               <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">{item.value}</p>
               <div className="mt-3 h-2 rounded-full bg-gray-200 dark:bg-slate-700/60">
                 <div
-                  className={`h-2 rounded-full bg-gradient-to-r ${item.className}`}
+                  className={`h-2 rounded-full bg-linear-to-r ${item.className}`}
                   style={{ width: `${percent}%` }}
                 />
               </div>

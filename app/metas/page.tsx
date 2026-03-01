@@ -594,7 +594,7 @@ export default function MetasPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/20">
+          <div className="p-2.5 bg-linear-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/20">
             <Target className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -608,7 +608,7 @@ export default function MetasPage() {
           {!metaLoading && !metaData?.configurada && (
             <button
               onClick={handleCreateMetaDiaria}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 shadow-sm text-sm font-semibold text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 shadow-xs text-sm font-semibold text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
             >
               <Phone size={16} />
               Criar meta diária
@@ -616,7 +616,7 @@ export default function MetasPage() {
           )}
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null) }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
           >
             <Plus size={16} />
             Nova Meta
@@ -671,7 +671,7 @@ export default function MetasPage() {
           <p className="text-3xl font-bold text-gray-900 dark:text-white">{overallAvg}%</p>
           <div className="mt-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
             <div
-              className="h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all"
+              className="h-1.5 rounded-full bg-linear-to-r from-purple-500 to-indigo-500 transition-all"
               style={{ width: `${Math.min(overallAvg, 100)}%` }}
             />
           </div>
@@ -708,7 +708,7 @@ export default function MetasPage() {
                 type="text"
                 value={form.title}
                 onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Ex: Meta personalizada"
               />
             </label>
@@ -720,7 +720,7 @@ export default function MetasPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, metricType: event.target.value as GoalMetricType }))
                 }
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
                 {metricOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -735,7 +735,7 @@ export default function MetasPage() {
               <select
                 value={form.periodType}
                 onChange={(event) => handlePeriodTypeChange(event.target.value as GoalPeriodType)}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
                 {periodOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -753,7 +753,7 @@ export default function MetasPage() {
                 step={form.metricType === 'FATURAMENTO' ? '0.01' : '1'}
                 value={form.target}
                 onChange={(event) => setForm((prev) => ({ ...prev, target: event.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder={form.metricType === 'FATURAMENTO' ? 'Ex: 50000' : 'Ex: 10'}
                 required
               />
@@ -771,7 +771,7 @@ export default function MetasPage() {
                         type="button"
                         onClick={() => toggleWeekDay(day.value)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${active
-                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
                           : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600'
                           }`}
                       >
@@ -793,7 +793,7 @@ export default function MetasPage() {
                   type="button"
                   onClick={toggleDateRange}
                   aria-pressed={form.useDateRange}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${form.useDateRange ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-emerald-500 ${form.useDateRange ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.useDateRange ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -808,7 +808,7 @@ export default function MetasPage() {
                     type="date"
                     value={form.startDate}
                     onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     required
                   />
                 </label>
@@ -818,7 +818,7 @@ export default function MetasPage() {
                     type="date"
                     value={form.endDate}
                     onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     required
                   />
                 </label>
@@ -876,7 +876,7 @@ export default function MetasPage() {
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
             >
               <Plus size={15} />
               Criar primeira meta
@@ -935,7 +935,7 @@ export default function MetasPage() {
               return (
                 <div
                   key={goal.id}
-                  className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex-1 min-w-0">
@@ -1002,7 +1002,7 @@ export default function MetasPage() {
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                       <div
-                        className={`h-2 rounded-full bg-gradient-to-r transition-all ${getProgressColor(progressValue, isCompleted)}`}
+                        className={`h-2 rounded-full bg-linear-to-r transition-all ${getProgressColor(progressValue, isCompleted)}`}
                         style={{ width: `${Math.min(progressValue, 100)}%` }}
                       />
                     </div>
@@ -1067,7 +1067,7 @@ function MetaDiariaCard({
   const hasDebt = debito.length > 0
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-sm">
+    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-xl ${metaBatida ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-purple-50 dark:bg-purple-500/10'}`}>
@@ -1103,7 +1103,7 @@ function MetaDiariaCard({
                 min="1"
                 value={editValue}
                 onChange={(e) => onEditValueChange(e.target.value)}
-                className="w-16 px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-center"
+                className="w-16 px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 text-center"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') onSave()
@@ -1155,7 +1155,7 @@ function MetaDiariaCard({
         </div>
         <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
           <div
-            className={`h-2 rounded-full transition-all duration-500 ${metaBatida ? 'bg-gradient-to-r from-emerald-500 to-green-400' : progressoHoje >= 60 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-rose-400'}`}
+            className={`h-2 rounded-full transition-all duration-500 ${metaBatida ? 'bg-linear-to-r from-emerald-500 to-green-400' : progressoHoje >= 60 ? 'bg-linear-to-r from-amber-500 to-yellow-400' : 'bg-linear-to-r from-red-500 to-rose-400'}`}
             style={{ width: `${Math.min(100, progressoHoje)}%` }}
           />
         </div>

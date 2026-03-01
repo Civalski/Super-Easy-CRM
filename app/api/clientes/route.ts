@@ -41,7 +41,7 @@ const sanitizeCamposPersonalizados = (value: unknown): CampoPersonalizado[] | nu
   return campos.length > 0 ? campos : null
 }
 
-const parseLimit = (value: string | null, fallback = 200, max = 500) => {
+const parseLimit = (value: string | null, fallback = 20, max = 50) => {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     if (paginated) {
       const page = parsePage(searchParams.get('page'))
-      const limit = parseLimit(searchParams.get('limit'), 25, 100)
+      const limit = parseLimit(searchParams.get('limit'), 20, 50)
       const skip = (page - 1) * limit
 
       const [clientes, total] = await Promise.all([
@@ -129,11 +129,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const limit = parseLimit(searchParams.get('limit'))
     const clientes = await prisma.cliente.findMany({
       where: { userId },
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
       include: {
         _count: {
           select: {

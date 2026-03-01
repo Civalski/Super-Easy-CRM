@@ -9,7 +9,7 @@ import { Settings } from 'lucide-react'
 export function ConfiguracoesHeader() {
     return (
         <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-gradient-to-br from-gray-600 to-slate-700 rounded-xl shadow-lg shadow-gray-500/25">
+            <div className="p-2.5 bg-linear-to-br from-gray-600 to-slate-700 rounded-xl shadow-lg shadow-gray-500/25">
                 <Settings className="w-6 h-6 text-white" />
             </div>
             <div>

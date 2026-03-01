@@ -104,7 +104,7 @@ export function OportunidadesChart({ data, totalOportunidades }: OportunidadesCh
             </div>
             <div className="h-2.5 w-full rounded-full bg-gray-200 dark:bg-slate-700/50">
               <div
-                className={`h-2.5 rounded-full bg-gradient-to-r ${item.barClass} transition-all duration-500`}
+                className={`h-2.5 rounded-full bg-linear-to-r ${item.barClass} transition-all duration-500`}
                 style={{ width: `${item.percent}%` }}
               />
             </div>

@@ -563,7 +563,7 @@ export default function FinanceiroPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-purple-700 to-fuchsia-700 p-2.5 shadow-lg shadow-purple-900/35">
+          <div className="rounded-xl bg-linear-to-br from-purple-700 to-fuchsia-700 p-2.5 shadow-lg shadow-purple-900/35">
             <Wallet className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -578,7 +578,7 @@ export default function FinanceiroPage() {
           type="button"
           onClick={() => setShowCreateModal(true)}
           disabled={saving}
-          className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
+          className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova Conta
@@ -1117,14 +1117,14 @@ export default function FinanceiroPage() {
       {isDomReady &&
         showCreateModal &&
         createPortal(
-        <div className="fixed left-0 top-0 z-[9999] h-dvh w-dvw">
+        <div className="fixed left-0 top-0 z-9999 h-dvh w-dvw">
           <div
             aria-hidden="true"
             onClick={() => setShowCreateModal(false)}
             className="absolute inset-0 bg-slate-950/60"
           />
 
-          <aside className="absolute inset-y-0 right-0 h-dvh w-full max-w-2xl overflow-hidden border-l border-purple-500/25 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl shadow-purple-900/30">
+          <aside className="absolute inset-y-0 right-0 h-dvh w-full max-w-2xl overflow-hidden border-l border-purple-500/25 bg-linear-to-b from-slate-900 to-slate-950 shadow-2xl shadow-purple-900/30">
             <div className="relative shrink-0 border-b border-white/10 px-6 py-5">
               <div className="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-purple-600/20 blur-3xl" />
               <div className="absolute -right-10 top-2 h-28 w-28 rounded-full bg-fuchsia-500/20 blur-2xl" />
@@ -1164,7 +1164,7 @@ export default function FinanceiroPage() {
                             tipo: event.target.value as 'receber' | 'pagar',
                           }))
                         }
-                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                       >
                         <option value="receber">Conta a receber</option>
                         <option value="pagar">Conta a pagar</option>
@@ -1180,7 +1180,7 @@ export default function FinanceiroPage() {
                           setCreateForm((prev) => ({ ...prev, descricao: event.target.value }))
                         }
                         placeholder="Ex: Fornecedor, aluguel, contrato"
-                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                       />
                     </div>
                   </div>
@@ -1196,7 +1196,7 @@ export default function FinanceiroPage() {
                         }
                         placeholder="0,00"
                         required
-                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -1207,7 +1207,7 @@ export default function FinanceiroPage() {
                         onChange={(event) =>
                           setCreateForm((prev) => ({ ...prev, dataVencimento: event.target.value }))
                         }
-                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25 dark:[color-scheme:dark]"
+                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25 dark:scheme-dark"
                       />
                     </div>
                   </div>
@@ -1224,7 +1224,7 @@ export default function FinanceiroPage() {
                             recorrenteMensal: event.target.checked ? false : prev.recorrenteMensal,
                           }))
                         }
-                        className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-purple-500"
+                        className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-purple-500"
                       />
                       Criar como parcelado
                     </label>
@@ -1240,7 +1240,7 @@ export default function FinanceiroPage() {
                             parcelado: event.target.checked ? false : prev.parcelado,
                           }))
                         }
-                        className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-purple-500"
+                        className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-purple-500"
                       />
                       Valor mensal automatico
                     </label>
@@ -1253,7 +1253,7 @@ export default function FinanceiroPage() {
                           setCreateForm((prev) => ({ ...prev, autoDebito: event.target.checked }))
                         }
                         disabled={createForm.tipo !== 'pagar'}
-                        className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-purple-500"
+                        className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-purple-500"
                       />
                       Debitar automaticamente no vencimento (contas a pagar)
                     </label>
@@ -1282,7 +1282,7 @@ export default function FinanceiroPage() {
                             onChange={(event) =>
                               setCreateForm((prev) => ({ ...prev, parcelas: event.target.value }))
                             }
-                            className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                            className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -1295,7 +1295,7 @@ export default function FinanceiroPage() {
                             onChange={(event) =>
                               setCreateForm((prev) => ({ ...prev, intervaloDias: event.target.value }))
                             }
-                            className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                            className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                           />
                         </div>
                       </div>
@@ -1310,7 +1310,7 @@ export default function FinanceiroPage() {
                             setCreateForm((prev) => ({ ...prev, datasParcelas: event.target.value }))
                           }
                           placeholder={"2026-03-10\n2026-04-10\n2026-05-10"}
-                          className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                          className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
                         />
                       </div>
                     </div>
@@ -1328,7 +1328,7 @@ export default function FinanceiroPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 transition-colors hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
+                    className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 transition-colors hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
                   >
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Criar conta
@@ -1341,8 +1341,8 @@ export default function FinanceiroPage() {
       )}
 
       {showEditModal && editingConta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-indigo-500/25 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl shadow-indigo-900/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-indigo-500/25 bg-linear-to-b from-slate-900 to-slate-950 shadow-2xl shadow-indigo-900/30">
             <div className="border-b border-white/10 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1378,7 +1378,7 @@ export default function FinanceiroPage() {
                         tipo: event.target.value as 'receber' | 'pagar',
                       }))
                     }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
                   >
                     <option value="receber">Conta a receber</option>
                     <option value="pagar">Conta a pagar</option>
@@ -1394,7 +1394,7 @@ export default function FinanceiroPage() {
                       setEditForm((prev) => ({ ...prev, valorTotal: event.target.value }))
                     }
                     required
-                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
                   />
                 </div>
               </div>
@@ -1407,7 +1407,7 @@ export default function FinanceiroPage() {
                   onChange={(event) =>
                     setEditForm((prev) => ({ ...prev, descricao: event.target.value }))
                   }
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
                 />
               </div>
 
@@ -1420,7 +1420,7 @@ export default function FinanceiroPage() {
                     onChange={(event) =>
                       setEditForm((prev) => ({ ...prev, dataVencimento: event.target.value }))
                     }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25 dark:[color-scheme:dark]"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25 dark:scheme-dark"
                   />
                 </div>
 
@@ -1432,7 +1432,7 @@ export default function FinanceiroPage() {
                       setEditForm((prev) => ({ ...prev, autoDebito: event.target.checked }))
                     }
                     disabled={editForm.tipo !== 'pagar'}
-                    className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-indigo-500"
+                    className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-indigo-500"
                   />
                   Debito automatico
                 </label>
@@ -1450,7 +1450,7 @@ export default function FinanceiroPage() {
                           aplicarNoGrupoRecorrente: event.target.checked,
                         }))
                       }
-                      className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-indigo-500"
+                      className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-indigo-500"
                     />
                     Aplicar valor/descricao para todo o grupo recorrente em aberto
                   </label>
@@ -1461,7 +1461,7 @@ export default function FinanceiroPage() {
                       onChange={(event) =>
                         setEditForm((prev) => ({ ...prev, recorrenciaAtiva: event.target.checked }))
                       }
-                      className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-indigo-500"
+                      className="h-4 w-4 rounded-sm border-slate-500 bg-slate-800 text-indigo-500"
                     />
                     Manter recorrencia ativa
                   </label>

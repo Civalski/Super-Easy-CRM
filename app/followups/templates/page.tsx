@@ -233,7 +233,7 @@ export default function FollowupsTemplatesPage() {
           Voltar para orçamentos
         </Link>
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 p-2.5 shadow-lg shadow-indigo-500/20">
+          <div className="rounded-xl bg-linear-to-br from-indigo-500 to-blue-600 p-2.5 shadow-lg shadow-indigo-500/20">
             <MessageSquareText className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -304,7 +304,7 @@ export default function FollowupsTemplatesPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-sm px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60 md:col-span-1"
+            className="inline-flex items-center justify-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60 md:col-span-1"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           </button>
@@ -378,7 +378,7 @@ export default function FollowupsTemplatesPage() {
                         onChange={(event) =>
                           handleDraftChange(template.id, 'ativo', event.target.checked)
                         }
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="h-4 w-4 rounded-sm border-gray-300 text-blue-600"
                       />
                       Ativo
                     </label>

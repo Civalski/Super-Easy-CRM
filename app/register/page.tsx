@@ -272,7 +272,7 @@ export default function RegisterPage() {
           />
         )}
 
-        <section className="relative flex min-h-[40vh] flex-col justify-between overflow-hidden border-b border-slate-800/70 bg-gradient-to-br from-purple-950 via-slate-950 to-black px-6 py-8 sm:px-10 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
+        <section className="relative flex min-h-[40vh] flex-col justify-between overflow-hidden border-b border-slate-800/70 bg-linear-to-br from-purple-950 via-slate-950 to-black px-6 py-8 sm:px-10 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
           <ParticlesJsBackground />
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(167,139,250,0.22),transparent_52%)]" />
@@ -325,7 +325,7 @@ export default function RegisterPage() {
                   placeholder="Seu nome"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -342,7 +342,7 @@ export default function RegisterPage() {
                   placeholder="voce@empresa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -359,7 +359,7 @@ export default function RegisterPage() {
                   placeholder="seu.usuario"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -376,7 +376,7 @@ export default function RegisterPage() {
                   placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -393,7 +393,7 @@ export default function RegisterPage() {
                   placeholder="********"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -409,7 +409,7 @@ export default function RegisterPage() {
                   placeholder="Digite o codigo"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-11 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -470,7 +470,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-600 to-purple-600 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
               >
                 {loading ? 'Criando conta...' : 'Criar conta'}
                 {!loading && <ArrowRight size={16} />}

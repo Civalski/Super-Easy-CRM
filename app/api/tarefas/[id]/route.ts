@@ -18,7 +18,7 @@ function parseOptionalDate(value: unknown) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -27,7 +27,7 @@ export async function GET(
     }
 
     const tarefa = await prisma.tarefa.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (!tarefa) {
@@ -46,7 +46,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -206,7 +206,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.tarefa.updateMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       data: updateData,
     })
 
@@ -215,7 +215,7 @@ export async function PATCH(
     }
 
     const tarefaAtualizada = await prisma.tarefa.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     return NextResponse.json(tarefaAtualizada)
@@ -240,7 +240,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -249,7 +249,7 @@ export async function DELETE(
     }
 
     const result = await prisma.tarefa.deleteMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (result.count === 0) {
@@ -269,3 +269,4 @@ export async function DELETE(
     )
   }
 }
+

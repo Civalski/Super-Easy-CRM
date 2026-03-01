@@ -99,7 +99,7 @@ async function normalizeLegacyOportunidade(userId: string, id: string) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -108,7 +108,7 @@ export async function GET(
     }
 
     const oportunidade = await prisma.oportunidade.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       include: {
         cliente: {
           select: {
@@ -142,7 +142,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -150,7 +150,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await normalizeLegacyOportunidade(userId, params.id)
+    await normalizeLegacyOportunidade(userId, (await params).id)
 
     const rawBody = await request.json().catch(() => null)
     if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
@@ -180,7 +180,7 @@ export async function PATCH(
     } = body
 
     const oportunidadeAtual = await prisma.oportunidade.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       select: {
         status: true,
         formaPagamento: true,
@@ -485,7 +485,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.oportunidade.updateMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       data: updateData,
     })
 
@@ -506,7 +506,7 @@ export async function PATCH(
     if (novoStatus === 'fechada' && eraAberta) {
       // Buscar a oportunidade atualizada com clienteId
       const oportunidadeComCliente = await prisma.oportunidade.findFirst({
-        where: { id: params.id, userId },
+        where: { id: (await params).id, userId },
         select: { clienteId: true },
       })
 
@@ -536,7 +536,7 @@ export async function PATCH(
         event: 'oportunidade.status_changed',
         userId,
         entity: 'oportunidade',
-        entityId: params.id,
+        entityId: (await params).id,
         from: normalizedCurrentStatus,
         to: updateData.status,
         metadata: {
@@ -547,7 +547,7 @@ export async function PATCH(
     }
 
     const oportunidadeAtualizada = await prisma.oportunidade.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       include: {
         cliente: {
           select: {
@@ -589,7 +589,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromRequest(request)
@@ -598,7 +598,7 @@ export async function DELETE(
     }
 
     const result = await prisma.oportunidade.deleteMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (result.count === 0) {
@@ -624,5 +624,6 @@ export async function DELETE(
     )
   }
 }
+
 
 

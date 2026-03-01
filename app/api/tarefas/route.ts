@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_TAREFA_STATUS = new Set(['pendente', 'em_andamento', 'concluida'])
 const ALLOWED_TAREFA_PRIORIDADE = new Set(['baixa', 'media', 'alta'])
 
-function parseLimit(value: string | null, fallback = 18, max = 100) {
+function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
@@ -128,11 +128,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const limit = parseLimit(searchParams.get('limit'))
     const tarefas = await prisma.tarefa.findMany({
       where,
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
     })
 
     return NextResponse.json(tarefas)

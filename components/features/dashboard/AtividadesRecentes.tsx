@@ -93,8 +93,8 @@ export function AtividadesRecentes({ refreshTrigger, onRefreshRequest }: Ativida
               <div key={item} className="flex gap-4 animate-pulse">
                 <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-sm w-3/4" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-sm w-1/2" />
                 </div>
               </div>
             ))}
@@ -116,7 +116,7 @@ export function AtividadesRecentes({ refreshTrigger, onRefreshRequest }: Ativida
                     className="w-full flex gap-4 text-left p-2 -mx-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group"
                     onClick={() => setSelectedActivity(activity)}
                   >
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center border border-gray-100 dark:border-gray-600 group-hover:border-gray-200 dark:group-hover:border-gray-500 transition-colors">
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center border border-gray-100 dark:border-gray-600 group-hover:border-gray-200 dark:group-hover:border-gray-500 transition-colors">
                       {getIcon(activity.type)}
                     </div>
                     <div className="flex-1 min-w-0">

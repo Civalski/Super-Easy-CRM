@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Swal from 'sweetalert2'
 import { AsyncSelect, Button, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
@@ -178,6 +179,20 @@ function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico 
 }
 
 export default function PedidosPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
+  const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
+  const statusEntregaFilter = searchParams.get('statusEntrega')?.trim() || ''
+  const hasClienteFilter = clienteIdFilter.length > 0
+  const hasStatusFilter = statusEntregaFilter.length > 0
+  const queryFilter = [
+    hasClienteFilter ? `clienteId=${encodeURIComponent(clienteIdFilter)}` : null,
+    hasStatusFilter ? `statusEntrega=${encodeURIComponent(statusEntregaFilter)}` : null,
+  ]
+    .filter(Boolean)
+    .join('&')
+
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<PaginationMeta>({
@@ -201,7 +216,8 @@ export default function PedidosPage() {
   const fetchPedidos = useCallback(async (targetPage: number) => {
     try {
       setLoading(true)
-      const res = await fetch(`/api/pedidos?paginated=true&page=${targetPage}&limit=${PEDIDOS_PAGE_SIZE}`)
+      const query = queryFilter ? `&${queryFilter}` : ''
+      const res = await fetch(`/api/pedidos?paginated=true&page=${targetPage}&limit=${PEDIDOS_PAGE_SIZE}${query}`)
       const payload = await res.json().catch(() => null)
       if (!res.ok) throw new Error(payload?.error || 'Erro ao carregar pedidos')
 
@@ -226,11 +242,15 @@ export default function PedidosPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [queryFilter])
 
   useEffect(() => {
     fetchPedidos(page)
   }, [fetchPedidos, page])
+
+  useEffect(() => {
+    setPage(1)
+  }, [queryFilter])
 
   const stats = useMemo(() => {
     const total = pedidos.length
@@ -477,11 +497,23 @@ export default function PedidosPage() {
     [activeItemsPedidoId, pedidos]
   )
 
+  const clearListFilters = useCallback(() => {
+    if (!searchParams.get('clienteId') && !searchParams.get('clienteNome') && !searchParams.get('statusEntrega')) {
+      return
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('clienteId')
+    params.delete('clienteNome')
+    params.delete('statusEntrega')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
+  }, [router, searchParams])
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 p-2.5 shadow-lg shadow-blue-500/25">
+          <div className="rounded-xl bg-linear-to-br from-blue-500 to-cyan-600 p-2.5 shadow-lg shadow-blue-500/25">
             <ClipboardList className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -494,6 +526,24 @@ export default function PedidosPage() {
           <Link href="/oportunidades"><Button variant="outline">Ir para Orçamentos</Button></Link>
         </div>
       </div>
+
+      {(hasClienteFilter || hasStatusFilter) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {hasClienteFilter && (
+            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+              Cliente: {clienteNomeFilter}
+            </span>
+          )}
+          {hasStatusFilter && (
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+              Status entrega: {statusEntregaFilter}
+            </span>
+          )}
+          <Button size="sm" variant="outline" onClick={clearListFilters}>
+            Limpar filtro
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<ClipboardList size={16} />} title="Total de Pedidos" value={String(stats.total)} />
@@ -522,7 +572,7 @@ export default function PedidosPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <select value={pedido.statusEntrega} onChange={(e) => handlePedidoField(pedido.id, 'statusEntrega', e.target.value)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800">{Object.entries(STATUS_ENTREGA_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
               <input value={pedido.formaPagamento || ''} onChange={(e) => handlePedidoField(pedido.id, 'formaPagamento', e.target.value)} placeholder="Forma de pagamento" className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800" />
-              <input type="date" value={dateInput(pedido.dataEntrega)} onChange={(e) => handlePedidoField(pedido.id, 'dataEntrega', e.target.value)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:[color-scheme:dark]" />
+              <input type="date" value={dateInput(pedido.dataEntrega)} onChange={(e) => handlePedidoField(pedido.id, 'dataEntrega', e.target.value)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:scheme-dark" />
               <div className="rounded-lg bg-gray-50 p-2 text-xs dark:bg-gray-800">
                 <p>Bruto: {currency(pedido.totalBruto)}</p>
                 <p>Desconto: {currency(pedido.totalDesconto)}</p>
@@ -532,7 +582,7 @@ export default function PedidosPage() {
             </div>
 
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input type="checkbox" checked={pedido.pagamentoConfirmado} onChange={(e) => handlePedidoField(pedido.id, 'pagamentoConfirmado', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+              <input type="checkbox" checked={pedido.pagamentoConfirmado} onChange={(e) => handlePedidoField(pedido.id, 'pagamentoConfirmado', e.target.checked)} className="h-4 w-4 rounded-sm border-gray-300 text-blue-600" />
               Pagamento confirmado
             </label>
 
@@ -636,7 +686,7 @@ function PedidoItemsModal({
   const draftSubtotal = calculateSubtotal(form.quantidade, form.precoUnitario, form.desconto)
   const canAddItem = form.descricao.trim().length > 0 && form.quantidade > 0
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs">
       <div className="crm-card mx-4 max-h-[90vh] w-full max-w-5xl overflow-y-auto p-5 md:p-6">
         <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
           <div>
@@ -740,7 +790,7 @@ function PedidoItemsModal({
                       <button
                         type="button"
                         onClick={() => onSaveItem(item)}
-                        className="rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-medium text-purple-700 shadow-sm hover:bg-purple-100 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                        className="rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-medium text-purple-700 shadow-xs hover:bg-purple-100 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
                       >
                         Salvar linha
                       </button>
@@ -826,7 +876,7 @@ function PedidoItemsModal({
                   type="button"
                   onClick={onAddItem}
                   disabled={saving || !canAddItem}
-                  className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-sm hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                  className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-xs hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
                 >
                   <Plus size={14} />
                   Adicionar ao carrinho
@@ -1128,7 +1178,7 @@ function CreatePedidoDiretoModal({
                 type="date"
                 value={form.dataEntrega}
                 onChange={(e) => setForm((p) => ({ ...p, dataEntrega: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:[color-scheme:dark]"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:scheme-dark"
               />
             </label>
           </div>
@@ -1137,7 +1187,7 @@ function CreatePedidoDiretoModal({
               type="checkbox"
               checked={form.pagamentoConfirmado}
               onChange={(e) => setForm((p) => ({ ...p, pagamentoConfirmado: e.target.checked }))}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              className="h-4 w-4 rounded-sm border-gray-300 text-blue-600"
             />
             Pagamento confirmado
           </label>
@@ -1305,7 +1355,7 @@ function CreatePedidoDiretoModal({
                     type="button"
                     onClick={handleAddDraftItem}
                     disabled={!itemForm.descricao.trim() || itemForm.quantidade <= 0}
-                    className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-sm hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                    className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-xs hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
                   >
                     <Plus size={14} />
                     Adicionar ao carrinho

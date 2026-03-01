@@ -307,7 +307,7 @@ export default function ActivityModal({
 
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
             <div
                 className="crm-card w-full max-w-lg overflow-hidden transform transition-all scale-100 flex flex-col max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}

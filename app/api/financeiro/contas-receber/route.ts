@@ -13,7 +13,7 @@ const ALLOWED_TIPO_CONTA = new Set(['receber', 'pagar'])
 const ALLOWED_TIPO_MOVIMENTO = new Set(['entrada', 'saida', 'estorno'])
 const RECURRING_MONTHS_AHEAD = 6
 
-function parseLimit(value: string | null, fallback = 20, max = 100) {
+function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
@@ -235,6 +235,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const limit = parseLimit(searchParams.get('limit'))
     const contas = await prisma.contaReceber.findMany({
       where,
       include: {
@@ -257,6 +258,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: [{ dataVencimento: 'asc' }, { createdAt: 'desc' }],
+      take: limit,
     })
 
     const normalized = contas.map((conta) => ({

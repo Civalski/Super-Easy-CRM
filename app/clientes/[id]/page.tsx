@@ -62,6 +62,43 @@ interface CampoPersonalizado {
   value: string
 }
 
+interface OportunidadeHistorico {
+  id: string
+  titulo: string
+  status: string
+  valor: number | null
+  motivoPerda: string | null
+  createdAt: string
+  updatedAt: string
+  pedidoId: string | null
+}
+
+interface PedidoHistorico {
+  id: string
+  numero: number
+  statusEntrega: string
+  pagamentoConfirmado: boolean
+  totalLiquido: number
+  createdAt: string
+  updatedAt: string
+  oportunidade: {
+    id: string
+    titulo: string
+    status: string
+  }
+}
+
+interface HistoricoComercial {
+  resumo: {
+    orcamentosEmAberto: number
+    pedidosEmAberto: number
+    comprasConcluidas: number
+    cancelamentos: number
+  }
+  oportunidadesRecentes: OportunidadeHistorico[]
+  pedidosRecentes: PedidoHistorico[]
+}
+
 interface Cliente {
   id: string
   nome: string
@@ -84,6 +121,7 @@ interface Cliente {
     oportunidades: number
     contatos: number
   }
+  historicoComercial?: HistoricoComercial
   prospecto?: Prospecto | null
   isVirtual?: boolean
 }
@@ -313,6 +351,56 @@ export default function ClienteDetalhesPage() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date(date))
+  }
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined || Number.isNaN(value)) return '-'
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
+
+  const formatOportunidadeStatus = (status: string | null | undefined) => {
+    switch (status) {
+      case 'orcamento':
+        return 'Orcamento'
+      case 'fechada':
+        return 'Fechada'
+      case 'perdida':
+        return 'Perdida'
+      case 'sem_contato':
+        return 'Sem contato'
+      case 'em_potencial':
+        return 'Em potencial'
+      default:
+        return status || '-'
+    }
+  }
+
+  const formatEntregaStatus = (status: string | null | undefined) => {
+    switch (status) {
+      case 'pendente':
+        return 'Pendente'
+      case 'em_preparacao':
+        return 'Em preparacao'
+      case 'enviado':
+        return 'Enviado'
+      case 'entregue':
+        return 'Entregue'
+      default:
+        return status || '-'
+    }
+  }
+
+  const getBadgeClass = (type: 'success' | 'warning' | 'danger' | 'info' | 'neutral') => {
+    if (type === 'success') return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200'
+    if (type === 'warning') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+    if (type === 'danger') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200'
+    if (type === 'info') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200'
   }
 
   if (loading) {
@@ -568,6 +656,115 @@ export default function ClienteDetalhesPage() {
                 </div>
               </div>
 
+              <div className="crm-card p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Historico comercial
+                  </h3>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Ultimas movimentacoes
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Orcamentos recentes
+                    </p>
+                    {cliente.historicoComercial?.oportunidadesRecentes?.length ? (
+                      <div className="space-y-2">
+                        {cliente.historicoComercial.oportunidadesRecentes.map((oportunidade) => (
+                          <div key={oportunidade.id} className="rounded-md bg-gray-50 p-2 dark:bg-gray-900">
+                            <div className="flex items-start justify-between gap-2">
+                              <Link
+                                href={`/oportunidades/${oportunidade.id}/editar`}
+                                className="text-sm font-medium text-gray-900 hover:text-blue-700 dark:text-white dark:hover:text-blue-300 line-clamp-1"
+                                title={oportunidade.titulo}
+                              >
+                                {oportunidade.titulo}
+                              </Link>
+                              <span
+                                className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                  oportunidade.status === 'fechada'
+                                    ? getBadgeClass('success')
+                                    : oportunidade.status === 'perdida'
+                                      ? getBadgeClass('danger')
+                                      : getBadgeClass('warning')
+                                }`}
+                              >
+                                {formatOportunidadeStatus(oportunidade.status)}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                              <span>{formatCurrency(oportunidade.valor)}</span>
+                              <span>{formatDate(oportunidade.updatedAt)}</span>
+                            </div>
+                            {oportunidade.status === 'perdida' && oportunidade.motivoPerda && (
+                              <p className="mt-1 line-clamp-1 text-xs text-red-600 dark:text-red-300">
+                                Motivo: {oportunidade.motivoPerda}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Nenhum orcamento registrado.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Pedidos recentes
+                    </p>
+                    {cliente.historicoComercial?.pedidosRecentes?.length ? (
+                      <div className="space-y-2">
+                        {cliente.historicoComercial.pedidosRecentes.map((pedido) => {
+                          const concluido =
+                            pedido.statusEntrega === 'entregue' && pedido.pagamentoConfirmado
+
+                          return (
+                            <div key={pedido.id} className="rounded-md bg-gray-50 p-2 dark:bg-gray-900">
+                            <div className="flex items-start justify-between gap-2">
+                                <Link
+                                  href={{
+                                    pathname: '/pedidos',
+                                    query: {
+                                      clienteId: cliente.id,
+                                      clienteNome: cliente.nome,
+                                    },
+                                  }}
+                                  className="text-sm font-medium text-gray-900 hover:text-blue-700 dark:text-white dark:hover:text-blue-300 line-clamp-1"
+                                  title={pedido.oportunidade?.titulo || `Pedido #${pedido.numero}`}
+                                >
+                                  #{pedido.numero} - {pedido.oportunidade?.titulo || 'Pedido'}
+                                </Link>
+                                <span
+                                  className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                    concluido ? getBadgeClass('success') : getBadgeClass('info')
+                                  }`}
+                                >
+                                  {concluido ? 'Concluido' : formatEntregaStatus(pedido.statusEntrega)}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                                <span>{formatCurrency(pedido.totalLiquido)}</span>
+                                <span>{formatDate(pedido.updatedAt)}</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Nenhum pedido registrado.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Dados Empresariais (do Prospecto) */}
               {cliente.prospecto && (
                 <div className="crm-card p-6">
@@ -672,7 +869,7 @@ export default function ClienteDetalhesPage() {
                       </p>
                       <p className="text-sm text-gray-900 dark:text-white">
                         {cliente.prospecto.cnaePrincipal && (
-                          <span className="font-mono mr-2 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                          <span className="font-mono mr-2 px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
                             {cliente.prospecto.cnaePrincipal}
                           </span>
                         )}
@@ -726,6 +923,84 @@ export default function ClienteDetalhesPage() {
             </div>
 
             <div className="space-y-6">
+              <div className="crm-card p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Resumo comercial
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href={{
+                      pathname: '/oportunidades',
+                      query: {
+                        clienteId: cliente.id,
+                        clienteNome: cliente.nome,
+                      },
+                    }}
+                    className="rounded-lg bg-amber-50 p-3 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/35"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      Orcamentos abertos
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-amber-800 dark:text-amber-200">
+                      {cliente.historicoComercial?.resumo.orcamentosEmAberto ?? 0}
+                    </p>
+                  </Link>
+                  <Link
+                    href={{
+                      pathname: '/pedidos',
+                      query: {
+                        clienteId: cliente.id,
+                        clienteNome: cliente.nome,
+                        statusEntrega: 'pendente,em_preparacao,enviado',
+                      },
+                    }}
+                    className="rounded-lg bg-blue-50 p-3 transition-colors hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/35"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                      Pedidos em aberto
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-blue-800 dark:text-blue-200">
+                      {cliente.historicoComercial?.resumo.pedidosEmAberto ?? 0}
+                    </p>
+                  </Link>
+                  <Link
+                    href={{
+                      pathname: '/pedidos',
+                      query: {
+                        clienteId: cliente.id,
+                        clienteNome: cliente.nome,
+                        statusEntrega: 'entregue',
+                      },
+                    }}
+                    className="rounded-lg bg-green-50 p-3 transition-colors hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/35"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-green-700 dark:text-green-300">
+                      Compras concluidas
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-green-800 dark:text-green-200">
+                      {cliente.historicoComercial?.resumo.comprasConcluidas ?? 0}
+                    </p>
+                  </Link>
+                  <Link
+                    href={{
+                      pathname: '/oportunidades',
+                      query: {
+                        clienteId: cliente.id,
+                        clienteNome: cliente.nome,
+                        aba: 'historico',
+                      },
+                    }}
+                    className="rounded-lg bg-red-50 p-3 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/35"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-red-700 dark:text-red-300">
+                      Cancelamentos
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-red-800 dark:text-red-200">
+                      {cliente.historicoComercial?.resumo.cancelamentos ?? 0}
+                    </p>
+                  </Link>
+                </div>
+              </div>
               <div className="crm-card p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Estatísticas
@@ -812,7 +1087,7 @@ export default function ClienteDetalhesPage() {
                       required
                       value={formData.nome}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="Nome completo"
                     />
                   </div>
@@ -829,7 +1104,7 @@ export default function ClienteDetalhesPage() {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="email@exemplo.com"
                     />
                   </div>
@@ -846,7 +1121,7 @@ export default function ClienteDetalhesPage() {
                       name="telefone"
                       value={formData.telefone}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="(00) 00000-0000"
                     />
                   </div>
@@ -863,7 +1138,7 @@ export default function ClienteDetalhesPage() {
                       name="empresa"
                       value={formData.empresa}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="Nome da empresa"
                     />
                   </div>
@@ -880,7 +1155,7 @@ export default function ClienteDetalhesPage() {
                       name="endereco"
                       value={formData.endereco}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="Rua, numero"
                     />
                   </div>
@@ -897,7 +1172,7 @@ export default function ClienteDetalhesPage() {
                       name="cidade"
                       value={formData.cidade}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="Cidade"
                     />
                   </div>
@@ -915,7 +1190,7 @@ export default function ClienteDetalhesPage() {
                       value={formData.estado}
                       onChange={handleChange}
                       maxLength={2}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="SP"
                     />
                   </div>
@@ -932,7 +1207,7 @@ export default function ClienteDetalhesPage() {
                       name="cep"
                       value={formData.cep}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="00000-000"
                     />
                   </div>
@@ -956,7 +1231,7 @@ export default function ClienteDetalhesPage() {
                         name="cargo"
                         value={formData.cargo}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         placeholder="Cargo ou funcao"
                       />
                     </div>
@@ -973,7 +1248,7 @@ export default function ClienteDetalhesPage() {
                         name="documento"
                         value={formData.documento}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         placeholder="CPF ou CNPJ"
                       />
                     </div>
@@ -990,7 +1265,7 @@ export default function ClienteDetalhesPage() {
                         name="website"
                         value={formData.website}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         placeholder="https://"
                       />
                     </div>
@@ -1007,7 +1282,7 @@ export default function ClienteDetalhesPage() {
                         name="dataNascimento"
                         value={formData.dataNascimento}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -1023,7 +1298,7 @@ export default function ClienteDetalhesPage() {
                         value={formData.observacoes}
                         onChange={handleChange}
                         rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-y"
                         placeholder="Informacoes adicionais sobre o cliente"
                       />
                     </div>
@@ -1062,7 +1337,7 @@ export default function ClienteDetalhesPage() {
                             onChange={(event) =>
                               handleCustomFieldChange(index, 'label', event.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             placeholder="Nome do campo"
                           />
                           <input
@@ -1071,7 +1346,7 @@ export default function ClienteDetalhesPage() {
                             onChange={(event) =>
                               handleCustomFieldChange(index, 'value', event.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             placeholder="Valor"
                           />
                           <button

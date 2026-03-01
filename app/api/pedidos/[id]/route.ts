@@ -64,7 +64,7 @@ function parseOptionalDate(value: unknown) {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await ensureDatabaseInitialized()
@@ -134,7 +134,7 @@ export async function PATCH(
 
     const result = await prisma.$transaction(async (tx) => {
       const pedidoAtual = await tx.pedido.findFirst({
-        where: { id: params.id, userId },
+        where: { id: (await params).id, userId },
         include: pedidoInclude,
       })
 
@@ -239,7 +239,7 @@ export async function PATCH(
           event: 'pedido.venda_confirmada',
           userId,
           entity: 'pedido',
-          entityId: params.id,
+          entityId: (await params).id,
           from: oportunidadeAtual.status,
           to: 'fechada',
           metadata: {
@@ -291,7 +291,7 @@ export async function PATCH(
           event: 'pedido.venda_reaberta',
           userId,
           entity: 'pedido',
-          entityId: params.id,
+          entityId: (await params).id,
           from: 'fechada',
           to: oportunidadeAtual.statusAnterior || 'orcamento',
           metadata: {
@@ -301,7 +301,7 @@ export async function PATCH(
       }
 
       const pedidoFinal = await tx.pedido.findFirst({
-        where: { id: params.id, userId },
+        where: { id: (await params).id, userId },
         include: pedidoInclude,
       })
 
@@ -345,7 +345,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await ensureDatabaseInitialized()
@@ -356,7 +356,7 @@ export async function DELETE(
     }
 
     const deleted = await prisma.pedido.deleteMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (deleted.count === 0) {
@@ -375,3 +375,4 @@ export async function DELETE(
     )
   }
 }
+

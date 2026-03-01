@@ -152,7 +152,7 @@ export default function TaskNotificationModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
             <div
                 className="crm-card w-full max-w-lg overflow-hidden transform transition-all scale-100"
                 onClick={(e) => e.stopPropagation()}

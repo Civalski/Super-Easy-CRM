@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_CHANNEL = new Set(['whatsapp', 'email', 'ligacao', 'reuniao'])
 
 interface RouteParams {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const oportunidade = await prisma.oportunidade.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       select: { id: true },
     })
     if (!oportunidade) {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const attempts = await prisma.followUpAttempt.findMany({
-      where: { userId, oportunidadeId: params.id },
+      where: { userId, oportunidadeId: (await params).id },
       include: {
         template: {
           select: {
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const payload = body as Record<string, unknown>
 
     const oportunidade = await prisma.oportunidade.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
       select: { id: true },
     })
     if (!oportunidade) {
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const created = await prisma.followUpAttempt.create({
       data: {
         userId,
-        oportunidadeId: params.id,
+        oportunidadeId: (await params).id,
         templateId,
         canal,
         mensagem,
@@ -127,3 +127,4 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     )
   }
 }
+

@@ -98,7 +98,7 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   if (loading) {
     return (
       <div className="crm-card p-5 animate-pulse">
-        <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+        <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-sm mb-4" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div

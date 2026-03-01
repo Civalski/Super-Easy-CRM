@@ -26,7 +26,7 @@ description: Como adicionar um novo componente ao projeto
    
    export function MeuComponente({ prop1, prop2 }: MeuComponenteProps) {
        return (
-           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
                {/* Conteúdo */}
            </div>
        );
@@ -49,5 +49,5 @@ description: Como adicionar um novo componente ao projeto
 - Suportar tema escuro com `dark:` prefix
 - Cores principais: purple (primária), gray (neutras)
 - Bordas arredondadas: `rounded-lg`
-- Sombras: `shadow`
+- Sombras: `shadow-sm`
 - Background cards: `bg-white dark:bg-gray-800`

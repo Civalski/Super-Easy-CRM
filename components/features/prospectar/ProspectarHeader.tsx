@@ -43,7 +43,7 @@ export function ProspectarHeader({
         <div className="space-y-4 mb-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-sky-500 to-cyan-600 rounded-xl shadow-lg shadow-sky-500/25">
+                    <div className="p-2.5 bg-linear-to-br from-sky-500 to-cyan-600 rounded-xl shadow-lg shadow-sky-500/25">
                         <Target className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -103,7 +103,7 @@ export function ProspectarHeader({
                                 <button
                                     onClick={() => onEnviarAoFunil('selecionados')}
                                     disabled={isSending}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 text-sm font-medium rounded-lg transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 dark:border-purple-600 shadow-xs text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-50 text-sm font-medium rounded-lg transition-colors"
                                 >
                                     {isSending ? (
                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />

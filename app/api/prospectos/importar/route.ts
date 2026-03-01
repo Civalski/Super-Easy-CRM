@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthIdentityFromRequest } from '@/lib/auth';
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
+import { heavyRoutesDisabledResponse, isHeavyRoutesDisabled } from '@/lib/security/heavy-routes';
 import type { EmpresaParquet } from '@/types/leads';
 
 interface ImportResult {
@@ -13,6 +15,14 @@ interface ImportResult {
     duplicados: number;
     erros: string[];
 }
+
+const MAX_IMPORT_EMPRESAS = 500;
+const MAX_IMPORT_BODY_BYTES = 2 * 1024 * 1024;
+const importRateLimitConfig = {
+    windowMs: 60 * 1000,
+    maxAttempts: 2,
+    blockDurationMs: 60 * 1000,
+};
 
 // Funcao para montar CNPJ completo
 function montarCNPJ(empresa: EmpresaParquet): string {
@@ -77,6 +87,10 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
 // POST /api/prospectos/importar - Importa multiplas empresas
 export async function POST(request: NextRequest) {
     try {
+        if (isHeavyRoutesDisabled()) {
+            return heavyRoutesDisabledResponse();
+        }
+
         const { userId, role } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -85,14 +99,42 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        const rateLimitResponse = enforceApiRateLimit({
+            key: `api:prospectos:importar:user:${userId}`,
+            config: importRateLimitConfig,
+            error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',
+        });
+        if (rateLimitResponse) {
+            return rateLimitResponse;
+        }
+
+        const contentLength = Number(request.headers.get('content-length') ?? '0');
+        if (Number.isFinite(contentLength) && contentLength > MAX_IMPORT_BODY_BYTES) {
+            return NextResponse.json(
+                { error: 'Payload muito grande para importacao (maximo 2MB)' },
+                { status: 413 }
+            );
+        }
+
         const body = await request.json();
         const empresas: EmpresaParquet[] = body.empresas || [];
-        const batchSize = body.batchSize || 30;
+        const parsedBatchSize = Number(body.batchSize);
+        const batchSize =
+            Number.isInteger(parsedBatchSize) && parsedBatchSize >= 1 && parsedBatchSize <= 100
+                ? parsedBatchSize
+                : 30;
         const fileName = body.fileName || 'Importacao';
 
         if (!Array.isArray(empresas) || empresas.length === 0) {
             return NextResponse.json(
                 { error: 'Nenhuma empresa para importar' },
+                { status: 400 }
+            );
+        }
+
+        if (empresas.length > MAX_IMPORT_EMPRESAS) {
+            return NextResponse.json(
+                { error: `Limite de ${MAX_IMPORT_EMPRESAS} empresas por importacao` },
                 { status: 400 }
             );
         }

@@ -116,7 +116,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           aria-hidden={!mobileSidebarOpen}
         >
           <div
-            className={`absolute inset-0 bg-slate-900/25 backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-slate-950/55 ${
+            className={`absolute inset-0 bg-slate-900/25 backdrop-blur-xs transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-slate-950/55 ${
               mobileSidebarOpen ? 'opacity-100' : 'opacity-0'
             }`}
             onClick={() => setMobileSidebarOpen(false)}
@@ -131,7 +131,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div
           style={layoutStyle}
-          className="flex min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:pl-[var(--sidebar-width)]"
+          className="flex min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:pl-(--sidebar-width)"
         >
           <Header onMobileMenuClick={() => setMobileSidebarOpen((prev) => !prev)} />
           <main className="flex-1 overflow-auto px-4 pb-6 pt-[calc(var(--top-bar-height)+1rem)] md:px-6 md:pb-8 lg:px-8">

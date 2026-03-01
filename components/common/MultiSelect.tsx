@@ -96,7 +96,7 @@ export function MultiSelect({
                     className={`w-full px-4 py-3 text-left crm-card-soft transition-colors flex items-center justify-between
                         ${disabled
                             ? 'bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-70'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-purple-500 dark:hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-purple-500 dark:hover:border-purple-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400'
                         }
                     `}
                 >
@@ -123,7 +123,7 @@ export function MultiSelect({
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={searchPlaceholder}
-                                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 text-gray-900 dark:text-white placeholder-gray-400"
+                                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 text-gray-900 dark:text-white placeholder-gray-400"
                                     autoFocus
                                 />
                             </div>
@@ -139,7 +139,7 @@ export function MultiSelect({
                                     return (
                                         <div key={option.value}>
                                             {showGroupHeader && (
-                                                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-900/80 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800 first:border-t-0">
+                                                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-900/80 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs border-y border-gray-200 dark:border-gray-800 first:border-t-0">
                                                     {option.group}
                                                 </div>
                                             )}
@@ -150,7 +150,7 @@ export function MultiSelect({
                                                     ${isSelected ? 'bg-purple-50 dark:bg-purple-900/10' : ''}
                                                 `}
                                             >
-                                                <div className={`flex-shrink-0 w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors
+                                                <div className={`shrink-0 w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors
                                                     ${isSelected
                                                         ? 'bg-purple-600 border-purple-600'
                                                         : 'border-gray-300 dark:border-gray-600 group-hover:border-purple-400'
@@ -164,7 +164,7 @@ export function MultiSelect({
                                                             {option.label}
                                                         </span>
                                                         {option.badge && (
-                                                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
+                                                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-sm">
                                                                 {option.badge}
                                                             </span>
                                                         )}

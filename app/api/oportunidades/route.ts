@@ -78,7 +78,7 @@ function parseOptionalString(value: unknown) {
   return trimmed === '' ? null : trimmed
 }
 
-function parseLimit(value: string | null, fallback = 200, max = 500) {
+function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
@@ -103,10 +103,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status')
+    const clienteIdFilter = searchParams.get('clienteId')?.trim()
     const mode = searchParams.get('mode')
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: Prisma.OportunidadeWhereInput = { userId }
+    if (clienteIdFilter) {
+      where.clienteId = clienteIdFilter
+    }
     if (statusFilter) {
       const statuses = Array.from(
         new Set(
@@ -120,7 +124,7 @@ export async function GET(request: NextRequest) {
       if (expandedStatuses.length === 0) {
         if (paginated) {
           const page = parsePage(searchParams.get('page'))
-          const limit = parseLimit(searchParams.get('limit'), 20, 100)
+          const limit = parseLimit(searchParams.get('limit'), 20, 50)
           return NextResponse.json({
             data: [],
             meta: {
@@ -161,7 +165,7 @@ export async function GET(request: NextRequest) {
 
     if (paginated) {
       const page = parsePage(searchParams.get('page'))
-      const limit = parseLimit(searchParams.get('limit'), 20, 100)
+      const limit = parseLimit(searchParams.get('limit'), 20, 50)
       const skip = (page - 1) * limit
 
       const [oportunidades, total] = await Promise.all([
@@ -206,11 +210,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const limit = parseLimit(searchParams.get('limit'))
     const oportunidades = await prisma.oportunidade.findMany({
       where,
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
       include: {
         cliente: {
           select: {

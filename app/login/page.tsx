@@ -245,7 +245,7 @@ export default function LoginPage() {
           />
         )}
 
-        <section className="relative flex min-h-[40vh] flex-col justify-between overflow-hidden border-b border-slate-800/70 bg-gradient-to-br from-purple-950 via-slate-950 to-black px-6 py-8 sm:px-10 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
+        <section className="relative flex min-h-[40vh] flex-col justify-between overflow-hidden border-b border-slate-800/70 bg-linear-to-br from-purple-950 via-slate-950 to-black px-6 py-8 sm:px-10 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
           <ParticlesJsBackground />
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(167,139,250,0.22),transparent_52%)]" />
@@ -303,7 +303,7 @@ export default function LoginPage() {
                   placeholder="seu.usuario"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  className="h-12 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-12 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -320,7 +320,7 @@ export default function LoginPage() {
                   placeholder="********"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="h-12 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
+                  className="h-12 w-full rounded-xl border border-slate-600/70 bg-slate-950/55 px-4 text-sm text-slate-100 placeholder:text-slate-400/90 outline-hidden transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/25"
                 />
               </div>
 
@@ -361,7 +361,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 shadow-sm transition-colors hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 shadow-xs transition-colors hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
               >
                 {loading ? 'Autenticando...' : 'Entrar no CRM'}
                 {!loading && <ArrowRight size={16} />}

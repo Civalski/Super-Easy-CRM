@@ -69,7 +69,7 @@ export default function StatCard({
     return (
       <Link
         href={href}
-        className="block transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-xl"
+        className="block transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 rounded-xl"
         aria-label={`Ir para ${title}`}
       >
         {cardContent}

@@ -165,7 +165,7 @@ export default function Sidebar({
   )
 
   const isCompact = collapsed && !isMobile
-  const sidebarWidthClass = isCompact ? 'w-[4.5rem]' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
+  const sidebarWidthClass = isCompact ? 'w-18' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
   const topBarLayoutClass = isCompact ? 'justify-center' : isMobile ? 'justify-between' : 'justify-center'
   const mobileTransformClass = isMobile
     ? mobileOpen
@@ -211,9 +211,9 @@ export default function Sidebar({
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
-      <div className="flex h-full flex-col border-r border-slate-200/80 bg-gradient-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
+      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
         <div
-          className={`flex min-h-[var(--top-bar-height)] items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
+          className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
           <Link
             href="/dashboard"
@@ -379,7 +379,7 @@ export default function Sidebar({
                 <span
                   className={`overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity,transform,margin-left] duration-200 ease-out ${isCompact
                     ? 'ml-0 max-w-0 -translate-x-1 opacity-0'
-                    : 'ml-3 max-w-[9rem] translate-x-0 opacity-100'
+                    : 'ml-3 max-w-36 translate-x-0 opacity-100'
                     }`}
                 >
                   {manualOpen ? 'Fechar menu' : 'Abrir menu'}
@@ -397,7 +397,7 @@ export default function Sidebar({
               <span
                 className={`overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity,transform,margin-left] duration-200 ease-out ${isCompact
                   ? 'ml-0 max-w-0 -translate-x-1 opacity-0'
-                  : 'ml-3 max-w-[9rem] translate-x-0 opacity-100'
+                  : 'ml-3 max-w-36 translate-x-0 opacity-100'
                   }`}
               >
                 Sair

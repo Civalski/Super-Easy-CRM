@@ -141,7 +141,7 @@ export function ProspectosList({
                                     <td className="px-3 py-3">
                                         <button
                                             onClick={() => onToggleSelect(prospecto.id)}
-                                            className="flex-shrink-0 focus:outline-none"
+                                            className="shrink-0 focus:outline-hidden"
                                             aria-label={isSelected ? 'Desmarcar' : 'Selecionar'}
                                         >
                                             {isSelected ? (
@@ -176,7 +176,7 @@ export function ProspectosList({
                                                     <button
                                                         key={star}
                                                         onClick={() => onPrioridadeChange(prospecto.id, star === prospecto.prioridade ? 0 : star)}
-                                                        className="focus:outline-none"
+                                                        className="focus:outline-hidden"
                                                         aria-label={`Prioridade ${star}`}
                                                     >
                                                         <Star
@@ -194,13 +194,13 @@ export function ProspectosList({
                                         <div className="space-y-1 min-w-0">
                                             {prospecto.telefone1 && (
                                                 <a href={`tel:${prospecto.telefone1}`} className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
-                                                    <Phone className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                                    <Phone className="w-3.5 h-3.5 mr-1 shrink-0" />
                                                     <span className="truncate">{prospecto.telefone1}</span>
                                                 </a>
                                             )}
                                             {prospecto.email && (
                                                 <a href={`mailto:${prospecto.email}`} className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
-                                                    <Mail className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                                    <Mail className="w-3.5 h-3.5 mr-1 shrink-0" />
                                                     <span className="truncate" title={prospecto.email}>{prospecto.email}</span>
                                                 </a>
                                             )}
@@ -216,7 +216,7 @@ export function ProspectosList({
                                     </td>
                                     <td className="px-3 py-3">
                                         {prospecto.lote ? (
-                                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
+                                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-sm text-xs font-semibold">
                                                 Lote {prospecto.lote}
                                             </span>
                                         ) : (

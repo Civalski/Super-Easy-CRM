@@ -87,7 +87,7 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                         >
                             <td className="px-4 py-3">
                                 <div className="flex items-center min-w-0">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-2 flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-2 shrink-0">
                                         <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
                                             {cliente.nome.charAt(0).toUpperCase()}
                                         </span>
@@ -114,13 +114,13 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                                 <div className="space-y-0.5 min-w-0">
                                     {cliente.email && (
                                         <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
-                                            <Mail size={12} className="mr-1 flex-shrink-0" />
+                                            <Mail size={12} className="mr-1 shrink-0" />
                                             <span className="truncate" title={cliente.email}>{cliente.email}</span>
                                         </div>
                                     )}
                                     {cliente.telefone && (
                                         <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
-                                            <Phone size={12} className="mr-1 flex-shrink-0" />
+                                            <Phone size={12} className="mr-1 shrink-0" />
                                             <span className="truncate">{cliente.telefone}</span>
                                         </div>
                                     )}
@@ -132,7 +132,7 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                             <td className="px-4 py-3">
                                 {cliente.prospecto?.cnaePrincipalDesc ? (
                                     <div className="flex items-start text-xs text-gray-900 dark:text-white min-w-0">
-                                        <Tag size={12} className="mr-1 mt-0.5 text-purple-500 flex-shrink-0" />
+                                        <Tag size={12} className="mr-1 mt-0.5 text-purple-500 shrink-0" />
                                         <span className="line-clamp-2" title={cliente.prospecto.cnaePrincipalDesc}>
                                             {cliente.prospecto.cnaePrincipalDesc}
                                         </span>
@@ -144,7 +144,7 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick }: ClientesT
                             <td className="px-4 py-3">
                                 {cliente.prospecto?.capitalSocial ? (
                                     <div className="flex items-center text-xs font-medium text-green-600 dark:text-green-400">
-                                        <BadgeDollarSign size={12} className="mr-0.5 flex-shrink-0" />
+                                        <BadgeDollarSign size={12} className="mr-0.5 shrink-0" />
                                         <span title={`R$ ${cliente.prospecto.capitalSocial}`}>
                                             {formatCapitalSocial(cliente.prospecto.capitalSocial)}
                                         </span>

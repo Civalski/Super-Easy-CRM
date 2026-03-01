@@ -29,6 +29,13 @@ function parseStatusFilter(value: string | null) {
     return ['pendente', 'processando', 'erro'];
 }
 
+function parseLimit(value: string | null, fallback = 50, max = 100) {
+    if (!value) return fallback;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed)) return fallback;
+    return Math.min(max, Math.max(1, parsed));
+}
+
 export async function GET(request: NextRequest) {
     try {
         const userId = await getUserIdFromRequest(request);
@@ -38,7 +45,7 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
-        const limit = Math.min(Number(searchParams.get('limit') ?? 100), 500);
+        const limit = parseLimit(searchParams.get('limit'));
         const statusFilter = parseStatusFilter(status);
 
         const agendamentos = await prisma.prospectoEnvioAgendado.findMany({
@@ -50,7 +57,7 @@ export async function GET(request: NextRequest) {
                 { dataEnvio: 'asc' },
                 { createdAt: 'asc' },
             ],
-            take: Number.isFinite(limit) && limit > 0 ? limit : 100,
+            take: limit,
         });
 
         return NextResponse.json({ agendamentos });

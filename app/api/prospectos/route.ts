@@ -8,6 +8,20 @@ import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
 
+function parseLimit(value: string | null, fallback = 20, max = 50) {
+    if (!value) return fallback;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed)) return fallback;
+    return Math.min(max, Math.max(1, parsed));
+}
+
+function parseOffset(value: string | null) {
+    if (!value) return 0;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed)) return 0;
+    return Math.max(0, parsed);
+}
+
 // GET /api/prospectos - Lista todos os prospectos com filtros
 export async function GET(request: NextRequest) {
     try {
@@ -22,8 +36,8 @@ export async function GET(request: NextRequest) {
         const municipio = searchParams.get('municipio');
         const prioridade = searchParams.get('prioridade');
         const lote = searchParams.get('lote');
-        const limit = searchParams.get('limit');
-        const offset = searchParams.get('offset');
+        const limit = parseLimit(searchParams.get('limit'));
+        const offset = parseOffset(searchParams.get('offset'));
 
         // Construir filtros
         const where: Record<string, unknown> = { userId };
@@ -52,7 +66,16 @@ export async function GET(request: NextRequest) {
 
         if (uf) where.uf = uf;
         if (municipio) where.municipio = { contains: municipio };
-        if (prioridade) where.prioridade = parseInt(prioridade);
+        if (prioridade) {
+            const prioridadeParsed = Number(prioridade);
+            if (!Number.isInteger(prioridadeParsed)) {
+                return NextResponse.json(
+                    { error: 'Prioridade invalida' },
+                    { status: 400 }
+                );
+            }
+            where.prioridade = prioridadeParsed;
+        }
         if (lote) where.lote = lote;
 
         // Buscar prospectos
@@ -63,8 +86,8 @@ export async function GET(request: NextRequest) {
                     { prioridade: 'desc' },
                     { dataImportacao: 'desc' }
                 ],
-                take: limit ? parseInt(limit) : 100,
-                skip: offset ? parseInt(offset) : 0,
+                take: limit,
+                skip: offset,
             }),
             prisma.prospecto.count({ where })
         ]);
@@ -131,8 +154,8 @@ export async function GET(request: NextRequest) {
             estatisticas: stats,
             paginacao: {
                 total,
-                limit: limit ? parseInt(limit) : 100,
-                offset: offset ? parseInt(offset) : 0,
+                limit,
+                offset,
             }
         });
     } catch (error) {

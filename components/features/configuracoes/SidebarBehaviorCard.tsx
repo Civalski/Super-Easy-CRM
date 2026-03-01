@@ -63,7 +63,7 @@ export function SidebarBehaviorCard() {
           type="checkbox"
           checked={openByButton}
           onChange={handleToggle}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
           aria-label="Ativar abertura do menu lateral por botao"
         />
       </label>

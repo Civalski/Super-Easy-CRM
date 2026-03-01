@@ -19,7 +19,7 @@ function normalizeGoalMetricType(metricType: GoalMetricType) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserId(req)
@@ -28,7 +28,7 @@ export async function GET(
     }
 
     const goal = await prisma.goal.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (!goal) {
@@ -74,7 +74,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserId(req)
@@ -83,7 +83,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.goal.findFirst({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (!existing) {
@@ -209,7 +209,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserId(req)
@@ -218,7 +218,7 @@ export async function DELETE(
     }
 
     const result = await prisma.goal.deleteMany({
-      where: { id: params.id, userId },
+      where: { id: (await params).id, userId },
     })
 
     if (result.count === 0) {
@@ -231,3 +231,4 @@ export async function DELETE(
     return NextResponse.json({ error: 'Erro ao deletar meta' }, { status: 500 })
   }
 }
+

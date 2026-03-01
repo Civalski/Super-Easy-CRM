@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const dynamic = 'force-dynamic'
+
+const buscaRateLimitConfig = {
+  windowMs: 60 * 1000,
+  maxAttempts: 30,
+  blockDurationMs: 60 * 1000,
+}
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rateLimitResponse = enforceApiRateLimit({
+      key: `api:busca:user:${userId}`,
+      config: buscaRateLimitConfig,
+      error: 'Muitas buscas em pouco tempo. Tente novamente em alguns segundos.',
+    })
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const { searchParams } = new URL(request.url)
@@ -95,11 +111,18 @@ export async function GET(request: NextRequest) {
       take: maxResultsPerType,
     })
 
-    return NextResponse.json({
-      clientes,
-      oportunidades,
-      pedidos,
-    })
+    return NextResponse.json(
+      {
+        clientes,
+        oportunidades,
+        pedidos,
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      }
+    )
   } catch (error) {
     console.error('Erro ao buscar:', error)
     return NextResponse.json(

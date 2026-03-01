@@ -16,7 +16,7 @@ export function ClientesHeader({ onCreateClick }: ClientesHeaderProps) {
     return (
         <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg shadow-blue-500/25">
+                <div className="p-2.5 bg-linear-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg shadow-blue-500/25">
                     <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>

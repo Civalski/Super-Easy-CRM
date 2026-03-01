@@ -53,7 +53,7 @@ function parseOptionalText(value: unknown, max = 120): string | null {
   return cleaned.slice(0, max)
 }
 
-function parseLimit(value: string | null, fallback = 20, max = 100) {
+function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
   const parsed = Number(value)
   if (!Number.isInteger(parsed)) return fallback
