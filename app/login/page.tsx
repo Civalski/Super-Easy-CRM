@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { getSession, signIn } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Script from 'next/script'
@@ -125,6 +125,7 @@ function ParticlesJsBackground() {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? ''
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
   const turnstileWidgetIdRef = useRef<string | null>(null)
@@ -135,6 +136,15 @@ export default function LoginPage() {
   const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const callbackUrlFromQuery = searchParams.get('callbackUrl')
+  const callbackUrl =
+    callbackUrlFromQuery &&
+    callbackUrlFromQuery.startsWith('/') &&
+    !callbackUrlFromQuery.startsWith('//') &&
+    callbackUrlFromQuery !== '/login' &&
+    callbackUrlFromQuery !== '/register'
+      ? callbackUrlFromQuery
+      : '/dashboard'
 
   const renderTurnstile = useCallback(() => {
     if (!turnstileSiteKey || !window.turnstile || !turnstileContainerRef.current) {
@@ -205,6 +215,7 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
+        callbackUrl,
         password,
         redirect: false,
         turnstileToken: resolvedTurnstileToken,
@@ -212,7 +223,7 @@ export default function LoginPage() {
         website,
       })
 
-      if (result?.error) {
+      if (!result?.ok || result.error) {
         setError('Falha na autenticacao. Verifique os dados e tente novamente.')
         window.turnstile?.reset(turnstileWidgetIdRef.current ?? undefined)
         setTurnstileToken('')
@@ -220,7 +231,14 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/')
+      const session = await getSession()
+      if (!session?.user) {
+        setError('Login validado, mas a sessao nao foi criada. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET no deploy.')
+        setLoading(false)
+        return
+      }
+
+      router.replace(callbackUrl)
       router.refresh()
     } catch (_error) {
       setError('Ocorreu um erro ao tentar fazer login')

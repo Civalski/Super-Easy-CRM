@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Swal from 'sweetalert2'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
@@ -37,7 +39,13 @@ function writeNotifiedTaskIds(ids: string[]) {
 }
 
 export function NotificationManager() {
+    const pathname = usePathname()
+    const { status } = useSession()
+
     useEffect(() => {
+        if (pathname === '/login' || pathname === '/register') return
+        if (status !== 'authenticated') return
+
         if ('Notification' in window && Notification.permission === 'default') {
             void Notification.requestPermission()
         }
@@ -147,7 +155,7 @@ export function NotificationManager() {
             window.clearInterval(intervalId)
             document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
-    }, [])
+    }, [pathname, status])
 
     return null
 }
