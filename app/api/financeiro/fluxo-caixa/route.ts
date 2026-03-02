@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     }
 
     const series = Array.from(map.values())
-      .sort((a, b) => a.month.localeCompare(b.month))
+      .sort((a, b) => b.month.localeCompare(a.month))
       .map((item) => {
         const saldo = roundMoney(item.recebido - item.saida - item.estornado)
         const saldoProjetado = roundMoney(saldo + item.previstoReceber - item.previstoPagar)

@@ -23,6 +23,8 @@ interface AsyncSelectProps {
     required?: boolean
     id?: string
     name?: string
+    minQueryLength?: number
+    preloadOnOpen?: boolean
 }
 
 const CACHE_TTL_MS = 90 * 1000
@@ -72,6 +74,8 @@ export default function AsyncSelect({
     required = false,
     id,
     name,
+    minQueryLength = 2,
+    preloadOnOpen = true,
 }: AsyncSelectProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [query, setQuery] = useState('')
@@ -88,9 +92,9 @@ export default function AsyncSelect({
         }
     }, [initialLabel])
 
-    // Pre-load default options on open
+    // Optionally pre-load default options on open
     useEffect(() => {
-        if (isOpen && query.length === 0 && options.length === 0) {
+        if (isOpen && preloadOnOpen && query.length === 0 && options.length === 0) {
             const controller = new AbortController()
             setLoading(true)
             fetchOptionsWithCache(fetchUrl, controller.signal)
@@ -112,13 +116,14 @@ export default function AsyncSelect({
 
             return () => controller.abort()
         }
-    }, [isOpen, query, fetchUrl, options.length])
+    }, [isOpen, query, fetchUrl, options.length, preloadOnOpen])
 
     // Debounce search
     useEffect(() => {
         const controller = new AbortController()
         const timer = setTimeout(async () => {
-            if (query.trim().length >= 2) {
+            const trimmedQuery = query.trim()
+            if (trimmedQuery.length >= minQueryLength) {
                 setLoading(true)
                 try {
                     const cacheKey = `${fetchUrl}?q=${encodeURIComponent(query)}`
@@ -134,9 +139,12 @@ export default function AsyncSelect({
                         setLoading(false)
                     }
                 }
-            } else if (query.trim().length === 0 && isOpen) {
-                // If query cleared, fetch defaults again?
-                // The previous effect handles "on open", but if I type then backspace to empty...
+            } else if (trimmedQuery.length === 0 && isOpen) {
+                if (!preloadOnOpen) {
+                    setOptions([])
+                    return
+                }
+
                 setLoading(true)
                 fetchOptionsWithCache(fetchUrl, controller.signal)
                     .then(data => {
@@ -154,6 +162,8 @@ export default function AsyncSelect({
                             setLoading(false)
                         }
                     })
+            } else {
+                setOptions([])
             }
         }, 500)
 
@@ -161,7 +171,7 @@ export default function AsyncSelect({
             clearTimeout(timer)
             controller.abort()
         }
-    }, [query, fetchUrl, isOpen])
+    }, [query, fetchUrl, isOpen, minQueryLength, preloadOnOpen])
 
     // Close when clicking outside
     useEffect(() => {
@@ -270,16 +280,15 @@ export default function AsyncSelect({
                         </div>
                     )}
 
-                    {!loading && options.length === 0 && query.length >= 2 && (
+                    {!loading && options.length === 0 && query.length >= minQueryLength && (
                         <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                             Nenhum resultado encontrado.
                         </div>
                     )}
 
-                    {/* Show "Type 2 chars" message ONLY if we have NO options (no preloaded ones) AND short query */}
-                    {!loading && options.length === 0 && query.length < 2 && (
+                    {!loading && options.length === 0 && query.length < minQueryLength && (
                         <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-                            Digite pelo menos 2 caracteres para buscar.
+                            {`Digite pelo menos ${minQueryLength} caracteres para buscar.`}
                         </div>
                     )}
 

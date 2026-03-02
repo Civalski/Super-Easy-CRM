@@ -74,7 +74,7 @@ interface DraftCreateItem extends ItemForm {
   subtotal: number
 }
 
-type DraftEditableField = 'descricao' | 'quantidade' | 'precoUnitario' | 'desconto'
+type DraftEditableField = 'quantidade' | 'desconto'
 
 interface PaginationMeta {
   total: number
@@ -878,8 +878,6 @@ function CreateOrcamentoModal({
   const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
   const [itens, setItens] = useState<DraftCreateItem[]>([])
   const [showCarrinhoDrawer, setShowCarrinhoDrawer] = useState(false)
-  const [quickAddCode, setQuickAddCode] = useState('')
-  const [quickAddCodeLoading, setQuickAddCodeLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     titulo: '',
@@ -971,7 +969,7 @@ function CreateOrcamentoModal({
 
   const handleItemForm = (field: keyof ItemForm, value: string) => {
     setItemForm((prev) => {
-      if (field === 'descricao' || field === 'produtoServicoId') {
+      if (field === 'produtoServicoId') {
         return { ...prev, [field]: value }
       }
       const numericValue = toNumber(value, 0)
@@ -986,20 +984,24 @@ function CreateOrcamentoModal({
     })
   }
 
-  const handleSelectProduto = (option: AsyncSelectOption | null) => {
-    const selected = getProdutoFromOption(option)
+  const fillItemFormFromProduto = useCallback((produto: ProdutoServico | null) => {
     setItemForm((prev) => ({
       ...prev,
-      produtoServicoId: selected?.id || '',
-      descricao: selected ? selected.nome : prev.descricao,
-      precoUnitario: selected ? selected.precoPadrao : prev.precoUnitario,
+      produtoServicoId: produto?.id || '',
+      descricao: produto ? produto.nome : prev.descricao,
+      precoUnitario: produto ? produto.precoPadrao : prev.precoUnitario,
     }))
-    setSelectedProdutoLabel(option?.nome || '')
+    setSelectedProdutoLabel(produto?.nome || '')
+  }, [])
+
+  const handleSelectProduto = (option: AsyncSelectOption | null) => {
+    const selected = getProdutoFromOption(option)
+    fillItemFormFromProduto(selected)
   }
 
   const appendDraftItem = (draft: ItemForm) => {
     const descricao = draft.descricao.trim()
-    if (!descricao || draft.quantidade <= 0) {
+    if (!draft.produtoServicoId || !descricao || draft.quantidade <= 0) {
       return false
     }
 
@@ -1029,58 +1031,6 @@ function CreateOrcamentoModal({
     setSelectedProdutoLabel('')
   }
 
-  const handleQuickAddByCode = async () => {
-    const codigo = quickAddCode.trim()
-    if (!codigo) return
-
-    setQuickAddCodeLoading(true)
-    try {
-      const response = await fetch(
-        `/api/produtos-servicos/busca?codigo=${encodeURIComponent(codigo)}`
-      )
-      if (!response.ok) {
-        throw new Error('Nao foi possivel buscar o produto pelo codigo')
-      }
-
-      const options = await response.json()
-      const selected = Array.isArray(options) ? options[0] : null
-      const produto = getProdutoFromOption(selected)
-
-      if (!produto) {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Codigo nao encontrado',
-          text: 'Nenhum produto/servico ativo foi encontrado com esse codigo.',
-          confirmButtonColor: '#6366f1',
-          background: '#1f2937',
-          color: '#f3f4f6',
-        })
-        return
-      }
-
-      appendDraftItem({
-        produtoServicoId: produto.id,
-        descricao: produto.nome,
-        quantidade: 1,
-        precoUnitario: produto.precoPadrao,
-        desconto: 0,
-      })
-      setQuickAddCode('')
-    } catch (error) {
-      console.error('Erro ao buscar produto por codigo:', error)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Nao foi possivel adicionar por codigo.',
-        confirmButtonColor: '#6366f1',
-        background: '#1f2937',
-        color: '#f3f4f6',
-      })
-    } finally {
-      setQuickAddCodeLoading(false)
-    }
-  }
-
   const handleRemoveDraftItem = (id: string) => {
     setItens((prev) => prev.filter((item) => item.id !== id))
   }
@@ -1089,9 +1039,6 @@ function CreateOrcamentoModal({
     setItens((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item
-        if (field === 'descricao') {
-          return { ...item, descricao: value }
-        }
         const numericValue = toNumber(value, 0)
         const next = { ...item, [field]: numericValue }
         const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
@@ -1216,22 +1163,16 @@ function CreateOrcamentoModal({
           }
         }
 
-        let msg = 'Orcamento criado com sucesso!'
-        if (result.statusAutoAtualizado) {
-          msg += ' Status ajustado para Orcamento.'
+        if (carrinhoError) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Orcamento criado com ressalva',
+            text: carrinhoError,
+            confirmButtonColor: '#6366f1',
+            background: '#1f2937',
+            color: '#f3f4f6',
+          })
         }
-        if (itens.length > 0 && !carrinhoError) {
-          msg += ' Carrinho de produtos anexado.'
-        }
-
-        await Swal.fire({
-          icon: carrinhoError ? 'warning' : 'success',
-          title: carrinhoError ? 'Orcamento criado com ressalva' : 'Orcamento Criado!',
-          text: carrinhoError || msg,
-          confirmButtonColor: '#6366f1',
-          background: '#1f2937',
-          color: '#f3f4f6',
-        })
         onCreated()
       } else {
         Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Erro ao criar orcamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
@@ -1602,42 +1543,12 @@ function CreateOrcamentoModal({
               </div>
             </div>
 
-            <div className="mb-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Adicao rapida por codigo
-              </p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
-                  value={quickAddCode}
-                  onChange={(e) => setQuickAddCode(e.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      handleQuickAddByCode()
-                    }
-                  }}
-                  className={fieldClass}
-                  placeholder="Digite somente o codigo do produto/servico"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleQuickAddByCode}
-                  disabled={quickAddCodeLoading || !quickAddCode.trim()}
-                  className="sm:self-end"
-                >
-                  {quickAddCodeLoading ? 'Buscando...' : 'Adicionar por codigo'}
-                </Button>
-              </div>
-            </div>
-
             <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Adicionar manualmente
+                Adicionar item
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-12">
-                <label className="md:col-span-4">
+                <label className="md:col-span-8">
                   <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
                   <AsyncSelect
                     className="min-w-0"
@@ -1646,18 +1557,11 @@ function CreateOrcamentoModal({
                     initialLabel={selectedProdutoLabel}
                     onChange={handleSelectProduto}
                     fetchUrl="/api/produtos-servicos/busca"
+                    minQueryLength={2}
+                    preloadOnOpen={false}
                   />
                 </label>
-                <label className="md:col-span-4">
-                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao</span>
-                  <input
-                    value={itemForm.descricao}
-                    onChange={(e) => handleItemForm('descricao', e.target.value)}
-                    placeholder="Nome do item"
-                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                  />
-                </label>
-                <label className="md:col-span-1">
+                <label className="md:col-span-2">
                   <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
                   <input
                     type="number"
@@ -1665,17 +1569,6 @@ function CreateOrcamentoModal({
                     step="0.01"
                     value={itemForm.quantidade}
                     onChange={(e) => handleItemForm('quantidade', e.target.value)}
-                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                  />
-                </label>
-                <label className="md:col-span-1">
-                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={itemForm.precoUnitario}
-                    onChange={(e) => handleItemForm('precoUnitario', e.target.value)}
                     className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                   />
                 </label>
@@ -1700,7 +1593,10 @@ function CreateOrcamentoModal({
                   type="button"
                   size="sm"
                   onClick={handleAddDraftItem}
-                  disabled={!itemForm.descricao.trim() || itemForm.quantidade <= 0}
+                  disabled={
+                    !itemForm.produtoServicoId ||
+                    itemForm.quantidade <= 0
+                  }
                   className="md:col-span-12"
                 >
                   <PackagePlus size={14} className="mr-1.5" />
@@ -1728,14 +1624,12 @@ function CreateOrcamentoModal({
                   {itens.map((item) => (
                     <div key={item.id} className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
-                        <label className="md:col-span-4">
+                        <div className="md:col-span-4">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Item</span>
-                          <input
-                            value={item.descricao}
-                            onChange={(e) => handleDraftItemField(item.id, 'descricao', e.target.value)}
-                            className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                          />
-                        </label>
+                          <p className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-100">
+                            {item.descricao}
+                          </p>
+                        </div>
                         <div className="md:col-span-3">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Quantidade</span>
                           <div className="flex items-center gap-1">
@@ -1763,17 +1657,12 @@ function CreateOrcamentoModal({
                             </button>
                           </div>
                         </div>
-                        <label className="md:col-span-2">
+                        <div className="md:col-span-2">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unitario</span>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={item.precoUnitario}
-                            onChange={(e) => handleDraftItemField(item.id, 'precoUnitario', e.target.value)}
-                            className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                          />
-                        </label>
+                          <p className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-100">
+                            {currency(item.precoUnitario)}
+                          </p>
+                        </div>
                         <label className="md:col-span-2">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
                           <input

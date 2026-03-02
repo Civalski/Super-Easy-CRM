@@ -216,7 +216,7 @@ model Pedido {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   oportunidade  Oportunidade   @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
   itens         PedidoItem[]
-  contasReceber ContaReceber[]
+  contasReceber ContaReceber?
 
   @@unique([id, userId])
   @@unique([oportunidadeId, userId])

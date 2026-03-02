@@ -163,27 +163,40 @@ export default function Header({
           </div>
 
           <div className="flex-1 px-1 sm:px-3">
-            <div ref={buscaRef} className="relative mx-auto w-full max-w-xl">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
-                size={19}
-              />
+            <div
+              ref={buscaRef}
+              className="relative flex mx-auto w-full max-w-xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
+            >
+              <div
+                className="flex h-11 w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400"
+                aria-hidden
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Search size={19} />
+              </div>
               <input
                 type="text"
                 placeholder="Buscar clientes, orcamentos, pedidos..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}
-                className="h-11 w-full rounded-xl border border-slate-300/70 bg-white/80 pl-10 pr-10 text-sm text-slate-900 outline-hidden transition placeholder:text-slate-500 focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400"
+                className="h-11 min-w-0 flex-1 border-0 bg-transparent py-2 pl-2 pr-2 text-sm leading-[1.5rem] text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
-              {busca && (
+              {busca ? (
                 <button
+                  type="button"
                   onClick={limparBusca}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+                  className="shrink-0 rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
                   aria-label="Limpar busca"
                 >
                   <X size={17} />
                 </button>
+              ) : (
+                <div
+                  className="h-11 w-10 shrink-0 cursor-default"
+                  aria-hidden
+                  onMouseDown={(e) => e.preventDefault()}
+                />
               )}
 
               {mostrarResultados && busca.trim().length >= 2 && (

@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Layers,
   LogOut,
+  MessageCircleHeart,
   MessageSquareText,
   Package,
   Settings,
@@ -125,6 +126,11 @@ const menuCategories: MenuCategory[] = [
         href: '/followups/templates',
         icon: MessageSquareText,
       },
+      {
+        name: 'Suporte',
+        href: '/suporte',
+        icon: MessageCircleHeart,
+      },
     ],
   },
   {
@@ -211,7 +217,7 @@ export default function Sidebar({
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
-      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
+      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-200 via-slate-200/98 to-slate-300/95 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
         <div
           className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
