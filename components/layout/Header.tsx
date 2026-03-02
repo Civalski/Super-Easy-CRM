@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings } from 'lucide-react'
+import { Search, Bell, Menu, X, Settings, MessageCircleHeart } from 'lucide-react'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -238,6 +238,15 @@ export default function Header({
                 />
               )}
             </div>
+
+            <Link
+              href="/suporte"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+              aria-label="Suporte"
+              title="Suporte"
+            >
+              <MessageCircleHeart size={18} />
+            </Link>
 
             <Link
               href="/configuracoes"
