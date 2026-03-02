@@ -14,8 +14,8 @@ $pids = @(
 if ($pids.Count -eq 0) {
     Write-Host "  Porta 3000 esta livre" -ForegroundColor Green
 } else {
-    foreach ($pid in $pids) {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    foreach ($procId in $pids) {
+        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
         if (-not $proc) {
             continue
         }
