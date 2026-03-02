@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import { getNextAuthSecret } from "@/lib/nextauth-secret"
 
 const adminApiPrefixes = [
     '/api/seed',
@@ -36,7 +37,7 @@ export async function proxy(req: NextRequest) {
         return NextResponse.next()
     }
 
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+    const token = await getToken({ req, secret: getNextAuthSecret() })
 
     if (!token) {
         if (pathname.startsWith('/api')) {

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
+import { getNextAuthSecret } from '@/lib/nextauth-secret'
 import { GoalMetricType, GoalPeriodType } from '@prisma/client'
 import {
   expandOpportunityStatuses,
@@ -22,7 +23,7 @@ const metricsRequiringStatus = new Set<GoalMetricType>([
 ])
 
 export async function getUserId(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await getToken({ req, secret: getNextAuthSecret() })
   if (!token) return undefined
 
   const candidateIds = [token.userId, token.sub].filter(

@@ -9,6 +9,7 @@ import {
     resetRateLimit,
 } from "@/lib/security/rate-limit"
 import { verifyTurnstileToken } from "@/lib/security/turnstile"
+import { getNextAuthSecret } from "@/lib/nextauth-secret"
 
 export const dynamic = 'force-dynamic'
 
@@ -102,7 +103,7 @@ const handler = NextAuth({
             }
         })
     ],
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: getNextAuthSecret(),
     pages: {
         signIn: '/login',
     },
@@ -127,7 +128,19 @@ const handler = NextAuth({
     session: {
         strategy: "jwt",
     },
+    trustHost: true,
     debug: process.env.NEXTAUTH_DEBUG === 'true',
 })
 
-export { handler as GET, handler as POST }
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ nextauth?: string[] }> }
+) {
+  return handler(req, context)
+}
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ nextauth?: string[] }> }
+) {
+  return handler(req, context)
+}

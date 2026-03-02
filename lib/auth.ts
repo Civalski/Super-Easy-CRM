@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
+import { getNextAuthSecret } from '@/lib/nextauth-secret'
 
 export async function getAuthIdentityFromRequest(req: NextRequest): Promise<{
   userId?: string
   role?: string
 }> {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await getToken({ req, secret: getNextAuthSecret() })
   if (!token) return {}
 
   const role = typeof token.role === 'string' && token.role.length > 0 ? token.role : undefined
