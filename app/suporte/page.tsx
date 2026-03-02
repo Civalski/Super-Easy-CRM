@@ -43,7 +43,7 @@ export default function SuportePage() {
             Atendimento rapido para duvidas e suporte operacional.
           </p>
           <a
-            href="https://wa.me/5500000000000"
+            href="https://wa.me/5519998205608"
             target="_blank"
             rel="noreferrer"
             className="mt-2 inline-flex text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300"
