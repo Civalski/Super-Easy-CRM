@@ -38,6 +38,25 @@ function toYmd(date: Date) {
   }).format(date)
 }
 
+const MOCK_CLIENTES_TOTAL = 24
+const MOCK_OPORTUNIDADES_TOTAL = 36
+const MOCK_TAREFAS_TOTAL = 54
+const MOCK_PROSPECTOS_TOTAL = 36
+const MOCK_PRODUTOS_TOTAL = 20
+const MOCK_FOLLOW_UP_ATTEMPTS_TOTAL = 40
+
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+function createWeightedPool<T>(items: Array<{ value: T; weight: number }>) {
+  return items.flatMap((item) => Array.from({ length: item.weight }, () => item.value))
+}
+
+function deterministicPick<T>(pool: T[], index: number, step = 5) {
+  return pool[(index * step) % pool.length]
+}
+
 
 // Dados de demonstracao para clientes
 const clientesData = [
@@ -157,9 +176,6 @@ const contatosData = [
 // Status possíveis para oportunidades
 const statusOportunidades = ['sem_contato', 'em_potencial', 'orcamento', 'fechada', 'perdida']
 
-// Status possíveis para tarefas
-const statusTarefas = ['pendente', 'em_andamento', 'concluida']
-const prioridadesTarefas = ['baixa', 'media', 'alta']
 
 export async function POST(request: NextRequest) {
   try {
@@ -180,59 +196,87 @@ export async function POST(request: NextRequest) {
     if (role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-
     // Criar clientes
     console.log('?? Criando clientes...')
     const clientesCriados = []
-    for (const clienteData of clientesData) {
+    for (let i = 0; i < MOCK_CLIENTES_TOTAL; i++) {
+      const base = clientesData[i % clientesData.length]
+      const lote = Math.floor(i / clientesData.length) + 1
+      const [localPart, domainPart] = (base.email ?? `cliente.mock.${i + 1}@arkercrm.com.br`).split('@')
+      const email = `${localPart}.mock${String(lote).padStart(2, '0')}@${domainPart}`
+
+      const payload = {
+        nome: lote === 1 ? base.nome : `${base.nome} ${lote}`,
+        email,
+        telefone: base.telefone,
+        empresa: base.empresa ? `${base.empresa} ${lote}` : `Empresa Mock ${i + 1}`,
+        endereco: base.endereco ? `${base.endereco} - ${100 + i}` : `Endereco ${100 + i}`,
+        cidade: base.cidade,
+        estado: base.estado,
+        cep: base.cep,
+        observacoes: 'Registro mockado para demonstracao.',
+      }
+
       const clienteExistente = await prisma.cliente.findFirst({
-        where: { email: clienteData.email, userId },
+        where: { email, userId },
+        select: { id: true },
       })
 
-      if (!clienteExistente) {
-        const cliente = await prisma.cliente.create({
-          data: {
-            ...clienteData,
-            userId,
-          },
-        })
-        clientesCriados.push(cliente)
-        console.log(`  ? Cliente criado: ${cliente.nome}`)
-      } else {
-        clientesCriados.push(clienteExistente)
-        console.log(`  ? Cliente já existe: ${clienteData.nome}`)
-      }
+      const cliente = clienteExistente
+        ? await prisma.cliente.update({
+            where: { id: clienteExistente.id },
+            data: payload,
+          })
+        : await prisma.cliente.create({
+            data: {
+              ...payload,
+              userId,
+            },
+          })
+
+      clientesCriados.push(cliente)
+      console.log(`  ? Cliente processado: ${cliente.nome}`)
     }
 
-    // Criar contatos para alguns clientes
+    // Criar contatos em maior volume
     console.log('?? Criando contatos...')
     let contatosCriados = 0
-    for (let i = 0; i < Math.min(contatosData.length, clientesCriados.length); i++) {
-      const contatoData = contatosData[i]
-      const cliente = clientesCriados[i]
+    const totalContatos = Math.max(clientesCriados.length + 6, 24)
+    for (let i = 0; i < totalContatos; i++) {
+      const contatoBase = contatosData[i % contatosData.length]
+      const cliente = clientesCriados[i % clientesCriados.length]
+      const rodada = Math.floor(i / clientesCriados.length) + 1
+      const email = `contato.${String(i + 1).padStart(3, '0')}@mock.arkercrm.com.br`
 
       const contatoExistente = await prisma.contato.findFirst({
         where: {
-          email: contatoData.email,
+          email,
           clienteId: cliente.id,
           userId,
         },
+        select: { id: true },
       })
 
-      if (!contatoExistente) {
-        await prisma.contato.create({
-          data: {
-            ...contatoData,
-            clienteId: cliente.id,
-            userId,
-          },
-        })
-        contatosCriados++
-        console.log(`  ? Contato criado: ${contatoData.nome} (${cliente.nome})`)
-      } else {
-        console.log(`  ? Contato já existe: ${contatoData.nome}`)
+      const payload = {
+        nome: rodada === 1 ? contatoBase.nome : `${contatoBase.nome} ${rodada}`,
+        email,
+        telefone: contatoBase.telefone,
+        cargo: contatoBase.cargo,
+        clienteId: cliente.id,
+        userId,
       }
+
+      if (contatoExistente) {
+        await prisma.contato.update({
+          where: { id: contatoExistente.id },
+          data: payload,
+        })
+      } else {
+        await prisma.contato.create({ data: payload })
+      }
+
+      contatosCriados++
+      console.log(`  ? Contato processado: ${payload.nome} (${cliente.nome})`)
     }
 
     // Criar oportunidades
@@ -282,60 +326,88 @@ export async function POST(request: NextRequest) {
       'Aplicativo mobile para relacionamento com cliente',
       'Sistema de BI com relatórios e análises avançadas',
     ]
+    const oportunidadeStatusPool = createWeightedPool([
+      { value: 'sem_contato', weight: 9 },
+      { value: 'em_potencial', weight: 10 },
+      { value: 'orcamento', weight: 8 },
+      { value: 'fechada', weight: 6 },
+      { value: 'perdida', weight: 3 },
+    ])
 
-    const oportunidadesCriadas = []
-    for (let i = 0; i < oportunidadesTitulos.length; i++) {
+    const oportunidadesCriadas: Array<{ id: string; status: string; valor: number | null }> = []
+    for (let i = 0; i < MOCK_OPORTUNIDADES_TOTAL; i++) {
       const cliente = clientesCriados[i % clientesCriados.length]
-      const status = statusOportunidades[i % statusOportunidades.length]
+      const status = deterministicPick(oportunidadeStatusPool, i)
+      const idx = i % oportunidadesTitulos.length
+      const sufixo = String(i + 1).padStart(3, '0')
+      const titulo = `[Mock] ${oportunidadesTitulos[idx]} #${sufixo}`
 
-      // Calcular probabilidade baseada no status
       let probabilidade = 0
       switch (status) {
         case 'sem_contato':
-          probabilidade = Math.floor(Math.random() * 20) + 10 // 10-30%
+          probabilidade = randomInt(8, 22)
           break
         case 'em_potencial':
-          probabilidade = Math.floor(Math.random() * 20) + 30 // 30-50%
+          probabilidade = randomInt(23, 47)
           break
         case 'orcamento':
-          probabilidade = Math.floor(Math.random() * 30) + 50 // 50-80%
+          probabilidade = randomInt(48, 78)
           break
         case 'fechada':
-          probabilidade = 100
+          probabilidade = randomInt(85, 97)
           break
         case 'perdida':
-          probabilidade = 0
+          probabilidade = randomInt(0, 15)
           break
       }
 
-      // Calcular valor aleatório entre 10k e 500k
-      const valor = Math.floor(Math.random() * 490000) + 10000
+      let valor = 0
+      if (status === 'sem_contato') valor = randomInt(12000, 85000)
+      if (status === 'em_potencial') valor = randomInt(30000, 180000)
+      if (status === 'orcamento') valor = randomInt(60000, 320000)
+      if (status === 'fechada') valor = randomInt(90000, 450000)
+      if (status === 'perdida') valor = randomInt(20000, 160000)
 
-      // Data de fechamento para oportunidades fechadas
       let dataFechamento: Date | null = null
-      if (status === 'fechada') {
-        const diasFuturos = Math.floor(Math.random() * 20) + 1
+      if (status === 'fechada' || status === 'perdida') {
         dataFechamento = new Date()
-        dataFechamento.setDate(dataFechamento.getDate() - diasFuturos)
+        dataFechamento.setDate(dataFechamento.getDate() - randomInt(3, 90))
       }
 
-      const oportunidade = await prisma.oportunidade.create({
-        data: {
+      const payload = {
+        userId,
+        titulo,
+        descricao: `${oportunidadesDescricoes[idx]}. Registro de demonstracao ${sufixo}.`,
+        valor,
+        status,
+        probabilidade,
+        dataFechamento,
+        clienteId: cliente.id,
+      }
+
+      const oportunidadeExistente = await prisma.oportunidade.findFirst({
+        where: {
           userId,
-          titulo: oportunidadesTitulos[i],
-          descricao: oportunidadesDescricoes[i],
-          valor: valor,
-          status: status,
-          probabilidade: probabilidade,
-          dataFechamento: dataFechamento,
+          titulo,
           clienteId: cliente.id,
-
         },
+        select: { id: true },
       })
-      oportunidadesCriadas.push(oportunidade)
-      console.log(`  ? Oportunidade criada: ${oportunidade.titulo} (${status})`)
-    }
 
+      const oportunidade = oportunidadeExistente
+        ? await prisma.oportunidade.update({
+            where: { id: oportunidadeExistente.id },
+            data: payload,
+          })
+        : await prisma.oportunidade.create({ data: payload })
+
+      oportunidadesCriadas.push({
+        id: oportunidade.id,
+        status: oportunidade.status,
+        valor: oportunidade.valor,
+      })
+      console.log(`  ? Oportunidade processada: ${oportunidade.titulo} (${status})`)
+    }
     // Criar tarefas
     console.log('? Criando tarefas...')
     const tarefasTitulos = [
@@ -394,34 +466,66 @@ export async function POST(request: NextRequest) {
       'Revisar e acordar SLA com o cliente',
     ]
 
+    const tarefaStatusPool = createWeightedPool([
+      { value: 'pendente', weight: 24 },
+      { value: 'em_andamento', weight: 18 },
+      { value: 'concluida', weight: 12 },
+    ])
+    const tarefaPrioridadePool = createWeightedPool([
+      { value: 'media', weight: 24 },
+      { value: 'alta', weight: 18 },
+      { value: 'baixa', weight: 12 },
+    ])
+
     let tarefasCriadas = 0
-    for (let i = 0; i < tarefasTitulos.length; i++) {
-      const status = statusTarefas[i % statusTarefas.length]
-      const prioridade = prioridadesTarefas[i % prioridadesTarefas.length]
+    for (let i = 0; i < MOCK_TAREFAS_TOTAL; i++) {
+      const status = deterministicPick(tarefaStatusPool, i, 7)
+      const prioridade = deterministicPick(tarefaPrioridadePool, i, 3)
+      const usaOportunidade = i % 3 !== 0
+      const cliente = usaOportunidade ? null : clientesCriados[i % clientesCriados.length]
+      const oportunidade = usaOportunidade ? oportunidadesCriadas[i % oportunidadesCriadas.length] : null
 
-      // Algumas tarefas relacionadas a clientes, outras a oportunidades
-      const cliente = i % 2 === 0 ? clientesCriados[i % clientesCriados.length] : null
-      const oportunidade = i % 2 === 1 ? oportunidadesCriadas[i % oportunidadesCriadas.length] : null
+      let diasOffset = randomInt(-20, 30)
+      if (status === 'concluida') {
+        diasOffset = -randomInt(1, 20)
+      }
 
-      // Data de vencimento (algumas no passado, algumas no futuro)
-      const diasOffset = Math.floor(Math.random() * 30) - 10 // -10 a +20 dias
       const dataVencimento = new Date()
       dataVencimento.setDate(dataVencimento.getDate() + diasOffset)
 
-      await prisma.tarefa.create({
-        data: {
+      const idx = i % tarefasTitulos.length
+      const sufixo = String(i + 1).padStart(3, '0')
+      const titulo = `[Mock] ${tarefasTitulos[idx]} #${sufixo}`
+      const payload = {
+        userId,
+        titulo,
+        descricao: `${tarefasDescricoes[idx]}. Atividade simulada ${sufixo}.`,
+        status,
+        prioridade,
+        dataVencimento,
+        clienteId: cliente?.id,
+        oportunidadeId: oportunidade?.id,
+      }
+
+      const tarefaExistente = await prisma.tarefa.findFirst({
+        where: {
           userId,
-          titulo: tarefasTitulos[i],
-          descricao: tarefasDescricoes[i],
-          status: status,
-          prioridade: prioridade,
-          dataVencimento: dataVencimento,
-          clienteId: cliente?.id,
-          oportunidadeId: oportunidade?.id,
+          titulo,
         },
+        select: { id: true },
       })
+
+      if (tarefaExistente) {
+        await prisma.tarefa.update({
+          where: { id: tarefaExistente.id },
+          data: payload,
+        })
+      } else {
+        await prisma.tarefa.create({ data: payload })
+      }
+
       tarefasCriadas++
-      console.log(`  ? Tarefa criada: ${tarefasTitulos[i]} (${status})`)
+      console.log(`  ? Tarefa processada: ${titulo} (${status})`)
     }
 
     // Criar motivos de perda customizados
@@ -455,15 +559,22 @@ export async function POST(request: NextRequest) {
 
     // Criar prospectos para funil e leads
     console.log('?? Criando prospectos...')
-    const prospectStatus = ['lead_frio', 'novo', 'em_contato', 'qualificado', 'descartado', 'convertido']
+    const prospectStatus = createWeightedPool([
+      { value: 'lead_frio', weight: 9 },
+      { value: 'novo', weight: 10 },
+      { value: 'em_contato', weight: 7 },
+      { value: 'qualificado', weight: 5 },
+      { value: 'descartado', weight: 3 },
+      { value: 'convertido', weight: 2 },
+    ])
     const loteOptions = ['LOTE A', 'LOTE B', 'LOTE C', null]
     let prospectosCriados = 0
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < MOCK_PROSPECTOS_TOTAL; i++) {
       const base = String(40000000 + i).padStart(8, '0')
       const ordem = '0001'
       const dv = String((i * 7) % 100).padStart(2, '0')
       const cnpj = `${base}${ordem}${dv}`
-      const status = prospectStatus[i % prospectStatus.length]
+      const status = deterministicPick(prospectStatus, i)
       const cidade = ['Sao Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Curitiba', 'Fortaleza'][i % 5]
       const uf = ['SP', 'RJ', 'MG', 'PR', 'CE'][i % 5]
       const clienteConvertido = status === 'convertido' ? clientesCriados[i % clientesCriados.length] : null
@@ -476,8 +587,8 @@ export async function POST(request: NextRequest) {
           },
         },
         update: {
-          razaoSocial: `Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
-          nomeFantasia: `Negocio ${String(i + 1).padStart(2, '0')}`,
+          razaoSocial: `Prospecto ${String(i + 1).padStart(3, '0')} LTDA`,
+          nomeFantasia: `Negocio ${String(i + 1).padStart(3, '0')}`,
           municipio: cidade,
           uf,
           status,
@@ -495,8 +606,8 @@ export async function POST(request: NextRequest) {
           cnpjBasico: cnpj.slice(0, 8),
           cnpjOrdem: cnpj.slice(8, 12),
           cnpjDv: cnpj.slice(12, 14),
-          razaoSocial: `Prospecto ${String(i + 1).padStart(2, '0')} LTDA`,
-          nomeFantasia: `Negocio ${String(i + 1).padStart(2, '0')}`,
+          razaoSocial: `Prospecto ${String(i + 1).padStart(3, '0')} LTDA`,
+          nomeFantasia: `Negocio ${String(i + 1).padStart(3, '0')}`,
           capitalSocial: `${80000 + i * 15000}`,
           porte: i % 2 === 0 ? 'ME' : 'EPP',
           naturezaJuridica: 'Sociedade Empresaria Limitada',
@@ -517,7 +628,7 @@ export async function POST(request: NextRequest) {
           telefone1: `(11) 4${String(20000000 + i * 37).slice(0, 8)}`,
           telefone2: i % 3 === 0 ? `(11) 9${String(11000000 + i * 19).slice(0, 8)}` : null,
           fax: null,
-          email: `prospecto.${String(i + 1).padStart(2, '0')}@arkercrm.com.br`,
+          email: `prospecto.${String(i + 1).padStart(3, '0')}@arkercrm.com.br`,
           status,
           observacoes: 'Prospecto criado para acompanhamento do funil.',
           prioridade: i % 6,
@@ -558,7 +669,7 @@ export async function POST(request: NextRequest) {
         await prisma.prospectoEnvioAgendado.update({
           where: { id: existente.id },
           data: {
-            enviados: item.status === 'processado' ? 8 : 0,
+            enviados: item.status === 'processado' ? 15 : 0,
             executadoEm: item.status === 'processado' ? new Date() : null,
             erro: item.status === 'erro' ? 'Falha simulada' : null,
           },
@@ -570,7 +681,7 @@ export async function POST(request: NextRequest) {
             lote: item.lote,
             dataEnvio: item.dataEnvio,
             status: item.status,
-            enviados: item.status === 'processado' ? 8 : 0,
+            enviados: item.status === 'processado' ? 15 : 0,
             executadoEm: item.status === 'processado' ? new Date() : null,
             erro: item.status === 'erro' ? 'Falha simulada' : null,
           },
@@ -582,7 +693,7 @@ export async function POST(request: NextRequest) {
     // Criar catalogo de produtos/servicos
     console.log('?? Criando produtos e servicos...')
     const produtosCriados = [] as Array<{ id: string; nome: string; precoPadrao: number }>
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < MOCK_PRODUTOS_TOTAL; i++) {
       const tipo = i % 2 === 0 ? 'produto' : 'servico'
       const codigo = `PS-${String(i + 1).padStart(3, '0')}`
       const precoPadrao = Number((120 + i * 35.8).toFixed(2))
@@ -643,7 +754,7 @@ export async function POST(request: NextRequest) {
     console.log('?? Criando pedidos e itens...')
     const oportunidadesParaPedido = oportunidadesCriadas
       .filter((o) => o.status === 'orcamento' || o.status === 'fechada')
-      .slice(0, 10)
+      .slice(0, 16)
 
     let pedidosCriados = 0
     let pedidoItensCriados = 0
@@ -867,14 +978,80 @@ export async function POST(request: NextRequest) {
     // Criar metas e snapshots
     console.log('?? Criando metas e snapshots...')
     const metasSeed = [
-      { title: 'Meta clientes cadastrados', metricType: GoalMetricType.CLIENTES_CADASTRADOS, periodType: GoalPeriodType.MONTHLY, target: 30, weekDays: [] as number[] },
-      { title: 'Meta clientes contatados', metricType: GoalMetricType.CLIENTES_CONTATADOS, periodType: GoalPeriodType.WEEKLY, target: 20, weekDays: [1, 2, 3, 4, 5] },
-      { title: 'Meta propostas', metricType: GoalMetricType.PROPOSTAS, periodType: GoalPeriodType.MONTHLY, target: 15, weekDays: [] as number[] },
-      { title: 'Meta vendas', metricType: GoalMetricType.VENDAS, periodType: GoalPeriodType.MONTHLY, target: 8, weekDays: [] as number[] },
-      { title: 'Meta qualificacao', metricType: GoalMetricType.QUALIFICACAO, periodType: GoalPeriodType.WEEKLY, target: 10, weekDays: [1, 2, 3, 4, 5] },
-      { title: 'Meta prospeccao', metricType: GoalMetricType.PROSPECCAO, periodType: GoalPeriodType.DAILY, target: 6, weekDays: [] as number[] },
-      { title: 'Meta faturamento', metricType: GoalMetricType.FATURAMENTO, periodType: GoalPeriodType.CUSTOM, target: 220000, weekDays: [] as number[] },
+      {
+        title: 'Meta clientes cadastrados',
+        metricType: GoalMetricType.CLIENTES_CADASTRADOS,
+        periodType: GoalPeriodType.MONTHLY,
+        baseTarget: 36,
+        weekDays: [] as number[],
+        progressRange: [45, 78] as [number, number],
+      },
+      {
+        title: 'Meta clientes contatados',
+        metricType: GoalMetricType.CLIENTES_CONTATADOS,
+        periodType: GoalPeriodType.WEEKLY,
+        baseTarget: 34,
+        weekDays: [1, 2, 3, 4, 5],
+        progressRange: [42, 75] as [number, number],
+      },
+      {
+        title: 'Meta propostas',
+        metricType: GoalMetricType.PROPOSTAS,
+        periodType: GoalPeriodType.MONTHLY,
+        baseTarget: 20,
+        weekDays: [] as number[],
+        progressRange: [50, 82] as [number, number],
+      },
+      {
+        title: 'Meta vendas',
+        metricType: GoalMetricType.VENDAS,
+        periodType: GoalPeriodType.MONTHLY,
+        baseTarget: 10,
+        weekDays: [] as number[],
+        progressRange: [40, 72] as [number, number],
+      },
+      {
+        title: 'Meta qualificacao',
+        metricType: GoalMetricType.QUALIFICACAO,
+        periodType: GoalPeriodType.WEEKLY,
+        baseTarget: 14,
+        weekDays: [1, 2, 3, 4, 5],
+        progressRange: [44, 79] as [number, number],
+      },
+      {
+        title: 'Meta prospeccao',
+        metricType: GoalMetricType.PROSPECCAO,
+        periodType: GoalPeriodType.DAILY,
+        baseTarget: 12,
+        weekDays: [],
+        progressRange: [38, 70] as [number, number],
+      },
+      {
+        title: 'Meta faturamento',
+        metricType: GoalMetricType.FATURAMENTO,
+        periodType: GoalPeriodType.CUSTOM,
+        baseTarget: 550000,
+        weekDays: [] as number[],
+        progressRange: [40, 74] as [number, number],
+      },
     ]
+
+    const getMetricCurrent = (metricType: GoalMetricType) => {
+      if (metricType === GoalMetricType.CLIENTES_CADASTRADOS) return clientesCriados.length
+      if (metricType === GoalMetricType.CLIENTES_CONTATADOS) return contatosCriados
+      if (metricType === GoalMetricType.PROPOSTAS) return oportunidadesCriadas.filter((o) => o.status === 'orcamento').length
+      if (metricType === GoalMetricType.VENDAS) return oportunidadesCriadas.filter((o) => o.status === 'fechada').length
+      if (metricType === GoalMetricType.QUALIFICACAO) return oportunidadesCriadas.filter((o) => o.status === 'em_potencial').length
+      if (metricType === GoalMetricType.PROSPECCAO) return oportunidadesCriadas.filter((o) => o.status === 'sem_contato').length
+      if (metricType === GoalMetricType.FATURAMENTO) {
+        return Math.round(
+          oportunidadesCriadas
+            .filter((o) => o.status === 'fechada')
+            .reduce((acc, o) => acc + (o.valor ?? 0), 0)
+        )
+      }
+      return 0
+    }
 
     let metasCriadas = 0
     let metasSnapshotsCriados = 0
@@ -888,6 +1065,14 @@ export async function POST(request: NextRequest) {
         select: { id: true },
       })
 
+      const rawCurrent = getMetricCurrent(metaData.metricType)
+      const [minProgress, maxProgress] = metaData.progressRange
+      const desiredProgress = rawCurrent > 0 ? randomInt(minProgress, maxProgress) : 0
+      const target =
+        rawCurrent > 0
+          ? Math.max(metaData.baseTarget, Math.ceil((rawCurrent * 100) / Math.max(1, desiredProgress)))
+          : metaData.baseTarget
+
       const startCustom = metaData.periodType === GoalPeriodType.CUSTOM ? new Date(Date.now() - 30 * 86400000) : null
       const endCustom = metaData.periodType === GoalPeriodType.CUSTOM ? new Date(Date.now() + 30 * 86400000) : null
 
@@ -897,7 +1082,7 @@ export async function POST(request: NextRequest) {
             data: {
               metricType: metaData.metricType,
               periodType: metaData.periodType,
-              target: metaData.target,
+              target,
               startDate: startCustom,
               endDate: endCustom,
               weekDays: metaData.weekDays,
@@ -909,7 +1094,7 @@ export async function POST(request: NextRequest) {
               title: metaData.title,
               metricType: metaData.metricType,
               periodType: metaData.periodType,
-              target: metaData.target,
+              target,
               startDate: startCustom,
               endDate: endCustom,
               weekDays: metaData.weekDays,
@@ -918,20 +1103,7 @@ export async function POST(request: NextRequest) {
 
       metasCriadas++
 
-      let current = 0
-      if (metaData.metricType === GoalMetricType.CLIENTES_CADASTRADOS) current = clientesCriados.length
-      if (metaData.metricType === GoalMetricType.CLIENTES_CONTATADOS) current = contatosCriados
-      if (metaData.metricType === GoalMetricType.PROPOSTAS) current = oportunidadesCriadas.filter((o) => o.status === 'orcamento').length
-      if (metaData.metricType === GoalMetricType.VENDAS) current = oportunidadesCriadas.filter((o) => o.status === 'fechada').length
-      if (metaData.metricType === GoalMetricType.QUALIFICACAO) current = oportunidadesCriadas.filter((o) => o.status === 'em_potencial').length
-      if (metaData.metricType === GoalMetricType.PROSPECCAO) current = oportunidadesCriadas.filter((o) => o.status === 'sem_contato').length
-      if (metaData.metricType === GoalMetricType.FATURAMENTO) {
-        current = Math.round(
-          oportunidadesCriadas
-            .filter((o) => o.status === 'fechada')
-            .reduce((acc, o) => acc + (o.valor ?? 0), 0)
-        )
-      }
+      const current = rawCurrent
 
       let periodStart = new Date()
       periodStart.setHours(0, 0, 0, 0)
@@ -962,7 +1134,7 @@ export async function POST(request: NextRequest) {
         periodEnd = endCustom ?? periodEnd
       }
 
-      const progress = Math.min(100, Math.round((current / Math.max(1, goal.target)) * 100))
+      const progress = current === 0 ? 0 : Math.min(99, Math.round((current / Math.max(1, goal.target)) * 100))
       await prisma.goalSnapshot.upsert({
         where: {
           goalId_periodStart_periodEnd: {
@@ -991,8 +1163,8 @@ export async function POST(request: NextRequest) {
     // Configurar meta de contatos diarios
     const metaContatoConfig = await prisma.metaContatoConfig.upsert({
       where: { userId },
-      update: { metaDiaria: 25, ativo: true },
-      create: { userId, metaDiaria: 25, ativo: true },
+      update: { metaDiaria: 35, ativo: true },
+      create: { userId, metaDiaria: 35, ativo: true },
       select: { id: true },
     })
 
@@ -1051,7 +1223,7 @@ export async function POST(request: NextRequest) {
     }
 
     let followUpAttemptsCriados = 0
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < MOCK_FOLLOW_UP_ATTEMPTS_TOTAL; i++) {
       const oportunidade = oportunidadesCriadas[i % oportunidadesCriadas.length]
       const template = templates[i % templates.length]
       const mensagem = `${template.mensagem} [${String(i + 1).padStart(2, '0')}]`
@@ -1130,6 +1302,4 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
 

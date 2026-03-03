@@ -11,3 +11,4 @@ export { AtividadesRecentes } from './AtividadesRecentes';
 export { DashboardLoading } from './DashboardLoading';
 export { DashboardGoals } from './DashboardGoals';
 export { FluxoCaixaResumo } from './FluxoCaixaResumo';
+export { FaturamentoPerdaLineChart } from './FaturamentoPerdaLineChart';

@@ -7,7 +7,7 @@ const fetcher = (url: string) =>
     return res.json()
   })
 
-export function useDashboard(filter: 'day' | 'month', date: Date) {
+export function useDashboard(filter: 'day' | 'week' | 'month', date: Date) {
   const dateParam = date.toISOString()
   const { data, error, isLoading, isValidating, mutate } = useSWR<DashboardData>(
     `/api/dashboard?filter=${filter}&date=${dateParam}`,

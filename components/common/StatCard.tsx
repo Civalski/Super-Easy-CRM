@@ -12,12 +12,27 @@ interface StatCardProps {
   hoverRing?: 'none' | 'purple'
 }
 
-const colorClasses = {
-  blue: 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
-  green: 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400',
-  yellow: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400',
-  purple: 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400',
-  red: 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400',
+const colorConfig = {
+  blue: {
+    gradient: 'from-blue-500 to-cyan-400',
+    shadow: 'shadow-blue-500/30',
+  },
+  green: {
+    gradient: 'from-emerald-500 to-green-400',
+    shadow: 'shadow-emerald-500/30',
+  },
+  yellow: {
+    gradient: 'from-amber-500 to-yellow-400',
+    shadow: 'shadow-amber-500/30',
+  },
+  purple: {
+    gradient: 'from-violet-500 to-indigo-400',
+    shadow: 'shadow-violet-500/30',
+  },
+  red: {
+    gradient: 'from-rose-500 to-red-400',
+    shadow: 'shadow-rose-500/30',
+  },
 }
 
 export default function StatCard({
@@ -30,38 +45,46 @@ export default function StatCard({
   href,
   hoverRing = 'none',
 }: StatCardProps) {
-  const changeColorClass =
-    changeType === 'positive'
-      ? 'text-green-600 dark:text-green-400'
-      : changeType === 'negative'
-      ? 'text-red-600 dark:text-red-400'
-      : 'text-gray-600 dark:text-gray-400'
+  const config = colorConfig[color]
 
-  const hoverRingClass =
-    hoverRing === 'purple'
-      ? 'transition hover:ring-1 hover:ring-purple-200/60 dark:hover:ring-purple-700/35'
-      : ''
+  const changeStyle =
+    changeType === 'positive'
+      ? 'text-emerald-400 bg-emerald-400/10'
+      : changeType === 'negative'
+      ? 'text-rose-400 bg-rose-400/10'
+      : 'text-slate-400 bg-slate-400/10'
 
   const cardContent = (
-    <div className={`crm-card p-6 ${hoverRingClass}`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-          {title}
-        </h3>
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
-          <Icon size={20} />
+    <div
+      className={`crm-card group relative overflow-hidden p-5 transition-all duration-300 hover:-translate-y-0.5 ${
+        hoverRing === 'purple' ? 'hover:ring-1 hover:ring-indigo-400/30' : ''
+      }`}
+    >
+      <div className="relative flex items-start justify-between gap-2">
+        <div
+          className={`rounded-xl bg-gradient-to-br ${config.gradient} p-2.5 shadow-lg ${config.shadow}`}
+        >
+          <Icon size={18} className="text-white" strokeWidth={2.5} />
         </div>
-      </div>
-      <div className="flex items-baseline justify-between">
-        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-          {value}
-        </p>
+
         {change && (
-          <span className={`text-sm font-medium ${changeColorClass}`}>
+          <span className={`self-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${changeStyle}`}>
             {change}
           </span>
         )}
       </div>
+
+      <div className="relative mt-4 space-y-0.5">
+        <p className="text-[28px] font-bold leading-none tracking-tight text-gray-900 dark:text-white">
+          {value}
+        </p>
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{title}</p>
+      </div>
+
+      {/* Barra de accent na base do card */}
+      <div
+        className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${config.gradient} opacity-40 transition-opacity duration-300 group-hover:opacity-90`}
+      />
     </div>
   )
 
@@ -69,7 +92,7 @@ export default function StatCard({
     return (
       <Link
         href={href}
-        className="block transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 rounded-xl"
+        className="block rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500"
         aria-label={`Ir para ${title}`}
       >
         {cardContent}
@@ -79,4 +102,3 @@ export default function StatCard({
 
   return cardContent
 }
-

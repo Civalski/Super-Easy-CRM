@@ -155,9 +155,11 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
           const sanitizedTitle = sanitizeMockText(goal.title) || metricLabels[goal.metricType]
 
           return (
-            <div
+            <Link
               key={goal.id}
-              className="group relative flex flex-col justify-between border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800"
+              href="/metas"
+              className="group relative flex flex-col justify-between border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
+              aria-label={`Abrir meta ${sanitizedTitle}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className={`p-2 rounded-lg ${bgClass}`}>
@@ -192,7 +194,7 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
                   />
                 </div>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>

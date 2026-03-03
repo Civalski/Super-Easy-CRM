@@ -7,6 +7,7 @@ import {
   DashboardGoals,
   OportunidadesChart,
   ValorPipelineChart,
+  FaturamentoPerdaLineChart,
   TarefasStatusChart,
   AtividadesRecentes,
   DashboardLoading,
@@ -15,7 +16,7 @@ import {
 import { useDashboard, useMetas, useFluxoCaixa } from '@/lib/hooks/useDashboardData'
 
 export default function Dashboard() {
-  const [dateFilter, setDateFilter] = useState<'day' | 'month'>('month')
+  const [dateFilter, setDateFilter] = useState<'day' | 'week' | 'month'>('month')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
   const {
@@ -69,7 +70,7 @@ export default function Dashboard() {
         <FluxoCaixaResumo fluxo={fluxo} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
         <OportunidadesChart
           data={data.oportunidadesPorStatus}
           totalOportunidades={data.oportunidadesCount}
@@ -79,6 +80,7 @@ export default function Dashboard() {
           valorGanhos={data.valorGanhos}
           valorPerdidos={data.valorPerdidos}
         />
+        <FaturamentoPerdaLineChart data={data.faturamentoPerdaSerie} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

@@ -7,6 +7,11 @@ export interface DashboardData {
   valorTotal: number
   valorGanhos: number
   valorPerdidos: number
+  faturamentoPerdaSerie: Array<{
+    month: string
+    faturamento: number
+    perda: number
+  }>
   oportunidadesPorStatus: Array<{
     status: string
     _count: number

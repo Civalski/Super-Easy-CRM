@@ -48,8 +48,8 @@ export default function SeedPage() {
           </h1>
 
           <p className="text-gray-600 mb-6">
-            Esta ferramenta cria dados de apresentacao de clientes, orçamentos, contatos e tarefas
-            para você testar as funcionalidades do CRM.
+            Esta ferramenta cria dados de apresentacao com volume ampliado e distribuicao mais realista
+            entre clientes, oportunidades, tarefas, prospectos, pedidos, financeiro e metas para você testar as funcionalidades do CRM.
           </p>
 
           <Button
@@ -113,10 +113,10 @@ export default function SeedPage() {
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">Dados que serão criados:</h4>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• 10 clientes com informações completas</li>
-              <li>• 7 contatos relacionados aos clientes</li>
-              <li>• 20 orçamentos em diferentes status do pipeline</li>
-              <li>• 25 tarefas com diferentes prioridades e status</li>
+              <li>• 24 clientes com dados completos</li>
+              <li>• 30 contatos distribuidos entre clientes</li>
+              <li>• 36 orçamentos com status balanceados</li>
+              <li>• 54 tarefas com prioridades e prazos variados</li>
             </ul>
             <p className="text-xs text-blue-700 mt-3">
               <strong>Nota:</strong> Se os dados já existirem (mesmo email para clientes),
@@ -128,5 +128,6 @@ export default function SeedPage() {
     </div>
   )
 }
+
 
 

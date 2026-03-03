@@ -10,6 +10,7 @@ export { ListDensityCard } from './ListDensityCard';
 export { ConfirmBeforeDeleteCard } from './ConfirmBeforeDeleteCard';
 export { DateFormatCard } from './DateFormatCard';
 export { ExcluirDadosCard } from './ExcluirDadosCard';
+export { MockDataCard } from './MockDataCard';
 export { SeedResultCard } from './SeedResultCard';
 export { ConfiguracoesEmptyState } from './ConfiguracoesEmptyState';
 export { OrcamentoPdfConfigCard } from './OrcamentoPdfConfigCard';

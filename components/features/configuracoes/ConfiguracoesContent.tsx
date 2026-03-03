@@ -10,6 +10,7 @@ import {
   ConfirmBeforeDeleteCard,
   DateFormatCard,
   ExcluirDadosCard,
+  MockDataCard,
   OrcamentoPdfConfigCard,
 } from '@/components/features/configuracoes'
 
@@ -51,6 +52,7 @@ export function ConfiguracoesContent() {
           Dados da conta
         </h2>
         <div className="space-y-2">
+          <MockDataCard />
           <ExcluirDadosCard />
         </div>
       </section>

@@ -54,3 +54,4 @@ Os arquivos abaixo ainda estao monoliticos e devem ser modularizados quando houv
 - `app/prospectar/page.tsx` (~50 KB)
 - `app/metas/page.tsx` (~50 KB)
 - `app/produtos/page.tsx` (~44 KB)
+
