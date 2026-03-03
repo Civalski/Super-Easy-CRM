@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react'
+import { ChangeEvent, FormEvent, Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Button, ConfirmDialog } from '@/components/common'
@@ -143,7 +143,7 @@ interface ClienteFormData {
   camposPersonalizados: CampoPersonalizado[]
 }
 
-export default function ClienteDetalhesPage() {
+function ClienteDetalhesPageContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -1412,6 +1412,14 @@ export default function ClienteDetalhesPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ClienteDetalhesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 dark:bg-gray-950" />}>
+      <ClienteDetalhesPageContent />
+    </Suspense>
   )
 }
 

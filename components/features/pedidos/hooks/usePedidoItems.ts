@@ -176,7 +176,6 @@ export function usePedidoItems({ updatePedidoTotals }: UsePedidoItemsOptions) {
     itemFormByPedido,
     produtoLabelByPedido,
     loadItems,
-    handleOpenItemsModal,
     handleItemField,
     handleSaveItem,
     handleDeleteItem,

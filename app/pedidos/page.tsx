@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { Suspense, useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Swal from 'sweetalert2'
@@ -21,7 +21,7 @@ import type { Pedido, PedidoTab, QuickApproveChoice } from '@/components/feature
 import { QUICK_APPROVE_OPTIONS, STATUS_ENTREGA_LABEL } from '@/components/features/pedidos/constants'
 import { buildItemForm, getPedidoSituacao } from '@/components/features/pedidos/utils'
 
-export default function PedidosPage() {
+function PedidosPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
@@ -292,5 +292,13 @@ export default function PedidosPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function PedidosPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 dark:bg-gray-950" />}>
+      <PedidosPageContent />
+    </Suspense>
   )
 }
