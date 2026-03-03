@@ -19,11 +19,14 @@ import {
   ClipboardList,
   ShoppingCart,
   Trash2,
+  ChevronRight,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import {
   getProbabilityBadgeClass,
+  getProbabilityLevel,
   getProbabilityLabel,
   getProbabilityValueFromLevel,
   type ProbabilityLevel,
@@ -113,6 +116,22 @@ const formatDate = (value?: string | null) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('pt-BR')
+}
+
+const extractLastNumber = (value?: string | null) => {
+  if (!value) return null
+  const matches = value.match(/\d+/g)
+  if (!matches || matches.length === 0) return null
+  const parsed = Number(matches[matches.length - 1])
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+const getDownloadFileNameFromHeader = (contentDisposition: string | null): string | null => {
+  if (!contentDisposition) return null
+  const fileNameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (fileNameStarMatch?.[1]) return decodeURIComponent(fileNameStarMatch[1]).replace(/["']/g, '').trim()
+  const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/i)
+  return fileNameMatch?.[1]?.trim() || null
 }
 
 /** Retorna data no formato YYYY-MM-DD a partir de hoje + num dias/semanas/meses */
@@ -219,9 +238,11 @@ function OrcamentosPageContent() {
   })
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingOrcamentoId, setEditingOrcamentoId] = useState<string | null>(null)
   const [prefillPerson, setPrefillPerson] = useState<AsyncSelectOption | null>(null)
   const [creatingPedidoById, setCreatingPedidoById] = useState<Record<string, boolean>>({})
   const [downloadingPdfById, setDownloadingPdfById] = useState<Record<string, boolean>>({})
+  const [expandedOrcamentoId, setExpandedOrcamentoId] = useState<string | null>(null)
 
   const [pageAbertas, setPageAbertas] = useState(1)
   // Paginação do histórico
@@ -232,7 +253,7 @@ function OrcamentosPageContent() {
       setLoading(true)
       if (activeTab === 'abertas') {
         const response = await fetch(
-          `/api/oportunidades?status=orcamento&paginated=true&page=${pageAbertas}&limit=${LIST_PAGE_SIZE}${clienteQuery}`
+          `/api/oportunidades?status=orcamento&possuiPedido=false&paginated=true&page=${pageAbertas}&limit=${LIST_PAGE_SIZE}${clienteQuery}`
         )
         const payload = await response.json().catch(() => null)
         if (!response.ok) throw new Error(payload?.error || 'Erro ao carregar orcamentos')
@@ -254,7 +275,7 @@ function OrcamentosPageContent() {
         setMetaAbertas(meta)
       } else {
         const perdidasResponse = await fetch(
-          `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
+          `/api/oportunidades?status=perdida&possuiPedido=false&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
         )
         const perdidasPayload = await perdidasResponse.json().catch(() => null)
 
@@ -359,7 +380,7 @@ function OrcamentosPageContent() {
           if (data.prospectoConvertidoAutomaticamente) {
             Swal.fire({
               icon: 'success',
-              title: 'Venda Fechada! ðŸŽ‰',
+              title: 'Venda Fechada! 🎉',
               html: 'O orçamento foi fechado com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado a este orçamento foi automaticamente promovido a cliente.',
               confirmButtonColor: '#16a34a',
               background: '#1f2937',
@@ -368,7 +389,7 @@ function OrcamentosPageContent() {
           } else {
             Swal.fire({
               icon: 'success',
-              title: 'Venda Fechada! ðŸŽ‰',
+              title: 'Venda Fechada! 🎉',
               text: 'O orçamento foi fechado com sucesso.',
               confirmButtonColor: '#16a34a',
               background: '#1f2937',
@@ -398,6 +419,11 @@ function OrcamentosPageContent() {
     void fetchOportunidades()
   }
 
+  const handleOrcamentoEdited = () => {
+    setEditingOrcamentoId(null)
+    void fetchOportunidades()
+  }
+
   const clearOrcamentoPrefillParams = useCallback(() => {
     if (!searchParams.get('novoOrcamento') && !searchParams.get('clienteId') && !searchParams.get('clienteNome')) {
       return
@@ -423,39 +449,27 @@ function OrcamentosPageContent() {
   }, [router, searchParams])
 
   const handleTransformarEmPedido = async (oportunidade: Oportunidade) => {
-    const choice = await Swal.fire({
+    const confirmation = await Swal.fire({
       icon: 'question',
       title: 'Transformar em pedido',
-      text: 'Escolha como deseja aprovar este orçamento.',
-      showDenyButton: true,
+      text: 'Ao confirmar, este orcamento sera aprovado e passara para a aba de pedidos.',
       showCancelButton: true,
-      confirmButtonText: 'Aprovar e confirmar depois',
-      denyButtonText: 'Aprovar e confirmar pagamento',
+      confirmButtonText: 'Sim, transformar',
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#2563eb',
-      denyButtonColor: '#16a34a',
       cancelButtonColor: '#6b7280',
       background: '#1f2937',
       color: '#f3f4f6',
     })
 
-    if (!choice.isConfirmed && !choice.isDenied) return
-
-    const confirmaPagamentoAgora = choice.isDenied
+    if (!confirmation.isConfirmed) return
 
     try {
       setCreatingPedidoById((prev) => ({ ...prev, [oportunidade.id]: true }))
       const payload: {
         oportunidadeId: string
-        pagamentoConfirmado?: boolean
-        statusEntrega?: string
       } = {
         oportunidadeId: oportunidade.id,
-      }
-
-      if (confirmaPagamentoAgora) {
-        payload.pagamentoConfirmado = true
-        payload.statusEntrega = 'entregue'
       }
 
       const response = await fetch('/api/pedidos', {
@@ -466,16 +480,14 @@ function OrcamentosPageContent() {
 
       const data = await response.json().catch(() => null)
       if (!response.ok) {
-        throw new Error(data?.error || 'Erro ao transformar orçamento em pedido')
+        throw new Error(data?.error || 'Erro ao transformar orcamento em pedido')
       }
 
       void fetchOportunidades()
       await Swal.fire({
         icon: 'success',
         title: data?.numero ? `Pedido #${data.numero} criado` : 'Pedido criado',
-        text: confirmaPagamentoAgora
-          ? 'O orçamento foi aprovado, transformado em pedido e o pagamento foi confirmado.'
-          : 'O orçamento foi aprovado e transformado em pedido. Voce podera confirmar o pagamento depois.',
+        text: 'O orcamento foi aprovado e transformado em pedido.',
         confirmButtonColor: '#2563eb',
         background: '#1f2937',
         color: '#f3f4f6',
@@ -485,7 +497,7 @@ function OrcamentosPageContent() {
       Swal.fire({
         icon: 'error',
         title: 'Erro',
-        text: error instanceof Error ? error.message : 'Não foi possível transformar o orçamento em pedido.',
+        text: error instanceof Error ? error.message : 'Nao foi possivel transformar o orcamento em pedido.',
         confirmButtonColor: '#6366f1',
         background: '#1f2937',
         color: '#f3f4f6',
@@ -508,13 +520,7 @@ function OrcamentosPageContent() {
       const downloadUrl = window.URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = downloadUrl
-      anchor.download = `${(oportunidade.titulo || `orcamento-${oportunidade.id}`)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9-_ ]/g, '')
-        .trim()
-        .replace(/\s+/g, '-')
-        .toLowerCase() || `orcamento-${oportunidade.id}`}.pdf`
+      anchor.download = getDownloadFileNameFromHeader(response.headers.get('Content-Disposition')) || 'Orçamento.pdf'
       document.body.appendChild(anchor)
       anchor.click()
       anchor.remove()
@@ -666,8 +672,10 @@ function OrcamentosPageContent() {
                   {orcamentosAbertos.map((oportunidade) => {
                     const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.orcamento
                     const StatusIcon = statusInfo.icon
+                    const orcamentoNumero = extractLastNumber(oportunidade.titulo)
+                    const orcamentoLabel = orcamentoNumero ? `Orcamento ${orcamentoNumero}` : oportunidade.titulo
                     const pedidoNumero = oportunidade.pedido?.numero ?? null
-                    const pedidoLabel = pedidoNumero ? `Pedido #${pedidoNumero}` : 'Pedido'
+                    const pedidoLabel = orcamentoNumero ? `Pedido #${orcamentoNumero}` : 'Pedido'
 
                     const createdLabel = oportunidade.createdAt ? `Criada ${formatDate(oportunidade.createdAt)}` : null
                     const previsaoLabel = oportunidade.dataFechamento
@@ -678,15 +686,28 @@ function OrcamentosPageContent() {
                       : null
                     const datesLabel = [createdLabel, previsaoLabel, proximaAcaoLabel].filter(Boolean).join(' • ')
 
+                    const isExpanded = expandedOrcamentoId === oportunidade.id
+
                     return (
-                      <div
-                        key={oportunidade.id}
-                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35"
-                      >
-                        <div className="min-w-0">
+                      <div key={oportunidade.id}>
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35">
+                          <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedOrcamentoId((prev) =>
+                                  prev === oportunidade.id ? null : oportunidade.id
+                                )
+                              }
+                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                              title={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                              aria-label={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                            >
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </button>
                             <h3 className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white">
-                              {oportunidade.titulo}
+                              {orcamentoLabel}
                             </h3>
                             <span
                               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none flex items-center gap-1 ${statusInfo.color}`}
@@ -699,6 +720,11 @@ function OrcamentosPageContent() {
 
                           <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
                             <span className="min-w-0 truncate">{oportunidade.cliente.nome}</span>
+                            {oportunidade.titulo && !orcamentoNumero && (
+                              <span className="hidden md:inline min-w-0 truncate text-gray-500 dark:text-gray-500">
+                                • {oportunidade.titulo}
+                              </span>
+                            )}
                             {pedidoNumero && (
                               <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">
                                 • Pedido #{pedidoNumero}
@@ -715,9 +741,9 @@ function OrcamentosPageContent() {
                               </span>
                             )}
                           </div>
-                        </div>
+                          </div>
 
-                        <div className="shrink-0 text-right">
+                          <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
                             {formatCurrency(oportunidade.valor)}
                           </p>
@@ -726,9 +752,9 @@ function OrcamentosPageContent() {
                           >
                             {getProbabilityLabel(oportunidade.probabilidade)}
                           </span>
-                        </div>
+                          </div>
 
-                        <div className="flex shrink-0 items-center justify-end gap-1.5">
+                          <div className="flex shrink-0 items-center justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
@@ -769,16 +795,34 @@ function OrcamentosPageContent() {
                             </Button>
                           )}
 
-                          <a href={`/oportunidades/${oportunidade.id}/editar`} title="Editar orçamento">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="px-2 py-1 text-xs"
-                            >
-                              Editar
-                            </Button>
-                          </a>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="px-2 py-1 text-xs"
+                            title="Editar orcamento"
+                            onClick={() => setEditingOrcamentoId(oportunidade.id)}
+                          >
+                            Editar
+                          </Button>
+                          </div>
                         </div>
+
+                        {isExpanded && (
+                          <div className="mx-4 mb-4 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-300">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              <p><span className="font-semibold">Cliente:</span> {oportunidade.cliente.nome}</p>
+                              <p><span className="font-semibold">Criada em:</span> {formatDate(oportunidade.createdAt)}</p>
+                              <p><span className="font-semibold">Previsao:</span> {formatDate(oportunidade.dataFechamento)}</p>
+                              <p><span className="font-semibold">Proxima acao:</span> {formatDate(oportunidade.proximaAcaoEm)}</p>
+                              <p><span className="font-semibold">Forma pgto:</span> {oportunidade.formaPagamento || '-'}</p>
+                              <p><span className="font-semibold">Parcelas:</span> {oportunidade.parcelas ?? '-'}</p>
+                              <p><span className="font-semibold">Desconto:</span> {formatCurrency(oportunidade.desconto ?? null)}</p>
+                            </div>
+                            {oportunidade.descricao && (
+                              <p className="mt-2"><span className="font-semibold">Descricao:</span> {oportunidade.descricao}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -842,18 +886,33 @@ function OrcamentosPageContent() {
                   {historicoPerdidas.map((oportunidade) => {
                     const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.perdida
                     const StatusIcon = statusInfo.icon
+                    const orcamentoNumero = extractLastNumber(oportunidade.titulo)
+                    const orcamentoLabel = orcamentoNumero ? `Orcamento ${orcamentoNumero}` : oportunidade.titulo
                     const statusToReturn = oportunidade.statusAnterior || 'orcamento'
                     const lostDate = oportunidade.dataFechamento || oportunidade.updatedAt || oportunidade.createdAt || null
 
+                    const isExpanded = expandedOrcamentoId === oportunidade.id
+
                     return (
-                      <div
-                        key={oportunidade.id}
-                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35"
-                      >
+                      <div key={oportunidade.id}>
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35">
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedOrcamentoId((prev) =>
+                                  prev === oportunidade.id ? null : oportunidade.id
+                                )
+                              }
+                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                              title={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                              aria-label={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                            >
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </button>
                             <h3 className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white">
-                              {oportunidade.titulo}
+                              {orcamentoLabel}
                             </h3>
                             <span
                               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none flex items-center gap-1 ${statusInfo.color}`}
@@ -899,16 +958,30 @@ function OrcamentosPageContent() {
                           >
                             Reabrir
                           </Button>
-                          <a href={`/oportunidades/${oportunidade.id}/editar`} title="Editar orçamento">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="px-2 py-1 text-xs"
-                            >
-                              Editar
-                            </Button>
-                          </a>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="px-2 py-1 text-xs"
+                            title="Editar orcamento"
+                            onClick={() => setEditingOrcamentoId(oportunidade.id)}
+                          >
+                            Editar
+                          </Button>
                         </div>
+                      </div>
+
+                        {isExpanded && (
+                          <div className="mx-4 mb-4 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-300">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              <p><span className="font-semibold">Cliente:</span> {oportunidade.cliente.nome}</p>
+                              <p><span className="font-semibold">Cancelado em:</span> {formatDate(lostDate)}</p>
+                              <p><span className="font-semibold">Status anterior:</span> {statusToReturn}</p>
+                            </div>
+                            {oportunidade.descricao && (
+                              <p className="mt-2"><span className="font-semibold">Descricao:</span> {oportunidade.descricao}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -930,7 +1003,872 @@ function OrcamentosPageContent() {
           initialPerson={prefillPerson}
         />
       )}
+
+      {editingOrcamentoId && (
+        <EditOrcamentoDrawer
+          oportunidadeId={editingOrcamentoId}
+          onClose={() => setEditingOrcamentoId(null)}
+          onSaved={handleOrcamentoEdited}
+        />
+      )}
     </div>
+  )
+}
+
+const formatDateInput = (value?: string | null) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function EditOrcamentoDrawer({
+  oportunidadeId,
+  onClose,
+  onSaved,
+}: {
+  oportunidadeId: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [loadingData, setLoadingData] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ titulo?: string; cliente?: string }>({})
+  const [formData, setFormData] = useState({
+    titulo: '',
+    descricao: '',
+    valor: '',
+    formaPagamento: '',
+    parcelas: '',
+    desconto: '',
+    probabilidade: 'media',
+    dataFechamento: '',
+    proximaAcaoEm: '',
+    canalProximaAcao: '',
+    responsavelProximaAcao: '',
+    lembreteProximaAcao: false,
+  })
+  const [selectedProdutoLabel, setSelectedProdutoLabel] = useState('')
+  const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
+  const [itens, setItens] = useState<DraftCreateItem[]>([])
+  const [showCarrinhoDrawer, setShowCarrinhoDrawer] = useState(false)
+  const [showProdutosSection, setShowProdutosSection] = useState(false)
+
+  const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
+  const totalCarrinho = cartSummary.totalLiquido
+  const draftSubtotal = calculateSubtotal(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
+  const hasCartItems = itens.length > 0
+
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      setLoadingData(true)
+      try {
+        const response = await fetch(`/api/oportunidades/${oportunidadeId}`)
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !data) {
+          throw new Error(data?.error || 'Erro ao carregar orcamento')
+        }
+        if (!active) return
+
+        setSelectedPerson({
+          id: data.clienteId,
+          nome: data.cliente?.nome || 'Cliente',
+          tipo: 'cliente',
+        } as AsyncSelectOption)
+        setFormData({
+          titulo: data.titulo || '',
+          descricao: data.descricao || '',
+          valor: data.valor ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(data.valor) : '',
+          formaPagamento: data.formaPagamento || '',
+          parcelas: data.parcelas ? String(data.parcelas) : '',
+          desconto: data.desconto ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(data.desconto) : '',
+          probabilidade: getProbabilityLevel(data.probabilidade || 0),
+          dataFechamento: formatDateInput(data.dataFechamento),
+          proximaAcaoEm: formatDateInput(data.proximaAcaoEm),
+          canalProximaAcao: data.canalProximaAcao || '',
+          responsavelProximaAcao: data.responsavelProximaAcao || '',
+          lembreteProximaAcao: data.lembreteProximaAcao === true,
+        })
+      } catch (error) {
+        console.error('Erro ao carregar orcamento para edicao:', error)
+        Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao carregar orcamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        onClose()
+      } finally {
+        if (active) setLoadingData(false)
+      }
+    }
+
+    void load()
+    return () => {
+      active = false
+    }
+  }, [oportunidadeId, onClose])
+
+  const fieldClass =
+    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+  const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300'
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    if (e.target.name === 'lembreteProximaAcao') {
+      const target = e.target as HTMLInputElement
+      setFormData((prev) => ({
+        ...prev,
+        lembreteProximaAcao: target.checked,
+      }))
+      return
+    }
+    if (e.target.name === 'formaPagamento' && e.target.value !== 'parcelado') {
+      setFormData((prev) => ({
+        ...prev,
+        formaPagamento: e.target.value,
+        parcelas: '',
+      }))
+      return
+    }
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
+  }
+
+  const handleCurrencyChange = (name: 'valor' | 'desconto') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '')
+    if (!rawValue) {
+      setFormData((prev) => ({ ...prev, [name]: '' }))
+      return
+    }
+    const numericValue = parseInt(rawValue, 10) / 100
+    const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue)
+    setFormData((prev) => ({ ...prev, [name]: formatted }))
+  }
+
+  const handlePersonChange = (option: AsyncSelectOption | null) => {
+    setSelectedPerson(option)
+    if (option && fieldErrors.cliente) {
+      setFieldErrors((prev) => ({ ...prev, cliente: undefined }))
+    }
+  }
+
+  const handleItemForm = (field: keyof ItemForm, value: string) => {
+    setItemForm((prev) => {
+      if (field === 'produtoServicoId') {
+        return { ...prev, [field]: value }
+      }
+      const numericValue = toNumber(value, 0)
+      const next = { ...prev, [field]: numericValue }
+      const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+      return {
+        ...next,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+      }
+    })
+  }
+
+  const fillItemFormFromProduto = useCallback((produto: ProdutoServico | null) => {
+    setItemForm((prev) => ({
+      ...prev,
+      produtoServicoId: produto?.id || '',
+      descricao: produto ? produto.nome : prev.descricao,
+      precoUnitario: produto ? produto.precoPadrao : prev.precoUnitario,
+    }))
+    setSelectedProdutoLabel(produto?.nome || '')
+  }, [])
+
+  const appendDraftItem = (draft: ItemForm) => {
+    const descricao = draft.descricao.trim()
+    if (!draft.produtoServicoId || !descricao || draft.quantidade <= 0) {
+      return false
+    }
+
+    const normalized = normalizeItemNumbers(draft.quantidade, draft.precoUnitario, draft.desconto)
+    if (normalized.quantidade <= 0) return false
+
+    setItens((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        ...draft,
+        descricao,
+        quantidade: normalized.quantidade,
+        precoUnitario: normalized.precoUnitario,
+        desconto: normalized.desconto,
+        subtotal: normalized.subtotal,
+      },
+    ])
+
+    return true
+  }
+
+  const handleSelectProduto = (option: AsyncSelectOption | null) => {
+    let selected = getProdutoFromOption(option)
+    if (!selected && option?.id && option?.nome) {
+      selected = {
+        id: String(option.id),
+        nome: String(option.nome),
+        tipo: 'produto',
+        codigo: null,
+        unidade: null,
+        precoPadrao: 0,
+      }
+      const raw = (option.original as { precoPadrao?: number } | undefined)
+      if (raw && typeof raw.precoPadrao === 'number') selected.precoPadrao = raw.precoPadrao
+      else if (raw && raw.precoPadrao != null) selected.precoPadrao = Number(raw.precoPadrao)
+    }
+    if (!selected) {
+      fillItemFormFromProduto(null)
+      return
+    }
+
+    const draft: ItemForm = {
+      produtoServicoId: selected.id,
+      descricao: selected.nome,
+      quantidade: itemForm.quantidade > 0 ? itemForm.quantidade : 1,
+      precoUnitario: selected.precoPadrao,
+      desconto: itemForm.desconto > 0 ? itemForm.desconto : 0,
+    }
+
+    if (appendDraftItem(draft)) {
+      setItemForm(buildItemForm())
+      setSelectedProdutoLabel('')
+      return
+    }
+
+    fillItemFormFromProduto(selected)
+  }
+
+  const handleAddDraftItem = () => {
+    if (!appendDraftItem(itemForm)) return
+    setItemForm(buildItemForm())
+    setSelectedProdutoLabel('')
+  }
+
+  const handleRemoveDraftItem = (id: string) => {
+    setItens((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const handleDraftItemField = (id: string, field: DraftEditableField, value: string) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const numericValue = toNumber(value, 0)
+        const next = { ...item, [field]: numericValue }
+        const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
+        return {
+          ...next,
+          quantidade: normalized.quantidade,
+          precoUnitario: normalized.precoUnitario,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
+  }
+
+  const handleStepQuantity = (id: string, delta: number) => {
+    setItens((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const nextQuantidade = Math.max(0, item.quantidade + delta)
+        const normalized = normalizeItemNumbers(nextQuantidade, item.precoUnitario, item.desconto)
+        return {
+          ...item,
+          quantidade: normalized.quantidade,
+          desconto: normalized.desconto,
+          subtotal: normalized.subtotal,
+        }
+      })
+    )
+  }
+
+  const saveOrcamento = async () => {
+    const nextErrors: { titulo?: string; cliente?: string } = {}
+    if (!formData.titulo.trim()) nextErrors.titulo = 'Titulo obrigatorio.'
+    if (!selectedPerson?.id) nextErrors.cliente = 'Cliente obrigatorio.'
+    if (nextErrors.titulo || nextErrors.cliente) {
+      setFieldErrors(nextErrors)
+      return
+    }
+
+    setFieldErrors({})
+    setSaving(true)
+    try {
+      const valorManual = formData.valor
+        ? parseFloat(formData.valor.replace(/\./g, '').replace(',', '.'))
+        : null
+
+      const response = await fetch(`/api/oportunidades/${oportunidadeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: formData.titulo.trim(),
+          descricao: formData.descricao || null,
+          valor: hasCartItems ? totalCarrinho : valorManual,
+          formaPagamento: formData.formaPagamento || null,
+          parcelas:
+            formData.formaPagamento === 'parcelado' && formData.parcelas
+              ? parseInt(formData.parcelas, 10)
+              : null,
+          desconto: formData.desconto
+            ? parseFloat(formData.desconto.replace(/\./g, '').replace(',', '.'))
+            : null,
+          probabilidade: getProbabilityValueFromLevel(
+            PROBABILITY_LEVELS.includes(formData.probabilidade as ProbabilityLevel)
+              ? (formData.probabilidade as ProbabilityLevel)
+              : 'media'
+          ),
+          clienteId: selectedPerson?.id || null,
+          dataFechamento: formData.dataFechamento || null,
+          proximaAcaoEm: formData.proximaAcaoEm || null,
+          canalProximaAcao: formData.canalProximaAcao || null,
+          responsavelProximaAcao: formData.responsavelProximaAcao || null,
+          lembreteProximaAcao: formData.lembreteProximaAcao,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao salvar orcamento')
+      }
+      setShowCarrinhoDrawer(false)
+      onSaved()
+      Swal.fire({ icon: 'success', title: 'Orcamento atualizado', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+    } catch (error) {
+      console.error('Erro ao atualizar orcamento:', error)
+      Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao atualizar orcamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await saveOrcamento()
+  }
+
+  return (
+    <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-3xl">
+      <div className="h-full overflow-y-auto p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Editar Orcamento</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Atualize os dados do orcamento em um menu lateral.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <X className="h-3.5 w-3.5" />
+            Fechar
+          </button>
+        </div>
+
+        {loadingData ? (
+          <div className="flex min-h-[240px] items-center justify-center">
+            <Loader2 className="animate-spin text-blue-600" size={28} />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Identificacao</p>
+              <div className="mt-3 space-y-4">
+                <div>
+                  <label className={labelClass}>
+                    Titulo <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="titulo"
+                    value={formData.titulo}
+                    onChange={handleChange}
+                    className={`${fieldClass} ${fieldErrors.titulo ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Ex: Orcamento de servico para empresa X"
+                  />
+                  {fieldErrors.titulo && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.titulo}</p>
+                  )}
+                </div>
+
+                <div>
+                  <AsyncSelect
+                    label="Cliente"
+                    placeholder="Busque por nome, email ou empresa..."
+                    value={selectedPerson ? selectedPerson.id : ''}
+                    initialLabel={selectedPerson ? selectedPerson.nome : ''}
+                    onChange={handlePersonChange}
+                    fetchUrl="/api/pessoas/busca?context=oportunidade"
+                    required
+                  />
+                  {fieldErrors.cliente && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.cliente}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelClass}>Descricao</label>
+                  <textarea
+                    name="descricao"
+                    rows={3}
+                    value={formData.descricao}
+                    onChange={handleChange}
+                    className={fieldClass}
+                    placeholder="Descricao detalhada do orcamento"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <button
+                type="button"
+                onClick={() => {
+                  if (showProdutosSection) {
+                    setShowProdutosSection(false)
+                  } else {
+                    setShowProdutosSection(true)
+                    setShowCarrinhoDrawer(true)
+                  }
+                }}
+                className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-purple-50/80 dark:hover:bg-purple-900/20"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Produtos (opcional)
+                </p>
+                <span className="text-[11px] text-purple-600 transition-colors group-hover:text-purple-700 dark:text-purple-300 dark:group-hover:text-purple-200">
+                  {showProdutosSection ? 'Ocultar' : 'Adicionar produtos'}
+                </span>
+              </button>
+
+              {showProdutosSection && (
+                <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                      <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                      <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
+                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {hasCartItems ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
+                    </p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setShowCarrinhoDrawer(true)}>
+                      {hasCartItems ? 'Editar carrinho' : 'Incluir produtos'}
+                    </Button>
+                  </div>
+
+                  {hasCartItems && (
+                    <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
+                      {itens.slice(0, 3).map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
+                        >
+                          <span className="truncate pr-2">{item.descricao}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{item.quantidade}x</span>
+                          <span>{currency(item.subtotal)}</span>
+                        </div>
+                      ))}
+                      {itens.length > 3 && (
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          +{itens.length - 3} item(ns) no carrinho.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Comercial e acompanhamento</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={labelClass}>Valor (R$)</label>
+                  <input
+                    type="text"
+                    name="valor"
+                    value={formData.valor}
+                    onChange={handleCurrencyChange('valor')}
+                    disabled={hasCartItems}
+                    className={fieldClass}
+                    placeholder={hasCartItems ? 'Calculado pelo carrinho' : '0,00'}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Forma de Pagamento</label>
+                  <select
+                    name="formaPagamento"
+                    value={formData.formaPagamento}
+                    onChange={handleChange}
+                    className={fieldClass}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="pix">Pix</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="cartao">Cartao</option>
+                    <option value="parcelado">Parcelado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Desconto (R$)</label>
+                  <input
+                    type="text"
+                    name="desconto"
+                    value={formData.desconto}
+                    onChange={handleCurrencyChange('desconto')}
+                    className={fieldClass}
+                    placeholder="0,00"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Probabilidade</label>
+                  <select
+                    name="probabilidade"
+                    value={formData.probabilidade}
+                    onChange={handleChange}
+                    className={fieldClass}
+                  >
+                    <option value="baixa">baixa</option>
+                    <option value="media">media</option>
+                    <option value="alta">alta</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Parcelas</label>
+                  <input
+                    type="number"
+                    name="parcelas"
+                    min="2"
+                    max="24"
+                    value={formData.parcelas}
+                    onChange={handleChange}
+                    disabled={formData.formaPagamento !== 'parcelado'}
+                    className={`${fieldClass} disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800`}
+                    placeholder={formData.formaPagamento === 'parcelado' ? 'Ex: 3' : 'Somente parcelado'}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Data Prevista</label>
+                  <input
+                    type="date"
+                    name="dataFechamento"
+                    value={formData.dataFechamento}
+                    onChange={handleChange}
+                    className={`${fieldClass} dark:scheme-dark`}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Proxima Acao</label>
+                  <input
+                    type="date"
+                    name="proximaAcaoEm"
+                    value={formData.proximaAcaoEm}
+                    onChange={handleChange}
+                    className={`${fieldClass} dark:scheme-dark`}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Canal da Acao</label>
+                  <select
+                    name="canalProximaAcao"
+                    value={formData.canalProximaAcao}
+                    onChange={handleChange}
+                    className={fieldClass}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="email">Email</option>
+                    <option value="ligacao">Ligacao</option>
+                    <option value="reuniao">Reuniao</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Responsavel</label>
+                  <input
+                    type="text"
+                    name="responsavelProximaAcao"
+                    value={formData.responsavelProximaAcao}
+                    onChange={handleChange}
+                    className={fieldClass}
+                    placeholder="Ex: Joao"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                name="lembreteProximaAcao"
+                checked={formData.lembreteProximaAcao}
+                onChange={handleChange}
+                className="h-4 w-4 rounded-sm border-gray-300 text-violet-600 focus:ring-violet-500 dark:border-gray-600"
+              />
+              Gerar lembrete para a proxima acao
+            </label>
+
+            <div className="flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  'Salvando...'
+                ) : (
+                  <>
+                    <Save size={18} className="mr-2" />
+                    Salvar Orcamento
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {showCarrinhoDrawer && (
+        <SideCreateDrawer
+          open
+          onClose={() => setShowCarrinhoDrawer(false)}
+          maxWidthClass="max-w-4xl"
+          zIndexClass="z-10010"
+        >
+          <div className="h-full overflow-y-auto p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Carrinho de Produtos
+                </h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Monte o carrinho do orcamento em uma tela dedicada.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCarrinhoDrawer(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                <X className="h-3.5 w-3.5" />
+                Fechar
+              </button>
+            </div>
+
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Adicionar item
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-12">
+                <label className="md:col-span-7">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
+                  <AsyncSelect
+                    className="min-w-0"
+                    placeholder="Buscar produto/servico..."
+                    value={itemForm.produtoServicoId || ''}
+                    initialLabel={selectedProdutoLabel}
+                    onChange={handleSelectProduto}
+                    fetchUrl="/api/produtos-servicos/busca"
+                  />
+                </label>
+                <label className="md:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={itemForm.quantidade}
+                    onChange={(e) => handleItemForm('quantidade', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <label className="md:col-span-1">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={itemForm.desconto}
+                    onChange={(e) => handleItemForm('desconto', e.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <div className="md:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
+                  <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                    {currency(draftSubtotal)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddDraftItem}
+                  disabled={
+                    !itemForm.produtoServicoId ||
+                    itemForm.quantidade <= 0
+                  }
+                  className="md:col-span-12"
+                >
+                  <PackagePlus size={14} className="mr-1.5" />
+                  Adicionar ao carrinho
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  <ShoppingCart size={14} />
+                  Itens do carrinho
+                </p>
+                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  {currency(totalCarrinho)}
+                </p>
+              </div>
+              {itens.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Nenhum item adicionado.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {itens.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                        <div className="md:col-span-4">
+                          <p className="truncate text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {item.descricao}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {currency(item.precoUnitario)} por unidade
+                          </p>
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <p className="mb-1 text-[11px] text-gray-500 dark:text-gray-400">Quantidade</p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStepQuantity(item.id, -1)}
+                              className="rounded-md border border-gray-300 p-1 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                              aria-label="Diminuir quantidade"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={item.quantidade}
+                              onChange={(e) => handleDraftItemField(item.id, 'quantidade', e.target.value)}
+                              className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleStepQuantity(item.id, 1)}
+                              className="rounded-md border border-gray-300 p-1 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                              aria-label="Aumentar quantidade"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="mb-1 text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.desconto}
+                            onChange={(e) => handleDraftItemField(item.id, 'desconto', e.target.value)}
+                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="mb-1 text-[11px] text-gray-500 dark:text-gray-400">Subtotal</p>
+                          <p className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                            {currency(item.subtotal)}
+                          </p>
+                        </div>
+
+                        <div className="md:col-span-1 md:flex md:items-end md:justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoveDraftItem(item.id)}
+                            className="h-8 w-8 p-0"
+                            title="Remover item"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+              <Button type="button" variant="outline" onClick={() => setShowCarrinhoDrawer(false)} disabled={saving}>
+                Continuar editando
+              </Button>
+              <Button type="button" onClick={() => void saveOrcamento()} disabled={saving || loadingData}>
+                {saving ? 'Salvando...' : 'Salvar orçamento'}
+              </Button>
+            </div>
+          </div>
+        </SideCreateDrawer>
+      )}
+    </SideCreateDrawer>
   )
 }
 
@@ -961,6 +1899,7 @@ function CreateOrcamentoModal({
   initialPerson?: AsyncSelectOption | null
 }) {
   const [loading, setLoading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ titulo?: string; cliente?: string }>({})
   const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(initialPerson || null)
   const [statusInfo, setStatusInfo] = useState<string | null>(null)
   const [selectedProdutoLabel, setSelectedProdutoLabel] = useState('')
@@ -1026,6 +1965,10 @@ function CreateOrcamentoModal({
       ...formData,
       [e.target.name]: e.target.value,
     })
+
+    if (e.target.name === 'titulo' && fieldErrors.titulo && e.target.value.trim()) {
+      setFieldErrors((prev) => ({ ...prev, titulo: undefined }))
+    }
   }
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1053,6 +1996,9 @@ function CreateOrcamentoModal({
   const handlePersonChange = (option: AsyncSelectOption | null) => {
     setSelectedPerson(option)
     setStatusInfo(null)
+    if (option && fieldErrors.cliente) {
+      setFieldErrors((prev) => ({ ...prev, cliente: undefined }))
+    }
 
     if (option && option.tipo === 'prospecto') {
       setStatusInfo('Este lead sera convertido em cliente automaticamente.')
@@ -1197,19 +2143,27 @@ function CreateOrcamentoModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedPerson) {
-      Swal.fire({ icon: 'warning', title: 'Atencao', text: 'Por favor, selecione um cliente ou lead', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+    const nextErrors: { titulo?: string; cliente?: string } = {}
+    if (!formData.titulo.trim()) nextErrors.titulo = 'Titulo obrigatorio.'
+    if (!selectedPerson) nextErrors.cliente = 'Cliente ou lead obrigatorio.'
+
+    if (nextErrors.titulo || nextErrors.cliente) {
+      setFieldErrors(nextErrors)
       return
     }
 
+    const person = selectedPerson
+    if (!person) return
+
+    setFieldErrors({})
     setLoading(true)
 
     try {
-      let finalClienteId = selectedPerson.tipo === 'cliente' ? selectedPerson.id : null
-      const prospectoId = selectedPerson.tipo === 'prospecto' ? selectedPerson.id : null
+      let finalClienteId = person.tipo === 'cliente' ? person.id : null
+      const prospectoId = person.tipo === 'prospecto' ? person.id : null
 
-      if (selectedPerson.tipo === 'prospecto') {
-        const convRes = await fetch(`/api/prospectos/${selectedPerson.id}/converter`, {
+      if (person.tipo === 'prospecto') {
+        const convRes = await fetch(`/api/prospectos/${person.id}/converter`, {
           method: 'POST',
         })
         const convData = await convRes.json()
@@ -1237,7 +2191,7 @@ function CreateOrcamentoModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titulo: formData.titulo,
+          titulo: formData.titulo.trim(),
           descricao: formData.descricao || null,
           valor: hasCartItems ? totalCarrinho : valorManual,
           formaPagamento: formData.formaPagamento || null,
@@ -1267,41 +2221,6 @@ function CreateOrcamentoModal({
       const result = await response.json()
 
       if (response.ok) {
-        let carrinhoError: string | null = null
-
-        if (itens.length > 0 && result?.id) {
-          const createPedidoResponse = await fetch('/api/pedidos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              oportunidadeId: result.id,
-              itens: itens.map((item) => ({
-                produtoServicoId: item.produtoServicoId || null,
-                descricao: item.descricao,
-                quantidade: item.quantidade,
-                precoUnitario: item.precoUnitario,
-                desconto: item.desconto,
-              })),
-            }),
-          })
-
-          if (!createPedidoResponse.ok) {
-            const pedidoResult = await createPedidoResponse.json().catch(() => null)
-            carrinhoError =
-              pedidoResult?.error || 'Orcamento criado, mas nao foi possivel anexar os produtos.'
-          }
-        }
-
-        if (carrinhoError) {
-          await Swal.fire({
-            icon: 'warning',
-            title: 'Orcamento criado com ressalva',
-            text: carrinhoError,
-            confirmButtonColor: '#6366f1',
-            background: '#1f2937',
-            color: '#f3f4f6',
-          })
-        }
         onCreated()
       } else {
         Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Erro ao criar orcamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
@@ -1334,7 +2253,7 @@ function CreateOrcamentoModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mx-auto w-full max-w-3xl space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="mx-auto w-full max-w-3xl space-y-4">
           <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Identificacao
@@ -1347,12 +2266,14 @@ function CreateOrcamentoModal({
                 <input
                   type="text"
                   name="titulo"
-                  required
                   value={formData.titulo}
                   onChange={handleChange}
-                  className={fieldClass}
+                  className={`${fieldClass} ${fieldErrors.titulo ? 'border-red-500 focus:ring-red-500' : ''}`}
                   placeholder="Ex: Orcamento de servico para empresa X"
                 />
+                {fieldErrors.titulo && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.titulo}</p>
+                )}
               </div>
 
               <div>
@@ -1362,9 +2283,12 @@ function CreateOrcamentoModal({
                   value={selectedPerson ? selectedPerson.id : ''}
                   initialLabel={selectedPerson ? selectedPerson.nome : ''}
                   onChange={handlePersonChange}
-                  fetchUrl="/api/pessoas/busca"
+                  fetchUrl="/api/pessoas/busca?context=oportunidade"
                   required
                 />
+                {fieldErrors.cliente && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.cliente}</p>
+                )}
                 {statusInfo && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                     <Info size={12} />
@@ -1398,12 +2322,12 @@ function CreateOrcamentoModal({
                   setShowCarrinhoDrawer(true)
                 }
               }}
-              className="flex w-full items-center justify-between gap-2 text-left"
+              className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-purple-50/80 dark:hover:bg-purple-900/20"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Produtos (opcional)
               </p>
-              <span className="text-[11px] text-purple-600 dark:text-purple-300">
+              <span className="text-[11px] text-purple-600 transition-colors group-hover:text-purple-700 dark:text-purple-300 dark:group-hover:text-purple-200">
                 {showProdutosSection ? 'Ocultar' : 'Adicionar produtos'}
               </span>
             </button>
@@ -1867,5 +2791,6 @@ function CreateOrcamentoModal({
     </SideCreateDrawer>
   )
 }
+
 
 

@@ -54,6 +54,7 @@ const STATUS_LABELS: Record<string, string> = {
   sem_contato: 'Sem contato',
   em_potencial: 'Em potencial',
   orcamento: 'Orçamento',
+  pedido: 'Pedido',
   fechada: 'Fechada',
   perdida: 'Perdida',
 }

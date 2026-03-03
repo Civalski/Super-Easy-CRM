@@ -13,28 +13,64 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url)
         const query = searchParams.get('q')?.trim() || ''
+        const context = searchParams.get('context')?.trim()
+        const useCompactRecentList = context === 'oportunidade'
+        const recentLimit = useCompactRecentList ? 3 : 5
 
-        // Se a busca estiver vazia, retorna os 5 últimos clientes cadastrados (pré-carregamento leve)
+        // Sem busca digitada, retorna lista recente curta para reduzir ruido.
         if (!query) {
-            const recentes = await prisma.cliente.findMany({
-                where: { userId },
-                orderBy: { createdAt: 'desc' },
-                take: 5,
-                select: {
-                    id: true,
-                    nome: true,
-                    email: true,
-                    empresa: true,
-                }
-            })
+            const [clientesRecentes, prospectosRecentes] = await Promise.all([
+                prisma.cliente.findMany({
+                    where: { userId },
+                    orderBy: { createdAt: 'desc' },
+                    take: recentLimit,
+                    select: {
+                        id: true,
+                        nome: true,
+                        email: true,
+                        empresa: true,
+                        createdAt: true,
+                    },
+                }),
+                prisma.prospecto.findMany({
+                    where: {
+                        userId,
+                        status: { not: 'convertido' },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: recentLimit,
+                    select: {
+                        id: true,
+                        razaoSocial: true,
+                        nomeFantasia: true,
+                        email: true,
+                        status: true,
+                        createdAt: true,
+                    },
+                }),
+            ])
 
-            const resultados = recentes.map(c => ({
-                id: c.id,
-                nome: c.nome,
-                subtitulo: c.empresa || c.email || 'Cliente Recente',
-                tipo: 'cliente' as const,
-                original: c
-            }))
+            const resultados = [
+                ...clientesRecentes.map((c) => ({
+                    id: c.id,
+                    nome: c.nome,
+                    subtitulo: c.empresa || c.email || 'Cliente recente',
+                    tipo: 'cliente' as const,
+                    createdAt: c.createdAt,
+                    original: c,
+                })),
+                ...prospectosRecentes.map((p) => ({
+                    id: p.id,
+                    nome: p.nomeFantasia || p.razaoSocial,
+                    subtitulo: `${p.status.toUpperCase()} - ${p.razaoSocial || 'Lead'}`,
+                    tipo: 'prospecto' as const,
+                    createdAt: p.createdAt,
+                    original: p,
+                })),
+            ]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .slice(0, recentLimit)
+                .map(({ createdAt, ...item }) => item)
 
             return NextResponse.json(resultados)
         }
@@ -43,14 +79,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json([])
         }
 
-        // Buscar Clientes - Busca apenas por NOME ou EMAIL (se for email)
+        // Buscar clientes por nome e opcionalmente por email.
         const clientes = await prisma.cliente.findMany({
             where: {
                 userId,
                 OR: [
                     { nome: { contains: query, mode: 'insensitive' } },
-                    // Se o usuário digitou um email, podemos tentar buscar
-                    ...(query.includes('@') ? [{ email: { contains: query, mode: 'insensitive' as const } }] : [])
+                    ...(query.includes('@')
+                        ? [{ email: { contains: query, mode: 'insensitive' as const } }]
+                        : []),
                 ],
             },
             select: {
@@ -62,7 +99,7 @@ export async function GET(request: NextRequest) {
             take: 5,
         })
 
-        // Buscar Prospectos não convertidos
+        // Buscar leads nao convertidos.
         const prospectos = await prisma.prospecto.findMany({
             where: {
                 userId,
@@ -70,7 +107,9 @@ export async function GET(request: NextRequest) {
                 OR: [
                     { razaoSocial: { contains: query, mode: 'insensitive' } },
                     { nomeFantasia: { contains: query, mode: 'insensitive' } },
-                    ...(query.includes('@') ? [{ email: { contains: query, mode: 'insensitive' as const } }] : [])
+                    ...(query.includes('@')
+                        ? [{ email: { contains: query, mode: 'insensitive' as const } }]
+                        : []),
                 ],
             },
             select: {
@@ -83,22 +122,21 @@ export async function GET(request: NextRequest) {
             take: 5,
         })
 
-        // Normalizar resultados
         const resultados = [
-            ...clientes.map(c => ({
+            ...clientes.map((c) => ({
                 id: c.id,
                 nome: c.nome,
                 subtitulo: c.empresa || c.email || 'Cliente',
                 tipo: 'cliente' as const,
-                original: c
+                original: c,
             })),
-            ...prospectos.map(p => ({
+            ...prospectos.map((p) => ({
                 id: p.id,
                 nome: p.nomeFantasia || p.razaoSocial,
-                subtitulo: `${p.status.toUpperCase()} - ${p.razaoSocial || 'Prospecto'}`,
+                subtitulo: `${p.status.toUpperCase()} - ${p.razaoSocial || 'Lead'}`,
                 tipo: 'prospecto' as const,
-                original: p
-            }))
+                original: p,
+            })),
         ]
 
         return NextResponse.json(resultados)

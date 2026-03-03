@@ -62,6 +62,13 @@ async function fetchOptionsWithCache(cacheKey: string, signal: AbortSignal) {
     return parsed
 }
 
+function withQueryParam(baseUrl: string, key: string, value: string) {
+    const [pathname, hash = ''] = baseUrl.split('#')
+    const separator = pathname.includes('?') ? '&' : '?'
+    const url = `${pathname}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+    return hash ? `${url}#${hash}` : url
+}
+
 export default function AsyncSelect({
     label,
     placeholder = 'Buscar...',
@@ -131,7 +138,7 @@ export default function AsyncSelect({
             if (trimmedQuery.length >= minQueryLength) {
                 setLoading(true)
                 try {
-                    const cacheKey = `${fetchUrl}?q=${encodeURIComponent(query)}`
+                    const cacheKey = withQueryParam(fetchUrl, 'q', query)
                     const data = await fetchOptionsWithCache(cacheKey, controller.signal)
                     setOptions(Array.isArray(data) ? data : [])
                 } catch (err) {
@@ -144,15 +151,11 @@ export default function AsyncSelect({
                         setLoading(false)
                     }
                 }
-            } else if (trimmedQuery.length === 0 && isOpen) {
+            } else if (trimmedQuery.length === 0) {
+                if (!isOpen) return
                 if (!preloadOnOpen) {
                     setOptions([])
-                    return
                 }
-                if (options.length === 0 || defaultFetchInFlightRef.current) {
-                    return
-                }
-                setOptions([])
             } else {
                 setOptions([])
             }

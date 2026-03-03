@@ -367,6 +367,8 @@ export default function ClienteDetalhesPage() {
     switch (status) {
       case 'orcamento':
         return 'Orcamento'
+      case 'pedido':
+        return 'Pedido'
       case 'fechada':
         return 'Fechada'
       case 'perdida':
@@ -721,6 +723,7 @@ export default function ClienteDetalhesPage() {
                     {cliente.historicoComercial?.pedidosRecentes?.length ? (
                       <div className="space-y-2">
                         {cliente.historicoComercial.pedidosRecentes.map((pedido) => {
+                          const cancelado = pedido.oportunidade?.status === 'perdida'
                           const concluido =
                             pedido.statusEntrega === 'entregue' && pedido.pagamentoConfirmado
 
@@ -742,10 +745,18 @@ export default function ClienteDetalhesPage() {
                                 </Link>
                                 <span
                                   className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                    concluido ? getBadgeClass('success') : getBadgeClass('info')
+                                    cancelado
+                                      ? getBadgeClass('danger')
+                                      : concluido
+                                        ? getBadgeClass('success')
+                                        : getBadgeClass('info')
                                   }`}
                                 >
-                                  {concluido ? 'Concluido' : formatEntregaStatus(pedido.statusEntrega)}
+                                  {cancelado
+                                    ? 'Cancelado'
+                                    : concluido
+                                      ? 'Concluido'
+                                      : formatEntregaStatus(pedido.statusEntrega)}
                                 </span>
                               </div>
                               <div className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">

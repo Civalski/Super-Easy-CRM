@@ -203,8 +203,8 @@ export async function GET(
     const today      = new Date()
     const emissaoStr = dateBr(today)
     const docNum = oportunidade.pedido?.numero
-      ? String(oportunidade.pedido.numero).padStart(6, '0')
-      : oportunidade.id.slice(-8).toUpperCase()
+      ? String(oportunidade.pedido.numero).padStart(5, '0')
+      : oportunidade.id.replace(/\D/g, '').slice(-5).padStart(5, '0')
 
     // Validity date
     let validadeStr = '-'
@@ -489,7 +489,8 @@ export async function GET(
       })
       y -= ROW_H
     } else {
-      for (const [idx, item] of itens.entries()) {
+      for (let idx = 0; idx < itens.length; idx++) {
+        const item = itens[idx]
         ensure(ROW_H + 2)
         page.drawRectangle({
           x: PAGE.marginX, y: y - ROW_H, width: CONTENT_WIDTH, height: ROW_H,
@@ -623,14 +624,16 @@ export async function GET(
     }
 
     const pdfBytes = await pdfDoc.save()
-    const emissaoDateForFile = today.toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const fileName = `orcamento-${docNum}-${emissaoDateForFile}.pdf`
+    const emissaoDateForFile = today.toLocaleDateString('pt-BR').replace(/\//g, '.')
+    const fileName = `Orçamento ${docNum} - ${emissaoDateForFile}.pdf`
+
+    const encodedFileName = encodeURIComponent(fileName)
 
     return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': `attachment; filename="Orcamento ${docNum} - ${emissaoDateForFile}.pdf"; filename*=UTF-8''${encodedFileName}`,
         'Cache-Control': 'no-store',
       },
     })

@@ -104,12 +104,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status')
     const clienteIdFilter = searchParams.get('clienteId')?.trim()
+    const possuiPedidoFilterRaw = searchParams.get('possuiPedido')?.trim().toLowerCase()
     const mode = searchParams.get('mode')
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: Prisma.OportunidadeWhereInput = { userId }
     if (clienteIdFilter) {
       where.clienteId = clienteIdFilter
+    }
+    if (possuiPedidoFilterRaw === 'true') {
+      where.pedido = { isNot: null }
+    } else if (possuiPedidoFilterRaw === 'false') {
+      where.pedido = { is: null }
     }
     if (statusFilter) {
       const statuses = Array.from(

@@ -108,6 +108,9 @@ export async function GET(
               userId,
               clienteId: cliente.id,
               status: 'orcamento',
+              pedido: {
+                is: null,
+              },
             },
           }),
           prisma.pedido.count({
@@ -117,6 +120,9 @@ export async function GET(
                 is: {
                   userId,
                   clienteId: cliente.id,
+                  status: {
+                    not: 'perdida',
+                  },
                 },
               },
               OR: [
@@ -132,6 +138,7 @@ export async function GET(
                 is: {
                   userId,
                   clienteId: cliente.id,
+                  status: 'fechada',
                 },
               },
               statusEntrega: 'entregue',
@@ -143,6 +150,9 @@ export async function GET(
               userId,
               clienteId: cliente.id,
               status: 'perdida',
+              pedido: {
+                is: null,
+              },
             },
           }),
           prisma.oportunidade.findMany({

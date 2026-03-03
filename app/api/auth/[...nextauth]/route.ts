@@ -128,7 +128,6 @@ const handler = NextAuth({
     session: {
         strategy: "jwt",
     },
-    trustHost: true,
     debug: process.env.NEXTAUTH_DEBUG === 'true',
 })
 

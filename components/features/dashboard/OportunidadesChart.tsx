@@ -23,6 +23,7 @@ const STATUS_ORDER = [
   'sem_contato',
   'em_potencial',
   'orcamento',
+  'pedido',
   'fechada',
   'perdida',
 ] as const
@@ -42,6 +43,11 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'Orçamento',
     colorClass: 'text-amber-700 dark:text-amber-300',
     barClass: 'from-amber-500 to-yellow-400',
+  },
+  pedido: {
+    label: 'Pedido',
+    colorClass: 'text-indigo-700 dark:text-indigo-300',
+    barClass: 'from-indigo-500 to-blue-400',
   },
   fechada: {
     label: 'Fechada',

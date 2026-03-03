@@ -13,6 +13,21 @@ const ALLOWED_STATUS_ENTREGA = new Set([
   'entregue',
 ])
 
+const ALLOWED_PAYMENT_METHODS = new Set([
+  'pix',
+  'dinheiro',
+  'cartao',
+  'parcelado',
+])
+
+const ALLOWED_NEXT_ACTION_CHANNELS = new Set([
+  'whatsapp',
+  'email',
+  'ligacao',
+  'reuniao',
+  'outro',
+])
+
 type NormalizedPedidoItemInput = {
   produtoServicoId: string | null
   descricao: string
@@ -39,6 +54,43 @@ function parseOptionalString(value: unknown) {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed === '' ? null : trimmed
+}
+
+function normalizeFormaPagamento(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+
+  const normalizedInput = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (normalizedInput === '') return null
+  if (normalizedInput === 'parcelamento') return 'parcelado'
+
+  return ALLOWED_PAYMENT_METHODS.has(normalizedInput)
+    ? normalizedInput
+    : undefined
+}
+
+function parseOptionalParcelas(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 24) return undefined
+  return parsed
+}
+
+function parseOptionalNonNegativeNumber(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  return roundMoney(parsed)
 }
 
 function parseOptionalDate(value: unknown) {
@@ -130,6 +182,14 @@ function parsePage(value: string | null, fallback = 1) {
   return Math.max(1, parsed)
 }
 
+function extractLastNumber(value?: string | null) {
+  if (!value) return null
+  const matches = value.match(/\d+/g)
+  if (!matches || matches.length === 0) return null
+  const parsed = Number(matches[matches.length - 1])
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseInitialized()
@@ -182,9 +242,17 @@ export async function GET(request: NextRequest) {
             titulo: true,
             descricao: true,
             valor: true,
+            clienteId: true,
+            formaPagamento: true,
+            parcelas: true,
+            desconto: true,
             status: true,
             probabilidade: true,
             dataFechamento: true,
+            proximaAcaoEm: true,
+            canalProximaAcao: true,
+            responsavelProximaAcao: true,
+            lembreteProximaAcao: true,
             createdAt: true,
             cliente: {
               select: {
@@ -260,7 +328,93 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const formaPagamento = parseOptionalString(body.formaPagamento)
+    const normalizedFormaPagamento = normalizeFormaPagamento(body.formaPagamento)
+    if (body.formaPagamento !== undefined && normalizedFormaPagamento === undefined) {
+      return NextResponse.json(
+        { error: 'Forma de pagamento invalida' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedParcelas = parseOptionalParcelas(body.parcelas)
+    if (body.parcelas !== undefined && normalizedParcelas === undefined) {
+      return NextResponse.json(
+        { error: 'Parcelas invalidas (use um numero inteiro entre 1 e 24)' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedDesconto = parseOptionalNonNegativeNumber(body.desconto)
+    if (body.desconto !== undefined && normalizedDesconto === undefined) {
+      return NextResponse.json(
+        { error: 'Desconto invalido' },
+        { status: 400 }
+      )
+    }
+
+    const probabilidadeRaw = body.probabilidade
+    let normalizedProbabilidade: number | undefined
+    if (probabilidadeRaw !== undefined) {
+      const parsedProbability = Number(probabilidadeRaw)
+      if (
+        !Number.isInteger(parsedProbability) ||
+        parsedProbability < 0 ||
+        parsedProbability > 100
+      ) {
+        return NextResponse.json(
+          { error: 'Probabilidade invalida' },
+          { status: 400 }
+        )
+      }
+      normalizedProbabilidade = parsedProbability
+    }
+
+    const dataFechamento = parseOptionalDate(body.dataFechamento)
+    if (body.dataFechamento !== undefined && body.dataFechamento && !dataFechamento) {
+      return NextResponse.json(
+        { error: 'Data prevista invalida' },
+        { status: 400 }
+      )
+    }
+
+    const proximaAcaoEm = parseOptionalDate(body.proximaAcaoEm)
+    if (body.proximaAcaoEm !== undefined && body.proximaAcaoEm && !proximaAcaoEm) {
+      return NextResponse.json(
+        { error: 'Data da proxima acao invalida' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedCanalProximaAcao = parseOptionalString(body.canalProximaAcao)
+    if (
+      normalizedCanalProximaAcao &&
+      !ALLOWED_NEXT_ACTION_CHANNELS.has(normalizedCanalProximaAcao.toLowerCase())
+    ) {
+      return NextResponse.json(
+        { error: 'Canal da proxima acao invalido' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedResponsavelProximaAcao = parseOptionalString(body.responsavelProximaAcao)
+    const lembreteProximaAcao = body.lembreteProximaAcao === true
+    if (body.lembreteProximaAcao !== undefined && typeof body.lembreteProximaAcao !== 'boolean') {
+      return NextResponse.json(
+        { error: 'Lembrete da proxima acao invalido' },
+        { status: 400 }
+      )
+    }
+
+    if (normalizedFormaPagamento === 'parcelado' && (!normalizedParcelas || normalizedParcelas < 2)) {
+      return NextResponse.json(
+        { error: 'Para pagamento parcelado, informe ao menos 2 parcelas' },
+        { status: 400 }
+      )
+    }
+
+    const parcelasFinais =
+      normalizedFormaPagamento === 'parcelado' ? normalizedParcelas ?? null : null
+
     const observacoes = parseOptionalString(body.observacoes)
     const dataEntrega = parseOptionalDate(body.dataEntrega)
     const valor = parseOptionalMoney(body.valor)
@@ -288,11 +442,22 @@ export async function POST(request: NextRequest) {
     let oportunidadeFinalId = oportunidadeId
     let valorBasePedido = 0
     let pedidoDiretoCriado = false
+    let formaPagamentoBasePedido: string | null = null
+    let numeroPreferencial: number | null = null
     let pedidoDiretoData: {
       titulo: string
       descricao: string | null
       valor: number | null
       clienteId: string
+      formaPagamento: string | null
+      parcelas: number | null
+      desconto: number | null
+      probabilidade: number
+      dataFechamento: Date | null
+      proximaAcaoEm: Date | null
+      canalProximaAcao: string | null
+      responsavelProximaAcao: string | null
+      lembreteProximaAcao: boolean
     } | null = null
 
     if (oportunidadeFinalId) {
@@ -300,8 +465,10 @@ export async function POST(request: NextRequest) {
         where: { id: oportunidadeFinalId, userId },
         select: {
           id: true,
+          titulo: true,
           status: true,
           valor: true,
+          formaPagamento: true,
         },
       })
 
@@ -332,6 +499,8 @@ export async function POST(request: NextRequest) {
       }
 
       valorBasePedido = roundMoney(oportunidade.valor ?? 0)
+      formaPagamentoBasePedido = normalizeFormaPagamento(oportunidade.formaPagamento) ?? null
+      numeroPreferencial = extractLastNumber(oportunidade.titulo)
     } else {
       const titulo = parseOptionalString(body.titulo)
       const descricao = parseOptionalString(body.descricao)
@@ -375,8 +544,18 @@ export async function POST(request: NextRequest) {
         descricao: descricao ?? null,
         valor: valor === undefined ? null : valor,
         clienteId: cliente.id,
+        formaPagamento: normalizedFormaPagamento ?? null,
+        parcelas: parcelasFinais,
+        desconto: normalizedDesconto ?? null,
+        probabilidade: normalizedProbabilidade ?? 0,
+        dataFechamento: dataFechamento ?? null,
+        proximaAcaoEm: proximaAcaoEm ?? null,
+        canalProximaAcao: normalizedCanalProximaAcao ? normalizedCanalProximaAcao.toLowerCase() : null,
+        responsavelProximaAcao: normalizedResponsavelProximaAcao ?? null,
+        lembreteProximaAcao,
       }
       valorBasePedido = roundMoney(pedidoDiretoData.valor ?? 0)
+      formaPagamentoBasePedido = pedidoDiretoData.formaPagamento
     }
 
     const produtoIds = Array.from(
@@ -408,13 +587,44 @@ export async function POST(request: NextRequest) {
             titulo: pedidoDiretoData.titulo,
             descricao: pedidoDiretoData.descricao,
             valor: pedidoDiretoData.valor,
-            status: vendaConfirmada ? 'fechada' : 'orcamento',
-            probabilidade: 0,
-            dataFechamento: vendaConfirmada ? new Date() : null,
+            formaPagamento: pedidoDiretoData.formaPagamento,
+            parcelas: pedidoDiretoData.parcelas,
+            desconto: pedidoDiretoData.desconto,
+            status: vendaConfirmada ? 'fechada' : 'pedido',
+            statusAnterior: vendaConfirmada ? 'pedido' : null,
+            probabilidade: pedidoDiretoData.probabilidade,
+            dataFechamento: vendaConfirmada ? new Date() : pedidoDiretoData.dataFechamento,
+            proximaAcaoEm: pedidoDiretoData.proximaAcaoEm,
+            canalProximaAcao: pedidoDiretoData.canalProximaAcao,
+            responsavelProximaAcao: pedidoDiretoData.responsavelProximaAcao,
+            lembreteProximaAcao: pedidoDiretoData.lembreteProximaAcao,
             clienteId: pedidoDiretoData.clienteId,
           },
-          select: { id: true },
+          select: { id: true, titulo: true },
         })
+
+        if (pedidoDiretoData.lembreteProximaAcao && pedidoDiretoData.proximaAcaoEm) {
+          const canalLabel = pedidoDiretoData.canalProximaAcao
+            ? `Canal: ${pedidoDiretoData.canalProximaAcao}.`
+            : null
+          const responsavelLabel = pedidoDiretoData.responsavelProximaAcao
+            ? `Responsavel: ${pedidoDiretoData.responsavelProximaAcao}.`
+            : null
+
+          await tx.tarefa.create({
+            data: {
+              userId,
+              titulo: `Proxima acao do pedido: ${oportunidadeDireta.titulo}`,
+              descricao: [canalLabel, responsavelLabel].filter(Boolean).join(' '),
+              status: 'pendente',
+              prioridade: 'media',
+              dataVencimento: pedidoDiretoData.proximaAcaoEm,
+              clienteId: pedidoDiretoData.clienteId,
+              oportunidadeId: oportunidadeDireta.id,
+              notificar: true,
+            },
+          })
+        }
 
         oportunidadeFinalId = oportunidadeDireta.id
         pedidoDiretoCriado = true
@@ -431,13 +641,27 @@ export async function POST(request: NextRequest) {
       const totalDesconto = temItens ? totalDescontoItens : 0
       const totalLiquido = temItens ? totalLiquidoItens : roundMoney(valorBasePedido)
 
+      if (numeroPreferencial !== null) {
+        const pedidoComMesmoNumero = await tx.pedido.findUnique({
+          where: { numero: numeroPreferencial },
+          select: { id: true },
+        })
+        if (pedidoComMesmoNumero) {
+          throw new Error('NUMERO_PEDIDO_EM_USO')
+        }
+      }
+
       const pedido = await tx.pedido.create({
         data: {
+          ...(numeroPreferencial !== null ? { numero: numeroPreferencial } : {}),
           userId,
           oportunidadeId: oportunidadeFinalId,
           statusEntrega: normalizedStatusEntrega || 'pendente',
           pagamentoConfirmado,
-          formaPagamento: formaPagamento === undefined ? null : formaPagamento,
+          formaPagamento:
+            normalizedFormaPagamento === undefined
+              ? formaPagamentoBasePedido
+              : normalizedFormaPagamento,
           dataEntrega: dataEntrega === undefined ? null : dataEntrega,
           observacoes: observacoes === undefined ? null : observacoes,
           totalBruto,
@@ -468,11 +692,20 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      if (!vendaConfirmada) {
+        await tx.oportunidade.updateMany({
+          where: { id: oportunidadeFinalId, userId },
+          data: {
+            status: 'pedido',
+          },
+        })
+      }
+
       if (vendaConfirmada && !pedidoDiretoCriado) {
         await tx.oportunidade.updateMany({
           where: { id: oportunidadeFinalId, userId },
           data: {
-            statusAnterior: 'orcamento',
+            statusAnterior: 'pedido',
             status: 'fechada',
             dataFechamento: new Date(),
           },
@@ -549,9 +782,17 @@ export async function POST(request: NextRequest) {
             titulo: true,
             descricao: true,
             valor: true,
+            clienteId: true,
+            formaPagamento: true,
+            parcelas: true,
+            desconto: true,
             status: true,
             probabilidade: true,
             dataFechamento: true,
+            proximaAcaoEm: true,
+            canalProximaAcao: true,
+            responsavelProximaAcao: true,
+            lembreteProximaAcao: true,
             createdAt: true,
             cliente: {
               select: {
@@ -573,6 +814,12 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Erro ao criar pedido:', error)
     const prismaError = error as { code?: string }
+    if (error instanceof Error && error.message === 'NUMERO_PEDIDO_EM_USO') {
+      return NextResponse.json(
+        { error: 'Ja existe um pedido com esse numero. Ajuste o titulo do orcamento para manter a numeracao sincronizada.' },
+        { status: 409 }
+      )
+    }
     if (prismaError.code === 'P2002') {
       return NextResponse.json(
         { error: 'Este orçamento já foi transformado em pedido' },

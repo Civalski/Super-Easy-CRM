@@ -13,6 +13,21 @@ const ALLOWED_STATUS_ENTREGA = new Set([
   'entregue',
 ])
 
+const ALLOWED_PAYMENT_METHODS = new Set([
+  'pix',
+  'dinheiro',
+  'cartao',
+  'parcelado',
+])
+
+const ALLOWED_NEXT_ACTION_CHANNELS = new Set([
+  'whatsapp',
+  'email',
+  'ligacao',
+  'reuniao',
+  'outro',
+])
+
 const pedidoInclude = {
   oportunidade: {
     select: {
@@ -21,10 +36,17 @@ const pedidoInclude = {
       descricao: true,
       valor: true,
       clienteId: true,
+      formaPagamento: true,
+      parcelas: true,
+      desconto: true,
       status: true,
       statusAnterior: true,
       probabilidade: true,
       dataFechamento: true,
+      proximaAcaoEm: true,
+      canalProximaAcao: true,
+      responsavelProximaAcao: true,
+      lembreteProximaAcao: true,
       createdAt: true,
       cliente: {
         select: {
@@ -54,6 +76,43 @@ function parseOptionalString(value: unknown) {
   return trimmed === '' ? null : trimmed
 }
 
+function normalizeFormaPagamento(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+
+  const normalizedInput = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (normalizedInput === '') return null
+  if (normalizedInput === 'parcelamento') return 'parcelado'
+
+  return ALLOWED_PAYMENT_METHODS.has(normalizedInput)
+    ? normalizedInput
+    : undefined
+}
+
+function parseOptionalParcelas(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 24) return undefined
+  return parsed
+}
+
+function parseOptionalNonNegativeNumber(value: unknown) {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  return roundMoney(parsed)
+}
+
 function parseOptionalDate(value: unknown) {
   if (value === undefined) return undefined
   if (value === null || value === '') return null
@@ -75,12 +134,27 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const updateData: {
+    const pedidoUpdateData: {
       statusEntrega?: string
       pagamentoConfirmado?: boolean
       formaPagamento?: string | null
       dataEntrega?: Date | null
       observacoes?: string | null
+    } = {}
+    const oportunidadeUpdateData: {
+      titulo?: string
+      descricao?: string | null
+      valor?: number | null
+      clienteId?: string
+      formaPagamento?: string | null
+      parcelas?: number | null
+      desconto?: number | null
+      probabilidade?: number
+      dataFechamento?: Date | null
+      proximaAcaoEm?: Date | null
+      canalProximaAcao?: string | null
+      responsavelProximaAcao?: string | null
+      lembreteProximaAcao?: boolean
     } = {}
 
     if (body.statusEntrega !== undefined) {
@@ -93,11 +167,18 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      updateData.statusEntrega = normalizedStatus
+      pedidoUpdateData.statusEntrega = normalizedStatus
     }
 
+    const normalizedFormaPagamento = normalizeFormaPagamento(body.formaPagamento)
+    if (body.formaPagamento !== undefined && normalizedFormaPagamento === undefined) {
+      return NextResponse.json(
+        { error: 'Forma de pagamento invalida' },
+        { status: 400 }
+      )
+    }
     if (body.formaPagamento !== undefined) {
-      updateData.formaPagamento = parseOptionalString(body.formaPagamento) ?? null
+      pedidoUpdateData.formaPagamento = normalizedFormaPagamento ?? null
     }
 
     if (body.pagamentoConfirmado !== undefined) {
@@ -107,11 +188,11 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      updateData.pagamentoConfirmado = body.pagamentoConfirmado
+      pedidoUpdateData.pagamentoConfirmado = body.pagamentoConfirmado
     }
 
     if (body.observacoes !== undefined) {
-      updateData.observacoes = parseOptionalString(body.observacoes) ?? null
+      pedidoUpdateData.observacoes = parseOptionalString(body.observacoes) ?? null
     }
 
     if (body.dataEntrega !== undefined) {
@@ -122,10 +203,207 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      updateData.dataEntrega = parsedDate ?? null
+      pedidoUpdateData.dataEntrega = parsedDate ?? null
     }
 
-    if (Object.keys(updateData).length === 0) {
+    if (body.titulo !== undefined) {
+      if (typeof body.titulo !== 'string' || body.titulo.trim() === '') {
+        return NextResponse.json(
+          { error: 'Titulo invalido' },
+          { status: 400 }
+        )
+      }
+      oportunidadeUpdateData.titulo = body.titulo.trim()
+    }
+
+    if (body.descricao !== undefined) {
+      if (body.descricao !== null && typeof body.descricao !== 'string') {
+        return NextResponse.json(
+          { error: 'Descricao invalida' },
+          { status: 400 }
+        )
+      }
+      oportunidadeUpdateData.descricao =
+        typeof body.descricao === 'string' && body.descricao.trim() !== ''
+          ? body.descricao.trim()
+          : null
+    }
+
+    if (body.valor !== undefined) {
+      if (body.valor === null || body.valor === '') {
+        oportunidadeUpdateData.valor = null
+      } else {
+        const parsedValue = Number(body.valor)
+        if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+          return NextResponse.json(
+            { error: 'Valor invalido' },
+            { status: 400 }
+          )
+        }
+        oportunidadeUpdateData.valor = roundMoney(parsedValue)
+      }
+    }
+
+    if (body.probabilidade !== undefined) {
+      const parsedProbability = Number(body.probabilidade)
+      if (
+        !Number.isInteger(parsedProbability) ||
+        parsedProbability < 0 ||
+        parsedProbability > 100
+      ) {
+        return NextResponse.json(
+          { error: 'Probabilidade invalida' },
+          { status: 400 }
+        )
+      }
+      oportunidadeUpdateData.probabilidade = parsedProbability
+    }
+
+    if (body.clienteId !== undefined) {
+      if (typeof body.clienteId !== 'string' || body.clienteId.trim() === '') {
+        return NextResponse.json(
+          { error: 'Cliente invalido' },
+          { status: 400 }
+        )
+      }
+      oportunidadeUpdateData.clienteId = body.clienteId.trim()
+    }
+
+    const normalizedParcelas = parseOptionalParcelas(body.parcelas)
+    if (body.parcelas !== undefined && normalizedParcelas === undefined) {
+      return NextResponse.json(
+        { error: 'Parcelas invalidas (use um numero inteiro entre 1 e 24)' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedDesconto = parseOptionalNonNegativeNumber(body.desconto)
+    if (body.desconto !== undefined && normalizedDesconto === undefined) {
+      return NextResponse.json(
+        { error: 'Desconto invalido' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedDataFechamento = parseOptionalDate(body.dataFechamento)
+    if (body.dataFechamento !== undefined && body.dataFechamento && !normalizedDataFechamento) {
+      return NextResponse.json(
+        { error: 'Data prevista invalida' },
+        { status: 400 }
+      )
+    }
+    if (body.dataFechamento !== undefined) {
+      oportunidadeUpdateData.dataFechamento = normalizedDataFechamento ?? null
+    }
+
+    const normalizedProximaAcao = parseOptionalDate(body.proximaAcaoEm)
+    if (body.proximaAcaoEm !== undefined && body.proximaAcaoEm && !normalizedProximaAcao) {
+      return NextResponse.json(
+        { error: 'Data da proxima acao invalida' },
+        { status: 400 }
+      )
+    }
+    if (body.proximaAcaoEm !== undefined) {
+      oportunidadeUpdateData.proximaAcaoEm = normalizedProximaAcao ?? null
+    }
+
+    const normalizedCanalProximaAcao = parseOptionalString(body.canalProximaAcao)
+    if (
+      normalizedCanalProximaAcao &&
+      !ALLOWED_NEXT_ACTION_CHANNELS.has(normalizedCanalProximaAcao.toLowerCase())
+    ) {
+      return NextResponse.json(
+        { error: 'Canal da proxima acao invalido' },
+        { status: 400 }
+      )
+    }
+    if (body.canalProximaAcao !== undefined) {
+      oportunidadeUpdateData.canalProximaAcao = normalizedCanalProximaAcao
+        ? normalizedCanalProximaAcao.toLowerCase()
+        : null
+    }
+
+    const normalizedResponsavelProximaAcao = parseOptionalString(body.responsavelProximaAcao)
+    if (body.responsavelProximaAcao !== undefined) {
+      oportunidadeUpdateData.responsavelProximaAcao = normalizedResponsavelProximaAcao ?? null
+    }
+
+    if (body.lembreteProximaAcao !== undefined) {
+      if (typeof body.lembreteProximaAcao !== 'boolean') {
+        return NextResponse.json(
+          { error: 'Lembrete da proxima acao invalido' },
+          { status: 400 }
+        )
+      }
+      oportunidadeUpdateData.lembreteProximaAcao = body.lembreteProximaAcao
+    }
+
+    const pedidoAtual = await prisma.pedido.findFirst({
+      where: { id: (await params).id, userId },
+      include: pedidoInclude,
+    })
+
+    if (!pedidoAtual) {
+      return NextResponse.json(
+        { error: 'Pedido nao encontrado' },
+        { status: 404 }
+      )
+    }
+
+    if (oportunidadeUpdateData.clienteId) {
+      const cliente = await prisma.cliente.findFirst({
+        where: { id: oportunidadeUpdateData.clienteId, userId },
+        select: { id: true },
+      })
+      if (!cliente) {
+        return NextResponse.json(
+          { error: 'Cliente nao encontrado' },
+          { status: 404 }
+        )
+      }
+    }
+
+    const formaPagamentoAtual =
+      normalizeFormaPagamento(pedidoAtual.oportunidade.formaPagamento) ?? null
+    const formaPagamentoEfetiva =
+      normalizedFormaPagamento === undefined
+        ? formaPagamentoAtual
+        : normalizedFormaPagamento
+    const parcelasEfetivas =
+      normalizedParcelas === undefined
+        ? pedidoAtual.oportunidade.parcelas
+        : normalizedParcelas
+
+    if (
+      formaPagamentoEfetiva === 'parcelado' &&
+      (parcelasEfetivas === null || parcelasEfetivas === undefined || parcelasEfetivas < 2)
+    ) {
+      return NextResponse.json(
+        { error: 'Para pagamento parcelado, informe ao menos 2 parcelas' },
+        { status: 400 }
+      )
+    }
+
+    if (body.formaPagamento !== undefined) {
+      oportunidadeUpdateData.formaPagamento = normalizedFormaPagamento ?? null
+      if (formaPagamentoEfetiva !== 'parcelado') {
+        oportunidadeUpdateData.parcelas = null
+      }
+    }
+
+    if (body.parcelas !== undefined) {
+      oportunidadeUpdateData.parcelas =
+        formaPagamentoEfetiva === 'parcelado' ? normalizedParcelas ?? null : null
+    }
+
+    if (body.desconto !== undefined) {
+      oportunidadeUpdateData.desconto = normalizedDesconto
+    }
+
+    if (
+      Object.keys(pedidoUpdateData).length === 0 &&
+      Object.keys(oportunidadeUpdateData).length === 0
+    ) {
       return NextResponse.json(
         { error: 'Nenhum campo valido para atualizacao' },
         { status: 400 }
@@ -133,26 +411,41 @@ export async function PATCH(
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const pedidoAtual = await tx.pedido.findFirst({
-        where: { id: (await params).id, userId },
-        include: pedidoInclude,
-      })
+      const pedidoAtualizado =
+        Object.keys(pedidoUpdateData).length > 0
+          ? await tx.pedido.update({
+              where: { id: pedidoAtual.id },
+              data: pedidoUpdateData,
+              include: pedidoInclude,
+            })
+          : pedidoAtual
 
-      if (!pedidoAtual) {
-        return { notFound: true as const }
+      if (Object.keys(oportunidadeUpdateData).length > 0) {
+        await tx.oportunidade.updateMany({
+          where: { id: pedidoAtual.oportunidade.id, userId },
+          data: oportunidadeUpdateData,
+        })
       }
 
-      const pedidoAtualizado = await tx.pedido.update({
-        where: { id: pedidoAtual.id },
-        data: updateData,
-        include: pedidoInclude,
+      const oportunidadeAtual = await tx.oportunidade.findFirst({
+        where: { id: pedidoAtual.oportunidade.id, userId },
+        select: {
+          id: true,
+          clienteId: true,
+          status: true,
+          statusAnterior: true,
+          valor: true,
+        },
       })
+
+      if (!oportunidadeAtual) {
+        return { notFound: true as const }
+      }
 
       const vendaConfirmada =
         pedidoAtualizado.statusEntrega === 'entregue' &&
         pedidoAtualizado.pagamentoConfirmado === true
 
-      const oportunidadeAtual = pedidoAtualizado.oportunidade
       const oportunidadeEstaFechada = oportunidadeAtual.status === 'fechada'
 
       if (vendaConfirmada) {
@@ -268,7 +561,7 @@ export async function PATCH(
             userId,
           },
           data: {
-            status: oportunidadeAtual.statusAnterior || 'orcamento',
+            status: oportunidadeAtual.statusAnterior || 'pedido',
             statusAnterior: null,
             dataFechamento: null,
           },
@@ -306,7 +599,7 @@ export async function PATCH(
           entity: 'pedido',
           entityId: (await params).id,
           from: 'fechada',
-          to: oportunidadeAtual.statusAnterior || 'orcamento',
+          to: oportunidadeAtual.statusAnterior || 'pedido',
           metadata: {
             oportunidadeId: oportunidadeAtual.id,
           },

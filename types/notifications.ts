@@ -3,6 +3,7 @@ export interface TaskNotification {
   titulo: string
   descricao?: string | null
   prioridade?: string | null
+  notificar?: boolean | null
   dataVencimento: string | Date | null
   status?: string | null
   cliente?: {

@@ -189,8 +189,6 @@ export default function ProdutosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingCode, setEditingCode] = useState<string | null>(null)
-  const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
-  const lastFiltrosKeyRef = useRef(filtrosKey)
   const [codigoPreview, setCodigoPreview] = useState('')
   const [loadingCodigoPreview, setLoadingCodigoPreview] = useState(false)
   const [form, setForm] = useState<FormState>(buildDefaultForm)
@@ -206,6 +204,8 @@ export default function ProdutosPage() {
     status: 'todos',
     categoria: '',
   })
+  const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
+  const lastFiltrosKeyRef = useRef(filtrosKey)
 
   const getSwalTheme = useCallback(() => {
     const isDark = document.documentElement.classList.contains('dark')

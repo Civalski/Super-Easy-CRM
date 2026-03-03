@@ -2,6 +2,7 @@ export const OPPORTUNITY_STATUSES = [
   'sem_contato',
   'em_potencial',
   'orcamento',
+  'pedido',
   'fechada',
   'perdida',
 ] as const
