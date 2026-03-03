@@ -89,6 +89,7 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
       userId: true,
       pedidoId: true,
       oportunidadeId: true,
+      ambiente: true,
       tipo: true,
       descricao: true,
       valorTotal: true,
@@ -149,6 +150,7 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
       userId: string
       pedidoId: string | null
       oportunidadeId: string | null
+      ambiente: string
       tipo: string
       descricao: string | null
       valorTotal: number
@@ -175,6 +177,7 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
         userId: base.userId,
         pedidoId: null,
         oportunidadeId: base.oportunidadeId,
+        ambiente: base.ambiente,
         tipo: base.tipo,
         descricao: base.descricao,
         valorTotal: roundMoney(base.valorTotal),

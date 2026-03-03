@@ -24,6 +24,14 @@ const headingFont = Sora({
 export const metadata: Metadata = {
   title: 'Arker CRM',
   description: 'Sistema de CRM completo',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/icon.ico', type: 'image/x-icon' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 }
 
 const themeInitScript = `

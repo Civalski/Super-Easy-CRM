@@ -17,8 +17,11 @@ import {
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 
+type AmbienteFinanceiro = 'geral' | 'pessoal'
+
 interface ContaFinanceira {
   id: string
+  ambiente: AmbienteFinanceiro
   tipo: 'receber' | 'pagar'
   descricao: string | null
   valorTotal: number
@@ -102,6 +105,10 @@ interface GrupoContas {
 }
 
 const CONTAS_PAGE_SIZE = 12
+const AMBIENTE_LABEL: Record<AmbienteFinanceiro, string> = {
+  geral: 'Fluxo total',
+  pessoal: 'Fluxo pessoal',
+}
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
@@ -170,6 +177,7 @@ export default function FinanceiroPage() {
   const [fluxo, setFluxo] = useState<FluxoData | null>(null)
   const [saving, setSaving] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
+  const [activeAmbiente, setActiveAmbiente] = useState<AmbienteFinanceiro>('geral')
   const [activeTipo, setActiveTipo] = useState<'receber' | 'pagar'>('receber')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isDomReady, setIsDomReady] = useState(false)
@@ -177,6 +185,7 @@ export default function FinanceiroPage() {
   const [editingConta, setEditingConta] = useState<ContaFinanceira | null>(null)
   const [expandedGrupos, setExpandedGrupos] = useState<Record<string, boolean>>({})
   const [createForm, setCreateForm] = useState({
+    ambiente: 'geral' as AmbienteFinanceiro,
     tipo: 'receber' as 'receber' | 'pagar',
     descricao: '',
     valorTotal: '',
@@ -189,6 +198,7 @@ export default function FinanceiroPage() {
     datasParcelas: '',
   })
   const [editForm, setEditForm] = useState({
+    ambiente: 'geral' as AmbienteFinanceiro,
     tipo: 'receber' as 'receber' | 'pagar',
     descricao: '',
     valorTotal: '',
@@ -198,63 +208,71 @@ export default function FinanceiroPage() {
     aplicarNoGrupoRecorrente: true,
   })
 
-  const fetchContas = useCallback(async (targetPage: number, tipoFiltro: 'receber' | 'pagar') => {
+  const fetchContas = useCallback(
+    async (targetPage: number, tipoFiltro: 'receber' | 'pagar', ambienteFiltro: AmbienteFinanceiro) => {
+      try {
+        setLoading(true)
+        const params = new URLSearchParams({
+          paginated: 'true',
+          page: String(targetPage),
+          limit: String(CONTAS_PAGE_SIZE),
+          tipo: tipoFiltro,
+          ambiente: ambienteFiltro,
+        })
+        const contasRes = await fetch(`/api/financeiro/contas-receber?${params.toString()}`)
+        const payload = await contasRes.json().catch(() => null)
+
+        if (!contasRes.ok) {
+          throw new Error(payload?.error || 'Erro ao carregar contas financeiras')
+        }
+
+        const nextContas = Array.isArray(payload?.data) ? payload.data : []
+        const nextMeta: PaginationMeta = {
+          total: Number(payload?.meta?.total || 0),
+          page: Number(payload?.meta?.page || targetPage),
+          limit: Number(payload?.meta?.limit || CONTAS_PAGE_SIZE),
+          pages: Number(payload?.meta?.pages || 1),
+        }
+
+        if (nextContas.length === 0 && targetPage > 1 && nextMeta.total > 0) {
+          setPage((prev) => Math.max(1, prev - 1))
+          return
+        }
+
+        setContas(nextContas)
+        setMeta(nextMeta)
+        setStats({
+          total: Number(payload?.stats?.total || 0),
+          receber: Number(payload?.stats?.receber || 0),
+          pagar: Number(payload?.stats?.pagar || 0),
+          receberEmAberto: Number(payload?.stats?.receberEmAberto || 0),
+          pagarEmAberto: Number(payload?.stats?.pagarEmAberto || 0),
+        })
+      } catch (error) {
+        console.error('Erro ao carregar financeiro:', error)
+        setContas([])
+        setMeta((prev) => ({ ...prev, total: 0, page: targetPage, pages: 1 }))
+        setStats({
+          total: 0,
+          receber: 0,
+          pagar: 0,
+          receberEmAberto: 0,
+          pagarEmAberto: 0,
+        })
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  const fetchFluxo = useCallback(async (ambienteFiltro: AmbienteFinanceiro) => {
     try {
-      setLoading(true)
       const params = new URLSearchParams({
-        paginated: 'true',
-        page: String(targetPage),
-        limit: String(CONTAS_PAGE_SIZE),
-        tipo: tipoFiltro,
+        months: '6',
+        ambiente: ambienteFiltro,
       })
-      const contasRes = await fetch(`/api/financeiro/contas-receber?${params.toString()}`)
-      const payload = await contasRes.json().catch(() => null)
-
-      if (!contasRes.ok) {
-        throw new Error(payload?.error || 'Erro ao carregar contas financeiras')
-      }
-
-      const nextContas = Array.isArray(payload?.data) ? payload.data : []
-      const nextMeta: PaginationMeta = {
-        total: Number(payload?.meta?.total || 0),
-        page: Number(payload?.meta?.page || targetPage),
-        limit: Number(payload?.meta?.limit || CONTAS_PAGE_SIZE),
-        pages: Number(payload?.meta?.pages || 1),
-      }
-
-      if (nextContas.length === 0 && targetPage > 1 && nextMeta.total > 0) {
-        setPage((prev) => Math.max(1, prev - 1))
-        return
-      }
-
-      setContas(nextContas)
-      setMeta(nextMeta)
-      setStats({
-        total: Number(payload?.stats?.total || 0),
-        receber: Number(payload?.stats?.receber || 0),
-        pagar: Number(payload?.stats?.pagar || 0),
-        receberEmAberto: Number(payload?.stats?.receberEmAberto || 0),
-        pagarEmAberto: Number(payload?.stats?.pagarEmAberto || 0),
-      })
-    } catch (error) {
-      console.error('Erro ao carregar financeiro:', error)
-      setContas([])
-      setMeta((prev) => ({ ...prev, total: 0, page: targetPage, pages: 1 }))
-      setStats({
-        total: 0,
-        receber: 0,
-        pagar: 0,
-        receberEmAberto: 0,
-        pagarEmAberto: 0,
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const fetchFluxo = useCallback(async () => {
-    try {
-      const fluxoRes = await fetch('/api/financeiro/fluxo-caixa?months=6')
+      const fluxoRes = await fetch(`/api/financeiro/fluxo-caixa?${params.toString()}`)
       const fluxoData = await fluxoRes.json().catch(() => null)
       setFluxo(fluxoData && typeof fluxoData === 'object' ? fluxoData : null)
     } catch (error) {
@@ -264,12 +282,12 @@ export default function FinanceiroPage() {
   }, [])
 
   useEffect(() => {
-    fetchContas(page, activeTipo)
-  }, [fetchContas, page, activeTipo])
+    fetchContas(page, activeTipo, activeAmbiente)
+  }, [fetchContas, page, activeTipo, activeAmbiente])
 
   useEffect(() => {
-    fetchFluxo()
-  }, [fetchFluxo])
+    fetchFluxo(activeAmbiente)
+  }, [fetchFluxo, activeAmbiente])
 
   useEffect(() => {
     setIsDomReady(true)
@@ -351,6 +369,7 @@ export default function FinanceiroPage() {
 
   const resetCreateForm = () => {
     setCreateForm({
+      ambiente: activeAmbiente,
       tipo: 'receber',
       descricao: '',
       valorTotal: '',
@@ -379,6 +398,7 @@ export default function FinanceiroPage() {
       .filter(Boolean)
 
     const payload: Record<string, unknown> = {
+      ambiente: createForm.ambiente,
       tipo: createForm.tipo,
       descricao: createForm.descricao || null,
       valorTotal: valor,
@@ -434,7 +454,7 @@ export default function FinanceiroPage() {
       setShowCreateModal(false)
       resetCreateForm()
       setPage(1)
-      await Promise.all([fetchContas(1, activeTipo), fetchFluxo()])
+      await Promise.all([fetchContas(1, activeTipo, activeAmbiente), fetchFluxo(activeAmbiente)])
     } catch (error: unknown) {
       await Swal.fire({
         icon: 'error',
@@ -484,7 +504,7 @@ export default function FinanceiroPage() {
       })
       const data = await response.json().catch(() => null)
       if (!response.ok) throw new Error(data?.error || 'Erro ao registrar movimento')
-      await Promise.all([fetchContas(page, activeTipo), fetchFluxo()])
+      await Promise.all([fetchContas(page, activeTipo, activeAmbiente), fetchFluxo(activeAmbiente)])
     } catch (error: unknown) {
       await Swal.fire({
         icon: 'error',
@@ -497,6 +517,7 @@ export default function FinanceiroPage() {
   const handleOpenEditConta = (conta: ContaFinanceira) => {
     setEditingConta(conta)
     setEditForm({
+      ambiente: conta.ambiente,
       tipo: conta.tipo,
       descricao: conta.descricao || '',
       valorTotal: String(conta.valorTotal),
@@ -525,6 +546,7 @@ export default function FinanceiroPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingConta.id,
+          ambiente: editForm.ambiente,
           tipo: editForm.tipo,
           descricao: editForm.descricao || null,
           valorTotal,
@@ -547,7 +569,7 @@ export default function FinanceiroPage() {
       })
       setShowEditModal(false)
       setEditingConta(null)
-      await Promise.all([fetchContas(page, activeTipo), fetchFluxo()])
+      await Promise.all([fetchContas(page, activeTipo, activeAmbiente), fetchFluxo(activeAmbiente)])
     } catch (error: unknown) {
       await Swal.fire({
         icon: 'error',
@@ -569,19 +591,55 @@ export default function FinanceiroPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financeiro</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Contas a receber, contas a pagar e previsao de caixa
+              Contas a receber, contas a pagar e previsao de caixa em {AMBIENTE_LABEL[activeAmbiente].toLowerCase()}
             </p>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setCreateForm((prev) => ({ ...prev, ambiente: activeAmbiente }))
+            setShowCreateModal(true)
+          }}
           disabled={saving}
           className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova Conta
+        </button>
+      </div>
+
+      <div className="inline-flex w-fit rounded-lg border border-gray-200 p-1 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveAmbiente('geral')
+            setPage(1)
+            setExpandedGrupos({})
+          }}
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeAmbiente === 'geral'
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          Fluxo total
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveAmbiente('pessoal')
+            setPage(1)
+            setExpandedGrupos({})
+          }}
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeAmbiente === 'pessoal'
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          Fluxo pessoal
         </button>
       </div>
 
@@ -615,7 +673,9 @@ export default function FinanceiroPage() {
       <div className="crm-card p-5">
         <div className="mb-3 flex items-center gap-2">
           <LineChart className="h-5 w-5 text-purple-600" />
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Fluxo de Caixa (6 meses)</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Fluxo de Caixa (6 meses) - {AMBIENTE_LABEL[activeAmbiente]}
+          </h2>
         </div>
 
         {fluxo ? (
@@ -697,7 +757,9 @@ export default function FinanceiroPage() {
 
       <div className="crm-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Contas</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Contas - {AMBIENTE_LABEL[activeAmbiente]}
+          </h2>
           <div className="inline-flex rounded-lg border border-gray-200 p-1 dark:border-gray-700">
             <button
               type="button"
@@ -1153,7 +1215,24 @@ export default function FinanceiroPage() {
 
             <form onSubmit={handleCreateConta} className="flex min-h-0 flex-1 flex-col">
                 <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                    <div className="space-y-1.5 sm:col-span-1">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-300">Ambiente</label>
+                      <select
+                        value={createForm.ambiente}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            ambiente: event.target.value as AmbienteFinanceiro,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25"
+                      >
+                        <option value="geral">Fluxo total</option>
+                        <option value="pessoal">Fluxo pessoal</option>
+                      </select>
+                    </div>
+
                     <div className="space-y-1.5 sm:col-span-1">
                       <label className="text-xs font-medium uppercase tracking-wide text-slate-300">Tipo</label>
                       <select
@@ -1367,7 +1446,24 @@ export default function FinanceiroPage() {
             </div>
 
             <form onSubmit={handleEditConta} className="space-y-4 px-6 py-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-300">Ambiente</label>
+                  <select
+                    value={editForm.ambiente}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        ambiente: event.target.value as AmbienteFinanceiro,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/25"
+                  >
+                    <option value="geral">Fluxo total</option>
+                    <option value="pessoal">Fluxo pessoal</option>
+                  </select>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium uppercase tracking-wide text-slate-300">Tipo</label>
                   <select

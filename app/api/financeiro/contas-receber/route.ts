@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_STATUS = new Set(['pendente', 'parcial', 'pago', 'atrasado', 'cancelado'])
 const ALLOWED_TIPO_CONTA = new Set(['receber', 'pagar'])
 const ALLOWED_TIPO_MOVIMENTO = new Set(['entrada', 'saida', 'estorno'])
+const ALLOWED_AMBIENTE = new Set(['geral', 'pessoal'])
 const RECURRING_MONTHS_AHEAD = 6
 
 function parseLimit(value: string | null, fallback = 20, max = 50) {
@@ -81,14 +82,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const tipo = searchParams.get('tipo')
+    const ambienteParam = searchParams.get('ambiente')
+    const ambiente = ambienteParam && ALLOWED_AMBIENTE.has(ambienteParam) ? ambienteParam : 'geral'
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: {
       userId: string
+      ambiente: string
       status?: string
       tipo?: string
     } = {
       userId,
+      ambiente,
       ...(status && ALLOWED_STATUS.has(status) ? { status } : {}),
       ...(tipo && ALLOWED_TIPO_CONTA.has(tipo) ? { tipo } : {}),
     }
@@ -99,6 +104,7 @@ export async function GET(request: NextRequest) {
       const skip = (page - 1) * limit
 
       const dynamicWhere: Prisma.Sql[] = [Prisma.sql`"userId" = ${userId}`]
+      dynamicWhere.push(Prisma.sql`"ambiente" = ${ambiente}`)
       if (where.status) {
         dynamicWhere.push(Prisma.sql`"status" = ${where.status}`)
       }
@@ -161,6 +167,7 @@ export async function GET(request: NextRequest) {
             ), 0) AS "pagarEmAberto"
           FROM "contas_receber"
           WHERE "userId" = ${userId}
+            AND "ambiente" = ${ambiente}
         `),
       ])
 
@@ -300,6 +307,8 @@ export async function POST(request: NextRequest) {
 
     const tipoInput = typeof payload.tipo === 'string' ? payload.tipo : 'receber'
     const tipo = ALLOWED_TIPO_CONTA.has(tipoInput) ? tipoInput : 'receber'
+    const ambienteInput = typeof payload.ambiente === 'string' ? payload.ambiente : 'geral'
+    const ambiente = ALLOWED_AMBIENTE.has(ambienteInput) ? ambienteInput : 'geral'
 
     const autoDebito = payload.autoDebito === true && tipo === 'pagar'
     const recorrenteMensal = payload.recorrenteMensal === true
@@ -397,6 +406,7 @@ export async function POST(request: NextRequest) {
             userId,
             pedidoId: typeof payload.pedidoId === 'string' ? payload.pedidoId : null,
             oportunidadeId: typeof payload.oportunidadeId === 'string' ? payload.oportunidadeId : null,
+            ambiente,
             tipo,
             descricao: typeof payload.descricao === 'string' ? payload.descricao : null,
             valorTotal: valorParcela,
@@ -495,6 +505,10 @@ export async function PATCH(request: NextRequest) {
       typeof payload.tipo === 'string' && ALLOWED_TIPO_CONTA.has(payload.tipo)
         ? payload.tipo
         : existing.tipo
+    const ambienteInput =
+      typeof payload.ambiente === 'string' && ALLOWED_AMBIENTE.has(payload.ambiente)
+        ? payload.ambiente
+        : existing.ambiente
 
     const valorRecebidoRaw =
       payload.valorRecebido !== undefined ? parseMoney(payload.valorRecebido) : roundMoney(existing.valorRecebido)
@@ -555,6 +569,7 @@ export async function PATCH(request: NextRequest) {
             status: { in: ['pendente', 'parcial', 'atrasado'] },
           },
           data: {
+            ambiente: ambienteInput,
             tipo: tipoInput,
             descricao:
               payload.descricao !== undefined
@@ -576,6 +591,7 @@ export async function PATCH(request: NextRequest) {
       const conta = await tx.contaReceber.update({
         where: { id: existing.id },
         data: {
+          ambiente: ambienteInput,
           tipo: tipoInput,
           descricao:
             payload.descricao !== undefined

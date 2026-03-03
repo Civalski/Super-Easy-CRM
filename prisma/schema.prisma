@@ -501,6 +501,7 @@ model ContaReceber {
   userId                   String
   pedidoId                 String?   @unique
   oportunidadeId           String?
+  ambiente                 String    @default("geral") // geral | pessoal
   tipo                     String    @default("receber") // receber | pagar
   descricao                String?
   valorTotal               Float
@@ -523,7 +524,7 @@ model ContaReceber {
   movimentos   MovimentoFinanceiro[]
 
   @@unique([id, userId])
-  @@index([userId, tipo, status, dataVencimento])
+  @@index([userId, ambiente, tipo, status, dataVencimento])
   @@index([userId, recorrenteMensal, recorrenciaAtiva])
   @@index([userId, createdAt])
   @@index([userId, grupoParcelaId])

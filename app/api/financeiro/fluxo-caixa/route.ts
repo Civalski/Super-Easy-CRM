@@ -5,6 +5,7 @@ import { processFinanceAutomation } from '@/lib/financeiro/automation'
 import { moneyRemaining, roundMoney } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
+const ALLOWED_AMBIENTES = new Set(['geral', 'pessoal'])
 
 function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -19,16 +20,21 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const months = Math.max(1, Math.min(24, Number(searchParams.get('months') || 6)))
+    const ambienteParam = searchParams.get('ambiente')
+    const ambiente = ambienteParam && ALLOWED_AMBIENTES.has(ambienteParam) ? ambienteParam : 'geral'
     await processFinanceAutomation(userId, months)
 
     const now = new Date()
     const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    const [movimentos, previsoes] = await Promise.all([
+    const [movimentos, previsoes, vendasFechadasSemLancamento] = await Promise.all([
       prisma.movimentoFinanceiro.findMany({
         where: {
           userId,
+          contaReceber: {
+            ambiente,
+          },
           dataMovimento: { gte: from, lte: to },
         },
         select: {
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
       prisma.contaReceber.findMany({
         where: {
           userId,
+          ambiente,
           status: { in: ['pendente', 'parcial', 'atrasado'] },
           dataVencimento: { gte: from, lte: to },
         },
@@ -48,6 +55,23 @@ export async function GET(request: NextRequest) {
           dataVencimento: true,
           valorTotal: true,
           valorRecebido: true,
+        },
+      }),
+      prisma.oportunidade.findMany({
+        where:
+          ambiente === 'geral'
+            ? {
+                userId,
+                status: 'fechada',
+                updatedAt: { gte: from, lte: to },
+                contasReceber: { none: {} },
+              }
+            : {
+                id: '__none__',
+              },
+        select: {
+          updatedAt: true,
+          valor: true,
         },
       }),
     ])
@@ -61,6 +85,7 @@ export async function GET(request: NextRequest) {
         previstoReceber: number
         previstoPagar: number
         estornado: number
+        vendasSemLancamento: number
       }
     >()
 
@@ -74,6 +99,7 @@ export async function GET(request: NextRequest) {
         previstoReceber: 0,
         previstoPagar: 0,
         estornado: 0,
+        vendasSemLancamento: 0,
       })
     }
 
@@ -105,6 +131,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    for (const oportunidade of vendasFechadasSemLancamento) {
+      const key = monthKey(oportunidade.updatedAt)
+      const bucket = map.get(key)
+      if (!bucket) continue
+      const valorVenda = roundMoney(oportunidade.valor || 0)
+      if (valorVenda <= 0) continue
+      bucket.vendasSemLancamento = roundMoney(bucket.vendasSemLancamento + valorVenda)
+      bucket.recebido = roundMoney(bucket.recebido + valorVenda)
+    }
+
     const series = Array.from(map.values())
       .sort((a, b) => b.month.localeCompare(a.month))
       .map((item) => {
@@ -125,6 +161,7 @@ export async function GET(request: NextRequest) {
         acc.previstoReceber = roundMoney(acc.previstoReceber + item.previstoReceber)
         acc.previstoPagar = roundMoney(acc.previstoPagar + item.previstoPagar)
         acc.estornado = roundMoney(acc.estornado + item.estornado)
+        acc.vendasSemLancamento = roundMoney(acc.vendasSemLancamento + item.vendasSemLancamento)
         acc.saldo = roundMoney(acc.saldo + item.saldo)
         acc.saldoProjetado = roundMoney(acc.saldoProjetado + item.saldoProjetado)
         acc.previsto = roundMoney(acc.previsto + item.previsto)
@@ -136,6 +173,7 @@ export async function GET(request: NextRequest) {
         previstoReceber: 0,
         previstoPagar: 0,
         estornado: 0,
+        vendasSemLancamento: 0,
         saldo: 0,
         saldoProjetado: 0,
         previsto: 0,
@@ -147,6 +185,7 @@ export async function GET(request: NextRequest) {
         from: from.toISOString(),
         to: to.toISOString(),
         months,
+        ambiente,
       },
       totals,
       series,
