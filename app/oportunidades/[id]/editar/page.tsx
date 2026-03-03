@@ -7,6 +7,11 @@ import { Button } from '@/components/common'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import Swal from 'sweetalert2'
+import {
+  getProbabilityLevel,
+  getProbabilityValueFromLevel,
+  type ProbabilityLevel,
+} from '@/lib/domain/probabilidade'
 
 interface Cliente {
   id: string
@@ -39,7 +44,7 @@ export default function EditarOportunidadePage() {
     descricao: '',
     valor: '',
     status: 'orcamento',
-    probabilidade: '0',
+    probabilidade: 'media',
     dataFechamento: '',
     motivoPerda: '',
     clienteId: '',
@@ -77,8 +82,8 @@ export default function EditarOportunidadePage() {
           status: oportunidade.status || 'orcamento',
           probabilidade:
             typeof oportunidade.probabilidade === 'number'
-              ? String(oportunidade.probabilidade)
-              : '0',
+              ? getProbabilityLevel(oportunidade.probabilidade)
+              : 'media',
           dataFechamento: formatDateInput(oportunidade.dataFechamento),
           motivoPerda: oportunidade.motivoPerda || '',
           clienteId: oportunidade.clienteId || '',
@@ -188,7 +193,13 @@ export default function EditarOportunidadePage() {
         body: JSON.stringify({
           ...formData,
           valor: formData.valor ? parseFloat(formData.valor.replace(/\./g, '').replace(',', '.')) : null,
-          probabilidade: parseInt(formData.probabilidade) || 0,
+          probabilidade: getProbabilityValueFromLevel(
+            (['baixa', 'media', 'alta'] as ProbabilityLevel[]).includes(
+              formData.probabilidade as ProbabilityLevel
+            )
+              ? (formData.probabilidade as ProbabilityLevel)
+              : 'media'
+          ),
           clienteId: formData.clienteId || null,
           dataFechamento: formData.dataFechamento || null,
           motivoPerda: formData.motivoPerda || null,
@@ -393,19 +404,19 @@ export default function EditarOportunidadePage() {
                 htmlFor="probabilidade"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Probabilidade (%)
+                Probabilidade
               </label>
-              <input
-                type="number"
+              <select
                 id="probabilidade"
                 name="probabilidade"
-                min="0"
-                max="100"
                 value={formData.probabilidade}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                placeholder="0"
-              />
+              >
+                <option value="baixa">baixa</option>
+                <option value="media">média</option>
+                <option value="alta">alta</option>
+              </select>
             </div>
 
             <div>

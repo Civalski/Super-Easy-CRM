@@ -9,32 +9,36 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings, MessageCircleHeart } from 'lucide-react'
+import { Search, Bell, Menu, X, Settings, LifeBuoy } from 'lucide-react'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
 import TaskNotificationModal from '@/components/features/tarefas/TaskNotificationModal'
 import { useSession } from 'next-auth/react'
 import type { TaskNotification } from '@/types/notifications'
+import { useNotifications } from '@/components/features/tarefas/NotificationsProvider'
 
 interface HeaderProps {
   onMobileMenuClick: () => void
+  onOpenConfig?: () => void
+  onOpenSupport?: () => void
 }
 
 export default function Header({
   onMobileMenuClick,
+  onOpenConfig,
+  onOpenSupport,
 }: HeaderProps) {
   const router = useRouter()
   const buscaRef = useRef<HTMLDivElement>(null)
   const notificacaoRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
+  const { notifications, isLoading, refresh } = useNotifications()
 
-  const [notifications, setNotifications] = useState<TaskNotification[]>([])
+  const [localNotifications, setLocalNotifications] = useState<TaskNotification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<TaskNotification | null>(null)
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
 
   const {
     busca,
@@ -48,28 +52,9 @@ export default function Header({
     abrirResultados,
   } = useGlobalSearch()
 
-  const fetchNotifications = async () => {
-    try {
-      setIsLoadingNotifications(true)
-      const response = await fetch('/api/notificacoes?limit=50')
-      if (response.ok) {
-        const data = await response.json()
-        setNotifications(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Erro ao buscar notificacoes:', error)
-    } finally {
-      setIsLoadingNotifications(false)
-    }
-  }
-
   useEffect(() => {
-    if (session?.user) {
-      fetchNotifications()
-      const interval = setInterval(fetchNotifications, 5 * 60 * 1000)
-      return () => clearInterval(interval)
-    }
-  }, [session])
+    setLocalNotifications(Array.isArray(notifications) ? notifications : [])
+  }, [notifications])
 
   useEffect(() => {
     const handleClickFora = (event: MouseEvent) => {
@@ -109,8 +94,8 @@ export default function Header({
 
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications)
-    if (!showNotifications) {
-      fetchNotifications()
+    if (!showNotifications && localNotifications.length === 0) {
+      void refresh()
     }
   }
 
@@ -125,7 +110,7 @@ export default function Header({
       })
 
       if (response.ok) {
-        setNotifications([])
+        setLocalNotifications([])
       }
     } catch (error) {
       console.error('Erro ao limpar notificacoes:', error)
@@ -133,7 +118,7 @@ export default function Header({
   }
 
   const handleDismissNotification = async (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    setLocalNotifications((prev) => prev.filter((n) => n.id !== id))
 
     try {
       await fetch('/api/notificacoes', {
@@ -220,17 +205,17 @@ export default function Header({
                 aria-label="Notificacoes"
               >
                 <Bell size={18} />
-                {notifications.length > 0 && (
+                {localNotifications.length > 0 && (
                   <span className="absolute -right-1 -top-1 inline-flex min-h-[1.1rem] min-w-[1.1rem] items-center justify-center rounded-full border border-white bg-blue-600 px-1 text-[10px] font-bold leading-none text-white dark:border-slate-900">
-                    {notifications.length > 9 ? '9+' : notifications.length}
+                    {localNotifications.length > 9 ? '9+' : localNotifications.length}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
                 <NotificationDropdown
-                  notifications={notifications}
-                  isLoading={isLoadingNotifications}
+                  notifications={localNotifications}
+                  isLoading={isLoading}
                   onClose={() => setShowNotifications(false)}
                   onSelect={(n) => setSelectedNotification(n)}
                   onClearAll={handleClearAllNotifications}
@@ -239,23 +224,25 @@ export default function Header({
               )}
             </div>
 
-            <Link
-              href="/suporte"
+            <button
+              type="button"
+              onClick={() => onOpenSupport?.()}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
               aria-label="Suporte"
               title="Suporte"
             >
-              <MessageCircleHeart size={18} />
-            </Link>
+              <LifeBuoy size={18} />
+            </button>
 
-            <Link
-              href="/configuracoes"
+            <button
+              type="button"
+              onClick={onOpenConfig ?? (() => router.push('/configuracoes'))}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
               aria-label="Configurações"
               title="Configurações"
             >
               <Settings size={18} />
-            </Link>
+            </button>
 
             <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45">
@@ -276,7 +263,7 @@ export default function Header({
         isOpen={!!selectedNotification}
         task={selectedNotification}
         onClose={() => setSelectedNotification(null)}
-        onUpdate={fetchNotifications}
+        onUpdate={refresh}
       />
     </header>
   )

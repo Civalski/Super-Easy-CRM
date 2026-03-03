@@ -6,6 +6,7 @@ import 'sweetalert2/dist/sweetalert2.min.css'
 import { Layout } from '@/components/layout'
 import { Providers } from './Providers'
 import { NotificationManager } from '@/components/features/tarefas/NotificationManager'
+import { NotificationsProvider } from '@/components/features/tarefas/NotificationsProvider'
 import { THEME_STORAGE_KEY, DEFAULT_THEME } from '@/lib/ui/themePreference'
 
 const bodyFont = Plus_Jakarta_Sans({
@@ -56,8 +57,10 @@ export default function RootLayout({
           {themeInitScript}
         </Script>
         <Providers>
-          <NotificationManager />
-          <Layout>{children}</Layout>
+          <NotificationsProvider>
+            <NotificationManager />
+            <Layout>{children}</Layout>
+          </NotificationsProvider>
         </Providers>
       </body>
     </html>

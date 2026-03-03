@@ -84,6 +84,7 @@ export default function AsyncSelect({
     const [selectedLabel, setSelectedLabel] = useState(initialLabel || '')
 
     const wrapperRef = useRef<HTMLDivElement>(null)
+    const defaultFetchInFlightRef = useRef(false)
 
     // Update internal label if initialLabel changes
     useEffect(() => {
@@ -95,7 +96,10 @@ export default function AsyncSelect({
     // Optionally pre-load default options on open
     useEffect(() => {
         if (isOpen && preloadOnOpen && query.length === 0 && options.length === 0) {
+            if (defaultFetchInFlightRef.current) return
+
             const controller = new AbortController()
+            defaultFetchInFlightRef.current = true
             setLoading(true)
             fetchOptionsWithCache(fetchUrl, controller.signal)
                 .then(data => {
@@ -109,6 +113,7 @@ export default function AsyncSelect({
                     }
                 })
                 .finally(() => {
+                    defaultFetchInFlightRef.current = false
                     if (!controller.signal.aborted) {
                         setLoading(false)
                     }
@@ -144,24 +149,10 @@ export default function AsyncSelect({
                     setOptions([])
                     return
                 }
-
-                setLoading(true)
-                fetchOptionsWithCache(fetchUrl, controller.signal)
-                    .then(data => {
-                        if (Array.isArray(data)) {
-                            setOptions(data)
-                        }
-                    })
-                    .catch(err => {
-                        if (!controller.signal.aborted) {
-                            console.error('Error fetching default options:', err)
-                        }
-                    })
-                    .finally(() => {
-                        if (!controller.signal.aborted) {
-                            setLoading(false)
-                        }
-                    })
+                if (options.length === 0 || defaultFetchInFlightRef.current) {
+                    return
+                }
+                setOptions([])
             } else {
                 setOptions([])
             }
@@ -171,7 +162,7 @@ export default function AsyncSelect({
             clearTimeout(timer)
             controller.abort()
         }
-    }, [query, fetchUrl, isOpen, minQueryLength, preloadOnOpen])
+    }, [query, fetchUrl, isOpen, minQueryLength, options.length, preloadOnOpen])
 
     // Close when clicking outside
     useEffect(() => {

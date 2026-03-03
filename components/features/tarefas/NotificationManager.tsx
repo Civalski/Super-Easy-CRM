@@ -4,8 +4,7 @@ import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Swal from 'sweetalert2'
-
-const POLL_INTERVAL_MS = 5 * 60 * 1000
+import { useNotifications } from './NotificationsProvider'
 const STORAGE_KEY = 'notifiedTasks'
 const MAX_STORED_TASK_IDS = 500
 
@@ -41,10 +40,12 @@ function writeNotifiedTaskIds(ids: string[]) {
 export function NotificationManager() {
     const pathname = usePathname()
     const { status } = useSession()
+    const { notifications } = useNotifications()
 
     useEffect(() => {
         if (pathname === '/login' || pathname === '/register') return
         if (status !== 'authenticated') return
+        if (document.visibilityState !== 'visible') return
 
         if ('Notification' in window && Notification.permission === 'default') {
             void Notification.requestPermission()
@@ -68,94 +69,70 @@ export function NotificationManager() {
             },
         })
 
-        const checkTasks = async () => {
-            if (document.visibilityState !== 'visible') return
+        if (!Array.isArray(notifications) || notifications.length === 0) {
+            return
+        }
 
-            try {
-                const response = await fetch('/api/notificacoes?limit=100')
-                if (!response.ok) return
+        try {
+            const now = new Date()
+            const notifiedTaskIds = readNotifiedTaskIds()
+            const seenIds = new Set(notifiedTaskIds)
+            let hasNewNotifications = false
 
-                const tarefas = await response.json()
-                if (!Array.isArray(tarefas)) return
+            notifications.forEach((rawTask) => {
+                if (!isNotificationTask(rawTask)) return
 
-                const now = new Date()
-                const notifiedTaskIds = readNotifiedTaskIds()
-                const seenIds = new Set(notifiedTaskIds)
-                let hasNewNotifications = false
+                const tarefa = rawTask
+                if (!tarefa.notificar || !tarefa.dataVencimento || tarefa.status === 'concluida') return
 
-                tarefas.forEach((rawTask) => {
-                    if (!isNotificationTask(rawTask)) return
+                const vencimento = new Date(tarefa.dataVencimento)
+                const diffInMs = vencimento.getTime() - now.getTime()
+                const isDueSoonOrJustPassed = diffInMs > -5 * 60 * 1000 && diffInMs < 1.5 * 60 * 1000
 
-                    const tarefa = rawTask
-                    if (!tarefa.notificar || !tarefa.dataVencimento || tarefa.status === 'concluida') return
-
-                    const vencimento = new Date(tarefa.dataVencimento)
-                    const diffInMs = vencimento.getTime() - now.getTime()
-                    const isDueSoonOrJustPassed = diffInMs > -5 * 60 * 1000 && diffInMs < 1.5 * 60 * 1000
-
-                    if (isDueSoonOrJustPassed && !seenIds.has(tarefa.id)) {
-                        Toast.fire({
-                            icon: 'info',
-                            title: 'Lembrete de Tarefa',
-                            html: `
+                if (isDueSoonOrJustPassed && !seenIds.has(tarefa.id)) {
+                    Toast.fire({
+                        icon: 'info',
+                        title: 'Lembrete de Tarefa',
+                        html: `
                                 <div class="flex flex-col gap-1">
                                     <span class="font-bold text-lg">${tarefa.titulo || 'Tarefa sem titulo'}</span>
                                     <span class="text-sm">Vence as ${vencimento.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             `,
-                        })
+                    })
 
-                        if ('Notification' in window && Notification.permission === 'granted') {
-                            try {
-                                new Notification(`Lembrete: ${tarefa.titulo || 'Tarefa'}`, {
-                                    body: `Vencimento: ${vencimento.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                                    tag: `tarefa-${tarefa.id}`,
-                                    requireInteraction: true,
-                                })
-                            } catch (error) {
-                                console.error('Erro ao criar notificacao nativa:', error)
-                            }
-                        }
-
+                    if ('Notification' in window && Notification.permission === 'granted') {
                         try {
-                            const audio = new Audio('/notification.mp3')
-                            void audio.play()
-                        } catch {
-                            // no-op
+                            new Notification(`Lembrete: ${tarefa.titulo || 'Tarefa'}`, {
+                                body: `Vencimento: ${vencimento.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+                                tag: `tarefa-${tarefa.id}`,
+                                requireInteraction: true,
+                            })
+                        } catch (error) {
+                            console.error('Erro ao criar notificacao nativa:', error)
                         }
-
-                        notifiedTaskIds.push(tarefa.id)
-                        seenIds.add(tarefa.id)
-                        hasNewNotifications = true
                     }
-                })
 
-                if (hasNewNotifications) {
-                    writeNotifiedTaskIds(notifiedTaskIds)
+                    try {
+                        const audio = new Audio('/notification.mp3')
+                        void audio.play()
+                    } catch {
+                        // no-op
+                    }
+
+                    notifiedTaskIds.push(tarefa.id)
+                    seenIds.add(tarefa.id)
+                    hasNewNotifications = true
                 }
-            } catch (error) {
-                console.error('Erro ao verificar notificacoes de tarefas:', error)
+            })
+
+            if (hasNewNotifications) {
+                writeNotifiedTaskIds(notifiedTaskIds)
             }
+        } catch (error) {
+            console.error('Erro ao verificar notificacoes de tarefas:', error)
         }
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                void checkTasks()
-            }
-        }
-
-        const intervalId = window.setInterval(() => {
-            void checkTasks()
-        }, POLL_INTERVAL_MS)
-
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        void checkTasks()
-
-        return () => {
-            window.clearInterval(intervalId)
-            document.removeEventListener('visibilitychange', handleVisibilityChange)
-        }
-    }, [pathname, status])
+    }, [pathname, status, notifications])
 
     return null
 }

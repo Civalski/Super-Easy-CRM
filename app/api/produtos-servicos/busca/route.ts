@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     const shouldLookupByCode = Boolean(codigo)
     const shouldFilterQuery = !shouldLookupByCode && Boolean(query && query.length >= 2)
+    const isRecentList = !shouldLookupByCode && !shouldFilterQuery
     const produtos = await prisma.produtoServico.findMany({
       where: {
         userId,
@@ -46,8 +47,8 @@ export async function GET(request: NextRequest) {
               }
             : {}),
       },
-      orderBy: [{ ativo: 'desc' }, { nome: 'asc' }],
-      take: shouldLookupByCode ? 1 : limit,
+      orderBy: isRecentList ? [{ createdAt: 'desc' }] : [{ ativo: 'desc' }, { nome: 'asc' }],
+      take: shouldLookupByCode ? 1 : isRecentList ? 3 : limit,
       select: {
         id: true,
         nome: true,

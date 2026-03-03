@@ -43,36 +43,30 @@ export function ThemePreferenceCard() {
   }
 
   return (
-    <div className="crm-card p-6">
-      <div className="mb-4 flex items-center gap-3">
-        {isLightTheme ? (
-          <Sun className="h-5 w-5 text-amber-500" />
-        ) : (
-          <Moon className="h-5 w-5 text-indigo-500 dark:text-indigo-300" />
-        )}
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Tema
-        </h2>
-      </div>
-
-      <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">
-            Usar tema claro
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Alterna entre visual escuro e claro nas telas do CRM.
-          </p>
+    <div className="crm-card p-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {isLightTheme ? (
+            <Sun className="h-4 w-4 shrink-0 text-amber-500" />
+          ) : (
+            <Moon className="h-4 w-4 shrink-0 text-indigo-500 dark:text-indigo-300" />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Tema</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Tema claro ou escuro</p>
+          </div>
         </div>
-
-        <input
-          type="checkbox"
-          checked={isLightTheme}
-          onChange={handleToggle}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
-          aria-label="Ativar tema claro"
-        />
-      </label>
+        <label className="flex shrink-0 cursor-pointer items-center gap-2">
+          <span className="text-xs text-gray-500 dark:text-gray-400">Claro</span>
+          <input
+            type="checkbox"
+            checked={isLightTheme}
+            onChange={handleToggle}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            aria-label="Ativar tema claro"
+          />
+        </label>
+      </div>
     </div>
   )
 }

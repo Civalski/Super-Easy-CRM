@@ -95,7 +95,7 @@ export default function OportunidadeHistoricoCard({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
             {oportunidade.titulo}
           </h3>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
             {oportunidade.cliente.nome}
           </p>
         </div>
@@ -107,12 +107,12 @@ export default function OportunidadeHistoricoCard({
       </div>
 
       {oportunidade.descricao && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
           {oportunidade.descricao}
         </p>
       )}
 
-      <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>
           {registroLabel}: {formatDate(registroData)}
         </span>

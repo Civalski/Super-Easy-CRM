@@ -1,5 +1,62 @@
 export type DashboardActivityType = 'tarefa' | 'oportunidade' | 'cliente'
 
+export interface DashboardData {
+  clientesCount: number
+  oportunidadesCount: number
+  tarefasCount: number
+  valorTotal: number
+  valorGanhos: number
+  valorPerdidos: number
+  oportunidadesPorStatus: Array<{
+    status: string
+    _count: number
+  }>
+  tarefasPorStatus: Array<{
+    status: string
+    _count: number
+  }>
+}
+
+export interface GoalSummary {
+  id: string
+  title: string
+  metricType:
+    | 'CLIENTES_CONTATADOS'
+    | 'PROPOSTAS'
+    | 'CLIENTES_CADASTRADOS'
+    | 'VENDAS'
+    | 'QUALIFICACAO'
+    | 'PROSPECCAO'
+    | 'FATURAMENTO'
+  periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
+  target: number
+  current?: number
+  progress?: number
+  periodStart?: string
+  periodEnd?: string
+  active?: boolean
+}
+
+export interface FluxoSerie {
+  month: string
+  recebido: number
+  saida: number
+  previstoReceber: number
+  previstoPagar: number
+  saldoProjetado: number
+}
+
+export interface FluxoData {
+  totals: {
+    recebido: number
+    saida: number
+    previstoReceber: number
+    previstoPagar: number
+    saldoProjetado: number
+  }
+  series: FluxoSerie[]
+}
+
 export interface DashboardActivityDetails {
   id: string
   titulo?: string | null

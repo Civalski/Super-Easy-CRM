@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CheckSquare, DollarSign, User, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import ActivityModal from './ActivityModal'
+import { useAtividadesRecentes } from '@/lib/hooks/useDashboardData'
 import type { DashboardActivity, DashboardActivityType } from '@/types/dashboard'
 
 interface AtividadesRecentesProps {
-  refreshTrigger?: number | Date
   onRefreshRequest?: () => void
 }
 
@@ -19,36 +19,16 @@ const sanitizeMockText = (value?: string | null) =>
     .replace(/^[\s\-:|*]+|[\s\-:|*]+$/g, '')
     .trim()
 
-export function AtividadesRecentes({ refreshTrigger, onRefreshRequest }: AtividadesRecentesProps) {
-  const [activities, setActivities] = useState<DashboardActivity[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps) {
+  const { activities, isLoading, mutate } = useAtividadesRecentes()
   const [showAll, setShowAll] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<DashboardActivity | null>(null)
-
-  const fetchActivities = async () => {
-    try {
-      const response = await fetch('/api/dashboard/atividades-recentes')
-      if (response.ok) {
-        const data = await response.json()
-        setActivities(Array.isArray(data) ? (data as DashboardActivity[]) : [])
-      }
-    } catch (error) {
-      console.error('Erro ao buscar atividades:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchActivities()
-  }, [refreshTrigger])
 
   const handleActivityUpdate = () => {
     if (onRefreshRequest) {
       onRefreshRequest()
-      return
     }
-    fetchActivities()
+    void mutate()
   }
 
   const getIcon = (type: DashboardActivityType) => {

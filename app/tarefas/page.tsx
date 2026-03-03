@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { SideCreateDrawer } from '@/components/common'
 import { Loader2, Save, X } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -81,6 +81,8 @@ export default function TarefasPage() {
     oportunidadeId: '',
     notificar: false,
   })
+  const filtrosKey = `${activeTab}|${filtroStatus}|${filtroPrioridade}`
+  const lastFiltrosKeyRef = useRef(filtrosKey)
 
   const swalBase = {
     background: '#0f172a',
@@ -156,6 +158,14 @@ export default function TarefasPage() {
   }, [activeTab, filtroPrioridade, filtroStatus])
 
   useEffect(() => {
+    if (lastFiltrosKeyRef.current !== filtrosKey) {
+      lastFiltrosKeyRef.current = filtrosKey
+      if (page !== 1) {
+        setPage(1)
+        return
+      }
+    }
+
     fetchTarefas(page)
 
     const handleFocus = () => {
@@ -166,11 +176,7 @@ export default function TarefasPage() {
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
-  }, [fetchTarefas, page])
-
-  useEffect(() => {
-    setPage(1)
-  }, [activeTab, filtroPrioridade, filtroStatus])
+  }, [fetchTarefas, filtrosKey, page])
 
   const loadCreateOptions = async () => {
     try {

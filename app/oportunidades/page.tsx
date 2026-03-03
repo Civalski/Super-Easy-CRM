@@ -4,16 +4,15 @@ import { Suspense, useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, AsyncSelect, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
-import { OportunidadeHistoricoCard } from '@/components/features/oportunidades'
 import {
   Minus,
   PackagePlus,
   Plus,
   X,
+  Download,
   Save,
   Loader2,
   Briefcase,
-  History,
   FileText,
   DollarSign,
   Info,
@@ -23,6 +22,12 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
+import {
+  getProbabilityBadgeClass,
+  getProbabilityLabel,
+  getProbabilityValueFromLevel,
+  type ProbabilityLevel,
+} from '@/lib/domain/probabilidade'
 
 interface Oportunidade {
   id: string
@@ -110,8 +115,18 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString('pt-BR')
 }
 
+/** Retorna data no formato YYYY-MM-DD a partir de hoje + num dias/semanas/meses */
+function getProximaAcaoDate(num: number, unit: 'dias' | 'semanas' | 'meses'): string {
+  const d = new Date()
+  if (unit === 'dias') d.setDate(d.getDate() + num)
+  else if (unit === 'semanas') d.setDate(d.getDate() + num * 7)
+  else d.setMonth(d.getMonth() + num)
+  return d.toISOString().split('T')[0]
+}
+
 const LIST_PAGE_SIZE = 20
 const HISTORICO_PAGE_SIZE = 10
+const PROBABILITY_LEVELS: ProbabilityLevel[] = ['baixa', 'media', 'alta']
 
 const buildItemForm = (): ItemForm => ({
   produtoServicoId: '',
@@ -160,22 +175,21 @@ function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'precoUni
 }
 
 function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico | null {
-  if (!option || !option.original || typeof option.original !== 'object') {
-    return null
-  }
-
-  const raw = option.original as Partial<ProdutoServico>
-  if (!raw.id || !raw.nome) {
-    return null
-  }
+  if (!option) return null
+  const raw = (option.original && typeof option.original === 'object'
+    ? option.original
+    : option) as Partial<ProdutoServico> & { id?: string; nome?: string; precoPadrao?: number }
+  const id = raw.id ?? (option as AsyncSelectOption).id
+  const nome = raw.nome ?? (option as AsyncSelectOption).nome
+  if (!id || !nome) return null
 
   return {
-    id: raw.id,
-    nome: raw.nome,
+    id: String(id),
+    nome: String(nome),
     tipo: raw.tipo === 'servico' ? 'servico' : 'produto',
-    codigo: raw.codigo || null,
-    unidade: raw.unidade || null,
-    precoPadrao: Number(raw.precoPadrao || 0),
+    codigo: raw.codigo != null ? String(raw.codigo) : null,
+    unidade: raw.unidade != null ? String(raw.unidade) : null,
+    precoPadrao: Number(raw.precoPadrao ?? 0),
   }
 }
 
@@ -188,20 +202,13 @@ function OrcamentosPageContent() {
   const clienteQuery = hasClienteFilter
     ? `&clienteId=${encodeURIComponent(clienteIdFilter)}`
     : ''
-  const [activeTab, setActiveTab] = useState<'abertas' | 'historico'>('abertas')
+  const [activeTab, setActiveTab] = useState<'abertas' | 'canceladas'>('abertas')
   const [orcamentosAbertos, setOrcamentosAbertos] = useState<Oportunidade[]>([])
-  const [historicoVendas, setHistoricoVendas] = useState<Oportunidade[]>([])
   const [historicoPerdidas, setHistoricoPerdidas] = useState<Oportunidade[]>([])
   const [metaAbertas, setMetaAbertas] = useState<PaginationMeta>({
     total: 0,
     page: 1,
     limit: LIST_PAGE_SIZE,
-    pages: 1,
-  })
-  const [metaVendas, setMetaVendas] = useState<PaginationMeta>({
-    total: 0,
-    page: 1,
-    limit: HISTORICO_PAGE_SIZE,
     pages: 1,
   })
   const [metaPerdidas, setMetaPerdidas] = useState<PaginationMeta>({
@@ -214,10 +221,10 @@ function OrcamentosPageContent() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [prefillPerson, setPrefillPerson] = useState<AsyncSelectOption | null>(null)
   const [creatingPedidoById, setCreatingPedidoById] = useState<Record<string, boolean>>({})
+  const [downloadingPdfById, setDownloadingPdfById] = useState<Record<string, boolean>>({})
 
   const [pageAbertas, setPageAbertas] = useState(1)
   // Paginação do histórico
-  const [pageVendas, setPageVendas] = useState(1)
   const [pagePerdidas, setPagePerdidas] = useState(1)
 
   const fetchOportunidades = useCallback(async () => {
@@ -246,37 +253,16 @@ function OrcamentosPageContent() {
         setOrcamentosAbertos(data)
         setMetaAbertas(meta)
       } else {
-        const [vendasResponse, perdidasResponse] = await Promise.all([
-          fetch(
-            `/api/oportunidades?status=fechada&paginated=true&page=${pageVendas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
-          ),
-          fetch(
-            `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
-          ),
-        ])
+        const perdidasResponse = await fetch(
+          `/api/oportunidades?status=perdida&paginated=true&page=${pagePerdidas}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}`
+        )
+        const perdidasPayload = await perdidasResponse.json().catch(() => null)
 
-        const [vendasPayload, perdidasPayload] = await Promise.all([
-          vendasResponse.json().catch(() => null),
-          perdidasResponse.json().catch(() => null),
-        ])
-
-        if (!vendasResponse.ok) {
-          throw new Error(vendasPayload?.error || 'Erro ao carregar vendas fechadas')
-        }
         if (!perdidasResponse.ok) {
           throw new Error(perdidasPayload?.error || 'Erro ao carregar perdidas')
         }
 
-        const vendasData = Array.isArray(vendasPayload?.data) ? vendasPayload.data : []
         const perdidasData = Array.isArray(perdidasPayload?.data) ? perdidasPayload.data : []
-
-        const vendasMeta: PaginationMeta = {
-          total: Number(vendasPayload?.meta?.total || 0),
-          page: Number(vendasPayload?.meta?.page || pageVendas),
-          limit: Number(vendasPayload?.meta?.limit || HISTORICO_PAGE_SIZE),
-          pages: Number(vendasPayload?.meta?.pages || 1),
-        }
-
         const perdidasMeta: PaginationMeta = {
           total: Number(perdidasPayload?.meta?.total || 0),
           page: Number(perdidasPayload?.meta?.page || pagePerdidas),
@@ -284,18 +270,12 @@ function OrcamentosPageContent() {
           pages: Number(perdidasPayload?.meta?.pages || 1),
         }
 
-        if (vendasData.length === 0 && pageVendas > 1 && vendasMeta.total > 0) {
-          setPageVendas((prev) => Math.max(1, prev - 1))
-          return
-        }
         if (perdidasData.length === 0 && pagePerdidas > 1 && perdidasMeta.total > 0) {
           setPagePerdidas((prev) => Math.max(1, prev - 1))
           return
         }
 
-        setHistoricoVendas(vendasData)
         setHistoricoPerdidas(perdidasData)
-        setMetaVendas(vendasMeta)
         setMetaPerdidas(perdidasMeta)
       }
     } catch (error) {
@@ -304,15 +284,13 @@ function OrcamentosPageContent() {
         setOrcamentosAbertos([])
         setMetaAbertas((prev) => ({ ...prev, total: 0, page: pageAbertas, pages: 1 }))
       } else {
-        setHistoricoVendas([])
         setHistoricoPerdidas([])
-        setMetaVendas((prev) => ({ ...prev, total: 0, page: pageVendas, pages: 1 }))
         setMetaPerdidas((prev) => ({ ...prev, total: 0, page: pagePerdidas, pages: 1 }))
       }
     } finally {
       setLoading(false)
     }
-  }, [activeTab, clienteQuery, pageAbertas, pagePerdidas, pageVendas])
+  }, [activeTab, clienteQuery, pageAbertas, pagePerdidas])
 
   useEffect(() => {
     void fetchOportunidades()
@@ -334,8 +312,10 @@ function OrcamentosPageContent() {
 
   useEffect(() => {
     const aba = searchParams.get('aba')
-    if (aba === 'historico') {
-      setActiveTab('historico')
+    if (aba === 'fechadas' || aba === 'historico') {
+      setActiveTab('canceladas')
+    } else if (aba === 'canceladas') {
+      setActiveTab('canceladas')
     }
   }, [searchParams])
 
@@ -443,27 +423,45 @@ function OrcamentosPageContent() {
   }, [router, searchParams])
 
   const handleTransformarEmPedido = async (oportunidade: Oportunidade) => {
-    const confirm = await Swal.fire({
+    const choice = await Swal.fire({
       icon: 'question',
       title: 'Transformar em pedido',
-      text: 'Este orçamento aprovado será convertido em pedido para acompanhamento de entrega e pagamento. Deseja continuar?',
+      text: 'Escolha como deseja aprovar este orçamento.',
+      showDenyButton: true,
       showCancelButton: true,
-      confirmButtonText: 'Sim, transformar',
+      confirmButtonText: 'Aprovar e confirmar depois',
+      denyButtonText: 'Aprovar e confirmar pagamento',
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#2563eb',
+      denyButtonColor: '#16a34a',
       cancelButtonColor: '#6b7280',
       background: '#1f2937',
       color: '#f3f4f6',
     })
 
-    if (!confirm.isConfirmed) return
+    if (!choice.isConfirmed && !choice.isDenied) return
+
+    const confirmaPagamentoAgora = choice.isDenied
 
     try {
       setCreatingPedidoById((prev) => ({ ...prev, [oportunidade.id]: true }))
+      const payload: {
+        oportunidadeId: string
+        pagamentoConfirmado?: boolean
+        statusEntrega?: string
+      } = {
+        oportunidadeId: oportunidade.id,
+      }
+
+      if (confirmaPagamentoAgora) {
+        payload.pagamentoConfirmado = true
+        payload.statusEntrega = 'entregue'
+      }
+
       const response = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oportunidadeId: oportunidade.id }),
+        body: JSON.stringify(payload),
       })
 
       const data = await response.json().catch(() => null)
@@ -475,7 +473,9 @@ function OrcamentosPageContent() {
       await Swal.fire({
         icon: 'success',
         title: data?.numero ? `Pedido #${data.numero} criado` : 'Pedido criado',
-        text: 'O orçamento foi transformado em pedido. Acompanhe em Pedidos.',
+        text: confirmaPagamentoAgora
+          ? 'O orçamento foi aprovado, transformado em pedido e o pagamento foi confirmado.'
+          : 'O orçamento foi aprovado e transformado em pedido. Voce podera confirmar o pagamento depois.',
         confirmButtonColor: '#2563eb',
         background: '#1f2937',
         color: '#f3f4f6',
@@ -492,6 +492,44 @@ function OrcamentosPageContent() {
       })
     } finally {
       setCreatingPedidoById((prev) => ({ ...prev, [oportunidade.id]: false }))
+    }
+  }
+
+  const handleDownloadOrcamentoPdf = async (oportunidade: Oportunidade) => {
+    try {
+      setDownloadingPdfById((prev) => ({ ...prev, [oportunidade.id]: true }))
+      const response = await fetch(`/api/oportunidades/${oportunidade.id}/pdf`)
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Nao foi possivel gerar o PDF do orcamento.')
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = downloadUrl
+      anchor.download = `${(oportunidade.titulo || `orcamento-${oportunidade.id}`)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_ ]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .toLowerCase() || `orcamento-${oportunidade.id}`}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (error: unknown) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: error instanceof Error ? error.message : 'Nao foi possivel baixar o PDF do orcamento.',
+        confirmButtonColor: '#6366f1',
+        background: '#1f2937',
+        color: '#f3f4f6',
+      })
+    } finally {
+      setDownloadingPdfById((prev) => ({ ...prev, [oportunidade.id]: false }))
     }
   }
 
@@ -567,14 +605,14 @@ function OrcamentosPageContent() {
           Orçamentos ({metaAbertas.total})
         </button>
         <button
-          onClick={() => setActiveTab('historico')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'historico'
+          onClick={() => setActiveTab('canceladas')}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'canceladas'
             ? 'border-purple-700 text-purple-700 dark:border-purple-500 dark:text-purple-500'
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
-          <History size={16} />
-          Histórico ({metaVendas.total + metaPerdidas.total})
+          <X size={16} />
+          Orçamentos cancelados ({metaPerdidas.total})
         </button>
       </div>
 
@@ -604,93 +642,149 @@ function OrcamentosPageContent() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {orcamentosAbertos.map((oportunidade) => {
-                const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.orcamento
-                const StatusIcon = statusInfo.icon
+            <section className="crm-card p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="text-purple-600 dark:text-purple-400" size={18} />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Orçamentos em aberto
+                  </h2>
+                </div>
+                <span className="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  {metaAbertas.total}
+                </span>
+              </div>
 
-                return (
-                  <div
-                    key={oportunidade.id}
-                    className="crm-card p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {oportunidade.titulo}
-                          </h3>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${statusInfo.color}`}>
-                            <StatusIcon size={10} />
-                            {statusInfo.label}
+              <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-700">
+                <div className="crm-table-head grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  <div className="min-w-0">Orçamento</div>
+                  <div className="text-right">Valor</div>
+                  <div className="text-right">Ações</div>
+                </div>
+
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {orcamentosAbertos.map((oportunidade) => {
+                    const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.orcamento
+                    const StatusIcon = statusInfo.icon
+                    const pedidoNumero = oportunidade.pedido?.numero ?? null
+                    const pedidoLabel = pedidoNumero ? `Pedido #${pedidoNumero}` : 'Pedido'
+
+                    const createdLabel = oportunidade.createdAt ? `Criada ${formatDate(oportunidade.createdAt)}` : null
+                    const previsaoLabel = oportunidade.dataFechamento
+                      ? `Previsão ${formatDate(oportunidade.dataFechamento)}`
+                      : null
+                    const proximaAcaoLabel = oportunidade.proximaAcaoEm
+                      ? `Próxima ação ${formatDate(oportunidade.proximaAcaoEm)}`
+                      : null
+                    const datesLabel = [createdLabel, previsaoLabel, proximaAcaoLabel].filter(Boolean).join(' • ')
+
+                    return (
+                      <div
+                        key={oportunidade.id}
+                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <h3 className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white">
+                              {oportunidade.titulo}
+                            </h3>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none flex items-center gap-1 ${statusInfo.color}`}
+                              title={statusInfo.label}
+                            >
+                              <StatusIcon size={10} />
+                              <span className="hidden sm:inline">{statusInfo.label}</span>
+                            </span>
+                          </div>
+
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                            <span className="min-w-0 truncate">{oportunidade.cliente.nome}</span>
+                            {pedidoNumero && (
+                              <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">
+                                • Pedido #{pedidoNumero}
+                              </span>
+                            )}
+                            {oportunidade.descricao && (
+                              <span className="hidden md:inline min-w-0 truncate text-gray-500 dark:text-gray-500">
+                                • {oportunidade.descricao}
+                              </span>
+                            )}
+                            {datesLabel && (
+                              <span className="hidden xl:inline min-w-0 truncate text-gray-500 dark:text-gray-500">
+                                • {datesLabel}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
+                            {formatCurrency(oportunidade.valor)}
+                          </p>
+                          <span
+                            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${getProbabilityBadgeClass(oportunidade.probabilidade)}`}
+                          >
+                            {getProbabilityLabel(oportunidade.probabilidade)}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {oportunidade.cliente.nome}
-                        </p>
-                        {oportunidade.descricao && (
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-2">
-                            {oportunidade.descricao}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                          {formatCurrency(oportunidade.valor)}
-                        </p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                          {oportunidade.probabilidade}% prob.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                        Criada em {formatDate(oportunidade.createdAt)}
-                        {oportunidade.dataFechamento && (
-                          <> ? Previsão: {formatDate(oportunidade.dataFechamento)}</>
-                        )}
-                        {oportunidade.proximaAcaoEm && (
-                          <> ? Proxima acao: {formatDate(oportunidade.proximaAcaoEm)}</>
-                        )}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {oportunidade.pedido ? (
-                          <a href="/pedidos">
-                            <Button size="sm" variant="outline">
-                              <ClipboardList size={14} className="mr-1" />
-                              {oportunidade.pedido.numero
-                                ? `Abrir Pedido #${oportunidade.pedido.numero}`
-                                : 'Abrir Pedido'}
-                            </Button>
-                          </a>
-                        ) : (
+
+                        <div className="flex shrink-0 items-center justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleTransformarEmPedido(oportunidade)}
-                            disabled={Boolean(creatingPedidoById[oportunidade.id])}
+                            className="px-2 py-1 text-xs"
+                            title="Baixar orçamento em PDF"
+                            onClick={() => handleDownloadOrcamentoPdf(oportunidade)}
+                            disabled={Boolean(downloadingPdfById[oportunidade.id])}
                           >
-                            {creatingPedidoById[oportunidade.id] ? (
-                              'Convertendo...'
-                            ) : (
-                              <>
+                            <Download size={14} className="mr-1" />
+                            <span className="hidden sm:inline">
+                              {downloadingPdfById[oportunidade.id] ? 'Baixando...' : 'PDF'}
+                            </span>
+                          </Button>
+                          {oportunidade.pedido ? (
+                            <a href="/pedidos" title="Abrir pedido">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="px-2 py-1 text-xs"
+                              >
                                 <ClipboardList size={14} className="mr-1" />
-                                Transformar em Pedido
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        <a href={`/oportunidades/${oportunidade.id}/editar`}>
-                          <Button size="sm" variant="outline">
-                            Editar
-                          </Button>
-                        </a>
+                                <span className="hidden sm:inline">Abrir pedido</span>
+                              </Button>
+                            </a>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="px-2 py-1 text-xs"
+                              title="Transformar em pedido"
+                              onClick={() => handleTransformarEmPedido(oportunidade)}
+                              disabled={Boolean(creatingPedidoById[oportunidade.id])}
+                            >
+                              <ClipboardList size={14} className="mr-1" />
+                              <span className="hidden sm:inline">
+                                {creatingPedidoById[oportunidade.id] ? 'Convertendo...' : pedidoLabel}
+                              </span>
+                            </Button>
+                          )}
+
+                          <a href={`/oportunidades/${oportunidade.id}/editar`} title="Editar orçamento">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="px-2 py-1 text-xs"
+                            >
+                              Editar
+                            </Button>
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
           )}
           {metaAbertas.pages > 1 && (
             <div className="mt-4 flex items-center justify-between">
@@ -718,69 +812,14 @@ function OrcamentosPageContent() {
         </div>
       )}
 
-      {/* Tab: Histórico */}
-      {!loading && activeTab === 'historico' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Vendas */}
-          <section className="crm-card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <DollarSign className="text-green-600 dark:text-green-400" size={18} />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Vendas Fechadas
-                </h2>
-              </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                {metaVendas.total}
-              </span>
-            </div>
-            {historicoVendas.length === 0 ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-8">
-                Nenhuma venda registrada ainda.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {historicoVendas.map((oportunidade) => (
-                  <OportunidadeHistoricoCard
-                    key={oportunidade.id}
-                    oportunidade={oportunidade}
-                    onReturnToPipeline={handleReturnToPipeline}
-                  />
-                ))}
-              </div>
-            )}
-            {metaVendas.pages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pageVendas <= 1}
-                  onClick={() => setPageVendas((prev) => Math.max(1, prev - 1))}
-                >
-                  Anterior
-                </Button>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Página {pageVendas} de {metaVendas.pages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pageVendas >= metaVendas.pages}
-                  onClick={() => setPageVendas((prev) => Math.min(metaVendas.pages, prev + 1))}
-                >
-                  Próxima
-                </Button>
-              </div>
-            )}
-          </section>
-
-          {/* Perdidas */}
-          <section className="crm-card p-4">
+      {/* Tab: Orçamentos cancelados */}
+      {!loading && activeTab === 'canceladas' && (
+        <section className="crm-card p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <X className="text-red-600 dark:text-red-400" size={18} />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Perdidas
+                  Orçamentos cancelados
                 </h2>
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full">
@@ -792,41 +831,91 @@ function OrcamentosPageContent() {
                 Nenhum orçamento perdido registrado.
               </p>
             ) : (
-              <div className="space-y-3">
-                {historicoPerdidas.map((oportunidade) => (
-                  <OportunidadeHistoricoCard
-                    key={oportunidade.id}
-                    oportunidade={oportunidade}
-                    onReturnToPipeline={handleReturnToPipeline}
-                  />
-                ))}
+              <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-700">
+                <div className="crm-table-head grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  <div className="min-w-0">Orçamento</div>
+                  <div className="text-right">Valor</div>
+                  <div className="text-right">Ações</div>
+                </div>
+
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {historicoPerdidas.map((oportunidade) => {
+                    const statusInfo = STATUS_CONFIG[oportunidade.status] || STATUS_CONFIG.perdida
+                    const StatusIcon = statusInfo.icon
+                    const statusToReturn = oportunidade.statusAnterior || 'orcamento'
+                    const lostDate = oportunidade.dataFechamento || oportunidade.updatedAt || oportunidade.createdAt || null
+
+                    return (
+                      <div
+                        key={oportunidade.id}
+                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,160px)_auto] gap-3 px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <h3 className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white">
+                              {oportunidade.titulo}
+                            </h3>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none flex items-center gap-1 ${statusInfo.color}`}
+                              title={statusInfo.label}
+                            >
+                              <StatusIcon size={10} />
+                              <span className="hidden sm:inline">{statusInfo.label}</span>
+                            </span>
+                          </div>
+
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                            <span className="min-w-0 truncate">{oportunidade.cliente.nome}</span>
+                            {oportunidade.descricao && (
+                              <span className="hidden md:inline min-w-0 truncate text-gray-500 dark:text-gray-500">
+                                • {oportunidade.descricao}
+                              </span>
+                            )}
+                            {lostDate && (
+                              <span className="hidden xl:inline min-w-0 truncate text-gray-500 dark:text-gray-500">
+                                • Cancelado em {formatDate(lostDate)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
+                            {formatCurrency(oportunidade.valor)}
+                          </p>
+                          <span
+                            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${getProbabilityBadgeClass(oportunidade.probabilidade)}`}
+                          >
+                            {getProbabilityLabel(oportunidade.probabilidade)}
+                          </span>
+                        </div>
+
+                        <div className="flex shrink-0 items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="px-2 py-1 text-xs"
+                            onClick={() => handleReturnToPipeline(oportunidade.id, statusToReturn)}
+                          >
+                            Reabrir
+                          </Button>
+                          <a href={`/oportunidades/${oportunidade.id}/editar`} title="Editar orçamento">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="px-2 py-1 text-xs"
+                            >
+                              Editar
+                            </Button>
+                          </a>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
-            {metaPerdidas.pages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pagePerdidas <= 1}
-                  onClick={() => setPagePerdidas((prev) => Math.max(1, prev - 1))}
-                >
-                  Anterior
-                </Button>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Página {pagePerdidas} de {metaPerdidas.pages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pagePerdidas >= metaPerdidas.pages}
-                  onClick={() => setPagePerdidas((prev) => Math.min(metaPerdidas.pages, prev + 1))}
-                >
-                  Próxima
-                </Button>
-              </div>
-            )}
-          </section>
-        </div>
+        </section>
       )}
 
       {/* Modal de Criar Orçamento */}
@@ -878,6 +967,7 @@ function CreateOrcamentoModal({
   const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
   const [itens, setItens] = useState<DraftCreateItem[]>([])
   const [showCarrinhoDrawer, setShowCarrinhoDrawer] = useState(false)
+  const [showProdutosSection, setShowProdutosSection] = useState(false)
 
   const [formData, setFormData] = useState({
     titulo: '',
@@ -886,13 +976,15 @@ function CreateOrcamentoModal({
     formaPagamento: '',
     parcelas: '',
     desconto: '',
-    probabilidade: '0',
+    probabilidade: 'media',
     dataFechamento: new Date().toISOString().split('T')[0],
-    proximaAcaoEm: '',
+    proximaAcaoEm: getProximaAcaoDate(15, 'dias'),
     canalProximaAcao: '',
     responsavelProximaAcao: '',
-    lembreteProximaAcao: false,
+    lembreteProximaAcao: true,
   })
+  const [proximaAcaoNumero, setProximaAcaoNumero] = useState(15)
+  const [proximaAcaoUnidade, setProximaAcaoUnidade] = useState<'dias' | 'semanas' | 'meses'>('dias')
 
   const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
   const totalCarrinho = cartSummary.totalLiquido
@@ -995,7 +1087,40 @@ function CreateOrcamentoModal({
   }, [])
 
   const handleSelectProduto = (option: AsyncSelectOption | null) => {
-    const selected = getProdutoFromOption(option)
+    let selected = getProdutoFromOption(option)
+    if (!selected && option?.id && option?.nome) {
+      selected = {
+        id: String(option.id),
+        nome: String(option.nome),
+        tipo: 'produto',
+        codigo: null,
+        unidade: null,
+        precoPadrao: 0,
+      }
+      const raw = (option.original as { precoPadrao?: number } | undefined)
+      if (raw && typeof raw.precoPadrao === 'number') selected.precoPadrao = raw.precoPadrao
+      else if (raw && raw.precoPadrao != null) selected.precoPadrao = Number(raw.precoPadrao)
+    }
+    if (!selected) {
+      fillItemFormFromProduto(null)
+      return
+    }
+
+    // Selecionar o produto na busca já adiciona automaticamente ao carrinho.
+    const draft: ItemForm = {
+      produtoServicoId: selected.id,
+      descricao: selected.nome,
+      quantidade: itemForm.quantidade > 0 ? itemForm.quantidade : 1,
+      precoUnitario: selected.precoPadrao,
+      desconto: itemForm.desconto > 0 ? itemForm.desconto : 0,
+    }
+
+    if (appendDraftItem(draft)) {
+      setItemForm(buildItemForm())
+      setSelectedProdutoLabel('')
+      return
+    }
+
     fillItemFormFromProduto(selected)
   }
 
@@ -1123,7 +1248,11 @@ function CreateOrcamentoModal({
           desconto: formData.desconto
             ? parseFloat(formData.desconto.replace(/\./g, '').replace(',', '.'))
             : null,
-          probabilidade: parseInt(formData.probabilidade) || 0,
+          probabilidade: getProbabilityValueFromLevel(
+            PROBABILITY_LEVELS.includes(formData.probabilidade as ProbabilityLevel)
+              ? (formData.probabilidade as ProbabilityLevel)
+              : 'media'
+          ),
           status: 'orcamento',
           clienteId: finalClienteId,
           dataFechamento: formData.dataFechamento || null,
@@ -1205,15 +1334,6 @@ function CreateOrcamentoModal({
           </button>
         </div>
 
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-          <div className="flex items-start gap-2">
-            <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-            <div className="text-xs text-blue-700 dark:text-blue-400">
-              <span className="font-medium">Classificacao automatica:</span> Leads em <strong>Sem contato</strong> ou <strong>Em potencial</strong> entram como <strong>Orcamento</strong>.
-            </div>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="mx-auto w-full max-w-3xl space-y-4">
           <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -1268,58 +1388,77 @@ function CreateOrcamentoModal({
           </div>
 
           <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Produtos
-            </p>
-            <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
-                  <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
-                </div>
-                <div className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 dark:border-blue-900 dark:bg-blue-950/40">
-                  <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
-                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (showProdutosSection) {
+                  setShowProdutosSection(false)
+                } else {
+                  setShowProdutosSection(true)
+                  setShowCarrinhoDrawer(true)
+                }
+              }}
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Produtos (opcional)
+              </p>
+              <span className="text-[11px] text-purple-600 dark:text-purple-300">
+                {showProdutosSection ? 'Ocultar' : 'Adicionar produtos'}
+              </span>
+            </button>
 
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {hasCartItems ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
-                </p>
-                <Button type="button" size="sm" variant="outline" onClick={() => setShowCarrinhoDrawer(true)}>
-                  {hasCartItems ? 'Editar carrinho' : 'Incluir produtos'}
-                </Button>
-              </div>
-
-              {hasCartItems && (
-                <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
-                  {itens.slice(0, 3).map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
-                    >
-                      <span className="truncate pr-2">{item.descricao}</span>
-                      <span className="text-gray-500 dark:text-gray-400">{item.quantidade}x</span>
-                      <span>{currency(item.subtotal)}</span>
-                    </div>
-                  ))}
-                  {itens.length > 3 && (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      +{itens.length - 3} item(ns) no carrinho.
-                    </p>
-                  )}
+            {showProdutosSection && (
+              <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Itens</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{itens.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Bruto</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{currency(cartSummary.totalBruto)}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Desconto</p>
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">{currency(cartSummary.totalDesconto)}</p>
+                  </div>
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300">Total</p>
+                    <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{currency(totalCarrinho)}</p>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {hasCartItems ? `${itens.length} item(ns) no carrinho` : 'Nenhum produto no carrinho'}
+                  </p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setShowCarrinhoDrawer(true)}>
+                    {hasCartItems ? 'Editar carrinho' : 'Incluir produtos'}
+                  </Button>
+                </div>
+
+                {hasCartItems && (
+                  <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
+                    {itens.slice(0, 3).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700"
+                      >
+                        <span className="truncate pr-2">{item.descricao}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{item.quantidade}x</span>
+                        <span>{currency(item.subtotal)}</span>
+                      </div>
+                    ))}
+                    {itens.length > 3 && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        +{itens.length - 3} item(ns) no carrinho.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
@@ -1375,19 +1514,17 @@ function CreateOrcamentoModal({
             </div>
 
             <div>
-              <label className={labelClass}>
-                Probabilidade (%)
-              </label>
-              <input
-                type="number"
+              <label className={labelClass}>Probabilidade</label>
+              <select
                 name="probabilidade"
-                min="0"
-                max="100"
                 value={formData.probabilidade}
                 onChange={handleChange}
                 className={fieldClass}
-                placeholder="0"
-              />
+              >
+                <option value="baixa">baixa</option>
+                <option value="media">média</option>
+                <option value="alta">alta</option>
+              </select>
             </div>
 
             <div>
@@ -1424,13 +1561,37 @@ function CreateOrcamentoModal({
               <label className={labelClass}>
                 Proxima Acao
               </label>
-              <input
-                type="date"
-                name="proximaAcaoEm"
-                value={formData.proximaAcaoEm}
-                onChange={handleChange}
-                className={`${fieldClass} dark:scheme-dark`}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Em</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={proximaAcaoNumero}
+                  onChange={(e) => {
+                    const n = Math.max(1, Math.min(999, parseInt(e.target.value, 10) || 1))
+                    setProximaAcaoNumero(n)
+                    setFormData((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(n, proximaAcaoUnidade) }))
+                  }}
+                  className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <select
+                  value={proximaAcaoUnidade}
+                  onChange={(e) => {
+                    const u = e.target.value as 'dias' | 'semanas' | 'meses'
+                    setProximaAcaoUnidade(u)
+                    setFormData((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(proximaAcaoNumero, u) }))
+                  }}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="dias">dias</option>
+                  <option value="semanas">semanas</option>
+                  <option value="meses">meses</option>
+                </select>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  ({formatDate(formData.proximaAcaoEm)})
+                </span>
+              </div>
             </div>
 
             <div>
@@ -1548,7 +1709,7 @@ function CreateOrcamentoModal({
                 Adicionar item
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-12">
-                <label className="md:col-span-8">
+                <label className="md:col-span-7">
                   <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
                   <AsyncSelect
                     className="min-w-0"
@@ -1557,8 +1718,6 @@ function CreateOrcamentoModal({
                     initialLabel={selectedProdutoLabel}
                     onChange={handleSelectProduto}
                     fetchUrl="/api/produtos-servicos/busca"
-                    minQueryLength={2}
-                    preloadOnOpen={false}
                   />
                 </label>
                 <label className="md:col-span-2">
@@ -1583,7 +1742,7 @@ function CreateOrcamentoModal({
                     className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                   />
                 </label>
-                <div className="md:col-span-1">
+                <div className="md:col-span-2">
                   <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
                   <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
                     {currency(draftSubtotal)}
@@ -1663,7 +1822,7 @@ function CreateOrcamentoModal({
                             {currency(item.precoUnitario)}
                           </p>
                         </div>
-                        <label className="md:col-span-2">
+                        <label className="md:col-span-1">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
                           <input
                             type="number"
@@ -1674,7 +1833,7 @@ function CreateOrcamentoModal({
                             className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                           />
                         </label>
-                        <div className="md:col-span-1">
+                        <div className="md:col-span-2">
                           <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
                           <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
                             {currency(item.subtotal)}

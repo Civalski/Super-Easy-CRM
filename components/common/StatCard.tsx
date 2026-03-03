@@ -39,7 +39,7 @@ export default function StatCard({
 
   const hoverRingClass =
     hoverRing === 'purple'
-      ? 'transition hover:ring-1 hover:ring-purple-300 dark:hover:ring-purple-700'
+      ? 'transition hover:ring-1 hover:ring-purple-200/60 dark:hover:ring-purple-700/35'
       : ''
 
   const cardContent = (

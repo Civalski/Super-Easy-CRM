@@ -55,96 +55,116 @@ interface MenuCategory {
   items: MenuItem[]
 }
 
-const menuCategories: MenuCategory[] = [
+interface MenuSection {
+  id: string
+  name: string
+  categories: MenuCategory[]
+}
+
+const menuSections: MenuSection[] = [
   {
-    id: 'visao-geral',
-    name: 'Visao geral',
-    icon: Compass,
-    items: [
+    id: 'crm',
+    name: 'CRM',
+    categories: [
       {
-        name: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
+        id: 'visao-geral',
+        name: 'Visao geral',
+        icon: Compass,
+        items: [
+          {
+            name: 'Dashboard',
+            href: '/dashboard',
+            icon: LayoutDashboard,
+          },
+          {
+            name: 'Relatorios',
+            href: '/relatorios',
+            icon: BarChart3,
+          },
+        ],
       },
       {
-        name: 'Relatorios',
-        href: '/relatorios',
-        icon: BarChart3,
+        id: 'comercial',
+        name: 'Comercial',
+        icon: Folder,
+        items: [
+          {
+            name: 'Leads',
+            href: '/prospectar',
+            icon: Target,
+          },
+          {
+            name: 'Clientes',
+            href: '/clientes',
+            icon: Users,
+          },
+          {
+            name: 'Orcamentos',
+            href: '/oportunidades',
+            icon: Briefcase,
+          },
+          {
+            name: 'Pedidos',
+            href: '/pedidos',
+            icon: ClipboardList,
+          },
+          {
+            name: 'Funil',
+            href: '/grupos',
+            icon: Layers,
+          },
+          {
+            name: 'Metas',
+            href: '/metas',
+            icon: Trophy,
+          },
+        ],
+      },
+      {
+        id: 'operacao',
+        name: 'Operacao',
+        icon: Settings,
+        items: [
+          {
+            name: 'Tarefas',
+            href: '/tarefas',
+            icon: Calendar,
+          },
+          {
+            name: 'Templates',
+            href: '/followups/templates',
+            icon: MessageSquareText,
+          },
+        ],
       },
     ],
   },
   {
-    id: 'comercial',
-    name: 'Comercial',
-    icon: Folder,
-    items: [
+    id: 'erp',
+    name: 'ERP',
+    categories: [
       {
-        name: 'Leads',
-        href: '/prospectar',
-        icon: Target,
-      },
-      {
-        name: 'Clientes',
-        href: '/clientes',
-        icon: Users,
-      },
-      {
-        name: 'Orcamentos',
-        href: '/oportunidades',
-        icon: Briefcase,
-      },
-      {
-        name: 'Pedidos',
-        href: '/pedidos',
-        icon: ClipboardList,
-      },
-      {
-        name: 'Funil',
-        href: '/grupos',
-        icon: Layers,
-      },
-      {
-        name: 'Metas',
-        href: '/metas',
-        icon: Trophy,
-      },
-    ],
-  },
-  {
-    id: 'operacao',
-    name: 'Operacao',
-    icon: Settings,
-    items: [
-      {
-        name: 'Tarefas',
-        href: '/tarefas',
-        icon: Calendar,
-      },
-      {
-        name: 'Templates',
-        href: '/followups/templates',
-        icon: MessageSquareText,
-      },
-    ],
-  },
-  {
-    id: 'cadastro',
-    name: 'Cadastro',
-    icon: Database,
-    items: [
-      {
-        name: 'Produtos',
-        href: '/produtos',
-        icon: Package,
-      },
-      {
-        name: 'Financeiro',
-        href: '/financeiro',
-        icon: Wallet,
+        id: 'cadastro',
+        name: 'Cadastro',
+        icon: Database,
+        items: [
+          {
+            name: 'Produtos',
+            href: '/produtos',
+            icon: Package,
+          },
+          {
+            name: 'Financeiro',
+            href: '/financeiro',
+            icon: Wallet,
+          },
+        ],
       },
     ],
   },
 ]
+
+const menuCategories: MenuCategory[] = menuSections.flatMap((section) => section.categories)
 
 const compactMenuItems: MenuItem[] = menuCategories.flatMap((category) => category.items)
 
@@ -211,7 +231,7 @@ export default function Sidebar({
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
-      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-200 via-slate-200/98 to-slate-300/95 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
+      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
         <div
           className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
@@ -284,85 +304,91 @@ export default function Sidebar({
               })}
             </ul>
           ) : (
-            <ul className="space-y-2">
-              {menuCategories.map((category) => {
-                const CategoryIcon = category.icon
-                const isCategoryOpen = openCategories.includes(category.id)
-                const hasActiveItem = category.items.some((item) => isItemActive(item.href))
+            <ul className="space-y-3">
+              {menuSections.map((section) => (
+                <li key={section.id} className="space-y-2">
+                  <ul className="space-y-2">
+                    {section.categories.map((category) => {
+                      const CategoryIcon = category.icon
+                      const isCategoryOpen = openCategories.includes(category.id)
+                      const hasActiveItem = category.items.some((item) => isItemActive(item.href))
 
-                return (
-                  <li key={category.id} className="rounded-xl border border-slate-200 bg-white/85 dark:border-slate-600/20 dark:bg-slate-900/30">
-                    <button
-                      type="button"
-                      onClick={() => toggleCategory(category.id)}
-                      aria-expanded={isCategoryOpen}
-                      className={`group flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors duration-200 ${
-                        hasActiveItem
-                          ? 'text-slate-900 dark:text-white'
-                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:text-slate-100'
-                      }`}
-                    >
-                      <CategoryIcon
-                        size={16}
-                        className={`${
-                          hasActiveItem
-                            ? 'text-indigo-700 dark:text-indigo-200'
-                            : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'
-                        }`}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-[0.08em]">
-                        {category.name}
-                      </span>
-                      <ChevronRight
-                        size={15}
-                        className={`shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400 ${
-                          isCategoryOpen ? 'rotate-90 text-slate-700 dark:text-slate-200' : ''
-                        }`}
-                      />
-                    </button>
+                      return (
+                        <li key={category.id} className="rounded-xl border border-slate-200 bg-white/85 dark:border-slate-600/20 dark:bg-slate-900/30">
+                          <button
+                            type="button"
+                            onClick={() => toggleCategory(category.id)}
+                            aria-expanded={isCategoryOpen}
+                            className={`group flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors duration-200 ${
+                              hasActiveItem
+                                ? 'text-slate-900 dark:text-white'
+                                : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:text-slate-100'
+                            }`}
+                          >
+                            <CategoryIcon
+                              size={16}
+                              className={`${
+                                hasActiveItem
+                                  ? 'text-indigo-700 dark:text-indigo-200'
+                                  : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'
+                              }`}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-[0.08em]">
+                              {category.name}
+                            </span>
+                            <ChevronRight
+                              size={15}
+                              className={`shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400 ${
+                                isCategoryOpen ? 'rotate-90 text-slate-700 dark:text-slate-200' : ''
+                              }`}
+                            />
+                          </button>
 
-                    <div
-                      className={`grid transition-[grid-template-rows,opacity] duration-200 ${
-                        isCategoryOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                      }`}
-                    >
-                      <ul className="min-h-0 space-y-1 overflow-hidden px-2 pb-2">
-                        {category.items.map((item) => {
-                          const ItemIcon = item.icon
-                          const isActive = isItemActive(item.href)
+                          <div
+                            className={`grid transition-[grid-template-rows,opacity] duration-200 ${
+                              isCategoryOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                            }`}
+                          >
+                            <ul className="min-h-0 space-y-1 overflow-hidden px-2 pb-2">
+                              {category.items.map((item) => {
+                                const ItemIcon = item.icon
+                                const isActive = isItemActive(item.href)
 
-                          return (
-                            <li key={item.href}>
-                              <Link
-                                href={item.href}
-                                title={item.name}
-                                onClick={onClose}
-                                className={`group flex h-9 items-center rounded-lg px-2.5 transition-colors duration-200 ${
-                                  isActive
-                                    ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
-                                    : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                                }`}
-                              >
-                                <ItemIcon
-                                  size={16}
-                                  className={`shrink-0 ${
-                                    isActive
-                                      ? 'text-indigo-700 dark:text-indigo-200'
-                                      : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-100'
-                                  }`}
-                                />
-                                <span className="ml-2.5 truncate text-sm font-medium tracking-wide">
-                                  {item.name}
-                                </span>
-                              </Link>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </div>
-                  </li>
-                )
-              })}
+                                return (
+                                  <li key={item.href}>
+                                    <Link
+                                      href={item.href}
+                                      title={item.name}
+                                      onClick={onClose}
+                                      className={`group flex h-9 items-center rounded-lg px-2.5 transition-colors duration-200 ${
+                                        isActive
+                                          ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
+                                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
+                                      }`}
+                                    >
+                                      <ItemIcon
+                                        size={16}
+                                        className={`shrink-0 ${
+                                          isActive
+                                            ? 'text-indigo-700 dark:text-indigo-200'
+                                            : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-100'
+                                        }`}
+                                      />
+                                      <span className="ml-2.5 truncate text-sm font-medium tracking-wide">
+                                        {item.name}
+                                      </span>
+                                    </Link>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </li>
+              ))}
             </ul>
           )}
 

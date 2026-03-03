@@ -389,41 +389,70 @@ export async function POST(request: NextRequest) {
     const statusAutoAtualizado = Boolean(
       typeof status === 'string' && normalizedStatus && status !== normalizedStatus
     )
+    const shouldCreateReminderTask = lembreteProximaAcao === true && Boolean(normalizedProximaAcao)
 
-    const novaOportunidade = await prisma.oportunidade.create({
-      data: {
-        userId,
-        titulo: titulo.trim(),
-        descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
-        valor: valor === null || valor === '' || valor === undefined ? null : parseFloat(String(valor)),
-        status: finalStatus,
-        probabilidade: probabilidade ? parseInt(String(probabilidade)) : 0,
-        dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
-        motivoPerda: motivoPerda ? String(motivoPerda).trim() : null,
-        formaPagamento: normalizedFormaPagamento ?? null,
-        parcelas: parcelasFinais,
-        desconto: normalizedDesconto ?? null,
-        proximaAcaoEm: normalizedProximaAcao === undefined ? null : normalizedProximaAcao,
-        canalProximaAcao:
-          normalizedCanalProximaAcao === undefined
-            ? null
-            : normalizedCanalProximaAcao?.toLowerCase() ?? null,
-        responsavelProximaAcao:
-          normalizedResponsavelProximaAcao === undefined
-            ? null
-            : normalizedResponsavelProximaAcao,
-        lembreteProximaAcao: lembreteProximaAcao === true,
-        clienteId,
-
-      },
-      include: {
-        cliente: {
-          select: {
-            nome: true,
+    const novaOportunidade = await prisma.$transaction(async (tx) => {
+      const created = await tx.oportunidade.create({
+        data: {
+          userId,
+          titulo: titulo.trim(),
+          descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
+          valor:
+            valor === null || valor === '' || valor === undefined
+              ? null
+              : parseFloat(String(valor)),
+          status: finalStatus,
+          probabilidade: probabilidade ? parseInt(String(probabilidade)) : 0,
+          dataFechamento: dataFechamento ? new Date(dataFechamento) : null,
+          motivoPerda: motivoPerda ? String(motivoPerda).trim() : null,
+          formaPagamento: normalizedFormaPagamento ?? null,
+          parcelas: parcelasFinais,
+          desconto: normalizedDesconto ?? null,
+          proximaAcaoEm: normalizedProximaAcao === undefined ? null : normalizedProximaAcao,
+          canalProximaAcao:
+            normalizedCanalProximaAcao === undefined
+              ? null
+              : normalizedCanalProximaAcao?.toLowerCase() ?? null,
+          responsavelProximaAcao:
+            normalizedResponsavelProximaAcao === undefined
+              ? null
+              : normalizedResponsavelProximaAcao,
+          lembreteProximaAcao: lembreteProximaAcao === true,
+          clienteId,
+        },
+        include: {
+          cliente: {
+            select: {
+              nome: true,
+            },
           },
         },
+      })
 
-      },
+      if (shouldCreateReminderTask && normalizedProximaAcao) {
+        const canalLabel = normalizedCanalProximaAcao
+          ? `Canal: ${normalizedCanalProximaAcao}.`
+          : null
+        const responsavelLabel = normalizedResponsavelProximaAcao
+          ? `Responsavel: ${normalizedResponsavelProximaAcao}.`
+          : null
+
+        await tx.tarefa.create({
+          data: {
+            userId,
+            titulo: `Proxima acao do orçamento: ${created.titulo}`,
+            descricao: [canalLabel, responsavelLabel].filter(Boolean).join(' '),
+            status: 'pendente',
+            prioridade: 'media',
+            dataVencimento: normalizedProximaAcao,
+            clienteId,
+            oportunidadeId: created.id,
+            notificar: true,
+          },
+        })
+      }
+
+      return created
     })
 
     return NextResponse.json(

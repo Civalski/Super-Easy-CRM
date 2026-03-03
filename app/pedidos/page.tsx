@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Swal from 'sweetalert2'
@@ -212,6 +212,7 @@ export default function PedidosPage() {
   const [itemsByPedido, setItemsByPedido] = useState<Record<string, PedidoItem[]>>({})
   const [itemFormByPedido, setItemFormByPedido] = useState<Record<string, ItemForm>>({})
   const [produtoLabelByPedido, setProdutoLabelByPedido] = useState<Record<string, string>>({})
+  const lastQueryFilterRef = useRef(queryFilter)
 
   const fetchPedidos = useCallback(async (targetPage: number) => {
     try {
@@ -245,12 +246,16 @@ export default function PedidosPage() {
   }, [queryFilter])
 
   useEffect(() => {
-    fetchPedidos(page)
-  }, [fetchPedidos, page])
+    if (lastQueryFilterRef.current !== queryFilter) {
+      lastQueryFilterRef.current = queryFilter
+      if (page !== 1) {
+        setPage(1)
+        return
+      }
+    }
 
-  useEffect(() => {
-    setPage(1)
-  }, [queryFilter])
+    fetchPedidos(page)
+  }, [fetchPedidos, page, queryFilter])
 
   const stats = useMemo(() => {
     const total = pedidos.length

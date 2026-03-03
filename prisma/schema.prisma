@@ -58,6 +58,7 @@ model User {
   pedidoItens           PedidoItem[]
   contasReceber         ContaReceber[]
   movimentosFinanceiros MovimentoFinanceiro[]
+  pdfConfig             PdfConfig?
 
   @@map("users")
 }
@@ -348,6 +349,28 @@ model ProspectoEnvioAgendado {
   @@index([userId, dataEnvio, status])
   @@index([userId, lote, status])
   @@map("prospecto_envio_agendado")
+}
+
+model PdfConfig {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  nomeEmpresa  String?
+  nomeVendedor String?
+  telefone     String?
+  email        String?
+  site         String?
+  rodape       String?
+  corPrimaria  String?
+  validadeDias Int?
+  logoBase64   String?
+  logoPosicao  String?  @default("topo")
+  tributacaoInclusa Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("pdf_config")
 }
 
 model MetaContatoConfig {

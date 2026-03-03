@@ -479,6 +479,64 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      if (vendaConfirmada) {
+        const valorConta = totalLiquido > 0 ? totalLiquido : valorBasePedido
+        const valorContaNormalizado = roundMoney(valorConta)
+
+        const conta = await tx.contaReceber.upsert({
+          where: { pedidoId: pedido.id },
+          create: {
+            userId,
+            pedidoId: pedido.id,
+            oportunidadeId: oportunidadeFinalId,
+            descricao: `Recebimento do pedido #${pedido.numero}`,
+            tipo: 'receber',
+            valorTotal: valorContaNormalizado,
+            valorRecebido: valorContaNormalizado,
+            status: 'pago',
+            dataVencimento: pedido.dataEntrega || new Date(),
+          },
+          update: {
+            oportunidadeId: oportunidadeFinalId,
+            descricao: `Recebimento do pedido #${pedido.numero}`,
+            tipo: 'receber',
+            valorTotal: valorContaNormalizado,
+            valorRecebido: valorContaNormalizado,
+            status: 'pago',
+            dataVencimento: pedido.dataEntrega || new Date(),
+          },
+          select: { id: true },
+        })
+
+        const [entradasAgg, estornosAgg] = await Promise.all([
+          tx.movimentoFinanceiro.aggregate({
+            where: { userId, contaReceberId: conta.id, tipo: 'entrada' },
+            _sum: { valor: true },
+          }),
+          tx.movimentoFinanceiro.aggregate({
+            where: { userId, contaReceberId: conta.id, tipo: 'estorno' },
+            _sum: { valor: true },
+          }),
+        ])
+
+        const entradas = roundMoney(Number(entradasAgg._sum.valor || 0))
+        const estornos = roundMoney(Number(estornosAgg._sum.valor || 0))
+        const netRecebido = roundMoney(entradas - estornos)
+        const delta = roundMoney(valorContaNormalizado - netRecebido)
+
+        if (delta > 0) {
+          await tx.movimentoFinanceiro.create({
+            data: {
+              userId,
+              contaReceberId: conta.id,
+              tipo: 'entrada',
+              valor: delta,
+              observacoes: 'Recebimento automatico ao confirmar venda no pedido',
+            },
+          })
+        }
+      }
+
       return pedido
     })
 

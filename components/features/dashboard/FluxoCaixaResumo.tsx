@@ -49,7 +49,7 @@ export function FluxoCaixaResumo({ fluxo }: FluxoCaixaResumoProps) {
 
   return (
     <div
-      className="crm-card cursor-pointer p-5 transition hover:ring-1 hover:ring-purple-300 dark:hover:ring-purple-700"
+      className="crm-card cursor-pointer p-5 transition hover:ring-1 hover:ring-purple-200/60 dark:hover:ring-purple-700/35"
       onClick={goToFinanceiro}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {

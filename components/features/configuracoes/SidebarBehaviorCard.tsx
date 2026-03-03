@@ -41,32 +41,23 @@ export function SidebarBehaviorCard() {
   }
 
   return (
-    <div className="crm-card p-6">
-      <div className="mb-4 flex items-center gap-3">
-        <PanelLeft className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Menu lateral
-        </h2>
-      </div>
-
-      <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">
-            Abrir por botao de toggle
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Quando ativo, o menu lateral nao abre automaticamente ao passar o mouse.
-          </p>
+    <div className="crm-card p-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <PanelLeft className="h-4 w-4 shrink-0 text-slate-700 dark:text-slate-300" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Menu lateral</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Abrir por botão (não ao passar o mouse)</p>
+          </div>
         </div>
-
         <input
           type="checkbox"
           checked={openByButton}
           onChange={handleToggle}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
-          aria-label="Ativar abertura do menu lateral por botao"
+          className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          aria-label="Abrir menu lateral por botão"
         />
-      </label>
+      </div>
     </div>
   )
 }

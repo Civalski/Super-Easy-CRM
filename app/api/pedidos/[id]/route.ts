@@ -155,6 +155,67 @@ export async function PATCH(
       const oportunidadeAtual = pedidoAtualizado.oportunidade
       const oportunidadeEstaFechada = oportunidadeAtual.status === 'fechada'
 
+      if (vendaConfirmada) {
+        const valorConta =
+          pedidoAtualizado.totalLiquido > 0
+            ? pedidoAtualizado.totalLiquido
+            : oportunidadeAtual.valor || 0
+        const valorContaNormalizado = roundMoney(valorConta)
+
+        const conta = await tx.contaReceber.upsert({
+          where: { pedidoId: pedidoAtualizado.id },
+          create: {
+            userId,
+            pedidoId: pedidoAtualizado.id,
+            oportunidadeId: oportunidadeAtual.id,
+            descricao: `Recebimento do pedido #${pedidoAtualizado.numero}`,
+            tipo: 'receber',
+            valorTotal: valorContaNormalizado,
+            valorRecebido: valorContaNormalizado,
+            status: 'pago',
+            dataVencimento: pedidoAtualizado.dataEntrega || new Date(),
+          },
+          update: {
+            oportunidadeId: oportunidadeAtual.id,
+            descricao: `Recebimento do pedido #${pedidoAtualizado.numero}`,
+            tipo: 'receber',
+            valorTotal: valorContaNormalizado,
+            valorRecebido: valorContaNormalizado,
+            status: 'pago',
+            dataVencimento: pedidoAtualizado.dataEntrega || new Date(),
+          },
+          select: { id: true },
+        })
+
+        const [entradasAgg, estornosAgg] = await Promise.all([
+          tx.movimentoFinanceiro.aggregate({
+            where: { userId, contaReceberId: conta.id, tipo: 'entrada' },
+            _sum: { valor: true },
+          }),
+          tx.movimentoFinanceiro.aggregate({
+            where: { userId, contaReceberId: conta.id, tipo: 'estorno' },
+            _sum: { valor: true },
+          }),
+        ])
+
+        const entradas = roundMoney(Number(entradasAgg._sum.valor || 0))
+        const estornos = roundMoney(Number(estornosAgg._sum.valor || 0))
+        const netRecebido = roundMoney(entradas - estornos)
+        const delta = roundMoney(valorContaNormalizado - netRecebido)
+
+        if (delta > 0) {
+          await tx.movimentoFinanceiro.create({
+            data: {
+              userId,
+              contaReceberId: conta.id,
+              tipo: 'entrada',
+              valor: delta,
+              observacoes: 'Recebimento automatico ao confirmar venda no pedido',
+            },
+          })
+        }
+      }
+
       if (vendaConfirmada && !oportunidadeEstaFechada) {
         await tx.oportunidade.updateMany({
           where: {
@@ -184,54 +245,6 @@ export async function PATCH(
           await tx.prospecto.update({
             where: { id: prospectoVinculado.id },
             data: { status: 'convertido' },
-          })
-        }
-
-        const valorConta =
-          pedidoAtualizado.totalLiquido > 0
-            ? pedidoAtualizado.totalLiquido
-            : oportunidadeAtual.valor || 0
-        const valorContaNormalizado = roundMoney(valorConta)
-
-        const contaExistente = await tx.contaReceber.findUnique({
-          where: { pedidoId: pedidoAtualizado.id },
-          select: { id: true },
-        })
-
-        if (!contaExistente) {
-          const conta = await tx.contaReceber.create({
-            data: {
-              userId,
-              pedidoId: pedidoAtualizado.id,
-              oportunidadeId: oportunidadeAtual.id,
-              descricao: `Recebimento do pedido #${pedidoAtualizado.numero}`,
-              valorTotal: valorContaNormalizado,
-              valorRecebido: valorContaNormalizado,
-              status: 'pago',
-              dataVencimento: pedidoAtualizado.dataEntrega || new Date(),
-            },
-          })
-
-          if (valorContaNormalizado > 0) {
-            await tx.movimentoFinanceiro.create({
-              data: {
-                userId,
-                contaReceberId: conta.id,
-                tipo: 'entrada',
-                valor: valorContaNormalizado,
-                observacoes: 'Recebimento automatico ao confirmar venda no pedido',
-              },
-            })
-          }
-        } else {
-          await tx.contaReceber.update({
-            where: { id: contaExistente.id },
-            data: {
-              valorTotal: valorContaNormalizado,
-              valorRecebido: valorContaNormalizado,
-              status: 'pago',
-              dataVencimento: pedidoAtualizado.dataEntrega || new Date(),
-            },
           })
         }
 

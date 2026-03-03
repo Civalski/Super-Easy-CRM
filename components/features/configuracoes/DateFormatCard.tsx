@@ -36,40 +36,34 @@ export function DateFormatCard() {
   }, [])
 
   return (
-    <div className="crm-card p-6">
-      <div className="mb-4 flex items-center gap-3">
-        <Calendar className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Formato de data
-        </h2>
-      </div>
-
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        Define como as datas são exibidas em todo o sistema.
-      </p>
-      <div className="space-y-2">
-        {OPTIONS.map((opt) => (
-          <label
-            key={opt.value}
-            className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:border-blue-400 dark:has-[:checked]:bg-blue-900/20"
-          >
-            <input
-              type="radio"
-              name="date-format"
-              value={opt.value}
-              checked={locale === opt.value}
-              onChange={() => setDateFormatPreference(opt.value)}
-              className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
-              aria-label={opt.label}
-            />
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {opt.label}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              ({opt.example})
-            </span>
-          </label>
-        ))}
+    <div className="crm-card p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Calendar className="h-4 w-4 shrink-0 text-slate-700 dark:text-slate-300" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Formato de data</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">dd/mm/aaaa ou mm/dd/aaaa</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-4">
+          {OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <input
+                type="radio"
+                name="date-format"
+                value={opt.value}
+                checked={locale === opt.value}
+                onChange={() => setDateFormatPreference(opt.value)}
+                className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                aria-label={opt.label}
+              />
+              <span className="text-sm text-gray-900 dark:text-white">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
     </div>
   )

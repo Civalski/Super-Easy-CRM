@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Wrench,
@@ -189,6 +189,8 @@ export default function ProdutosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingCode, setEditingCode] = useState<string | null>(null)
+  const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
+  const lastFiltrosKeyRef = useRef(filtrosKey)
   const [codigoPreview, setCodigoPreview] = useState('')
   const [loadingCodigoPreview, setLoadingCodigoPreview] = useState(false)
   const [form, setForm] = useState<FormState>(buildDefaultForm)
@@ -314,12 +316,16 @@ export default function ProdutosPage() {
   }, [filters])
 
   useEffect(() => {
-    setPage(1)
-  }, [appliedFilters])
+    if (lastFiltrosKeyRef.current !== filtrosKey) {
+      lastFiltrosKeyRef.current = filtrosKey
+      if (page !== 1) {
+        setPage(1)
+        return
+      }
+    }
 
-  useEffect(() => {
     fetchItems(page)
-  }, [fetchItems, page])
+  }, [fetchItems, filtrosKey, page])
 
   useEffect(() => {
     if (!showForm || editingId) return
