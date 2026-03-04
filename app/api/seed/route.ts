@@ -44,6 +44,7 @@ const MOCK_TAREFAS_TOTAL = 54
 const MOCK_PROSPECTOS_TOTAL = 36
 const MOCK_PRODUTOS_TOTAL = 20
 const MOCK_FOLLOW_UP_ATTEMPTS_TOTAL = 40
+const SEED_ALLOWED_USERNAME = 'alisson355'
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -193,6 +194,19 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    })
+    const username = user?.username?.trim().toLowerCase()
+    if (username !== SEED_ALLOWED_USERNAME) {
+      return NextResponse.json(
+        { error: 'Acesso restrito para gerar dados mockados' },
+        { status: 403 }
+      )
+    }
+
     // Criar clientes
     console.log('?? Criando clientes...')
     const clientesCriados = []

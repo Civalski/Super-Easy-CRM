@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 import { addMonthsWithDay, deriveFinanceStatus, processFinanceAutomation } from '@/lib/financeiro/automation'
 import { roundMoney } from '@/lib/money'
+import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,30 @@ const ALLOWED_TIPO_CONTA = new Set(['receber', 'pagar'])
 const ALLOWED_TIPO_MOVIMENTO = new Set(['entrada', 'saida', 'estorno'])
 const ALLOWED_AMBIENTE = new Set(['geral', 'pessoal'])
 const RECURRING_MONTHS_AHEAD = 6
+
+async function ensurePremiumAccess(userId: string) {
+  const access = await getUserSubscriptionAccess(userId)
+  if (!access.schemaReady) {
+    return NextResponse.json(
+      {
+        error:
+          'Banco sem colunas de assinatura. Rode a migracao do Prisma para habilitar o premium.',
+        code: 'SUBSCRIPTION_SCHEMA_MISSING',
+      },
+      { status: 503 }
+    )
+  }
+  if (access.active) return null
+
+  return NextResponse.json(
+    {
+      error: 'Acesso ao modulo financeiro disponivel apenas para assinaturas premium ativas.',
+      code: 'PREMIUM_REQUIRED',
+      subscriptionStatus: access.status,
+    },
+    { status: 402 }
+  )
+}
 
 function parseLimit(value: string | null, fallback = 20, max = 50) {
   if (!value) return fallback
@@ -76,6 +101,8 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const premiumDenied = await ensurePremiumAccess(userId)
+    if (premiumDenied) return premiumDenied
 
     await processFinanceAutomation(userId, RECURRING_MONTHS_AHEAD)
 
@@ -291,6 +318,8 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const premiumDenied = await ensurePremiumAccess(userId)
+    if (premiumDenied) return premiumDenied
 
     const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
@@ -482,6 +511,8 @@ export async function PATCH(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const premiumDenied = await ensurePremiumAccess(userId)
+    if (premiumDenied) return premiumDenied
 
     const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {

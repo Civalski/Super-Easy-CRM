@@ -9,6 +9,11 @@ const adminApiPrefixes = [
     '/api/prospectos/importar',
 ]
 
+const publicApiPrefixes = [
+    '/api/auth',
+    '/api/billing/mercado-pago/webhook',
+]
+
 function isAdminOnly(pathname: string) {
     return adminApiPrefixes.some((prefix) => pathname.startsWith(prefix))
 }
@@ -21,7 +26,7 @@ export async function proxy(req: NextRequest) {
         return NextResponse.next()
     }
 
-    if (pathname.startsWith('/api/auth')) {
+    if (publicApiPrefixes.some((prefix) => pathname.startsWith(prefix))) {
         return NextResponse.next()
     }
 

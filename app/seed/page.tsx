@@ -3,8 +3,12 @@
 import { useState } from 'react'
 import { Button } from '@/components/common'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+
+const ALLOWED_MOCK_USERNAME = 'alisson355'
 
 export default function SeedPage() {
+  const { data: session, status } = useSession()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{
     success: boolean
@@ -17,6 +21,7 @@ export default function SeedPage() {
     }
     error?: string
   } | null>(null)
+  const canUseMockSeed = (session?.user?.username ?? '').trim().toLowerCase() === ALLOWED_MOCK_USERNAME
 
   const handleSeed = async () => {
     setLoading(true)
@@ -37,6 +42,23 @@ export default function SeedPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (status !== 'loading' && !canUseMockSeed) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Popular Banco de Dados com Dados de Apresentacao
+            </h1>
+            <p className="text-gray-600">
+              Esta funcionalidade esta disponivel apenas para usuarios autorizados.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

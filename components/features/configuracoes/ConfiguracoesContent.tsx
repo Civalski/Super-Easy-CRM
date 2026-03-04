@@ -4,6 +4,7 @@
 'use client'
 
 import {
+  AssinaturaMercadoPagoCard,
   SidebarBehaviorCard,
   ThemePreferenceCard,
   ListDensityCard,
@@ -51,6 +52,7 @@ export function ConfiguracoesContent() {
           Dados da conta
         </h2>
         <div className="space-y-2">
+          <AssinaturaMercadoPagoCard />
           <ExcluirDadosCard />
         </div>
       </section>

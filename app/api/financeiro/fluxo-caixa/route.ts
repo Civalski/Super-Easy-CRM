@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
+import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 import { processFinanceAutomation } from '@/lib/financeiro/automation'
 import { moneyRemaining, roundMoney } from '@/lib/money'
 
@@ -16,6 +17,27 @@ export async function GET(request: NextRequest) {
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const access = await getUserSubscriptionAccess(userId)
+    if (!access.schemaReady) {
+      return NextResponse.json(
+        {
+          error:
+            'Banco sem colunas de assinatura. Rode a migracao do Prisma para habilitar o premium.',
+          code: 'SUBSCRIPTION_SCHEMA_MISSING',
+        },
+        { status: 503 }
+      )
+    }
+    if (!access.active) {
+      return NextResponse.json(
+        {
+          error: 'Acesso ao modulo financeiro disponivel apenas para assinaturas premium ativas.',
+          code: 'PREMIUM_REQUIRED',
+          subscriptionStatus: access.status,
+        },
+        { status: 402 }
+      )
     }
 
     const { searchParams } = new URL(request.url)

@@ -46,6 +46,7 @@ interface MenuItem {
   name: string
   href: string
   icon: LucideIcon
+  requiresPremium?: boolean
 }
 
 interface MenuCategory {
@@ -157,6 +158,7 @@ const menuSections: MenuSection[] = [
             name: 'Financeiro',
             href: '/financeiro',
             icon: Wallet,
+            requiresPremium: true,
           },
         ],
       },
@@ -183,6 +185,7 @@ export default function Sidebar({
   const [openCategories, setOpenCategories] = useState<string[]>(
     () => menuCategories.map((category) => category.id)
   )
+  const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>('loading')
 
   const isCompact = collapsed && !isMobile
   const sidebarWidthClass = isCompact ? 'w-18' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
@@ -219,10 +222,52 @@ export default function Sidebar({
     })
   }, [pathname])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPremiumAccess() {
+      try {
+        const response = await fetch('/api/billing/mercado-pago/subscription', {
+          cache: 'no-store',
+        })
+        if (!response.ok) throw new Error('Falha ao consultar assinatura')
+
+        const payload = (await response.json()) as { active?: boolean }
+        if (!cancelled) {
+          setPremiumAccess(payload.active ? 'active' : 'inactive')
+        }
+      } catch {
+        if (!cancelled) {
+          setPremiumAccess('error')
+        }
+      }
+    }
+
+    void loadPremiumAccess()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const toggleCategory = (categoryId: string) => {
     setOpenCategories((prev) =>
       prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     )
+  }
+
+  const getResolvedHref = (item: MenuItem) => {
+    if (item.requiresPremium && premiumAccess === 'inactive') {
+      return '/configuracoes'
+    }
+    return item.href
+  }
+
+  const getResolvedTitle = (item: MenuItem) => {
+    if (item.requiresPremium && premiumAccess === 'inactive') {
+      return `${item.name} (Premium - assine para liberar)`
+    }
+    return item.name
   }
 
   return (
@@ -279,17 +324,22 @@ export default function Sidebar({
               {compactMenuItems.map((item) => {
                 const Icon = item.icon
                 const isActive = isItemActive(item.href)
+                const isLocked = item.requiresPremium && premiumAccess === 'inactive'
+                const href = getResolvedHref(item)
+                const title = getResolvedTitle(item)
 
                 return (
                   <li key={item.href}>
                     <Link
-                      href={item.href}
-                      title={item.name}
+                      href={href}
+                      title={title}
                       onClick={onClose}
                       className={`group flex h-11 items-center justify-center rounded-xl px-0 transition-all duration-200 ${
                         isActive
                           ? 'border border-indigo-300/45 bg-indigo-100/80 text-indigo-800 shadow-[0_10px_20px_-16px_rgba(99,102,241,0.2)] dark:border-indigo-300/16 dark:bg-indigo-400/10 dark:text-white dark:shadow-[0_10px_20px_-16px_rgba(99,102,241,0.25)]'
-                          : 'text-slate-700 hover:bg-slate-100/85 hover:text-slate-900 dark:text-slate-200/90 dark:hover:bg-slate-700/55 dark:hover:text-white'
+                          : isLocked
+                            ? 'text-slate-500 hover:bg-amber-50/80 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
+                            : 'text-slate-700 hover:bg-slate-100/85 hover:text-slate-900 dark:text-slate-200/90 dark:hover:bg-slate-700/55 dark:hover:text-white'
                       }`}
                     >
                       <Icon
@@ -353,17 +403,22 @@ export default function Sidebar({
                               {category.items.map((item) => {
                                 const ItemIcon = item.icon
                                 const isActive = isItemActive(item.href)
+                                const isLocked = item.requiresPremium && premiumAccess === 'inactive'
+                                const href = getResolvedHref(item)
+                                const title = getResolvedTitle(item)
 
                                 return (
                                   <li key={item.href}>
                                     <Link
-                                      href={item.href}
-                                      title={item.name}
+                                      href={href}
+                                      title={title}
                                       onClick={onClose}
                                       className={`group flex h-9 items-center rounded-lg px-2.5 transition-colors duration-200 ${
                                         isActive
                                           ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
-                                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
+                                          : isLocked
+                                            ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
+                                            : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
                                       }`}
                                     >
                                       <ItemIcon
@@ -377,6 +432,11 @@ export default function Sidebar({
                                       <span className="ml-2.5 truncate text-sm font-medium tracking-wide">
                                         {item.name}
                                       </span>
+                                      {isLocked ? (
+                                        <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                          Premium
+                                        </span>
+                                      ) : null}
                                     </Link>
                                   </li>
                                 )

@@ -36,6 +36,13 @@ model User {
   username     String   @unique
   passwordHash String
   role         String   @default("user")
+  subscriptionProvider     String?
+  subscriptionExternalId   String?  @unique
+  subscriptionStatus       String   @default("inactive")
+  subscriptionPlanCode     String?
+  subscriptionCheckoutUrl  String?
+  subscriptionNextBillingAt DateTime?
+  subscriptionLastWebhookAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

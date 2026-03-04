@@ -5,13 +5,22 @@
 
 import { useState } from 'react'
 import { Database, Loader2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/common'
 import { SeedResultCard } from './SeedResultCard'
 import type { SeedResult } from './ConfiguracoesTypes'
 
+const ALLOWED_MOCK_USERNAME = 'alisson355'
+
 export function MockDataCard() {
+  const { data: session, status } = useSession()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SeedResult | null>(null)
+  const canUseMockSeed = (session?.user?.username ?? '').trim().toLowerCase() === ALLOWED_MOCK_USERNAME
+
+  if (status !== 'loading' && !canUseMockSeed) {
+    return null
+  }
 
   const handleGenerateMockData = async () => {
     setLoading(true)
