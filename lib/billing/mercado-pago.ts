@@ -7,6 +7,7 @@ const DEFAULT_SUBSCRIPTION_REASON = 'Assinatura Arker Easy CRM'
 const DEFAULT_SUBSCRIPTION_CURRENCY = 'BRL'
 const DEFAULT_SUBSCRIPTION_FREQUENCY = 1
 const DEFAULT_SUBSCRIPTION_FREQUENCY_TYPE = 'months'
+const SUBSCRIPTION_START_DELAY_MINUTES = 10
 
 export type MercadoPagoFrequencyType = 'days' | 'months'
 
@@ -179,6 +180,7 @@ export async function createMercadoPagoSubscription(params: {
   externalReference: string
 }) {
   const settings = getMercadoPagoSubscriptionSettings()
+  const startDate = new Date(Date.now() + SUBSCRIPTION_START_DELAY_MINUTES * 60 * 1000)
 
   const body = {
     reason: settings.reason,
@@ -189,7 +191,7 @@ export async function createMercadoPagoSubscription(params: {
       frequency_type: settings.frequencyType,
       transaction_amount: settings.amount,
       currency_id: settings.currencyId,
-      start_date: new Date().toISOString(),
+      start_date: startDate.toISOString(),
     },
     ...(settings.backUrl ? { back_url: settings.backUrl } : {}),
     ...(settings.webhookUrl ? { notification_url: settings.webhookUrl } : {}),
