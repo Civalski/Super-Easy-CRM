@@ -5,7 +5,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/common'
-import { Calendar, CheckCircle2, Loader2, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Calendar, CheckCircle2, Loader2, Pencil, RotateCcw, Trash2 } from '@/lib/icons'
 import { statusConfig, prioridadeConfig, type Tarefa, type TabType } from './TarefasTypes'
 
 interface TarefaCardProps {

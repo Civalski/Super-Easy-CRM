@@ -16,7 +16,7 @@ import {
     Users,
     Trash2,
     RefreshCw,
-} from 'lucide-react';
+} from '@/lib/icons';
 import type { AgendamentoEnvio, Prospecto } from './ProspectarTypes';
 
 interface LoteSummary {

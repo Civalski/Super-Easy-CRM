@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckSquare, DollarSign, User, Plus, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckSquare, DollarSign, User, Plus, ChevronDown, ChevronUp } from '@/lib/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import ActivityModal from './ActivityModal'

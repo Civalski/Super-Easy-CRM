@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFImage } from 'pdf-lib'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -146,28 +146,25 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    await ensureDatabaseInitialized()
+  const { id: oportunidadeId } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const oportunidadeId = (await params).id
-
-    const [oportunidade, user, pdfConfig] = await Promise.all([
-      prisma.oportunidade.findFirst({
-        where: { id: oportunidadeId, userId },
-        include: {
-          cliente: {
-            select: {
-              nome: true, email: true, telefone: true,
-              empresa: true, endereco: true, cidade: true,
-              estado: true, documento: true,
+      const [oportunidade, user, pdfConfig] = await Promise.all([
+        prisma.oportunidade.findFirst({
+          where: { id: oportunidadeId, userId },
+          include: {
+            cliente: {
+              select: {
+                nome: true, email: true, telefone: true,
+                empresa: true, endereco: true, cidade: true,
+                estado: true, documento: true,
+              },
             },
+            pedido: { include: { itens: { orderBy: { createdAt: 'asc' } } } },
           },
-          pedido: { include: { itens: { orderBy: { createdAt: 'asc' } } } },
-        },
-      }),
+        }),
       prisma.user.findUnique({ where: { id: userId }, select: { name: true, username: true } }),
       prisma.pdfConfig.findUnique({ where: { userId } }),
     ])
@@ -202,9 +199,7 @@ export async function GET(
 
     const today      = new Date()
     const emissaoStr = dateBr(today)
-    const docNum = oportunidade.pedido?.numero
-      ? String(oportunidade.pedido.numero).padStart(5, '0')
-      : oportunidade.id.replace(/\D/g, '').slice(-5).padStart(5, '0')
+    const docNum = String(oportunidade.numero).padStart(5, '0')
 
     // Validity date
     let validadeStr = '-'
@@ -629,16 +624,17 @@ export async function GET(
 
     const encodedFileName = encodeURIComponent(fileName)
 
-    return new NextResponse(Buffer.from(pdfBytes), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Orcamento ${docNum} - ${emissaoDateForFile}.pdf"; filename*=UTF-8''${encodedFileName}`,
-        'Cache-Control': 'no-store',
-      },
-    })
-  } catch (error) {
-    console.error('Erro ao gerar PDF do orçamento:', error)
-    return NextResponse.json({ error: 'Erro ao gerar PDF do orçamento' }, { status: 500 })
-  }
+      return new NextResponse(Buffer.from(pdfBytes), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="Orcamento ${docNum} - ${emissaoDateForFile}.pdf"; filename*=UTF-8''${encodedFileName}`,
+          'Cache-Control': 'no-store',
+        },
+      })
+    } catch (error) {
+      console.error('Erro ao gerar PDF do orçamento:', error)
+      return NextResponse.json({ error: 'Erro ao gerar PDF do orçamento' }, { status: 500 })
+    }
+  })
 }

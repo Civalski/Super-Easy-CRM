@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const dynamic = 'force-dynamic'
@@ -12,13 +12,9 @@ const buscaRateLimitConfig = {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const rateLimitResponse = enforceApiRateLimit({
+  return withAuth(request, async (userId) => {
+    try {
+      const rateLimitResponse = enforceApiRateLimit({
       key: `api:busca:user:${userId}`,
       config: buscaRateLimitConfig,
       error: 'Muitas buscas em pouco tempo. Tente novamente em alguns segundos.',
@@ -39,6 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     const maxResultsPerType = 5
+    const parsedClienteNumero = Number(query)
+    const clienteNumeroFiltro = Number.isInteger(parsedClienteNumero) ? parsedClienteNumero : null
 
     const clientes = await prisma.cliente.findMany({
       where: {
@@ -48,6 +46,7 @@ export async function GET(request: NextRequest) {
           { email: { contains: query, mode: 'insensitive' } },
           { empresa: { contains: query, mode: 'insensitive' } },
           { telefone: { contains: query } },
+          ...(clienteNumeroFiltro !== null ? [{ numero: clienteNumeroFiltro }] : []),
         ],
       },
       include: {
@@ -62,6 +61,9 @@ export async function GET(request: NextRequest) {
       take: maxResultsPerType,
     })
 
+    const parsedOrcNumero = Number(query)
+    const orcNumeroFiltro = Number.isInteger(parsedOrcNumero) ? parsedOrcNumero : null
+
     const oportunidades = await prisma.oportunidade.findMany({
       where: {
         userId,
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
           { titulo: { contains: query, mode: 'insensitive' } },
           { descricao: { contains: query, mode: 'insensitive' } },
           { cliente: { nome: { contains: query, mode: 'insensitive' } } },
+          ...(orcNumeroFiltro !== null ? [{ numero: orcNumeroFiltro }] : []),
         ],
       },
       include: {
@@ -123,11 +126,12 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-  } catch (error) {
-    console.error('Erro ao buscar:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao buscar:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar' },
+        { status: 500 }
+      )
+    }
+  })
 }

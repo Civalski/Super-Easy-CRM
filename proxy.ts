@@ -2,11 +2,11 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { getNextAuthSecret } from "@/lib/nextauth-secret"
+import { isActiveUserSession } from "@/lib/auth-session"
 
 const adminApiPrefixes = [
     '/api/seed',
     '/api/prospectos/bulk',
-    '/api/prospectos/importar',
 ]
 
 const publicApiPrefixes = [
@@ -45,6 +45,21 @@ export async function proxy(req: NextRequest) {
     const token = await getToken({ req, secret: getNextAuthSecret() })
 
     if (!token) {
+        if (pathname.startsWith('/api')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const loginUrl = new URL('/login', req.url)
+        loginUrl.searchParams.set('callbackUrl', req.nextUrl.pathname)
+        return NextResponse.redirect(loginUrl)
+    }
+
+    const hasActiveSession = await isActiveUserSession({
+        userId: typeof token.userId === 'string' ? token.userId : token.sub,
+        sessionId: typeof token.sessionId === 'string' ? token.sessionId : undefined,
+    })
+
+    if (!hasActiveSession) {
         if (pathname.startsWith('/api')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }

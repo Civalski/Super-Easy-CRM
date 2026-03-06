@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { BarChart3 } from 'lucide-react'
+import { BarChart3 } from '@/lib/icons'
 
 export function RelatoriosHeader() {
     return (

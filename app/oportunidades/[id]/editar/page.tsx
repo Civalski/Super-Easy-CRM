@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/common'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
-import { ArrowLeft, Loader2, Save } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { ArrowLeft, Loader2, Save } from '@/lib/icons'
+import { toast } from '@/lib/toast'
 import {
   getProbabilityLevel,
   getProbabilityValueFromLevel,
@@ -67,7 +67,7 @@ export default function EditarOportunidadePage() {
 
         if (!oportunidadeResponse.ok) {
           const error = await oportunidadeResponse.json().catch(() => null)
-          Swal.fire({ icon: 'error', title: 'Erro', text: error?.error || 'Erro ao carregar orçamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+          toast.error('Erro', { description: error?.error || 'Erro ao carregar orçamento' })
           router.push('/oportunidades')
           return
         }
@@ -101,7 +101,7 @@ export default function EditarOportunidadePage() {
         }
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
-        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao carregar orçamento. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        toast.error('Erro', { description: 'Erro ao carregar orçamento. Tente novamente.' })
         router.push('/oportunidades')
       } finally {
         setCarregando(false)
@@ -153,7 +153,7 @@ export default function EditarOportunidadePage() {
     if (!trimmed) return
     const result = await addMotivo(trimmed)
     if (!result.ok) {
-      Swal.fire({ icon: 'error', title: 'Erro', text: result.error || 'Não foi possível adicionar o motivo', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      toast.error('Erro', { description: result.error || 'Não foi possível adicionar o motivo' })
       return
     }
     setFormData((prev) => ({ ...prev, motivoPerda: result.motivo || trimmed }))
@@ -174,12 +174,12 @@ export default function EditarOportunidadePage() {
 
 
     if (!formData.clienteId || formData.clienteId.trim() === '') {
-      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um cliente', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      toast.warning('Atenção', { description: 'Por favor, selecione um cliente' })
       return
     }
 
     if (formData.status === 'perdida' && (!formData.motivoPerda || formData.motivoPerda.trim() === '')) {
-      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe o motivo da perda', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      toast.warning('Atenção', { description: 'Informe o motivo da perda' })
       return
     }
 
@@ -213,25 +213,18 @@ export default function EditarOportunidadePage() {
       if (response.ok) {
         const result = await response.json()
         if (result.statusAutoAtualizado) {
-          await Swal.fire({ icon: 'success', title: 'Orçamento salvo!', text: 'O status foi ajustado automaticamente para "Orçamento".', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+          toast.success('Orçamento salvo!', { description: 'O status foi ajustado automaticamente para "Orçamento".' })
         } else if (formData.status === 'fechada' && result.prospectoConvertidoAutomaticamente) {
-          await Swal.fire({
-            icon: 'success',
-            title: 'Venda Fechada! 🎉',
-            html: 'O orçamento foi fechado com sucesso.<br><br><strong>Lead convertido em cliente!</strong> O lead vinculado foi automaticamente promovido a cliente.',
-            confirmButtonColor: '#16a34a',
-            background: '#1f2937',
-            color: '#f3f4f6',
-          })
+          toast.success('Venda Fechada! 🎉', { description: 'O orçamento foi fechado com sucesso. Lead convertido em cliente! O lead vinculado foi automaticamente promovido a cliente.' })
         }
         router.push('/oportunidades')
       } else {
         const error = await response.json()
-        Swal.fire({ icon: 'error', title: 'Erro', text: error.error || 'Erro ao atualizar orçamento', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+        toast.error('Erro', { description: error.error || 'Erro ao atualizar orçamento' })
       }
     } catch (error) {
       console.error('Erro ao atualizar orçamento:', error)
-      Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao atualizar orçamento. Tente novamente.', confirmButtonColor: '#6366f1', background: '#1f2937', color: '#f3f4f6' })
+      toast.error('Erro', { description: 'Erro ao atualizar orçamento. Tente novamente.' })
     } finally {
       setLoading(false)
     }

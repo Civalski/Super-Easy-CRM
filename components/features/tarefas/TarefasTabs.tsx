@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { Clock, History } from 'lucide-react'
+import { Clock, History } from '@/lib/icons'
 import type { TabType } from './TarefasTypes'
 
 interface TarefasTabsProps {

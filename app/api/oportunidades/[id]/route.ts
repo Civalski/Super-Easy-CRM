@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import {
   mapOpportunityStatusForResponse,
   normalizeOpportunityStatus,
@@ -101,14 +101,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const oportunidade = await prisma.oportunidade.findFirst({
-      where: { id: (await params).id, userId },
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const oportunidade = await prisma.oportunidade.findFirst({
+        where: { id, userId },
       include: {
         cliente: {
           select: {
@@ -131,28 +128,26 @@ export async function GET(
       status: mapOpportunityStatusForResponse(oportunidade.status),
       statusAnterior: mapOpportunityStatusForResponse(oportunidade.statusAnterior),
     })
-  } catch (error) {
-    console.error('Erro ao buscar orçamento:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar orçamento' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao buscar orçamento:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar orçamento' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      await normalizeLegacyOportunidade(userId, id)
 
-    await normalizeLegacyOportunidade(userId, (await params).id)
-
-    const rawBody = await request.json().catch(() => null)
+      const rawBody = await request.json().catch(() => null)
     if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
       return NextResponse.json(
         { error: 'Payload invalido' },
@@ -180,7 +175,7 @@ export async function PATCH(
     } = body
 
     const oportunidadeAtual = await prisma.oportunidade.findFirst({
-      where: { id: (await params).id, userId },
+      where: { id: id, userId },
       select: {
         status: true,
         formaPagamento: true,
@@ -485,7 +480,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.oportunidade.updateMany({
-      where: { id: (await params).id, userId },
+      where: { id: id, userId },
       data: updateData,
     })
 
@@ -506,7 +501,7 @@ export async function PATCH(
     if (novoStatus === 'fechada' && eraAberta) {
       // Buscar a oportunidade atualizada com clienteId
       const oportunidadeComCliente = await prisma.oportunidade.findFirst({
-        where: { id: (await params).id, userId },
+        where: { id: id, userId },
         select: { clienteId: true },
       })
 
@@ -536,7 +531,7 @@ export async function PATCH(
         event: 'oportunidade.status_changed',
         userId,
         entity: 'oportunidade',
-        entityId: (await params).id,
+        entityId: id,
         from: normalizedCurrentStatus,
         to: updateData.status,
         metadata: {
@@ -547,7 +542,7 @@ export async function PATCH(
     }
 
     const oportunidadeAtualizada = await prisma.oportunidade.findFirst({
-      where: { id: (await params).id, userId },
+      where: { id: id, userId },
       include: {
         cliente: {
           select: {
@@ -585,44 +580,43 @@ export async function PATCH(
       { status: 500 }
     )
   }
+  })
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const result = await prisma.oportunidade.deleteMany({
+        where: { id, userId },
+      })
 
-    const result = await prisma.oportunidade.deleteMany({
-      where: { id: (await params).id, userId },
-    })
+      if (result.count === 0) {
+        return NextResponse.json(
+          { error: 'Orçamento não encontrado' },
+          { status: 404 }
+        )
+      }
 
-    if (result.count === 0) {
+      return NextResponse.json({ success: true })
+    } catch (error: unknown) {
+      console.error('Erro ao deletar orçamento:', error)
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Orçamento não encontrado' },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(
-        { error: 'Orçamento não encontrado' },
-        { status: 404 }
+        { error: 'Erro ao deletar orçamento' },
+        { status: 500 }
       )
     }
-
-    return NextResponse.json({ success: true })
-  } catch (error: unknown) {
-    console.error('Erro ao deletar orçamento:', error)
-    const prismaError = error as { code?: string }
-    if (prismaError.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Orçamento não encontrado' },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: 'Erro ao deletar orçamento' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 

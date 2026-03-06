@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardList, PackagePlus, Pencil, Truck, X } from 'lucide-react'
+import { CheckCircle2, ClipboardList, PackagePlus, Pencil, Truck, X } from '@/lib/icons'
 import type { Pedido, PedidoTab } from './types'
 import { SITUACAO_PEDIDO_BADGE, SITUACAO_PEDIDO_LABEL, STATUS_ENTREGA_LABEL } from './constants'
 import { currency, dateBr, getPedidoSituacao } from './utils'

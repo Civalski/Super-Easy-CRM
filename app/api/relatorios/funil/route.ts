@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import {
   expandOpportunityStatuses,
   OpportunityStatus,
@@ -25,13 +25,9 @@ async function countOportunidadesByStatus(
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const range = getDateRangeFromQuery(request)
+  return withAuth(request, async (userId) => {
+    try {
+      const range = getDateRangeFromQuery(request)
     if ('error' in range) {
       return NextResponse.json({ error: range.error }, { status: 400 })
     }
@@ -112,11 +108,12 @@ export async function GET(request: NextRequest) {
         winRate: Math.round(winRate * 10) / 10,
       },
     })
-  } catch (error) {
-    console.error('Erro ao gerar relatorio de funil:', error)
-    return NextResponse.json(
-      { error: 'Erro ao gerar relatorio de funil' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao gerar relatorio de funil:', error)
+      return NextResponse.json(
+        { error: 'Erro ao gerar relatorio de funil' },
+        { status: 500 }
+      )
+    }
+  })
 }

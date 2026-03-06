@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import Swal from 'sweetalert2'
+import { toast } from '@/lib/toast'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import type { EditableItemField, ItemForm, PedidoItem } from '../types'
 import { buildItemForm, getProdutoFromOption, normalizeItemNumbers, toNumber } from '../utils'
@@ -32,7 +32,7 @@ export function usePedidoItems({ updatePedidoTotals }: UsePedidoItemsOptions) {
       setItemFormByPedido((prev) => ({ ...prev, [pedidoId]: prev[pedidoId] || buildItemForm() }))
       if (data?.pedido) updatePedidoTotals(pedidoId, data.pedido)
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao carregar itens.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao carregar itens.' })
     } finally {
       setItemsLoading((prev) => ({ ...prev, [pedidoId]: false }))
     }
@@ -85,7 +85,7 @@ export function usePedidoItems({ updatePedidoTotals }: UsePedidoItemsOptions) {
       }))
       if (data?.totals) updatePedidoTotals(pedidoId, data.totals)
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao salvar item.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao salvar item.' })
     } finally {
       setItemsSaving((prev) => ({ ...prev, [pedidoId]: false }))
     }
@@ -100,7 +100,7 @@ export function usePedidoItems({ updatePedidoTotals }: UsePedidoItemsOptions) {
       setItemsByPedido((prev) => ({ ...prev, [pedidoId]: (prev[pedidoId] || []).filter((i) => i.id !== itemId) }))
       if (data?.totals) updatePedidoTotals(pedidoId, data.totals)
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao excluir item.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao excluir item.' })
     } finally {
       setItemsSaving((prev) => ({ ...prev, [pedidoId]: false }))
     }
@@ -162,7 +162,7 @@ export function usePedidoItems({ updatePedidoTotals }: UsePedidoItemsOptions) {
       setProdutoLabelByPedido((prev) => ({ ...prev, [pedidoId]: '' }))
       if (data?.totals) updatePedidoTotals(pedidoId, data.totals)
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao adicionar item.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao adicionar item.' })
     } finally {
       setItemsSaving((prev) => ({ ...prev, [pedidoId]: false }))
     }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface OportunidadeHistorico {
   id: string
@@ -33,14 +34,6 @@ const STATUS_CONFIG: Record<string, { label: string; badge: string }> = {
     label: 'Perdida',
     badge: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
   },
-}
-
-const formatCurrency = (value: number | null) => {
-  if (!value) return '-'
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
 }
 
 const formatDate = (value?: string | null) => {

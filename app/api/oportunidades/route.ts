@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { Prisma } from '@prisma/client'
 import {
   expandOpportunityStatuses,
@@ -93,24 +93,41 @@ function parsePage(value: string | null, fallback = 1) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
+      const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status')
     const clienteIdFilter = searchParams.get('clienteId')?.trim()
     const possuiPedidoFilterRaw = searchParams.get('possuiPedido')?.trim().toLowerCase()
+    const searchFilter = searchParams.get('search')?.trim()
     const mode = searchParams.get('mode')
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: Prisma.OportunidadeWhereInput = { userId }
     if (clienteIdFilter) {
       where.clienteId = clienteIdFilter
+    }
+    if (searchFilter) {
+      const term = searchFilter
+      const numMatch = term.match(/^\d+$/)
+      const searchNum = numMatch ? Number(numMatch[0]) : null
+      where.AND = [
+        {
+          OR: [
+            { titulo: { contains: term, mode: 'insensitive' } },
+            ...(searchNum !== null ? [{ numero: searchNum }] : []),
+            {
+              cliente: {
+                is: {
+                  nome: { contains: term, mode: 'insensitive' },
+                },
+              },
+            },
+          ],
+        },
+      ]
     }
     if (possuiPedidoFilterRaw === 'true') {
       where.pedido = { isNot: null }
@@ -201,6 +218,7 @@ export async function GET(request: NextRequest) {
 
       const data = oportunidades.map((oportunidade) => ({
         ...oportunidade,
+        numero: oportunidade.numero,
         status: mapOpportunityStatusForResponse(oportunidade.status),
         statusAnterior: mapOpportunityStatusForResponse(oportunidade.statusAnterior),
       }))
@@ -240,30 +258,28 @@ export async function GET(request: NextRequest) {
 
     const oportunidadesNormalizadas = oportunidades.map((oportunidade) => ({
       ...oportunidade,
+      numero: oportunidade.numero,
       status: mapOpportunityStatusForResponse(oportunidade.status),
       statusAnterior: mapOpportunityStatusForResponse(oportunidade.statusAnterior),
     }))
 
     return NextResponse.json(oportunidadesNormalizadas)
-  } catch (error) {
-    console.error('Erro ao buscar orçamentos:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar orçamentos' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao buscar orçamentos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar orçamentos' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
+      const body = await request.json()
     const {
       titulo,
       descricao,
@@ -470,20 +486,21 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     )
-  } catch (error: unknown) {
-    console.error('Erro ao criar orçamento:', error)
-    const prismaError = error as { code?: string }
-    if (prismaError.code === 'P2003') {
+    } catch (error: unknown) {
+      console.error('Erro ao criar orçamento:', error)
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'Cliente nao encontrado' },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(
-        { error: 'Cliente nao encontrado' },
-        { status: 404 }
+        { error: 'Erro ao criar orçamento' },
+        { status: 500 }
       )
     }
-    return NextResponse.json(
-      { error: 'Erro ao criar orçamento' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 

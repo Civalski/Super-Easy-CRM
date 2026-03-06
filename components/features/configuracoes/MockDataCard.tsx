@@ -4,7 +4,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Database, Loader2 } from 'lucide-react'
+import { Database, Loader2 } from '@/lib/icons'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/common'
 import { SeedResultCard } from './SeedResultCard'

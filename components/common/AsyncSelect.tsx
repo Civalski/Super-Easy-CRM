@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, Check, Loader2, ChevronDown } from 'lucide-react'
+import { Search, X, Check, Loader2, ChevronDown } from '@/lib/icons'
 
 export interface AsyncSelectOption {
     id: string

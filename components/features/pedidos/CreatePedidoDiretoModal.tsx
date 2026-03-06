@@ -1,11 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import Swal from 'sweetalert2'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from '@/lib/toast'
 import { AsyncSelect, Button, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { getProbabilityValueFromLevel, type ProbabilityLevel } from '@/lib/domain/probabilidade'
-import { Info, Minus, PackagePlus, Plus, ShoppingCart, X } from 'lucide-react'
+import { Info, Minus, PackagePlus, Plus, ShoppingCart, X } from '@/lib/icons'
 import type { DraftCreateItem, DraftEditableField, ItemForm } from './types'
 import { PROBABILITY_LEVELS } from './constants'
 import {
@@ -22,14 +22,15 @@ import {
 } from './utils'
 
 interface CreatePedidoDiretoModalProps {
+  initialPerson?: AsyncSelectOption | null
   onClose: () => void
   onCreated: () => void
 }
 
-export function CreatePedidoDiretoModal({ onClose, onCreated }: CreatePedidoDiretoModalProps) {
+export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreated }: CreatePedidoDiretoModalProps) {
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ titulo?: string; cliente?: string }>({})
-  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(null)
+  const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(initialPerson)
   const [statusInfo, setStatusInfo] = useState<string | null>(null)
   const [selectedProdutoLabel, setSelectedProdutoLabel] = useState('')
   const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
@@ -54,6 +55,11 @@ export function CreatePedidoDiretoModal({ onClose, onCreated }: CreatePedidoDire
   const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
   const draftSubtotal = calculateSubtotal(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
   const hasCartItems = itens.length > 0
+
+  useEffect(() => {
+    setSelectedPerson(initialPerson)
+    setStatusInfo(initialPerson?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null)
+  }, [initialPerson])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (e.target.name === 'lembreteProximaAcao') {
@@ -210,10 +216,10 @@ export function CreatePedidoDiretoModal({ onClose, onCreated }: CreatePedidoDire
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao criar pedido')
-      await Swal.fire({ icon: 'success', title: data?.numero ? `Pedido #${data.numero} criado` : 'Pedido criado' })
+      toast.success(data?.numero ? `Pedido #${data.numero} criado` : 'Pedido criado')
       onCreated()
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao criar pedido.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao criar pedido.' })
     } finally {
       setLoading(false)
     }

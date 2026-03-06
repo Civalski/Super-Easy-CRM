@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { Settings } from 'lucide-react'
+import { Settings } from '@/lib/icons'
 
 export function ConfiguracoesHeader() {
     return (

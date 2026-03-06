@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import {
     mapOpportunityStatusForResponse,
     normalizeOpportunityStatus,
@@ -24,15 +24,11 @@ function parseLimit(value: string | null, fallback = 10, max = 50) {
 }
 
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        await ensureDatabaseInitialized()
+      await ensureDatabaseInitialized()
 
-        const userId = await getUserIdFromRequest(request)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        const { searchParams } = new URL(request.url)
+      const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
         const page = parsePage(searchParams.get('page'))
         const limit = parseLimit(searchParams.get('limit'))
@@ -51,25 +47,27 @@ export async function GET(request: NextRequest) {
         let total = 0
 
         // Mapping of frontend listing status to logic
-        // sem_contato -> Prospecto (novo)
+        // sem_contato -> Prospecto (lead_frio e novo)
         // contatado -> Prospecto (em_contato)
         // em_potencial -> Prospecto (qualificado)
         // others -> Oportunidade
         if (normalizedStatus === 'sem_contato' || normalizedStatus === 'contatado' || normalizedStatus === 'em_potencial') {
             const prospectoStatus = normalizedStatus === 'sem_contato'
-                ? 'novo'
+                ? 'sem_contato'
                 : normalizedStatus === 'contatado'
                     ? 'em_contato'
                     : 'qualificado'
 
-            const whereProspecto: Record<string, unknown> = {
-                userId,
-                status: prospectoStatus,
-                // Para "sem_contato" (status=novo): excluir leads frios que ainda não foram
-                // enviados ao funil (ultimoContato=null). Esses ficam na aba Leads.
-                // Leads com ultimoContato definido foram enviados explicitamente ao Funil.
-                ...(prospectoStatus === 'novo' ? { NOT: { ultimoContato: null } } : {}),
-            }
+            const whereProspecto: Record<string, unknown> =
+                prospectoStatus === 'sem_contato'
+                    ? {
+                        userId,
+                        OR: [{ status: 'lead_frio' }, { status: 'novo' }],
+                    }
+                    : {
+                        userId,
+                        status: prospectoStatus,
+                    }
 
             const [prospectos, count] = await prisma.$transaction([
                 prisma.prospecto.findMany({
@@ -96,6 +94,7 @@ export async function GET(request: NextRequest) {
                     email: p.email,
                     telefone: p.telefone1,
                     empresa: p.razaoSocial,
+                    cnpj: p.cnpj,
                 },
             }))
             total = count
@@ -149,10 +148,13 @@ export async function GET(request: NextRequest) {
             },
         })
     } catch (error) {
-        console.error('Erro ao buscar grupos:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar grupos' },
-            { status: 500 }
-        )
+      console.error('Erro ao buscar grupos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar grupos' },
+        { status: 500 }
+      )
     }
+  })
 }
+
+

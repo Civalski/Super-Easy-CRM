@@ -58,3 +58,6 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+
+# backups locais (dados sensíveis)
+/backups/

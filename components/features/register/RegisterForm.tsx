@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight } from '@/lib/icons'
 import { REGISTER_COPY } from '@/components/features/register/constants'
 import type { RegisterFormValues } from '@/components/features/register/types'
 

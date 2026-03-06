@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
+import { TAREFA_STATUS_SET, TAREFA_PRIORIDADE_SET } from '@/lib/validations/tarefas'
 
 export const dynamic = 'force-dynamic'
-
-const ALLOWED_TAREFA_STATUS = new Set(['pendente', 'em_andamento', 'concluida'])
-const ALLOWED_TAREFA_PRIORIDADE = new Set(['baixa', 'media', 'alta'])
 
 function parseOptionalDate(value: unknown) {
   if (value === undefined) return undefined
@@ -20,41 +18,36 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const tarefa = await prisma.tarefa.findFirst({
+        where: { id, userId },
+      })
+
+      if (!tarefa) {
+        return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
+      }
+
+      return NextResponse.json(tarefa)
+    } catch (error) {
+      console.error('Erro ao buscar tarefa:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar tarefa' },
+        { status: 500 }
+      )
     }
-
-    const tarefa = await prisma.tarefa.findFirst({
-      where: { id: (await params).id, userId },
-    })
-
-    if (!tarefa) {
-      return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
-    }
-
-    return NextResponse.json(tarefa)
-  } catch (error) {
-    console.error('Erro ao buscar tarefa:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar tarefa' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const rawBody = await request.json().catch(() => null)
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const rawBody = await request.json().catch(() => null)
     if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -107,7 +100,7 @@ export async function PATCH(
         return NextResponse.json({ error: 'Status invalido' }, { status: 400 })
       }
       const normalizedStatus = status.trim().toLowerCase()
-      if (!ALLOWED_TAREFA_STATUS.has(normalizedStatus)) {
+      if (!TAREFA_STATUS_SET.has(normalizedStatus as 'pendente' | 'em_andamento' | 'concluida')) {
         return NextResponse.json({ error: 'Status invalido' }, { status: 400 })
       }
       updateData.status = normalizedStatus
@@ -118,7 +111,7 @@ export async function PATCH(
         return NextResponse.json({ error: 'Prioridade invalida' }, { status: 400 })
       }
       const normalizedPrioridade = prioridade.trim().toLowerCase()
-      if (!ALLOWED_TAREFA_PRIORIDADE.has(normalizedPrioridade)) {
+      if (!TAREFA_PRIORIDADE_SET.has(normalizedPrioridade as 'baixa' | 'media' | 'alta')) {
         return NextResponse.json({ error: 'Prioridade invalida' }, { status: 400 })
       }
       updateData.prioridade = normalizedPrioridade
@@ -206,7 +199,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.tarefa.updateMany({
-      where: { id: (await params).id, userId },
+      where: { id, userId },
       data: updateData,
     })
 
@@ -215,7 +208,7 @@ export async function PATCH(
     }
 
     const tarefaAtualizada = await prisma.tarefa.findFirst({
-      where: { id: (await params).id, userId },
+      where: { id, userId },
     })
 
     return NextResponse.json(tarefaAtualizada)
@@ -236,37 +229,36 @@ export async function PATCH(
       { status: 500 }
     )
   }
+  })
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const result = await prisma.tarefa.deleteMany({
+        where: { id, userId },
+      })
 
-    const result = await prisma.tarefa.deleteMany({
-      where: { id: (await params).id, userId },
-    })
+      if (result.count === 0) {
+        return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
+      }
 
-    if (result.count === 0) {
-      return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
+      return NextResponse.json({ success: true })
+    } catch (error: unknown) {
+      console.error('Erro ao deletar tarefa:', error)
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
+      }
+      return NextResponse.json(
+        { error: 'Erro ao deletar tarefa' },
+        { status: 500 }
+      )
     }
-
-    return NextResponse.json({ success: true })
-  } catch (error: unknown) {
-    console.error('Erro ao deletar tarefa:', error)
-    const prismaError = error as { code?: string }
-    if (prismaError.code === 'P2025') {
-      return NextResponse.json({ error: 'Tarefa nao encontrada' }, { status: 404 })
-    }
-    return NextResponse.json(
-      { error: 'Erro ao deletar tarefa' },
-      { status: 500 }
-    )
-  }
+  })
 }
 

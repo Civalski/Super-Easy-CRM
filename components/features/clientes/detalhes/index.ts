@@ -1,0 +1,7 @@
+export { ClienteInfoCards } from './ClienteInfoCards'
+export { HistoricoComercial } from './HistoricoComercial'
+export { ProspectoDados } from './ProspectoDados'
+export { ClienteSidebar } from './ClienteSidebar'
+export { ClienteEditForm } from './ClienteEditForm'
+export { useClienteDetalhes } from './hooks/useClienteDetalhes'
+export type * from './types'

@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
+import { listPedidos, normalizeStatusEntrega } from '@/lib/services/pedidos'
 import { roundMoney, sumMoney } from '@/lib/money'
-import { Prisma } from '@prisma/client'
+import { parseLimit, parsePage } from '@/lib/validations/common'
 
 export const dynamic = 'force-dynamic'
-
-const ALLOWED_STATUS_ENTREGA = new Set([
-  'pendente',
-  'em_preparacao',
-  'enviado',
-  'entregue',
-])
 
 const ALLOWED_PAYMENT_METHODS = new Set([
   'pix',
@@ -35,17 +29,6 @@ type NormalizedPedidoItemInput = {
   precoUnitario: number
   desconto: number
   subtotal: number
-}
-
-function normalizeStatusEntrega(status?: string | null) {
-  if (!status) return undefined
-  const normalizedInput = status.trim().toLowerCase()
-  const normalizedStatus =
-    normalizedInput === 'em preparacao'
-      ? 'em_preparacao'
-      : normalizedInput
-
-  return ALLOWED_STATUS_ENTREGA.has(normalizedStatus) ? normalizedStatus : undefined
 }
 
 function parseOptionalString(value: unknown) {
@@ -168,153 +151,37 @@ function parsePedidoItemsInput(value: unknown): {
   return { items }
 }
 
-function parseLimit(value: string | null, fallback = 20, max = 50) {
-  if (!value) return fallback
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed)) return fallback
-  return Math.min(max, Math.max(1, parsed))
-}
-
-function parsePage(value: string | null, fallback = 1) {
-  if (!value) return fallback
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed)) return fallback
-  return Math.max(1, parsed)
-}
-
-function extractLastNumber(value?: string | null) {
-  if (!value) return null
-  const matches = value.match(/\d+/g)
-  if (!matches || matches.length === 0) return null
-  const parsed = Number(matches[matches.length - 1])
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
 export async function GET(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
-
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const statusFilter = searchParams.get('statusEntrega')
-    const clienteIdFilter = searchParams.get('clienteId')?.trim()
-    const paginated = searchParams.get('paginated') === 'true'
-
-    const where: Prisma.PedidoWhereInput = { userId }
-
-    if (clienteIdFilter) {
-      where.oportunidade = {
-        is: {
-          userId,
-          clienteId: clienteIdFilter,
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const result = await listPedidos(userId, {
+        filters: {
+          statusEntrega: searchParams.get('statusEntrega') ?? undefined,
+          clienteId: searchParams.get('clienteId') ?? undefined,
+          search: searchParams.get('search')?.trim() || undefined,
         },
-      }
-    }
-
-    if (statusFilter) {
-      const statuses = Array.from(
-        new Set(
-          statusFilter
-            .split(',')
-            .map((status) => normalizeStatusEntrega(status))
-            .filter((status): status is string => Boolean(status))
-        )
-      )
-
-      if (statuses.length > 0) {
-        where.statusEntrega = { in: statuses }
-      }
-    }
-
-    const baseQuery = {
-      where,
-      orderBy: [
-        { createdAt: 'desc' as const },
-      ],
-      include: {
-        oportunidade: {
-          select: {
-            id: true,
-            titulo: true,
-            descricao: true,
-            valor: true,
-            clienteId: true,
-            formaPagamento: true,
-            parcelas: true,
-            desconto: true,
-            status: true,
-            probabilidade: true,
-            dataFechamento: true,
-            proximaAcaoEm: true,
-            canalProximaAcao: true,
-            responsavelProximaAcao: true,
-            lembreteProximaAcao: true,
-            createdAt: true,
-            cliente: {
-              select: {
-                nome: true,
-              },
-            },
-          },
-        },
-      },
-    }
-
-    if (paginated) {
-      const page = parsePage(searchParams.get('page'))
-      const limit = parseLimit(searchParams.get('limit'))
-      const skip = (page - 1) * limit
-
-      const [pedidos, total] = await Promise.all([
-        prisma.pedido.findMany({
-          ...baseQuery,
-          skip,
-          take: limit,
-        }),
-        prisma.pedido.count({ where }),
-      ])
-
-      return NextResponse.json({
-        data: pedidos,
-        meta: {
-          total,
-          page,
-          limit,
-          pages: Math.max(1, Math.ceil(total / limit)),
-        },
+        paginated: searchParams.get('paginated') === 'true',
+        limit: parseLimit(searchParams.get('limit')),
+        page: parsePage(searchParams.get('page')),
       })
+      return NextResponse.json(result)
+    } catch (error) {
+      console.error('Erro ao buscar pedidos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar pedidos' },
+        { status: 500 }
+      )
     }
-
-    const limit = parseLimit(searchParams.get('limit'))
-    const pedidos = await prisma.pedido.findMany({
-      ...baseQuery,
-      take: limit,
-    })
-
-    return NextResponse.json(pedidos)
-  } catch (error) {
-    console.error('Erro ao buscar pedidos:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar pedidos' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
+      const body = await request.json()
     const oportunidadeId =
       typeof body.oportunidadeId === 'string' ? body.oportunidadeId.trim() : ''
 
@@ -465,6 +332,7 @@ export async function POST(request: NextRequest) {
         where: { id: oportunidadeFinalId, userId },
         select: {
           id: true,
+          numero: true,
           titulo: true,
           status: true,
           valor: true,
@@ -500,7 +368,7 @@ export async function POST(request: NextRequest) {
 
       valorBasePedido = roundMoney(oportunidade.valor ?? 0)
       formaPagamentoBasePedido = normalizeFormaPagamento(oportunidade.formaPagamento) ?? null
-      numeroPreferencial = extractLastNumber(oportunidade.titulo)
+      numeroPreferencial = oportunidade.numero
     } else {
       const titulo = parseOptionalString(body.titulo)
       const descricao = parseOptionalString(body.descricao)
@@ -600,7 +468,7 @@ export async function POST(request: NextRequest) {
             lembreteProximaAcao: pedidoDiretoData.lembreteProximaAcao,
             clienteId: pedidoDiretoData.clienteId,
           },
-          select: { id: true, titulo: true },
+          select: { id: true, titulo: true, numero: true },
         })
 
         if (pedidoDiretoData.lembreteProximaAcao && pedidoDiretoData.proximaAcaoEm) {
@@ -627,6 +495,7 @@ export async function POST(request: NextRequest) {
         }
 
         oportunidadeFinalId = oportunidadeDireta.id
+        numeroPreferencial = oportunidadeDireta.numero
         pedidoDiretoCriado = true
       }
 
@@ -831,4 +700,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+  })
 }

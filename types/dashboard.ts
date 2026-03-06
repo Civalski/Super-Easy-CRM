@@ -2,7 +2,12 @@ export type DashboardActivityType = 'tarefa' | 'oportunidade' | 'cliente'
 
 export interface DashboardData {
   clientesCount: number
+  pedidosCount: number
+  pedidosSemPagamentoCount: number
+  pedidosSemPagamentoValor: number
   oportunidadesCount: number
+  orcamentosEmAbertoCount: number
+  orcamentosEmAbertoValor: number
   tarefasCount: number
   valorTotal: number
   valorGanhos: number

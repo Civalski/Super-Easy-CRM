@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from '@/lib/icons'
 import type { SeedResult } from './ConfiguracoesTypes'
 
 interface SeedResultCardProps {

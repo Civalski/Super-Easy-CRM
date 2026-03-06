@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import type { TaskNotification } from '@/types/notifications'
 
@@ -13,14 +13,17 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined)
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { status } = useSession()
   const [notifications, setNotifications] = useState<TaskNotification[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isIdle, setIsIdle] = useState(false)
+  const idleTimeoutRef = useRef<number | null>(null)
 
-  const fetchNotifications = useCallback(async () => {
-    if (status !== 'authenticated') return
+  const fetchNotifications = useCallback(async (force = false) => {
+    if (status !== 'authenticated' || (!force && isIdle)) return
 
     try {
       setIsLoading(true)
@@ -34,10 +37,61 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [status])
+  }, [status, isIdle])
+
+  const resetIdleTimer = useCallback(() => {
+    setIsIdle(false)
+
+    if (idleTimeoutRef.current) {
+      window.clearTimeout(idleTimeoutRef.current)
+    }
+
+    idleTimeoutRef.current = window.setTimeout(() => {
+      setIsIdle(true)
+    }, IDLE_TIMEOUT_MS)
+  }, [])
 
   useEffect(() => {
-    if (status !== 'authenticated') return
+    if (status !== 'authenticated') {
+      setIsIdle(false)
+      if (idleTimeoutRef.current) {
+        window.clearTimeout(idleTimeoutRef.current)
+        idleTimeoutRef.current = null
+      }
+      return
+    }
+
+    const handleActivity = () => {
+      resetIdleTimer()
+    }
+
+    const events: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'pointermove',
+    ]
+
+    resetIdleTimer()
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, handleActivity, { passive: true })
+    })
+
+    return () => {
+      events.forEach((eventName) => {
+        window.removeEventListener(eventName, handleActivity)
+      })
+      if (idleTimeoutRef.current) {
+        window.clearTimeout(idleTimeoutRef.current)
+        idleTimeoutRef.current = null
+      }
+    }
+  }, [status, resetIdleTimer])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || isIdle) return
 
     void fetchNotifications()
     const intervalId = window.setInterval(() => {
@@ -47,14 +101,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [status, fetchNotifications])
+  }, [status, isIdle, fetchNotifications])
 
   return (
     <NotificationsContext.Provider
       value={{
         notifications,
         isLoading,
-        refresh: fetchNotifications,
+        refresh: () => fetchNotifications(true),
       }}
     >
       {children}

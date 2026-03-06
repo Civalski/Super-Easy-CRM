@@ -4,7 +4,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft } from '@/lib/icons'
 import {
   SIDEBAR_OPEN_MODE_EVENT,
   getSidebarOpenMode,

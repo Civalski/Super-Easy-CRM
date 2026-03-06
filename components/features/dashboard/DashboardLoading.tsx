@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '@/lib/icons'
 
 export function DashboardLoading() {
     return (

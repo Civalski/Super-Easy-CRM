@@ -4,7 +4,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from '@/lib/icons'
 import {
   THEME_EVENT,
   getThemePreference,

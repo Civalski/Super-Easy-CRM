@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 import { logBusinessEvent } from '@/lib/observability/audit';
 
 interface RouteParams {
@@ -14,15 +14,10 @@ interface RouteParams {
 
 // POST /api/prospectos/[id]/converter - Converte prospecto em cliente
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        // Buscar prospecto
+      // Buscar prospecto
         const prospecto = await prisma.prospecto.findFirst({
             where: { id, userId }
         });
@@ -101,11 +96,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         });
 
     } catch (error) {
-        console.error('Erro ao converter prospecto:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-        return NextResponse.json(
-            { error: 'Erro ao converter prospecto', detalhes: errorMessage },
-            { status: 500 }
-        );
+      console.error('Erro ao converter prospecto:', error);
+      return NextResponse.json(
+        { error: 'Erro ao converter prospecto' },
+        { status: 500 }
+      );
     }
+  });
 }

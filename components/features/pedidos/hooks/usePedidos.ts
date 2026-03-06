@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Swal from 'sweetalert2'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
 import type { Pedido, PaginationMeta } from '../types'
 import { PEDIDOS_PAGE_SIZE } from '../constants'
 import { getPedidoSituacao } from '../utils'
@@ -11,6 +12,7 @@ interface UsePedidosOptions {
 }
 
 export function usePedidos({ queryFilter }: UsePedidosOptions) {
+  const { confirm } = useConfirm()
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<PaginationMeta>({
@@ -23,11 +25,11 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
   const [savingById, setSavingById] = useState<Record<string, boolean>>({})
   const lastQueryFilterRef = useRef(queryFilter)
 
-  const fetchPedidos = useCallback(async (targetPage: number) => {
+  const fetchPedidos = useCallback(async (targetPage: number, signal?: AbortSignal) => {
     try {
       setLoading(true)
       const query = queryFilter ? `&${queryFilter}` : ''
-      const res = await fetch(`/api/pedidos?paginated=true&page=${targetPage}&limit=${PEDIDOS_PAGE_SIZE}${query}`)
+      const res = await fetch(`/api/pedidos?paginated=true&page=${targetPage}&limit=${PEDIDOS_PAGE_SIZE}${query}`, { signal })
       const payload = await res.json().catch(() => null)
       if (!res.ok) throw new Error(payload?.error || 'Erro ao carregar pedidos')
 
@@ -46,7 +48,8 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
 
       setPedidos(nextData)
       setMeta(nextMeta)
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       setPedidos([])
       setMeta((prev) => ({ ...prev, total: 0, pages: 1, page: targetPage }))
     } finally {
@@ -62,7 +65,9 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
         return
       }
     }
-    fetchPedidos(page)
+    const controller = new AbortController()
+    fetchPedidos(page, controller.signal)
+    return () => controller.abort()
   }, [fetchPedidos, page, queryFilter])
 
   const stats = useMemo(() => {
@@ -107,10 +112,10 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao salvar pedido')
       setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? data : p)))
-      await Swal.fire({ icon: 'success', title: 'Pedido atualizado' })
+      toast.success('Pedido atualizado')
       return true
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao salvar.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao salvar.' })
       return false
     } finally {
       setSavingById((prev) => ({ ...prev, [pedidoId]: false }))
@@ -145,10 +150,10 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao salvar pedido')
       setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? data : p)))
-      await Swal.fire({ icon: 'success', title: 'Pedido atualizado' })
+      toast.success('Pedido atualizado')
       return true
     } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Erro', text: error instanceof Error ? error.message : 'Erro ao salvar.' })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao salvar.' })
       return false
     } finally {
       setSavingById((prev) => ({ ...prev, [pedidoId]: false }))
@@ -158,18 +163,15 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
   const handleCancelarPedido = async (pedido: Pedido): Promise<boolean> => {
     if (getPedidoSituacao(pedido) !== 'pedido') return false
 
-    const confirm = await Swal.fire({
-      icon: 'warning',
+    const ok = await confirm({
       title: `Cancelar pedido #${pedido.numero}?`,
-      text: 'Este pedido saira da lista de orcamentos e ficara marcado como pedido cancelado.',
-      showCancelButton: true,
-      confirmButtonText: 'Sim, cancelar pedido',
-      cancelButtonText: 'Voltar',
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#6b7280',
+      description: 'Este pedido saira da lista de orcamentos e ficara marcado como pedido cancelado.',
+      confirmLabel: 'Sim, cancelar pedido',
+      cancelLabel: 'Voltar',
+      confirmVariant: 'danger',
     })
 
-    if (!confirm.isConfirmed) return false
+    if (!ok) return false
 
     try {
       setSavingById((prev) => ({ ...prev, [pedido.id]: true }))
@@ -180,15 +182,11 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
       })
       const payload = await res.json().catch(() => null)
       if (!res.ok) throw new Error(payload?.error || 'Erro ao cancelar pedido')
-      await Swal.fire({ icon: 'success', title: 'Pedido cancelado' })
+      toast.success('Pedido cancelado')
       await fetchPedidos(page)
       return true
     } catch (error) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Nao foi possivel cancelar o pedido.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Nao foi possivel cancelar o pedido.' })
       return false
     } finally {
       setSavingById((prev) => ({ ...prev, [pedido.id]: false }))

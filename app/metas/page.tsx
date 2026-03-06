@@ -7,8 +7,9 @@ import {
   Loader2, Plus, Trash2, Pencil, Target, TrendingUp,
   CheckCircle2, Clock, BarChart3, Phone, Save, X as XIcon,
   AlertTriangle, Flame, ChevronDown, ChevronUp,
-} from 'lucide-react'
-import Swal from 'sweetalert2'
+} from '@/lib/icons'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
 
 type GoalMetricType =
   | 'CLIENTES_CONTATADOS'
@@ -174,6 +175,7 @@ function getProgressBg(value: number, completed: boolean) {
 }
 
 export default function MetasPage() {
+  const { confirm, prompt } = useConfirm()
   const initialDates = useMemo(() => getDefaultDates('DAILY'), [])
   const router = useRouter()
   const [goals, setGoals] = useState<Goal[]>([])
@@ -200,13 +202,6 @@ export default function MetasPage() {
   const [editMetaValue, setEditMetaValue] = useState('')
   const [savingMeta, setSavingMeta] = useState(false)
   const [showDebt, setShowDebt] = useState(false)
-
-  const swalBase = {
-    background: '#0f172a',
-    color: '#e5e7eb',
-    confirmButtonColor: '#2563eb',
-    cancelButtonColor: '#6b7280',
-  }
 
   const handleUnauthorized = useCallback(() => {
     setError('Sua sessão expirou. Entre novamente para continuar.')
@@ -343,17 +338,14 @@ export default function MetasPage() {
   }
 
   const handleDelete = async (goalId: string) => {
-    const resultado = await Swal.fire({
-      ...swalBase,
+    const ok = await confirm({
       title: 'Excluir meta?',
-      text: 'Essa ação não pode ser desfeita.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Excluir',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc2626',
+      description: 'Essa ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      confirmVariant: 'danger',
     })
-    if (!resultado.isConfirmed) return
+    if (!ok) return
 
     try {
       const response = await fetch(`/api/metas/${goalId}`, {
@@ -371,12 +363,7 @@ export default function MetasPage() {
         }
       } else {
         const data = await response.json()
-        await Swal.fire({
-          ...swalBase,
-          icon: 'error',
-          title: 'Erro ao excluir',
-          text: data.error || 'Erro ao excluir meta',
-        })
+        toast.error('Erro ao excluir', { description: data.error || 'Erro ao excluir meta' })
       }
     } catch (err) {
       console.error('Erro ao excluir meta:', err)
@@ -432,14 +419,7 @@ export default function MetasPage() {
   const handleSaveMeta = async () => {
     const newValue = parseInt(editMetaValue)
     if (!newValue || newValue < 1) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Valor inválido',
-        text: 'A meta deve ser um número maior que zero.',
-        confirmButtonColor: '#6366f1',
-        background: '#1f2937',
-        color: '#f3f4f6',
-      })
+      toast.error('Valor inválido', { description: 'A meta deve ser um número maior que zero.' })
       return
     }
 
@@ -453,17 +433,7 @@ export default function MetasPage() {
       if (response.ok) {
         setEditingMeta(false)
         await fetchMetaDiaria()
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: `Meta atualizada para ${newValue} contatos/dia`,
-          showConfirmButton: false,
-          timer: 2000,
-          timerProgressBar: true,
-          background: '#1f2937',
-          color: '#f3f4f6',
-        })
+        toast.success(`Meta atualizada para ${newValue} contatos/dia`)
       }
     } catch (error) {
       console.error('Erro ao atualizar meta:', error)
@@ -473,19 +443,13 @@ export default function MetasPage() {
   }
 
   const handleDismissDay = async (dateStr: string) => {
-    const result = await Swal.fire({
+    const ok = await confirm({
       title: 'Esquecer meta deste dia?',
-      html: `<p style="color: #e5e7eb;">A meta do dia <strong>${formatDateShort(dateStr)}</strong> será ignorada.</p>`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#6366f1',
-      cancelButtonColor: '#4b5563',
-      confirmButtonText: 'Sim, esquecer',
-      cancelButtonText: 'Cancelar',
-      background: '#1f2937',
-      color: '#f3f4f6',
+      description: `A meta do dia ${formatDateShort(dateStr)} será ignorada.`,
+      confirmLabel: 'Sim, esquecer',
+      cancelLabel: 'Cancelar',
     })
-    if (result.isConfirmed) {
+    if (ok) {
       try {
         await fetch('/api/metas/contatos-diarios', {
           method: 'POST',
@@ -500,19 +464,14 @@ export default function MetasPage() {
   }
 
   const handleDismissAll = async () => {
-    const result = await Swal.fire({
+    const ok = await confirm({
       title: 'Esquecer todas as metas pendentes?',
-      html: `<p style="color: #e5e7eb;">Todas as metas acumuladas dos dias anteriores serão ignoradas.</p>`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#6366f1',
-      cancelButtonColor: '#4b5563',
-      confirmButtonText: 'Sim, esquecer tudo',
-      cancelButtonText: 'Cancelar',
-      background: '#1f2937',
-      color: '#f3f4f6',
+      description: 'Todas as metas acumuladas dos dias anteriores serão ignoradas.',
+      confirmLabel: 'Sim, esquecer tudo',
+      cancelLabel: 'Cancelar',
+      confirmVariant: 'danger',
     })
-    if (result.isConfirmed) {
+    if (ok) {
       try {
         await fetch('/api/metas/contatos-diarios', {
           method: 'POST',
@@ -527,32 +486,28 @@ export default function MetasPage() {
   }
 
   const handleCreateMetaDiaria = async () => {
-    const result = await Swal.fire({
-      ...swalBase,
+    const value = await prompt({
       title: 'Criar meta diária de contatos',
-      input: 'number',
-      inputLabel: 'Meta diária',
-      inputValue: 25,
-      inputAttributes: { min: '1', step: '1' },
-      showCancelButton: true,
-      confirmButtonText: 'Criar',
-      cancelButtonText: 'Cancelar',
-      inputValidator: (value) => {
-        const numericValue = Number(value)
-        if (!Number.isInteger(numericValue) || numericValue < 1) {
-          return 'Informe um número inteiro maior que zero.'
-        }
-        return undefined
-      },
+      label: 'Meta diária',
+      placeholder: 'Ex: 25',
+      defaultValue: '25',
+      confirmLabel: 'Criar',
+      cancelLabel: 'Cancelar',
     })
 
-    if (!result.isConfirmed) return
+    if (!value) return
+
+    const numericValue = Number(value)
+    if (!Number.isInteger(numericValue) || numericValue < 1) {
+      toast.error('Valor inválido', { description: 'Informe um número inteiro maior que zero.' })
+      return
+    }
 
     try {
       const response = await fetch('/api/metas/contatos-diarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: Number(result.value) }),
+        body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: numericValue }),
       })
 
       if (response.ok) {

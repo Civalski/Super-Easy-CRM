@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { getDateRangeFromQuery, getDaysBetween } from '../_shared'
 import {
   expandOpportunityStatuses,
@@ -34,13 +34,9 @@ function computeRiskScore(params: {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const range = getDateRangeFromQuery(request)
+  return withAuth(request, async (userId) => {
+    try {
+      const range = getDateRangeFromQuery(request)
     if ('error' in range) {
       return NextResponse.json({ error: range.error }, { status: 400 })
     }
@@ -154,11 +150,12 @@ export async function GET(request: NextRequest) {
       riskRanking: oportunidadesEmRisco,
       generatedAt: new Date().toISOString(),
     })
-  } catch (error) {
-    console.error('Erro ao gerar relatorio de performance:', error)
-    return NextResponse.json(
-      { error: 'Erro ao gerar relatorio de performance' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao gerar relatorio de performance:', error)
+      return NextResponse.json(
+        { error: 'Erro ao gerar relatorio de performance' },
+        { status: 500 }
+      )
+    }
+  })
 }

@@ -1,18 +1,13 @@
 export const dynamic = 'force-dynamic'
 
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Buscar dados mais recentes de cada tipo com mais detalhes
+      // Buscar dados mais recentes de cada tipo com mais detalhes
         const [tarefas, oportunidades, clientes] = await Promise.all([
             prisma.tarefa.findMany({
                 where: { userId },
@@ -74,12 +69,13 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 10)
 
-        return NextResponse.json(recentActivities)
+      return NextResponse.json(recentActivities)
     } catch (error) {
-        console.error('Erro ao buscar atividades recentes:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar atividades recentes' },
-            { status: 500 }
-        )
+      console.error('Erro ao buscar atividades recentes:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar atividades recentes' },
+        { status: 500 }
+      )
     }
+  })
 }

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SideCreateDrawer } from '@/components/common'
-import { Loader2, Save, X } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { Loader2, Save, X } from '@/lib/icons'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
 import {
   TarefasHeader,
   TarefasTabs,
@@ -49,6 +50,7 @@ const getNowDateTime = () => {
 }
 
 export default function TarefasPage() {
+  const { confirm } = useConfirm()
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -84,12 +86,6 @@ export default function TarefasPage() {
   const filtrosKey = `${activeTab}|${filtroStatus}|${filtroPrioridade}`
   const lastFiltrosKeyRef = useRef(filtrosKey)
 
-  const swalBase = {
-    background: '#0f172a',
-    color: '#e5e7eb',
-    confirmButtonColor: '#2563eb',
-    cancelButtonColor: '#6b7280',
-  }
   const fetchTarefas = useCallback(async (targetPage: number) => {
     try {
       setLoading(true)
@@ -255,12 +251,7 @@ export default function TarefasPage() {
       setPage(1)
       await fetchTarefas(1)
     } catch (error: unknown) {
-      await Swal.fire({
-        ...swalBase,
-        icon: 'error',
-        title: 'Erro ao criar tarefa',
-        text: error instanceof Error ? error.message : 'Erro ao criar tarefa',
-      })
+      toast.error('Erro ao criar tarefa', { description: error instanceof Error ? error.message : 'Erro ao criar tarefa' })
     } finally {
       setCreating(false)
     }
@@ -281,21 +272,11 @@ export default function TarefasPage() {
         await fetchTarefas(page)
       } else {
         const error = await response.json()
-        await Swal.fire({
-          ...swalBase,
-          icon: 'error',
-          title: 'Erro ao atualizar',
-          text: error.error || 'Erro ao atualizar tarefa',
-        })
+        toast.error('Erro ao atualizar', { description: error.error || 'Erro ao atualizar tarefa' })
       }
     } catch (error) {
       console.error('Erro ao voltar tarefa para pendente:', error)
-      await Swal.fire({
-        ...swalBase,
-        icon: 'error',
-        title: 'Erro ao atualizar',
-        text: 'Erro ao atualizar tarefa. Tente novamente.',
-      })
+      toast.error('Erro ao atualizar', { description: 'Erro ao atualizar tarefa. Tente novamente.' })
     } finally {
       setAtualizandoTarefa(null)
     }
@@ -316,38 +297,25 @@ export default function TarefasPage() {
         await fetchTarefas(page)
       } else {
         const error = await response.json()
-        await Swal.fire({
-          ...swalBase,
-          icon: 'error',
-          title: 'Erro ao concluir',
-          text: error.error || 'Erro ao concluir tarefa',
-        })
+        toast.error('Erro ao concluir', { description: error.error || 'Erro ao concluir tarefa' })
       }
     } catch (error) {
       console.error('Erro ao concluir tarefa:', error)
-      await Swal.fire({
-        ...swalBase,
-        icon: 'error',
-        title: 'Erro ao concluir',
-        text: 'Erro ao concluir tarefa. Tente novamente.',
-      })
+      toast.error('Erro ao concluir', { description: 'Erro ao concluir tarefa. Tente novamente.' })
     } finally {
       setAtualizandoTarefa(null)
     }
   }
 
   const excluirTarefa = async (tarefaId: string) => {
-    const resultado = await Swal.fire({
-      ...swalBase,
+    const ok = await confirm({
       title: 'Excluir tarefa?',
-      text: 'Essa acao nao pode ser desfeita.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Excluir',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc2626',
+      description: 'Essa acao nao pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      confirmVariant: 'danger',
     })
-    if (!resultado.isConfirmed) return
+    if (!ok) return
 
     setExcluindoTarefa(tarefaId)
     try {
@@ -359,19 +327,11 @@ export default function TarefasPage() {
         await fetchTarefas(page)
       } else {
         const error = await response.json()
-        await Swal.fire({
-          title: 'Erro ao excluir',
-          text: error.error || 'Erro ao excluir tarefa',
-          icon: 'error',
-        })
+        toast.error('Erro ao excluir', { description: error.error || 'Erro ao excluir tarefa' })
       }
     } catch (error) {
       console.error('Erro ao excluir tarefa:', error)
-      await Swal.fire({
-        title: 'Erro ao excluir',
-        text: 'Erro ao excluir tarefa. Tente novamente.',
-        icon: 'error',
-      })
+      toast.error('Erro ao excluir', { description: 'Erro ao excluir tarefa. Tente novamente.' })
     } finally {
       setExcluindoTarefa(null)
     }
@@ -484,7 +444,7 @@ export default function TarefasPage() {
         maxWidthClass="max-w-4xl"
       >
         <div className="h-full overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-5">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nova Tarefa</h2>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -650,5 +610,4 @@ export default function TarefasPage() {
     </div>
   )
 }
-
 

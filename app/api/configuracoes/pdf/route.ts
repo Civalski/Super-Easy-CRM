@@ -1,30 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
 const LOGO_SIZE_LIMIT = 600 * 1024 // 600KB base64
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const config = await prisma.pdfConfig.findUnique({ where: { userId } })
-    return NextResponse.json(config ?? {})
-  } catch (error) {
-    console.error('Erro ao buscar configurações do PDF:', error)
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
-  }
+  return withAuth(request, async (userId) => {
+    try {
+      const config = await prisma.pdfConfig.findUnique({ where: { userId } })
+      return NextResponse.json(config ?? {})
+    } catch (error) {
+      console.error('Erro ao buscar configurações do PDF:', error)
+      return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+    }
+  })
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const body = await request.json()
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json()
     const {
       nomeEmpresa,
       nomeVendedor,
@@ -71,9 +68,10 @@ export async function PUT(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(config)
-  } catch (error) {
-    console.error('Erro ao salvar configurações do PDF:', error)
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
-  }
+      return NextResponse.json(config)
+    } catch (error) {
+      console.error('Erro ao salvar configurações do PDF:', error)
+      return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+    }
+  })
 }

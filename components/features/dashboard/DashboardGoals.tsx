@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Search,
   ArrowRight,
-} from 'lucide-react'
+} from '@/lib/icons'
+import { formatCurrency } from '@/lib/format'
 
 type GoalMetricType =
   | 'CLIENTES_CONTATADOS'
@@ -70,12 +71,6 @@ const periodLabels: Record<GoalPeriodType, string> = {
   MONTHLY: 'Mensal',
   CUSTOM: 'Personalizada',
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
 
 const formatGoalValue = (metricType: GoalMetricType, value: number) => {
   if (metricType === 'FATURAMENTO') {

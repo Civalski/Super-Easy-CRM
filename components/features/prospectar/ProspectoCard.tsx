@@ -17,7 +17,7 @@ import {
     CheckSquare,
     Square,
     Eye,
-} from 'lucide-react';
+} from '@/lib/icons';
 import Link from 'next/link';
 import { STATUS_OPTIONS, getStatusConfig, type Prospecto } from './ProspectarTypes';
 

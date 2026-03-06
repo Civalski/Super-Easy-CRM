@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { AsyncSelect } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
-import { Loader2, PackagePlus, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
+import { Loader2, PackagePlus, Plus, ShoppingCart, Trash2, X } from '@/lib/icons'
 import type { EditableItemField, ItemForm, Pedido, PedidoItem } from './types'
 import { calculateSubtotal, currency, summarizeCartItems } from './utils'
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 import { normalizeLote } from '@/lib/prospectos/enviarAoFunil';
 
 export const dynamic = 'force-dynamic'
@@ -37,13 +37,9 @@ function parseLimit(value: string | null, fallback = 50, max = 100) {
 }
 
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const limit = parseLimit(searchParams.get('limit'));
         const statusFilter = parseStatusFilter(status);
@@ -60,24 +56,21 @@ export async function GET(request: NextRequest) {
             take: limit,
         });
 
-        return NextResponse.json({ agendamentos });
+      return NextResponse.json({ agendamentos });
     } catch (error) {
-        console.error('Erro ao listar agendamentos:', error);
-        return NextResponse.json(
-            { error: 'Erro ao listar agendamentos' },
-            { status: 500 }
-        );
+      console.error('Erro ao listar agendamentos:', error);
+      return NextResponse.json(
+        { error: 'Erro ao listar agendamentos' },
+        { status: 500 }
+      );
     }
+  });
 }
 
 export async function POST(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const body = await request.json();
+      const body = await request.json();
         const itens = Array.isArray(body?.itens) ? (body.itens as AgendamentoInput[]) : [];
 
         if (itens.length === 0) {
@@ -162,21 +155,18 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error('Erro ao criar agendamentos:', error);
-        return NextResponse.json(
-            { error: 'Erro ao criar agendamentos' },
-            { status: 500 }
-        );
+      return NextResponse.json(
+        { error: 'Erro ao criar agendamentos' },
+        { status: 500 }
+      );
     }
+  });
 }
 
 export async function DELETE(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
 
         if (!id) {
@@ -213,12 +203,13 @@ export async function DELETE(request: NextRequest) {
             data: { status: 'cancelado' },
         });
 
-        return NextResponse.json({ success: true, cancelado: true });
+      return NextResponse.json({ success: true, cancelado: true });
     } catch (error) {
-        console.error('Erro ao cancelar agendamento:', error);
-        return NextResponse.json(
-            { error: 'Erro ao cancelar agendamento' },
-            { status: 500 }
-        );
+      console.error('Erro ao cancelar agendamento:', error);
+      return NextResponse.json(
+        { error: 'Erro ao cancelar agendamento' },
+        { status: 500 }
+      );
     }
+  });
 }

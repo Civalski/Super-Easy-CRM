@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import Swal from 'sweetalert2'
+import { toast } from 'sonner'
 import { useNotifications } from './NotificationsProvider'
 const STORAGE_KEY = 'notifiedTasks'
 const MAX_STORED_TASK_IDS = 500
@@ -51,24 +51,6 @@ export function NotificationManager() {
             void Notification.requestPermission()
         }
 
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 8000,
-            timerProgressBar: true,
-            background: '#fff',
-            color: '#1f2937',
-            iconColor: '#2563eb',
-            customClass: {
-                popup: 'colored-toast shadow-lg rounded-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white',
-            },
-            didOpen: (toast: HTMLElement) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            },
-        })
-
         if (!Array.isArray(notifications) || notifications.length === 0) {
             return
         }
@@ -90,15 +72,9 @@ export function NotificationManager() {
                 const isDueSoonOrJustPassed = diffInMs > -5 * 60 * 1000 && diffInMs < 1.5 * 60 * 1000
 
                 if (isDueSoonOrJustPassed && !seenIds.has(tarefa.id)) {
-                    Toast.fire({
-                        icon: 'info',
-                        title: 'Lembrete de Tarefa',
-                        html: `
-                                <div class="flex flex-col gap-1">
-                                    <span class="font-bold text-lg">${tarefa.titulo || 'Tarefa sem titulo'}</span>
-                                    <span class="text-sm">Vence as ${vencimento.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                            `,
+                    toast.info('Lembrete de Tarefa', {
+                        description: `${tarefa.titulo || 'Tarefa sem titulo'} — Vence às ${vencimento.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+                        duration: 8000,
                     })
 
                     if ('Notification' in window && Notification.permission === 'granted') {

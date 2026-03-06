@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, X, Loader2 } from 'lucide-react';
+import { Search, ChevronDown, Check, X, Loader2 } from '@/lib/icons';
 
 export interface MultiSelectOption {
     label: string;

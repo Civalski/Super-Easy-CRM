@@ -19,7 +19,7 @@ import {
     ChevronDown,
     CheckCircle2,
     Eye,
-} from 'lucide-react';
+} from '@/lib/icons';
 import Link from 'next/link';
 import { STATUS_OPTIONS, getStatusConfig, type Prospecto } from './ProspectarTypes';
 
@@ -110,16 +110,13 @@ export function ProspectosList({
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[22%]">
                                 Contato
                             </th>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">
-                                Lote
-                            </th>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[12%]">
                                 Contatado
                             </th>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[16%]">
                                 Status
                             </th>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[20%]">
                                 A??es
                             </th>
                         </tr>
@@ -213,15 +210,6 @@ export function ProspectosList({
                                                 </span>
                                             )}
                                         </div>
-                                    </td>
-                                    <td className="px-3 py-3">
-                                        {prospecto.lote ? (
-                                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-sm text-xs font-semibold">
-                                                Lote {prospecto.lote}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">-</span>
-                                        )}
                                     </td>
                                     <td className="px-3 py-3">
                                         <button

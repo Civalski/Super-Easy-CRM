@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,92 +47,89 @@ async function countContactsOnDay(userId: string, dateStr: string): Promise<numb
  * Returns today's goal progress and accumulated debt
  */
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
+      // Get config only (do not auto-create)
+      const config = await prisma.metaContatoConfig.findUnique({
+        where: { userId },
+        include: { diasEsquecidos: true },
+      })
 
-        // Get config only (do not auto-create)
-        const config = await prisma.metaContatoConfig.findUnique({
-            where: { userId },
-            include: { diasEsquecidos: true },
-        })
-
-        if (!config) {
-            return NextResponse.json({
-                ativo: false,
-                configurada: false,
-                metaDiaria: null,
-                contatosHoje: 0,
-                progressoHoje: 0,
-                debito: [],
-                debitoTotal: 0,
-            })
-        }
-
-        if (!config.ativo) {
-            return NextResponse.json({
-                ativo: false,
-                configurada: true,
-                metaDiaria: config.metaDiaria,
-                contatosHoje: 0,
-                progressoHoje: 0,
-                debito: [],
-                debitoTotal: 0,
-            })
-        }
-
-        const now = new Date()
-        const todayStr = getBrazilDateString(now)
-
-        // Count today's contacts
-        const contatosHoje = await countContactsOnDay(userId, todayStr)
-
-        // Check the last 3 days for debt (excluding today)
-        const dismissedDates = new Set(config.diasEsquecidos.map(d => d.data))
-        const debito: { data: string; meta: number; feitos: number; faltam: number }[] = []
-
-        for (let i = 1; i <= 3; i++) {
-            const pastDate = new Date(now)
-            pastDate.setDate(pastDate.getDate() - i)
-            const pastDateStr = getBrazilDateString(pastDate)
-
-            // Skip if this day was dismissed
-            if (dismissedDates.has(pastDateStr)) continue
-
-            const feitos = await countContactsOnDay(userId, pastDateStr)
-            const faltam = Math.max(0, config.metaDiaria - feitos)
-
-            if (faltam > 0) {
-                debito.push({
-                    data: pastDateStr,
-                    meta: config.metaDiaria,
-                    feitos,
-                    faltam,
-                })
-            }
-        }
-
-        const debitoTotal = debito.reduce((sum, d) => sum + d.faltam, 0)
-
+      if (!config) {
         return NextResponse.json({
-            ativo: true,
-            configurada: true,
-            metaDiaria: config.metaDiaria,
-            contatosHoje,
-            progressoHoje: Math.min(100, Math.round((contatosHoje / config.metaDiaria) * 100)),
-            debito,
-            debitoTotal,
-            hoje: todayStr,
+          ativo: false,
+          configurada: false,
+          metaDiaria: null,
+          contatosHoje: 0,
+          progressoHoje: 0,
+          debito: [],
+          debitoTotal: 0,
         })
+      }
+
+      if (!config.ativo) {
+        return NextResponse.json({
+          ativo: false,
+          configurada: true,
+          metaDiaria: config.metaDiaria,
+          contatosHoje: 0,
+          progressoHoje: 0,
+          debito: [],
+          debitoTotal: 0,
+        })
+      }
+
+      const now = new Date()
+      const todayStr = getBrazilDateString(now)
+
+      // Count today's contacts
+      const contatosHoje = await countContactsOnDay(userId, todayStr)
+
+      // Check the last 3 days for debt (excluding today)
+      const dismissedDates = new Set(config.diasEsquecidos.map(d => d.data))
+      const debito: { data: string; meta: number; feitos: number; faltam: number }[] = []
+
+      for (let i = 1; i <= 3; i++) {
+        const pastDate = new Date(now)
+        pastDate.setDate(pastDate.getDate() - i)
+        const pastDateStr = getBrazilDateString(pastDate)
+
+        // Skip if this day was dismissed
+        if (dismissedDates.has(pastDateStr)) continue
+
+        const feitos = await countContactsOnDay(userId, pastDateStr)
+        const faltam = Math.max(0, config.metaDiaria - feitos)
+
+        if (faltam > 0) {
+          debito.push({
+            data: pastDateStr,
+            meta: config.metaDiaria,
+            feitos,
+            faltam,
+          })
+        }
+      }
+
+      const debitoTotal = debito.reduce((sum, d) => sum + d.faltam, 0)
+
+      return NextResponse.json({
+        ativo: true,
+        configurada: true,
+        metaDiaria: config.metaDiaria,
+        contatosHoje,
+        progressoHoje: Math.min(100, Math.round((contatosHoje / config.metaDiaria) * 100)),
+        debito,
+        debitoTotal,
+        hoje: todayStr,
+      })
     } catch (error) {
-        console.error('Erro ao buscar meta de contatos:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar meta de contatos' },
-            { status: 500 }
-        )
+      console.error('Erro ao buscar meta de contatos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar meta de contatos' },
+        { status: 500 }
+      )
     }
+  })
 }
 
 /**
@@ -140,104 +137,101 @@ export async function GET(request: NextRequest) {
  * Actions: 'esquecer' (dismiss a specific day), 'esquecer_todos' (dismiss all)
  */
 export async function POST(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const body = await request.json()
+      const { action, data } = body
+
+      const config = await prisma.metaContatoConfig.findUnique({
+        where: { userId },
+      })
+
+      if (action === 'esquecer' && data) {
+        if (!config) {
+          return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
         }
-
-        const body = await request.json()
-        const { action, data } = body
-
-        const config = await prisma.metaContatoConfig.findUnique({
-            where: { userId },
+        // Dismiss a specific day's debt
+        await prisma.metaContatoDiaEsquecido.upsert({
+          where: {
+            configId_data: {
+              configId: config.id,
+              data: data,
+            },
+          },
+          create: {
+            configId: config.id,
+            data: data,
+          },
+          update: {},
         })
 
-        if (action === 'esquecer' && data) {
-            if (!config) {
-                return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
-            }
-            // Dismiss a specific day's debt
-            await prisma.metaContatoDiaEsquecido.upsert({
-                where: {
-                    configId_data: {
-                        configId: config.id,
-                        data: data,
-                    },
+        return NextResponse.json({ success: true, dismissed: data })
+      }
+
+      if (action === 'esquecer_todos') {
+        if (!config) {
+          return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
+        }
+        // Dismiss all debt days (last 3 days)
+        const now = new Date()
+        const dates: string[] = []
+        for (let i = 1; i <= 3; i++) {
+          const pastDate = new Date(now)
+          pastDate.setDate(pastDate.getDate() - i)
+          dates.push(getBrazilDateString(pastDate))
+        }
+
+        await Promise.all(
+          dates.map(d =>
+            prisma.metaContatoDiaEsquecido.upsert({
+              where: {
+                configId_data: {
+                  configId: config!.id,
+                  data: d,
                 },
-                create: {
-                    configId: config.id,
-                    data: data,
-                },
-                update: {},
+              },
+              create: {
+                configId: config!.id,
+                data: d,
+              },
+              update: {},
             })
-
-            return NextResponse.json({ success: true, dismissed: data })
-        }
-
-        if (action === 'esquecer_todos') {
-            if (!config) {
-                return NextResponse.json({ error: 'Meta diaria nao configurada' }, { status: 404 })
-            }
-            // Dismiss all debt days (last 3 days)
-            const now = new Date()
-            const dates: string[] = []
-            for (let i = 1; i <= 3; i++) {
-                const pastDate = new Date(now)
-                pastDate.setDate(pastDate.getDate() - i)
-                dates.push(getBrazilDateString(pastDate))
-            }
-
-            await Promise.all(
-                dates.map(d =>
-                    prisma.metaContatoDiaEsquecido.upsert({
-                        where: {
-                            configId_data: {
-                                configId: config!.id,
-                                data: d,
-                            },
-                        },
-                        create: {
-                            configId: config!.id,
-                            data: d,
-                        },
-                        update: {},
-                    })
-                )
-            )
-
-            return NextResponse.json({ success: true, dismissed: dates })
-        }
-
-        if (action === 'atualizar_meta') {
-            const metaDiaria = Number(body.metaDiaria)
-            if (!Number.isFinite(metaDiaria) || metaDiaria < 1 || !Number.isInteger(metaDiaria)) {
-                return NextResponse.json(
-                    { error: 'Meta deve ser um número inteiro maior que zero' },
-                    { status: 400 }
-                )
-            }
-
-            if (config) {
-                await prisma.metaContatoConfig.update({
-                    where: { id: config.id },
-                    data: { metaDiaria, ativo: true },
-                })
-            } else {
-                await prisma.metaContatoConfig.create({
-                    data: { userId, metaDiaria, ativo: true },
-                })
-            }
-
-            return NextResponse.json({ success: true, metaDiaria })
-        }
-
-        return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
-    } catch (error) {
-        console.error('Erro ao processar meta de contatos:', error)
-        return NextResponse.json(
-            { error: 'Erro ao processar meta de contatos' },
-            { status: 500 }
+          )
         )
+
+        return NextResponse.json({ success: true, dismissed: dates })
+      }
+
+      if (action === 'atualizar_meta') {
+        const metaDiaria = Number(body.metaDiaria)
+        if (!Number.isFinite(metaDiaria) || metaDiaria < 1 || !Number.isInteger(metaDiaria)) {
+          return NextResponse.json(
+            { error: 'Meta deve ser um número inteiro maior que zero' },
+            { status: 400 }
+          )
+        }
+
+        if (config) {
+          await prisma.metaContatoConfig.update({
+            where: { id: config.id },
+            data: { metaDiaria, ativo: true },
+          })
+        } else {
+          await prisma.metaContatoConfig.create({
+            data: { userId, metaDiaria, ativo: true },
+          })
+        }
+
+        return NextResponse.json({ success: true, metaDiaria })
+      }
+
+      return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
+    } catch (error) {
+      console.error('Erro ao processar meta de contatos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao processar meta de contatos' },
+        { status: 500 }
+      )
     }
+  })
 }

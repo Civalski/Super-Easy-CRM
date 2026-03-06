@@ -1,7 +1,4 @@
-import { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
-import { getNextAuthSecret } from '@/lib/nextauth-secret'
 import { GoalMetricType, GoalPeriodType } from '@prisma/client'
 import {
   expandOpportunityStatuses,
@@ -21,42 +18,6 @@ const metricsRequiringStatus = new Set<GoalMetricType>([
   GoalMetricType.QUALIFICACAO,
   GoalMetricType.PROSPECCAO,
 ])
-
-export async function getUserId(req: NextRequest) {
-  const token = await getToken({ req, secret: getNextAuthSecret() })
-  if (!token) return undefined
-
-  const candidateIds = [token.userId, token.sub].filter(
-    (value): value is string => typeof value === 'string' && value.length > 0
-  )
-
-  for (const candidateId of candidateIds) {
-    const user = await prisma.user.findUnique({
-      where: { id: candidateId },
-      select: { id: true },
-    })
-    if (user) {
-      return user.id
-    }
-  }
-
-  const username = typeof token.username === 'string' ? token.username : undefined
-  const email = typeof token.email === 'string' ? token.email : undefined
-
-  if (!username && !email) return undefined
-
-  const fallbackUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        username ? { username } : undefined,
-        email ? { email } : undefined,
-      ].filter(Boolean) as Array<{ username?: string; email?: string }>,
-    },
-    select: { id: true },
-  })
-
-  return fallbackUser?.id
-}
 
 // Helper to get the date string YYYY-MM-DD in Brazil timezone
 function getBrazilDateString(date: Date) {

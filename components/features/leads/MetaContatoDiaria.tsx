@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Target, AlertTriangle, CheckCircle2, X, Flame, Pencil, Save, Phone } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { Target, AlertTriangle, CheckCircle2, X, Flame, Pencil, Save, Phone } from '@/lib/icons'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
+import { formatDateShort } from '@/lib/format'
 
 interface DebitDay {
     data: string
@@ -21,12 +23,8 @@ interface MetaContatoData {
     hoje: string
 }
 
-function formatDate(dateStr: string): string {
-    const [year, month, day] = dateStr.split('-')
-    return `${day}/${month}/${year}`
-}
-
 export default function MetaContatoDiaria() {
+    const { confirm } = useConfirm()
     const [data, setData] = useState<MetaContatoData | null>(null)
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
@@ -55,14 +53,7 @@ export default function MetaContatoDiaria() {
     const handleSaveMeta = async () => {
         const newValue = parseInt(editValue)
         if (!newValue || newValue < 1) {
-            await Swal.fire({
-                icon: 'error',
-                title: 'Valor inválido',
-                text: 'A meta deve ser um número maior que zero.',
-                confirmButtonColor: '#6366f1',
-                background: '#1f2937',
-                color: '#f3f4f6',
-            })
+            toast.error('Valor inválido', { description: 'A meta deve ser um número maior que zero.' })
             return
         }
 
@@ -77,17 +68,7 @@ export default function MetaContatoDiaria() {
             if (response.ok) {
                 setEditing(false)
                 await fetchMeta()
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: `Meta atualizada para ${newValue} contatos/dia`,
-                    showConfirmButton: false,
-                    timer: 2000,
-                    timerProgressBar: true,
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                })
+                toast.success(`Meta atualizada para ${newValue} contatos/dia`)
             }
         } catch (error) {
             console.error('Erro ao atualizar meta:', error)
@@ -97,20 +78,14 @@ export default function MetaContatoDiaria() {
     }
 
     const handleDismissDay = async (dateStr: string) => {
-        const result = await Swal.fire({
+        const ok = await confirm({
             title: 'Esquecer meta deste dia?',
-            html: `<p style="color: #e5e7eb;">A meta do dia <strong>${formatDate(dateStr)}</strong> será ignorada.</p>`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#6366f1',
-            cancelButtonColor: '#4b5563',
-            confirmButtonText: 'Sim, esquecer',
-            cancelButtonText: 'Cancelar',
-            background: '#1f2937',
-            color: '#f3f4f6',
+            description: `A meta do dia ${formatDateShort(dateStr)} será ignorada.`,
+            confirmLabel: 'Sim, esquecer',
+            cancelLabel: 'Cancelar',
         })
 
-        if (result.isConfirmed) {
+        if (ok) {
             try {
                 await fetch('/api/metas/contatos-diarios', {
                     method: 'POST',
@@ -118,17 +93,7 @@ export default function MetaContatoDiaria() {
                     body: JSON.stringify({ action: 'esquecer', data: dateStr }),
                 })
                 await fetchMeta()
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Meta do dia esquecida!',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    timerProgressBar: true,
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                })
+                toast.success('Meta do dia esquecida!')
             } catch (error) {
                 console.error('Erro ao esquecer meta:', error)
             }
@@ -136,20 +101,15 @@ export default function MetaContatoDiaria() {
     }
 
     const handleDismissAll = async () => {
-        const result = await Swal.fire({
+        const ok = await confirm({
             title: 'Esquecer todas as metas pendentes?',
-            html: `<p style="color: #e5e7eb;">Todas as metas acumuladas dos dias anteriores serão ignoradas.</p>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#6366f1',
-            cancelButtonColor: '#4b5563',
-            confirmButtonText: 'Sim, esquecer tudo',
-            cancelButtonText: 'Cancelar',
-            background: '#1f2937',
-            color: '#f3f4f6',
+            description: 'Todas as metas acumuladas dos dias anteriores serão ignoradas.',
+            confirmLabel: 'Sim, esquecer tudo',
+            cancelLabel: 'Cancelar',
+            confirmVariant: 'danger',
         })
 
-        if (result.isConfirmed) {
+        if (ok) {
             try {
                 await fetch('/api/metas/contatos-diarios', {
                     method: 'POST',
@@ -157,17 +117,7 @@ export default function MetaContatoDiaria() {
                     body: JSON.stringify({ action: 'esquecer_todos' }),
                 })
                 await fetchMeta()
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Metas pendentes esquecidas!',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    timerProgressBar: true,
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                })
+                toast.success('Metas pendentes esquecidas!')
             } catch (error) {
                 console.error('Erro ao esquecer metas:', error)
             }
@@ -340,7 +290,7 @@ export default function MetaContatoDiaria() {
                                 <div className="flex items-center gap-2">
                                     <Flame className="w-4 h-4 text-amber-500" />
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        {formatDate(day.data)}
+                                        {formatDateShort(day.data)}
                                     </span>
                                     <span className="text-xs text-gray-500 dark:text-gray-400">
                                         ({day.feitos}/{day.meta} feitos)

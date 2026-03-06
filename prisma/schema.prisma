@@ -36,6 +36,7 @@ model User {
   username     String   @unique
   passwordHash String
   role         String   @default("user")
+  activeSessionId String?
   subscriptionProvider     String?
   subscriptionExternalId   String?  @unique
   subscriptionStatus       String   @default("inactive")
@@ -120,6 +121,7 @@ model GoalSnapshot {
 
 model Cliente {
   id                   String   @id @default(cuid())
+  numero               Int      @unique @default(autoincrement())
   userId               String
   nome                 String
   email                String?
@@ -166,11 +168,13 @@ model Contato {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, clienteId])
   @@map("contatos")
 }
 
 model Oportunidade {
   id                     String    @id @default(cuid())
+  numero                 Int       @unique @default(autoincrement())
   userId                 String
   titulo                 String
   descricao              String?
@@ -200,6 +204,7 @@ model Oportunidade {
 
   @@unique([id, userId])
   @@index([userId])
+  @@index([userId, clienteId])
   @@index([userId, status, createdAt])
   @@map("oportunidades")
 }
@@ -270,6 +275,8 @@ model Tarefa {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, clienteId])
+  @@index([userId, oportunidadeId])
   @@index([userId, status, prioridade, createdAt])
   @@map("tarefas")
 }
@@ -531,6 +538,7 @@ model ContaReceber {
   movimentos   MovimentoFinanceiro[]
 
   @@unique([id, userId])
+  @@index([userId, oportunidadeId])
   @@index([userId, ambiente, tipo, status, dataVencimento])
   @@index([userId, recorrenteMensal, recorrenciaAtiva])
   @@index([userId, createdAt])

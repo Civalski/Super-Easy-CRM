@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        const { searchParams } = new URL(request.url)
+      const { searchParams } = new URL(request.url)
         const query = searchParams.get('q')?.trim() || ''
         const context = searchParams.get('context')?.trim()
         const useCompactRecentList = context === 'oportunidade'
@@ -139,12 +135,13 @@ export async function GET(request: NextRequest) {
             })),
         ]
 
-        return NextResponse.json(resultados)
+      return NextResponse.json(resultados)
     } catch (error) {
-        console.error('Erro ao buscar pessoas:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar pessoas' },
-            { status: 500 }
-        )
+      console.error('Erro ao buscar pessoas:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar pessoas' },
+        { status: 500 }
+      )
     }
+  })
 }

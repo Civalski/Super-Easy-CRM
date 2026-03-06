@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -13,15 +13,10 @@ interface RouteParams {
 
 // GET /api/prospectos/[id] - Busca prospecto por ID
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        const prospecto = await prisma.prospecto.findFirst({
+      const prospecto = await prisma.prospecto.findFirst({
             where: { id, userId },
             include: {
                 cliente: true
@@ -35,26 +30,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        return NextResponse.json(prospecto);
+      return NextResponse.json(prospecto);
     } catch (error) {
-        console.error('Erro ao buscar prospecto:', error);
-        return NextResponse.json(
-            { error: 'Erro ao buscar prospecto' },
-            { status: 500 }
-        );
+      console.error('Erro ao buscar prospecto:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar prospecto' },
+        { status: 500 }
+      );
     }
+  });
 }
 
 // PUT /api/prospectos/[id] - Atualiza prospecto
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id } = await params;
-        const body = await request.json();
+      const body = await request.json();
 
         // Campos permitidos para atualização
         const { status, observacoes, prioridade, ultimoContato } = body;
@@ -81,27 +73,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             include: { cliente: true }
         });
 
-        return NextResponse.json(prospecto);
+      return NextResponse.json(prospecto);
     } catch (error) {
-        console.error('Erro ao atualizar prospecto:', error);
-        return NextResponse.json(
-            { error: 'Erro ao atualizar prospecto' },
-            { status: 500 }
-        );
+      console.error('Erro ao atualizar prospecto:', error);
+      return NextResponse.json(
+        { error: 'Erro ao atualizar prospecto' },
+        { status: 500 }
+      );
     }
+  });
 }
 
 // DELETE /api/prospectos/[id] - Remove prospecto
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        const result = await prisma.prospecto.deleteMany({
+      const result = await prisma.prospecto.deleteMany({
             where: { id, userId }
         });
 
@@ -112,12 +100,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Erro ao remover prospecto:', error);
-        return NextResponse.json(
-            { error: 'Erro ao remover prospecto' },
-            { status: 500 }
-        );
+      console.error('Erro ao remover prospecto:', error);
+      return NextResponse.json(
+        { error: 'Erro ao remover prospecto' },
+        { status: 500 }
+      );
     }
+  });
 }

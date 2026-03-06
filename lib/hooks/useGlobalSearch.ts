@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export interface ClienteResultado {
     id: string;
+    numero?: number;
     nome: string;
     email: string | null;
     empresa: string | null;
@@ -12,6 +13,7 @@ export interface ClienteResultado {
 
 export interface OportunidadeResultado {
     id: string;
+    numero: number;
     titulo: string;
     cliente: {
         nome: string;

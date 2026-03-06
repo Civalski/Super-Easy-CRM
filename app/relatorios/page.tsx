@@ -1,21 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, AlertTriangle, TrendingUp, Loader2 } from 'lucide-react'
+import { BarChart3, AlertTriangle, TrendingUp, Loader2 } from '@/lib/icons'
 import type { FunnelReport, LossesReport, PerformanceReport } from '@/types/reports'
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value || 0)
-}
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('pt-BR')
-}
+import { formatCurrency, formatDate } from '@/lib/format'
 
 export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true)

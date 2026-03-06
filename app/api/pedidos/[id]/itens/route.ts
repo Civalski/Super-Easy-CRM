@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { calculateItemSubtotal, recalculatePedidoTotals } from '@/lib/pedidos/totals'
 import { roundMoney } from '@/lib/money'
 
@@ -16,14 +16,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const pedido = await prisma.pedido.findFirst({
-      where: { id: (await params).id, userId },
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const pedido = await prisma.pedido.findFirst({
+        where: { id, userId },
       select: { id: true, totalBruto: true, totalDesconto: true, totalLiquido: true },
     })
 
@@ -32,7 +29,7 @@ export async function GET(
     }
 
     const itens = await prisma.pedidoItem.findMany({
-      where: { pedidoId: (await params).id, userId },
+      where: { pedidoId: id, userId },
       include: {
         produtoServico: {
           select: {
@@ -49,26 +46,24 @@ export async function GET(
       pedido,
       itens,
     })
-  } catch (error) {
-    console.error('Erro ao listar itens do pedido:', error)
-    return NextResponse.json(
-      { error: 'Erro ao listar itens do pedido' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao listar itens do pedido:', error)
+      return NextResponse.json(
+        { error: 'Erro ao listar itens do pedido' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -92,7 +87,7 @@ export async function POST(
     }
 
     const pedido = await prisma.pedido.findFirst({
-      where: { id: (await params).id, userId },
+      where: { id: id, userId },
       select: { id: true },
     })
     if (!pedido) {
@@ -119,7 +114,7 @@ export async function POST(
       const item = await tx.pedidoItem.create({
         data: {
           userId,
-          pedidoId: (await params).id,
+          pedidoId: id,
           produtoServicoId: produtoServicoId || null,
           descricao,
           quantidade,
@@ -129,31 +124,29 @@ export async function POST(
         },
       })
 
-      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
+      const totals = await recalculatePedidoTotals(tx, userId, id)
       return { item, totals }
     })
 
     return NextResponse.json(created, { status: 201 })
-  } catch (error) {
-    console.error('Erro ao adicionar item:', error)
-    return NextResponse.json(
-      { error: 'Erro ao adicionar item' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao adicionar item:', error)
+      return NextResponse.json(
+        { error: 'Erro ao adicionar item' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -165,7 +158,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.pedidoItem.findFirst({
-      where: { id: itemId, pedidoId: (await params).id, userId },
+      where: { id: itemId, pedidoId: id, userId },
     })
 
     if (!existing) {
@@ -200,31 +193,29 @@ export async function PATCH(
         },
       })
 
-      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
+      const totals = await recalculatePedidoTotals(tx, userId, id)
       return { item, totals }
     })
 
     return NextResponse.json(result)
-  } catch (error) {
-    console.error('Erro ao atualizar item:', error)
-    return NextResponse.json(
-      { error: 'Erro ao atualizar item' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao atualizar item:', error)
+      return NextResponse.json(
+        { error: 'Erro ao atualizar item' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
     const itemId = searchParams.get('itemId')?.trim()
     if (!itemId) {
       return NextResponse.json({ error: 'itemId e obrigatorio' }, { status: 400 })
@@ -232,12 +223,12 @@ export async function DELETE(
 
     const deleted = await prisma.$transaction(async (tx) => {
       const result = await tx.pedidoItem.deleteMany({
-        where: { id: itemId, userId, pedidoId: (await params).id },
+        where: { id: itemId, userId, pedidoId: id },
       })
 
       if (result.count === 0) return null
 
-      const totals = await recalculatePedidoTotals(tx, userId, (await params).id)
+      const totals = await recalculatePedidoTotals(tx, userId, id)
       return { deleted: result.count, totals }
     })
 
@@ -246,12 +237,13 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, ...deleted })
-  } catch (error) {
-    console.error('Erro ao excluir item:', error)
-    return NextResponse.json(
-      { error: 'Erro ao excluir item' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao excluir item:', error)
+      return NextResponse.json(
+        { error: 'Erro ao excluir item' },
+        { status: 500 }
+      )
+    }
+  })
 }
 

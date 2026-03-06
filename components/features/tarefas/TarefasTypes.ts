@@ -1,7 +1,7 @@
 /**
  * Configurações de status e prioridade para tarefas
  */
-import { Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Clock, AlertCircle, CheckCircle2 } from '@/lib/icons'
 
 export interface Tarefa {
     id: string

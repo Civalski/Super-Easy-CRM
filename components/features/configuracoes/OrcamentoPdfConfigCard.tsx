@@ -4,7 +4,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { FileText, Save, Loader2, Upload, X } from 'lucide-react'
+import { FileText, Save, Loader2, Upload, X } from '@/lib/icons'
 
 interface PdfConfig {
   nomeEmpresa?: string

@@ -4,7 +4,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ShieldAlert } from 'lucide-react'
+import { ShieldAlert } from '@/lib/icons'
 import {
   CONFIRM_BEFORE_DELETE_EVENT,
   getConfirmBeforeDeletePreference,

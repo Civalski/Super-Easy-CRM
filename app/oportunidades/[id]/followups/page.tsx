@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Clock3, Send, Loader2 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { ArrowLeft, Clock3, Send, Loader2 } from '@/lib/icons'
+import { toast } from '@/lib/toast'
 
 interface FollowUpTemplate {
   id: string
@@ -109,7 +109,7 @@ export default function OportunidadeFollowupsPage() {
     event.preventDefault()
     if (!oportunidadeId) return
     if (!form.mensagem.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Mensagem obrigatoria' })
+      toast.warning('Mensagem obrigatoria')
       return
     }
 
@@ -136,11 +136,7 @@ export default function OportunidadeFollowupsPage() {
 
       fetchData()
     } catch (error: unknown) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao registrar follow-up.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao registrar follow-up.' })
     } finally {
       setSaving(false)
     }

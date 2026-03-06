@@ -1,17 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle } from 'lucide-react'
+import { readExcelToObjects } from '@/lib/excel'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle, Upload, Plus, PhoneCall } from '@/lib/icons'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
-
-// Fallback for formatCurrency if not found
-const formatMoney = (value: number | null) => {
-    if (value === null || value === undefined) return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value)
-}
+import { SideCreateDrawer } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface Oportunidade {
     id: string
@@ -24,6 +20,7 @@ interface Oportunidade {
         email: string | null
         telefone: string | null
         empresa: string | null
+        cnpj?: string | null
     }
     type?: 'prospecto' | 'oportunidade'
     subStatus?: string
@@ -44,8 +41,15 @@ const TABS = [
 ]
 
 const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
+/** Limite para o link wa.me suportar o parâmetro text (URL segura) */
+const MAX_WHATSAPP_MESSAGE_LENGTH = 1500
+/** Mensagem padrão: usuário deve substituir o espaço entre aspas pela profissão */
+const DEFAULT_WHATSAPP_MESSAGE = 'Olá, você trabalha com " "?'
+/** Mensagem padrão antiga: migrar para a nova ao carregar */
+const LEGACY_DEFAULT_MESSAGE = 'ola {nome} como vai?'
 
 export default function GruposPage() {
+    const { prompt } = useConfirm()
     const [activeTab, setActiveTab] = useState('sem_contato')
     const [page, setPage] = useState(1)
     const [data, setData] = useState<Oportunidade[]>([])
@@ -61,8 +65,10 @@ export default function GruposPage() {
     const [detailModal, setDetailModal] = useState<any | null>(null)
     const [detailLoading, setDetailLoading] = useState(false)
     const [showMessageConfig, setShowMessageConfig] = useState(false)
-    const [whatsAppMessages, setWhatsAppMessages] = useState<string[]>(['', '', ''])
-    const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<string[]>(['', '', ''])
+    const [whatsAppMessages, setWhatsAppMessages] = useState<string[]>([DEFAULT_WHATSAPP_MESSAGE])
+    const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<string[]>([DEFAULT_WHATSAPP_MESSAGE])
+    const [contatosIniciadosHoje, setContatosIniciadosHoje] = useState<number | null>(null)
+    const [metaContatosHoje, setMetaContatosHoje] = useState<number | null>(null)
 
     const handleViewDetails = useCallback(async (item: Oportunidade) => {
         if (item.type === 'prospecto') {
@@ -117,9 +123,26 @@ export default function GruposPage() {
         }
     }, [activeTab, page])
 
+    const fetchStats = useCallback(async () => {
+        try {
+            const res = await fetch('/api/metas/contatos-diarios')
+            if (res.ok) {
+                const json = await res.json()
+                setContatosIniciadosHoje(json.contatosHoje ?? 0)
+                setMetaContatosHoje(json.metaDiaria ?? null)
+            }
+        } catch (error) {
+            console.error('Erro ao buscar stats do funil:', error)
+        }
+    }, [])
+
     useEffect(() => {
         fetchGrupos()
     }, [fetchGrupos])
+
+    useEffect(() => {
+        fetchStats()
+    }, [fetchStats])
 
     useEffect(() => {
         try {
@@ -129,13 +152,32 @@ export default function GruposPage() {
             const parsed = JSON.parse(raw)
             if (!Array.isArray(parsed)) return
 
-            const normalized = [0, 1, 2].map((index) => {
-                const value = parsed[index]
-                return typeof value === 'string' ? value : ''
-            })
+            const normalized = parsed
+                .filter((v: unknown) => typeof v === 'string')
+                .map((v: string) => v.trim())
+            const trimmed: string[] = []
+            for (let i = 0; i < normalized.length; i++) {
+                trimmed.push(normalized[i])
+            }
+            while (trimmed.length > 1 && trimmed[trimmed.length - 1] === '') {
+                trimmed.pop()
+            }
+            if (trimmed.length === 0) trimmed.push(DEFAULT_WHATSAPP_MESSAGE)
 
-            setWhatsAppMessages(normalized)
-            setDraftWhatsAppMessages(normalized)
+            const isLegacyDefault = trimmed.length === 1 && trimmed[0].toLowerCase() === LEGACY_DEFAULT_MESSAGE.toLowerCase()
+            if (isLegacyDefault) {
+                const migrated = [DEFAULT_WHATSAPP_MESSAGE]
+                setWhatsAppMessages(migrated)
+                setDraftWhatsAppMessages(migrated)
+                window.localStorage.setItem(WHATSAPP_MESSAGES_STORAGE_KEY, JSON.stringify(migrated))
+                return
+            }
+
+            const hasContent = trimmed.some((m) => m.length > 0)
+            if (hasContent) {
+                setWhatsAppMessages(trimmed)
+                setDraftWhatsAppMessages(trimmed)
+            }
         } catch (error) {
             console.error('Erro ao carregar mensagens de WhatsApp:', error)
         }
@@ -144,6 +186,86 @@ export default function GruposPage() {
     const handleTabChange = (value: string) => {
         setActiveTab(value)
         setPage(1) // Reset page on tab change
+    }
+
+    const handleImport = async (file: File) => {
+        let loadingToastId: string | number | undefined = toast.loading('Lendo arquivo...')
+        let importToastId: string | number | undefined
+
+        try {
+            const fileName = typeof file?.name === 'string' ? file.name : ''
+            const lowerName = fileName.toLowerCase()
+            if (!lowerName.endsWith('.xlsx')) {
+                throw new Error('Formato nao suportado. Use apenas arquivo .xlsx')
+            }
+
+            console.info('[grupos/importacao] iniciando leitura de arquivo', {
+                fileName,
+                fileSize: file.size,
+                fileType: file.type,
+            })
+
+            const data = await file.arrayBuffer()
+            const jsonData = await readExcelToObjects(data)
+
+            if (jsonData.length === 0) {
+                throw new Error('O arquivo esta vazio')
+            }
+
+            toast.dismiss(loadingToastId)
+
+            const batchSize = await prompt({
+                title: 'Dividir em Lotes',
+                label: 'Defina quantos contatos frios devem ficar em cada lote',
+                placeholder: '30',
+                defaultValue: '30',
+                confirmLabel: 'Importar',
+                cancelLabel: 'Cancelar',
+            })
+
+            if (!batchSize) return
+
+            const batchNum = Number.parseInt(batchSize, 10)
+            if (!batchNum || batchNum <= 0) {
+                toast.error('Valor invalido', { description: 'Informe um numero maior que 0' })
+                return
+            }
+
+            importToastId = toast.loading(`Importando ${jsonData.length} registros...`)
+
+            const response = await fetch('/api/prospectos/importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    empresas: jsonData,
+                    batchSize: batchNum,
+                    fileName,
+                }),
+            })
+
+            const result = await response.json()
+            toast.dismiss(importToastId)
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao importar dados')
+            }
+
+            toast.success('Importacao concluida!', {
+                description: `${result.importados ?? 0} novos, ${result.duplicados ?? 0} duplicados`,
+            })
+
+            if (activeTab === 'sem_contato' && page === 1) {
+                await fetchGrupos()
+            } else {
+                setActiveTab('sem_contato')
+                setPage(1)
+            }
+        } catch (err) {
+            console.error('[grupos/importacao] falha ao importar', err)
+            toast.dismiss(loadingToastId)
+            toast.dismiss(importToastId)
+            toast.error('Erro na importacao', { description: err instanceof Error ? err.message : 'Nao foi possivel processar o arquivo.' })
+        }
     }
 
     const getRandomWhatsappMessage = (item: Oportunidade) => {
@@ -156,24 +278,40 @@ export default function GruposPage() {
         const selected = activeMessages[Math.floor(Math.random() * activeMessages.length)]
         const nome = item.cliente.nome || ''
         const empresa = item.cliente.empresa || item.cliente.nome || ''
+        const email = item.cliente.email || ''
+        const telefone = item.cliente.telefone || ''
+        const cnpj = item.cliente.cnpj || ''
 
-        return selected
+        let result = selected
             .replace(/\{nome\}/gi, nome)
             .replace(/\{empresa\}/gi, empresa)
+            .replace(/\{email\}/gi, email)
+            .replace(/\{telefone\}/gi, telefone)
+            .replace(/\{cnpj\}/gi, cnpj)
+
+        if (result.length > MAX_WHATSAPP_MESSAGE_LENGTH) {
+            result = result.slice(0, MAX_WHATSAPP_MESSAGE_LENGTH)
+        }
+        return result
     }
 
     const handleOpenMessageConfig = () => {
-        setDraftWhatsAppMessages(whatsAppMessages)
+        setDraftWhatsAppMessages([...whatsAppMessages].length ? [...whatsAppMessages] : [''])
         setShowMessageConfig(true)
     }
 
     const handleCancelMessageConfig = () => {
-        setDraftWhatsAppMessages(whatsAppMessages)
+        setDraftWhatsAppMessages([...whatsAppMessages])
         setShowMessageConfig(false)
     }
 
     const handleSaveMessageConfig = () => {
-        const normalized = [0, 1, 2].map((index) => (draftWhatsAppMessages[index] || '').trim())
+        const trimmed = draftWhatsAppMessages.map((m) => m.trim().slice(0, MAX_WHATSAPP_MESSAGE_LENGTH))
+        let normalized = trimmed
+        while (normalized.length > 1 && normalized[normalized.length - 1] === '') {
+            normalized = normalized.slice(0, -1)
+        }
+        if (normalized.length === 0) normalized = ['']
 
         setWhatsAppMessages(normalized)
         setDraftWhatsAppMessages(normalized)
@@ -188,26 +326,51 @@ export default function GruposPage() {
         setShowMessageConfig(false)
     }
 
+    const handleAddAnotherMessage = () => {
+        setDraftWhatsAppMessages([...draftWhatsAppMessages, ''])
+    }
+
+    const handleRemoveDraftMessage = (index: number) => {
+        if (draftWhatsAppMessages.length <= 1) return
+        const next = draftWhatsAppMessages.filter((_, i) => i !== index)
+        setDraftWhatsAppMessages(next)
+    }
+
     const handleStartContact = async (item: Oportunidade) => {
-        // Open WhatsApp link with the lead's phone number
-        if (item.cliente.telefone) {
-            const cleanPhone = item.cliente.telefone.replace(/\D/g, '')
-            const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
-            const message = getRandomWhatsappMessage(item)
-            const messageQuery = message ? `?text=${encodeURIComponent(message)}` : ''
-            window.open(`https://wa.me/${phoneWithCountry}${messageQuery}`, '_blank')
+        if (!item.cliente.telefone) return
+
+        const message = getRandomWhatsappMessage(item)
+        const profissaoEmBranco = /"\s+"/.test(message)
+
+        if (profissaoEmBranco) {
+            toast.warning('Personalize a mensagem', {
+                description: 'A mensagem contém a profissão em branco (aspas vazias). Substitua o espaço entre aspas pela profissão do lead em Personalizar mensagem.',
+            })
+            setShowMessageConfig(true)
+            return
         }
+
+        const cleanPhone = item.cliente.telefone.replace(/\D/g, '')
+        const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
+        const messageQuery = message ? `?text=${encodeURIComponent(message)}` : ''
+        window.open(`https://wa.me/${phoneWithCountry}${messageQuery}`, '_blank')
+
+        if (activeTab !== 'sem_contato' || item.type !== 'prospecto') return
 
         setUpdatingId(item.id)
         try {
             const response = await fetch(`/api/prospectos/${item.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'em_contato' })
+                body: JSON.stringify({
+                    status: 'em_contato',
+                    ultimoContato: new Date().toISOString(),
+                }),
             })
 
             if (response.ok) {
                 await fetchGrupos()
+                await fetchStats()
             } else {
                 alert('Erro ao iniciar contato')
             }
@@ -338,6 +501,40 @@ export default function GruposPage() {
 
     const activeMessageCount = whatsAppMessages.filter((message) => message.trim().length > 0).length
 
+    const handleDefinirMetaContatos = async () => {
+        const value = await prompt({
+            title: 'Meta de contatos hoje',
+            label: 'Quantos contatos você deseja fazer hoje?',
+            placeholder: '10',
+            defaultValue: String(metaContatosHoje ?? 10),
+            confirmLabel: 'Definir',
+            cancelLabel: 'Cancelar',
+        })
+        if (!value) return
+        const num = Number(value)
+        if (!Number.isInteger(num) || num < 1) {
+            toast.warning('Valor inválido', { description: 'Informe um número inteiro maior que zero.' })
+            return
+        }
+        try {
+            const res = await fetch('/api/metas/contatos-diarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: num }),
+            })
+            if (res.ok) {
+                setMetaContatosHoje(num)
+                await fetchStats()
+            } else {
+                const err = await res.json().catch(() => ({}))
+                toast.error('Erro', { description: err.error || 'Não foi possível salvar a meta.' })
+            }
+        } catch (error) {
+            console.error('Erro ao definir meta:', error)
+            toast.error('Erro', { description: 'Não foi possível salvar a meta.' })
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -347,14 +544,43 @@ export default function GruposPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Gestão de Leads
+                            Funil de Vendas
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Gerencie seus leads e pipeline de vendas
+                            Gerencie contatos frios e oportunidades
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleDefinirMetaContatos}
+                        className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-800/50 transition-colors cursor-pointer"
+                        title={metaContatosHoje != null ? 'Alterar meta de contatos hoje' : 'Definir quantos contatos fazer hoje'}
+                    >
+                        <PhoneCall size={16} className="text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Contatos hoje:</span>
+                        <span className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                            {contatosIniciadosHoje ?? '—'}
+                            {metaContatosHoje != null ? ` / ${metaContatosHoje}` : ''}
+                        </span>
+                    </button>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800">
+                        <Upload size={16} />
+                        Importar XLSX
+                        <input
+                            type="file"
+                            accept=".xlsx"
+                            className="hidden"
+                            onChange={(event) => {
+                                const file = event.target.files?.[0]
+                                if (file) {
+                                    void handleImport(file)
+                                }
+                                event.target.value = ''
+                            }}
+                        />
+                    </label>
                     <button
                         onClick={handleOpenMessageConfig}
                         className="inline-flex items-center px-3 py-2 border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
@@ -362,61 +588,108 @@ export default function GruposPage() {
                         Personalizar mensagem
                     </button>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {activeMessageCount > 0
-                            ? `${activeMessageCount} mensagem(ns) ativa(s)`
-                            : 'Sem mensagem personalizada'}
+                        {activeMessageCount === 0
+                            ? 'Sem mensagem personalizada'
+                            : activeMessageCount === 1
+                                ? '1 mensagem ativa'
+                                : `${activeMessageCount} mensagens ativas (aleatório)`}
                     </span>
                 </div>
             </div>
 
             {showMessageConfig && (
-                <div className="crm-card p-4 space-y-3">
-                    <div>
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                            Mensagens aleatorias do WhatsApp
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Configure ate 3 mensagens. Ao clicar em &quot;Iniciar Contato&quot;, o sistema envia uma delas de forma aleatoria.
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Dica: use {'{nome}'} e {'{empresa}'} para personalizar o texto.
-                        </p>
-                    </div>
-
-                    {[0, 1, 2].map((index) => (
-                        <div key={index}>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-                                Mensagem {index + 1}
-                            </label>
-                            <textarea
-                                value={draftWhatsAppMessages[index] || ''}
-                                onChange={(e) => {
-                                    const next = [...draftWhatsAppMessages]
-                                    next[index] = e.target.value
-                                    setDraftWhatsAppMessages(next)
-                                }}
-                                rows={3}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-                                placeholder="Digite uma mensagem para usar no WhatsApp..."
-                            />
+                <SideCreateDrawer open onClose={handleCancelMessageConfig} maxWidthClass="max-w-lg">
+                    <div className="flex h-full flex-col">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Personalizar mensagem WhatsApp
+                                </h2>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                    Use no &quot;Iniciar Contato&quot;. Máx. {MAX_WHATSAPP_MESSAGE_LENGTH} caracteres por mensagem (limite do link).
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleCancelMessageConfig}
+                                className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                                aria-label="Fechar"
+                            >
+                                <X size={18} />
+                            </button>
                         </div>
-                    ))}
 
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            onClick={handleCancelMessageConfig}
-                            className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={handleSaveMessageConfig}
-                            className="px-3 py-2 text-sm font-medium rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
-                        >
-                            Salvar mensagens
-                        </button>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Dica: use {'{nome}'}, {'{empresa}'}, {'{email}'}, {'{telefone}'} e {'{cnpj}'} para personalizar.
+                            </p>
+
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Substitua o espaço entre aspas pela profissão do lead. Se deixar em branco, o sistema pedirá para alterar antes de iniciar contato.
+                            </p>
+
+                            {draftWhatsAppMessages.map((text, index) => (
+                                <div key={index}>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                            Mensagem {index + 1}
+                                        </label>
+                                        {draftWhatsAppMessages.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveDraftMessage(index)}
+                                                className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                            >
+                                                Remover
+                                            </button>
+                                        )}
+                                    </div>
+                                    <textarea
+                                        value={text}
+                                        maxLength={MAX_WHATSAPP_MESSAGE_LENGTH}
+                                        onChange={(e) => {
+                                            const next = [...draftWhatsAppMessages]
+                                            next[index] = e.target.value
+                                            setDraftWhatsAppMessages(next)
+                                        }}
+                                        rows={4}
+                                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        placeholder="Digite a mensagem para o WhatsApp..."
+                                    />
+                                    <p className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
+                                        {text.length} / {MAX_WHATSAPP_MESSAGE_LENGTH}
+                                    </p>
+                                </div>
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={handleAddAnotherMessage}
+                                className="inline-flex items-center gap-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                                <Plus size={16} />
+                                Acrescentar outra mensagem (enviar aleatoriamente)
+                            </button>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 border-t border-gray-200 dark:border-gray-700 p-4">
+                            <button
+                                type="button"
+                                onClick={handleCancelMessageConfig}
+                                className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveMessageConfig}
+                                className="px-3 py-2 text-sm font-medium rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+                            >
+                                Salvar mensagens
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </SideCreateDrawer>
             )}
 
             {/* Tabs */}
@@ -498,7 +771,7 @@ export default function GruposPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900 dark:text-white font-medium">
-                                                {formatMoney(item.valor)}
+                                                {formatCurrency(item.valor)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -510,7 +783,7 @@ export default function GruposPage() {
                                                     <Eye className="w-3 h-3 mr-1.5" />
                                                     Ver mais
                                                 </button>
-                                                {item.type === 'prospecto' && item.subStatus === 'novo' && (
+                                                {item.type === 'prospecto' && activeTab === 'sem_contato' && item.cliente.telefone && (
                                                     <button
                                                         onClick={() => handleStartContact(item)}
                                                         disabled={updatingId === item.id}
@@ -902,6 +1175,9 @@ export default function GruposPage() {
         </div>
     )
 }
+
+
+
 
 
 

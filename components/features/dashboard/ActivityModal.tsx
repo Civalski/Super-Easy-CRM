@@ -14,11 +14,12 @@ import {
     Building2,
     Mail,
     Phone
-} from 'lucide-react';
+} from '@/lib/icons';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Button from '@/components/common/Button';
-import Swal from 'sweetalert2';
+import { toast } from '@/lib/toast';
+import { useConfirm } from '@/components/common';
 import type { DashboardActivity, DashboardActivityDetails } from '@/types/dashboard';
 import { getProbabilityBadgeClass, getProbabilityLabel } from '@/lib/domain/probabilidade';
 
@@ -38,6 +39,7 @@ export default function ActivityModal({
     onUpdate
 }: ActivityModalProps) {
     const router = useRouter();
+    const { confirm } = useConfirm();
     const [isProcessing, setIsProcessing] = useState(false);
 
     if (!isOpen || !activity) return null;
@@ -74,39 +76,13 @@ export default function ActivityModal({
             });
 
             if (response.ok) {
-                // Success Toast
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                })
-
-                Toast.fire({
-                    icon: 'success',
-                    title: 'Tarefa concluída com sucesso!'
-                })
-
+                toast.success('Tarefa concluída com sucesso!');
                 onUpdate();
                 onClose();
             }
         } catch (error) {
             console.error('Erro ao finalizar tarefa:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Não foi possível finalizar a tarefa.',
-                background: '#1f2937',
-                color: '#f3f4f6',
-                confirmButtonColor: '#6366f1',
-            });
+            toast.error('Erro!', { description: 'Não foi possível finalizar a tarefa.' });
         } finally {
             setIsProcessing(false);
         }
@@ -115,20 +91,15 @@ export default function ActivityModal({
     const handleDelete = async () => {
         const itemTypeLabel = type === 'tarefa' ? 'tarefa' : type === 'oportunidade' ? 'orçamento' : 'cliente';
 
-        const result = await Swal.fire({
+        const ok = await confirm({
             title: `Excluir ${itemTypeLabel}?`,
-            text: "Esta ação não poderá ser desfeita.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#4b5563',
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar',
-            background: '#1f2937',
-            color: '#f3f4f6',
+            description: "Esta ação não poderá ser desfeita.",
+            confirmLabel: 'Sim, excluir',
+            cancelLabel: 'Cancelar',
+            confirmVariant: 'danger',
         });
 
-        if (!result.isConfirmed) return;
+        if (!ok) return;
 
         try {
             setIsProcessing(true);
@@ -142,27 +113,13 @@ export default function ActivityModal({
             });
 
             if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Excluído!',
-                    text: 'O item foi excluído com sucesso.',
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                    confirmButtonColor: '#6366f1',
-                });
+                toast.success('Excluído!', { description: 'O item foi excluído com sucesso.' });
                 onUpdate();
                 onClose();
             }
         } catch (error) {
             console.error('Erro ao excluir item:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Ocorreu um erro ao excluir o item.',
-                background: '#1f2937',
-                color: '#f3f4f6',
-                confirmButtonColor: '#6366f1',
-            });
+            toast.error('Erro!', { description: 'Ocorreu um erro ao excluir o item.' });
         } finally {
             setIsProcessing(false);
         }

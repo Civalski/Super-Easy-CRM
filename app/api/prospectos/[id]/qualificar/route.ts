@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { logBusinessEvent } from '@/lib/observability/audit'
 
 export const dynamic = 'force-dynamic'
@@ -10,15 +10,10 @@ interface RouteParams {
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { id } = await params
-
-    const exists = await prisma.prospecto.findFirst({
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const exists = await prisma.prospecto.findFirst({
       where: { id, userId },
       select: { id: true, status: true },
     })
@@ -56,11 +51,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       prospecto,
       mensagem: 'Prospecto marcado como em potencial com sucesso',
     })
-  } catch (error) {
-    console.error('Erro ao qualificar prospecto:', error)
-    return NextResponse.json(
-      { error: 'Erro ao qualificar prospecto' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao qualificar prospecto:', error)
+      return NextResponse.json(
+        { error: 'Erro ao qualificar prospecto' },
+        { status: 500 }
+      )
+    }
+  })
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 import { processFinanceAutomation } from '@/lib/financeiro/automation'
 import { moneyRemaining, roundMoney } from '@/lib/money'
@@ -13,12 +13,9 @@ function monthKey(date: Date) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const access = await getUserSubscriptionAccess(userId)
+  return withAuth(request, async (userId) => {
+    try {
+      const access = await getUserSubscriptionAccess(userId)
     if (!access.schemaReady) {
       return NextResponse.json(
         {
@@ -212,8 +209,9 @@ export async function GET(request: NextRequest) {
       totals,
       series,
     })
-  } catch (error) {
-    console.error('Erro ao gerar fluxo de caixa:', error)
-    return NextResponse.json({ error: 'Erro ao gerar fluxo de caixa' }, { status: 500 })
-  }
+    } catch (error) {
+      console.error('Erro ao gerar fluxo de caixa:', error)
+      return NextResponse.json({ error: 'Erro ao gerar fluxo de caixa' }, { status: 500 })
+    }
+  })
 }

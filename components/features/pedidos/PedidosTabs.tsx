@@ -1,4 +1,4 @@
-import { CheckCircle2, Truck, X } from 'lucide-react'
+import { CheckCircle2, Truck, X } from '@/lib/icons'
 import type { PedidoTab } from './types'
 
 interface PedidosTabsProps {

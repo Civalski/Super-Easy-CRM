@@ -1,7 +1,8 @@
 'use client'
 
-import { LineChart } from 'lucide-react'
+import { LineChart } from '@/lib/icons'
 import { useRouter } from 'next/navigation'
+import { formatCurrency, formatMonthLabel } from '@/lib/format'
 
 interface FluxoSerie {
   month: string
@@ -25,19 +26,6 @@ interface FluxoData {
 
 interface FluxoCaixaResumoProps {
   fluxo: FluxoData | null
-}
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
-
-const formatMonthLabel = (value: string) => {
-  const match = /^(\d{4})-(\d{2})$/.exec(value)
-  if (!match) return value
-
-  const year = match[1]
-  const monthIndex = Number(match[2]) - 1
-  const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
-  return `${year}/${months[monthIndex] || match[2]}`
 }
 
 export function FluxoCaixaResumo({ fluxo }: FluxoCaixaResumoProps) {

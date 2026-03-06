@@ -34,9 +34,9 @@ export function useMotivosPerda() {
   const [maxCustom, setMaxCustom] = useState(MAX_CUSTOM)
   const [loading, setLoading] = useState(true)
 
-  const fetchMotivos = useCallback(async () => {
+  const fetchMotivos = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/motivos-perda')
+      const response = await fetch('/api/motivos-perda', { signal })
       if (!response.ok) {
         throw new Error('Erro ao buscar motivos de perda')
       }
@@ -50,6 +50,7 @@ export function useMotivosPerda() {
         typeof data?.maxCustom === 'number' ? data.maxCustom : MAX_CUSTOM
       )
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Erro ao carregar motivos de perda:', error)
       setMotivos(DEFAULT_MOTIVOS)
       setCustomCount(0)
@@ -60,7 +61,9 @@ export function useMotivosPerda() {
   }, [])
 
   useEffect(() => {
-    fetchMotivos()
+    const controller = new AbortController()
+    fetchMotivos(controller.signal)
+    return () => controller.abort()
   }, [fetchMotivos])
 
   const addMotivo = useCallback(

@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/common'
-import { Plus, CheckSquare } from 'lucide-react'
+import { Plus, CheckSquare } from '@/lib/icons'
 
 interface TarefasHeaderProps {
     onCreateClick?: () => void

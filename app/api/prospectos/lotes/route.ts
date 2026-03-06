@@ -6,16 +6,12 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // Buscar lotes com contagem de leads frios (lead_frio OU novo sem contato)
+      // Buscar lotes com contagem de leads frios (lead_frio OU novo sem contato)
         const lotesSummary = await prisma.prospecto.groupBy({
             by: ['lote'],
             where: {
@@ -62,16 +58,17 @@ export async function GET(request: NextRequest) {
 
         const totalGeral = lotes.reduce((acc, l) => acc + l.total, 0);
 
-        return NextResponse.json({
-            lotes,
-            totalGeral,
-            totalLotes: lotes.length,
-        });
+      return NextResponse.json({
+        lotes,
+        totalGeral,
+        totalLotes: lotes.length,
+      });
     } catch (error) {
-        console.error('Erro ao buscar lotes:', error);
-        return NextResponse.json(
-            { error: 'Erro ao buscar lotes' },
-            { status: 500 }
-        );
+      console.error('Erro ao buscar lotes:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar lotes' },
+        { status: 500 }
+      );
     }
+  });
 }

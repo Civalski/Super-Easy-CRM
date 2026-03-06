@@ -4,11 +4,16 @@
 'use client'
 
 import { StatCard } from '@/components/common'
-import { Users, Briefcase, Calendar, TrendingUp, TrendingDown } from 'lucide-react'
+import { Users, Briefcase, Calendar, TrendingUp, TrendingDown } from '@/lib/icons'
+import { formatCurrency } from '@/lib/format'
 
 interface DashboardData {
-    clientesCount: number
+    pedidosCount: number
+    pedidosSemPagamentoCount: number
+    pedidosSemPagamentoValor: number
     oportunidadesCount: number
+    orcamentosEmAbertoCount: number
+    orcamentosEmAbertoValor: number
     tarefasCount: number
     valorTotal: number
     valorGanhos: number
@@ -20,12 +25,8 @@ interface DashboardStatsGridProps {
 }
 
 export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
-    const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-        }).format(value || 0)
-
+    const valorPedidosSemPagamentoFormatado = formatCurrency(data.pedidosSemPagamentoValor || 0)
+    const valorOrcamentosEmAbertoFormatado = formatCurrency(data.orcamentosEmAbertoValor || 0)
     const valorTotalFormatado = formatCurrency(data.valorTotal || 0)
     const valorGanhosFormatado = formatCurrency(data.valorGanhos || 0)
     const valorPerdidosFormatado = formatCurrency(data.valorPerdidos || 0)
@@ -33,23 +34,23 @@ export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
             <StatCard
-                title="Total de Clientes"
-                value={data.clientesCount}
+                title="Valor de pedidos sem pagamento"
+                value={valorPedidosSemPagamentoFormatado}
                 icon={Users}
                 color="blue"
-                href="/clientes"
+                href="/pedidos"
                 hoverRing="purple"
             />
             <StatCard
-                title="Orcamentos"
-                value={data.oportunidadesCount}
+                title="Valor de orcamentos em aberto"
+                value={valorOrcamentosEmAbertoFormatado}
                 icon={Briefcase}
                 color="green"
                 href="/oportunidades"
                 hoverRing="purple"
             />
             <StatCard
-                title="Tarefas"
+                title="Tarefas em Aberto"
                 value={data.tarefasCount}
                 icon={Calendar}
                 color="yellow"
@@ -57,19 +58,19 @@ export function DashboardStatsGrid({ data }: DashboardStatsGridProps) {
                 hoverRing="purple"
             />
             <StatCard
-                title="Valor Total"
+                title="Valor total em aberto"
                 value={valorTotalFormatado}
                 icon={TrendingUp}
                 color="purple"
             />
             <StatCard
-                title="Valor Ganho"
+                title="Valor em Vendas"
                 value={valorGanhosFormatado}
                 icon={TrendingUp}
                 color="green"
             />
             <StatCard
-                title="Valor Perdido"
+                title="Valor em Orçamentos Cancelados"
                 value={valorPerdidosFormatado}
                 icon={TrendingDown}
                 color="red"

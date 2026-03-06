@@ -11,9 +11,11 @@ import {
   Search,
   X,
   FilterX,
-} from 'lucide-react'
-import Swal from 'sweetalert2'
+} from '@/lib/icons'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
 import { SideCreateDrawer } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface ProdutoServico {
   id: string
@@ -84,9 +86,6 @@ interface ProdutoStats {
 const PRODUTOS_PAGE_SIZE = 20
 
 const UNIT_OPTIONS = ['UN', 'CX', 'KG', 'M', 'M2', 'M3', 'L', 'HORA', 'DIARIA', 'MES']
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
 
 const parseLocaleNumber = (value: string) => {
   const raw = value.trim().replace(/\s/g, '')
@@ -169,6 +168,7 @@ const buildDefaultForm = (): FormState => ({
 })
 
 export default function ProdutosPage() {
+  const { confirm } = useConfirm()
   const [items, setItems] = useState<ProdutoServico[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -206,14 +206,6 @@ export default function ProdutosPage() {
   })
   const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
   const lastFiltrosKeyRef = useRef(filtrosKey)
-
-  const getSwalTheme = useCallback(() => {
-    const isDark = document.documentElement.classList.contains('dark')
-    return {
-      background: isDark ? '#1f2937' : '#ffffff',
-      color: isDark ? '#f3f4f6' : '#111827',
-    }
-  }, [])
 
   const fetchItems = useCallback(async (targetPage: number) => {
     try {
@@ -421,7 +413,7 @@ export default function ProdutosPage() {
     event.preventDefault()
 
     if (!form.nome.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Nome obrigatorio' })
+      toast.warning('Nome obrigatorio')
       return
     }
 
@@ -441,18 +433,18 @@ export default function ProdutosPage() {
         : convertPrazoToDias(prazoEntregaValor, form.prazoEntregaUnidade)
 
     if (precoPadrao === null) {
-      await Swal.fire({ icon: 'warning', title: 'Preco padrao invalido' })
+      toast.warning('Preco padrao invalido')
       return
     }
 
     if (custoPadrao === null) {
-      await Swal.fire({ icon: 'warning', title: 'Custo padrao invalido' })
+      toast.warning('Custo padrao invalido')
       return
     }
 
     if (form.tipo === 'produto' && form.controlaEstoque) {
       if (estoqueAtual === null || estoqueMinimo === null) {
-        await Swal.fire({ icon: 'warning', title: 'Estoque invalido' })
+        toast.warning('Estoque invalido')
         return
       }
     }
@@ -461,12 +453,12 @@ export default function ProdutosPage() {
       tempoPadraoMinutos !== null &&
       (!Number.isInteger(tempoPadraoMinutos) || tempoPadraoMinutos < 0)
     ) {
-      await Swal.fire({ icon: 'warning', title: 'Tempo padrao invalido' })
+      toast.warning('Tempo padrao invalido')
       return
     }
 
     if (garantiaDias !== null && (!Number.isInteger(garantiaDias) || garantiaDias < 0)) {
-      await Swal.fire({ icon: 'warning', title: 'Garantia invalida' })
+      toast.warning('Garantia invalida')
       return
     }
 
@@ -474,7 +466,7 @@ export default function ProdutosPage() {
       prazoEntregaValor !== null &&
       (!Number.isInteger(prazoEntregaValor) || prazoEntregaValor < 0)
     ) {
-      await Swal.fire({ icon: 'warning', title: 'Prazo de entrega invalido' })
+      toast.warning('Prazo de entrega invalido')
       return
     }
 
@@ -523,11 +515,7 @@ export default function ProdutosPage() {
       }
       resetForm(true)
     } catch (error: unknown) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao salvar produto.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao salvar produto.' })
     } finally {
       setSaving(false)
     }
@@ -578,25 +566,20 @@ export default function ProdutosPage() {
       if (!response.ok) throw new Error(data?.error || 'Erro ao atualizar')
       await fetchItems(page)
     } catch (error: unknown) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Nao foi possivel atualizar o item.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Nao foi possivel atualizar o item.' })
     }
   }
 
   const handleDelete = async (item: ProdutoServico) => {
-    const confirm = await Swal.fire({
-      ...getSwalTheme(),
-      icon: 'warning',
+    const ok = await confirm({
       title: 'Excluir item?',
-      text: `Deseja excluir "${item.nome}"?`,
-      showCancelButton: true,
-      confirmButtonText: 'Excluir',
+      description: `Deseja excluir "${item.nome}"?`,
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      confirmVariant: 'danger',
     })
 
-    if (!confirm.isConfirmed) return
+    if (!ok) return
 
     try {
       const response = await fetch(`/api/produtos-servicos?id=${item.id}`, {
@@ -608,12 +591,7 @@ export default function ProdutosPage() {
       await fetchItems(page)
       if (editingId === item.id) resetForm(true)
     } catch (error: unknown) {
-      await Swal.fire({
-        ...getSwalTheme(),
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao excluir item.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao excluir item.' })
     }
   }
 

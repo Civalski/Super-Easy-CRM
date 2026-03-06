@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -102,13 +102,9 @@ function hasField(payload: Record<string, unknown>, key: string) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
     const onlyActive = searchParams.get('ativo')?.trim()
     const tipo = searchParams.get('tipo')?.trim().toLowerCase()
     const proximoCodigo = searchParams.get('proximoCodigo')?.trim().toLowerCase()
@@ -234,23 +230,20 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json(items)
-  } catch (error) {
-    console.error('Erro ao listar produtos/servicos:', error)
-    return NextResponse.json(
-      { error: 'Erro ao listar produtos/servicos' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao listar produtos/servicos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao listar produtos/servicos' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -368,27 +361,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(created, { status: 201 })
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return NextResponse.json({ error: 'Codigo ja cadastrado para este usuario' }, { status: 409 })
+      return NextResponse.json(created, { status: 201 })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json({ error: 'Codigo ja cadastrado para este usuario' }, { status: 409 })
+      }
+      console.error('Erro ao criar produto/servico:', error)
+      return NextResponse.json(
+        { error: 'Erro ao criar produto/servico' },
+        { status: 500 }
+      )
     }
-    console.error('Erro ao criar produto/servico:', error)
-    return NextResponse.json(
-      { error: 'Erro ao criar produto/servico' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function PATCH(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -558,46 +548,44 @@ export async function PATCH(request: NextRequest) {
       }) as never,
     })
 
-    return NextResponse.json(updated)
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return NextResponse.json({ error: 'Codigo ja cadastrado para este usuario' }, { status: 409 })
+      return NextResponse.json(updated)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json({ error: 'Codigo ja cadastrado para este usuario' }, { status: 409 })
+      }
+      console.error('Erro ao atualizar produto/servico:', error)
+      return NextResponse.json(
+        { error: 'Erro ao atualizar produto/servico' },
+        { status: 500 }
+      )
     }
-    console.error('Erro ao atualizar produto/servico:', error)
-    return NextResponse.json(
-      { error: 'Erro ao atualizar produto/servico' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const id = searchParams.get('id')?.trim()
+      if (!id) {
+        return NextResponse.json({ error: 'id e obrigatorio' }, { status: 400 })
+      }
+
+      const deleted = await prisma.produtoServico.deleteMany({
+        where: { id, userId },
+      })
+
+      if (deleted.count === 0) {
+        return NextResponse.json({ error: 'Item nao encontrado' }, { status: 404 })
+      }
+
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      console.error('Erro ao excluir produto/servico:', error)
+      return NextResponse.json(
+        { error: 'Erro ao excluir produto/servico' },
+        { status: 500 }
+      )
     }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')?.trim()
-    if (!id) {
-      return NextResponse.json({ error: 'id e obrigatorio' }, { status: 400 })
-    }
-
-    const deleted = await prisma.produtoServico.deleteMany({
-      where: { id, userId },
-    })
-
-    if (deleted.count === 0) {
-      return NextResponse.json({ error: 'Item nao encontrado' }, { status: 404 })
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Erro ao excluir produto/servico:', error)
-    return NextResponse.json(
-      { error: 'Erro ao excluir produto/servico' },
-      { status: 500 }
-    )
-  }
+  })
 }

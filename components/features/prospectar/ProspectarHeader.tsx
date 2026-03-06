@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { Target, RefreshCw, Send, Loader2 } from 'lucide-react';
+import { Target, RefreshCw, Send, Loader2 } from '@/lib/icons';
 
 interface ProspectarHeaderProps {
     loading: boolean;
@@ -26,9 +26,6 @@ export function ProspectarHeader({
     onImport,
     onEnviarAoFunil,
 }: ProspectarHeaderProps) {
-    const whatsappCompraLeadsUrl =
-        'https://wa.me/5519998205608?text=Ol%C3%A1%2C%20gostaria%20de%20adquirir%20leads%20para%20minha%20empresa';
-
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
@@ -48,24 +45,15 @@ export function ProspectarHeader({
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Leads
+                            Prospeccao
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Leads frios importados aguardando envio ao funil
+                            Prospectos importados aguardando envio ao funil
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <a
-                        href={whatsappCompraLeadsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-500/20"
-                    >
-                        Comprar Leads
-                    </a>
-
                     <label className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors cursor-pointer shadow-md shadow-sky-500/20">
                         <Target className="w-4 h-4" />
                         <span>Importar XLSX</span>

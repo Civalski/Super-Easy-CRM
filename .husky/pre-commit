@@ -1,0 +1,1 @@
+npm run db:backup || (echo "Aviso: Backup falhou (pg_dump?). Commit continuará. Use 'npm run db:backup' manualmente." && exit 0)

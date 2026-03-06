@@ -4,7 +4,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { LayoutList } from 'lucide-react'
+import { LayoutList } from '@/lib/icons'
 import {
   LIST_DENSITY_EVENT,
   getListDensityPreference,

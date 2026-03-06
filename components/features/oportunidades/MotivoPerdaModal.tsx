@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 import { Button } from '@/components/common'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 

@@ -1,5 +1,7 @@
 'use client'
 
+import { formatCurrencyInt } from '@/lib/format'
+
 interface FaturamentoPerdaItem {
   month: string
   faturamento: number
@@ -9,13 +11,6 @@ interface FaturamentoPerdaItem {
 interface FaturamentoPerdaLineChartProps {
   data: FaturamentoPerdaItem[]
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(value || 0)
 
 const formatMonth = (value: string) => {
   const match = /^(\d{4})-(\d{2})$/.exec(value)
@@ -87,11 +82,11 @@ export function FaturamentoPerdaLineChart({ data }: FaturamentoPerdaLineChartPro
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="text-xs font-semibold text-emerald-500 dark:text-emerald-400">{formatCurrency(totalFaturamento)}</span>
+            <span className="text-xs font-semibold text-emerald-500 dark:text-emerald-400">{formatCurrencyInt(totalFaturamento)}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-rose-500" />
-            <span className="text-xs font-semibold text-rose-500 dark:text-rose-400">{formatCurrency(totalPerda)}</span>
+            <span className="text-xs font-semibold text-rose-500 dark:text-rose-400">{formatCurrencyInt(totalPerda)}</span>
           </div>
         </div>
       </div>

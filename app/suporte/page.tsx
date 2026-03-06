@@ -1,6 +1,6 @@
 'use client'
 
-import { LifeBuoy, Mail, MessageCircle } from 'lucide-react'
+import { LifeBuoy, Mail, MessageCircle } from '@/lib/icons'
 
 export default function SuportePage() {
   return (

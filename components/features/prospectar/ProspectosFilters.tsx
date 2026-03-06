@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { Search, Filter, Layers, Trash2, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { Search, Filter, Layers, Trash2, CheckSquare, Square, Loader2 } from '@/lib/icons';
 import { STATUS_OPTIONS } from './ProspectarTypes';
 
 // Função para ordenar lotes corretamente (A, B, C... Z, A1, B1... Z1, A2...)

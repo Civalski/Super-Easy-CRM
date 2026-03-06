@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { logBusinessEvent } from '@/lib/observability/audit'
 import { roundMoney } from '@/lib/money'
 
@@ -125,15 +125,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    await ensureDatabaseInitialized()
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
+      const body = await request.json()
     const pedidoUpdateData: {
       statusEntrega?: string
       pagamentoConfirmado?: boolean
@@ -339,7 +336,7 @@ export async function PATCH(
     }
 
     const pedidoAtual = await prisma.pedido.findFirst({
-      where: { id: (await params).id, userId },
+      where: { id: id, userId },
       include: pedidoInclude,
     })
 
@@ -545,7 +542,7 @@ export async function PATCH(
           event: 'pedido.venda_confirmada',
           userId,
           entity: 'pedido',
-          entityId: (await params).id,
+          entityId: id,
           from: oportunidadeAtual.status,
           to: 'fechada',
           metadata: {
@@ -597,7 +594,7 @@ export async function PATCH(
           event: 'pedido.venda_reaberta',
           userId,
           entity: 'pedido',
-          entityId: (await params).id,
+          entityId: id,
           from: 'fechada',
           to: oportunidadeAtual.statusAnterior || 'pedido',
           metadata: {
@@ -607,7 +604,7 @@ export async function PATCH(
       }
 
       const pedidoFinal = await tx.pedido.findFirst({
-        where: { id: (await params).id, userId },
+        where: { id: id, userId },
         include: pedidoInclude,
       })
 
@@ -633,52 +630,51 @@ export async function PATCH(
       ...result.pedido,
       vendaConfirmada: result.vendaConfirmada,
     })
-  } catch (error) {
-    console.error('Erro ao atualizar pedido:', error)
-    const prismaError = error as { code?: string }
-    if (prismaError.code === 'P2025') {
+    } catch (error) {
+      console.error('Erro ao atualizar pedido:', error)
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Pedido nao encontrado' },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(
-        { error: 'Pedido nao encontrado' },
-        { status: 404 }
+        { error: 'Erro ao atualizar pedido' },
+        { status: 500 }
       )
     }
-    return NextResponse.json(
-      { error: 'Erro ao atualizar pedido' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    await ensureDatabaseInitialized()
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      await ensureDatabaseInitialized()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+      const deleted = await prisma.pedido.deleteMany({
+        where: { id, userId },
+      })
 
-    const deleted = await prisma.pedido.deleteMany({
-      where: { id: (await params).id, userId },
-    })
+      if (deleted.count === 0) {
+        return NextResponse.json(
+          { error: 'Pedido nao encontrado' },
+          { status: 404 }
+        )
+      }
 
-    if (deleted.count === 0) {
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      console.error('Erro ao deletar pedido:', error)
       return NextResponse.json(
-        { error: 'Pedido nao encontrado' },
-        { status: 404 }
+        { error: 'Erro ao deletar pedido' },
+        { status: 500 }
       )
     }
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Erro ao deletar pedido:', error)
-    return NextResponse.json(
-      { error: 'Erro ao deletar pedido' },
-      { status: 500 }
-    )
-  }
+  })
 }
 

@@ -13,6 +13,7 @@ declare module "next-auth" {
     id: string
     role: string
     username: string | null
+    sessionId?: string
   }
 }
 
@@ -21,5 +22,6 @@ declare module "next-auth/jwt" {
     userId?: string
     role?: string
     username?: string | null
+    sessionId?: string
   }
 }

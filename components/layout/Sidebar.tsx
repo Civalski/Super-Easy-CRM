@@ -5,30 +5,25 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from '@/lib/icons'
 import {
   BarChart3,
   Briefcase,
   Calendar,
   ChevronsLeft,
   ChevronsRight,
-  ChevronRight,
   ClipboardList,
-  Compass,
-  Database,
-  Folder,
   LayoutDashboard,
   Layers,
   LogOut,
   MessageSquareText,
   Package,
-  Settings,
-  Target,
   Trophy,
   Users,
   Wallet,
   X,
-} from 'lucide-react'
+} from '@/lib/icons'
+import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -51,26 +46,18 @@ interface MenuItem {
 
 interface MenuCategory {
   id: string
-  name: string
-  icon: LucideIcon
   items: MenuItem[]
 }
 
 interface MenuSection {
-  id: string
-  name: string
   categories: MenuCategory[]
 }
 
 const menuSections: MenuSection[] = [
   {
-    id: 'crm',
-    name: 'CRM',
     categories: [
       {
         id: 'visao-geral',
-        name: 'Visao geral',
-        icon: Compass,
         items: [
           {
             name: 'Dashboard',
@@ -86,14 +73,7 @@ const menuSections: MenuSection[] = [
       },
       {
         id: 'comercial',
-        name: 'Comercial',
-        icon: Folder,
         items: [
-          {
-            name: 'Leads',
-            href: '/prospectar',
-            icon: Target,
-          },
           {
             name: 'Clientes',
             href: '/clientes',
@@ -123,8 +103,6 @@ const menuSections: MenuSection[] = [
       },
       {
         id: 'operacao',
-        name: 'Operacao',
-        icon: Settings,
         items: [
           {
             name: 'Tarefas',
@@ -141,13 +119,9 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    id: 'erp',
-    name: 'ERP',
     categories: [
       {
         id: 'cadastro',
-        name: 'Cadastro',
-        icon: Database,
         items: [
           {
             name: 'Produtos',
@@ -168,7 +142,7 @@ const menuSections: MenuSection[] = [
 
 const menuCategories: MenuCategory[] = menuSections.flatMap((section) => section.categories)
 
-const compactMenuItems: MenuItem[] = menuCategories.flatMap((category) => category.items)
+const menuItems: MenuItem[] = menuCategories.flatMap((category) => category.items)
 
 export default function Sidebar({
   collapsed = false,
@@ -182,10 +156,10 @@ export default function Sidebar({
   manualOpen = false,
 }: SidebarProps) {
   const pathname = usePathname()
-  const [openCategories, setOpenCategories] = useState<string[]>(
-    () => menuCategories.map((category) => category.id)
+  const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+  const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>(
+    billingSubscriptionEnabled ? 'loading' : 'active'
   )
-  const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>('loading')
 
   const isCompact = collapsed && !isMobile
   const sidebarWidthClass = isCompact ? 'w-18' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
@@ -199,30 +173,8 @@ export default function Sidebar({
   const isItemActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
   useEffect(() => {
-    const activeCategoryIds = menuCategories
-      .filter((category) =>
-        category.items.some(
-          (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-        )
-      )
-      .map((category) => category.id)
+    if (!billingSubscriptionEnabled) return
 
-    if (activeCategoryIds.length === 0) return
-
-    setOpenCategories((prev) => {
-      const merged = new Set(prev)
-      activeCategoryIds.forEach((id) => merged.add(id))
-      const next = Array.from(merged)
-
-      if (next.length === prev.length && next.every((value, index) => value === prev[index])) {
-        return prev
-      }
-
-      return next
-    })
-  }, [pathname])
-
-  useEffect(() => {
     let cancelled = false
 
     async function loadPremiumAccess() {
@@ -248,13 +200,7 @@ export default function Sidebar({
     return () => {
       cancelled = true
     }
-  }, [])
-
-  const toggleCategory = (categoryId: string) => {
-    setOpenCategories((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
-    )
-  }
+  }, [billingSubscriptionEnabled])
 
   const getResolvedHref = (item: MenuItem) => {
     if (item.requiresPremium && premiumAccess === 'inactive') {
@@ -283,27 +229,55 @@ export default function Sidebar({
           <Link
             href="/dashboard"
             onClick={onClose}
-            className={`group flex items-center ${isCompact ? 'justify-center' : 'justify-center'} ${isMobile ? '' : 'w-full'}`}
+            className={`group flex items-center justify-center ${isMobile ? '' : 'w-full'}`}
           >
-            {isCompact ? (
-              <Image
-                src="/arker-a.png"
-                alt="Arker CRM"
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-2xl object-contain transition-opacity group-hover:opacity-90"
-                priority
-              />
-            ) : (
-              <Image
-                src="/arker10.png"
-                alt="Arker CRM"
-                width={156}
-                height={52}
-                className="h-10 w-auto object-contain brightness-110 saturate-110 transition-opacity group-hover:opacity-90"
-                priority
-              />
-            )}
+            <div className="relative h-14 w-full overflow-hidden">
+              <div
+                className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  isCompact ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0'
+                }`}
+              >
+                <Image
+                  src="/arkercrmlogoa.png"
+                  alt="Arker CRM"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded-2xl object-contain transition-opacity group-hover:opacity-90 dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/arker-a.png"
+                  alt="Arker CRM"
+                  width={40}
+                  height={40}
+                  className="hidden h-10 w-10 rounded-2xl object-contain transition-opacity group-hover:opacity-90 dark:block"
+                  priority
+                />
+              </div>
+
+              <div
+                className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  isCompact ? 'pointer-events-none scale-98 opacity-0' : 'scale-100 opacity-100'
+                }`}
+              >
+                <Image
+                  src="/arkercrmlogo.png?v=2"
+                  alt="Arker CRM"
+                  width={240}
+                  height={88}
+                  className="h-14 w-auto object-contain transition-opacity group-hover:opacity-90 dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/arker10.png"
+                  alt="Arker CRM"
+                  width={156}
+                  height={52}
+                  className="hidden h-10 w-auto object-contain brightness-110 saturate-110 transition-opacity group-hover:opacity-90 dark:block"
+                  priority
+                />
+              </div>
+            </div>
           </Link>
 
           {isMobile && (
@@ -318,139 +292,60 @@ export default function Sidebar({
           )}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
-          {isCompact ? (
-            <ul className="space-y-1.5">
-              {compactMenuItems.map((item) => {
-                const Icon = item.icon
-                const isActive = isItemActive(item.href)
-                const isLocked = item.requiresPremium && premiumAccess === 'inactive'
-                const href = getResolvedHref(item)
-                const title = getResolvedTitle(item)
+        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3">
+          <ul className="space-y-1.5">
+            {menuItems.map((item) => {
+              const ItemIcon = item.icon
+              const isActive = isItemActive(item.href)
+              const isLocked = item.requiresPremium && premiumAccess === 'inactive'
+              const href = getResolvedHref(item)
+              const title = getResolvedTitle(item)
 
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={href}
-                      title={title}
-                      onClick={onClose}
-                      className={`group flex h-11 items-center justify-center rounded-xl px-0 transition-all duration-200 ${
-                        isActive
-                          ? 'border border-indigo-300/45 bg-indigo-100/80 text-indigo-800 shadow-[0_10px_20px_-16px_rgba(99,102,241,0.2)] dark:border-indigo-300/16 dark:bg-indigo-400/10 dark:text-white dark:shadow-[0_10px_20px_-16px_rgba(99,102,241,0.25)]'
-                          : isLocked
-                            ? 'text-slate-500 hover:bg-amber-50/80 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
-                            : 'text-slate-700 hover:bg-slate-100/85 hover:text-slate-900 dark:text-slate-200/90 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                      }`}
-                    >
-                      <Icon
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={href}
+                    title={title}
+                    onClick={onClose}
+                    className={`group flex h-11 items-center rounded-xl px-0 transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
+                        : isLocked
+                          ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="inline-flex h-full w-12 shrink-0 items-center justify-center">
+                      <ItemIcon
                         size={18}
                         className={`shrink-0 ${
-                          isActive ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-300 dark:group-hover:text-slate-100'
+                          isActive
+                            ? 'text-indigo-700 dark:text-indigo-200'
+                            : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-100'
                         }`}
                       />
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <ul className="space-y-3">
-              {menuSections.map((section) => (
-                <li key={section.id} className="space-y-2">
-                  <ul className="space-y-2">
-                    {section.categories.map((category) => {
-                      const CategoryIcon = category.icon
-                      const isCategoryOpen = openCategories.includes(category.id)
-                      const hasActiveItem = category.items.some((item) => isItemActive(item.href))
-
-                      return (
-                        <li key={category.id} className="rounded-xl border border-slate-200 bg-white/85 dark:border-slate-600/20 dark:bg-slate-900/30">
-                          <button
-                            type="button"
-                            onClick={() => toggleCategory(category.id)}
-                            aria-expanded={isCategoryOpen}
-                            className={`group flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors duration-200 ${
-                              hasActiveItem
-                                ? 'text-slate-900 dark:text-white'
-                                : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:text-slate-100'
-                            }`}
-                          >
-                            <CategoryIcon
-                              size={16}
-                              className={`${
-                                hasActiveItem
-                                  ? 'text-indigo-700 dark:text-indigo-200'
-                                  : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'
-                              }`}
-                            />
-                            <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-[0.08em]">
-                              {category.name}
-                            </span>
-                            <ChevronRight
-                              size={15}
-                              className={`shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400 ${
-                                isCategoryOpen ? 'rotate-90 text-slate-700 dark:text-slate-200' : ''
-                              }`}
-                            />
-                          </button>
-
-                          <div
-                            className={`grid transition-[grid-template-rows,opacity] duration-200 ${
-                              isCategoryOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                            }`}
-                          >
-                            <ul className="min-h-0 space-y-1 overflow-hidden px-2 pb-2">
-                              {category.items.map((item) => {
-                                const ItemIcon = item.icon
-                                const isActive = isItemActive(item.href)
-                                const isLocked = item.requiresPremium && premiumAccess === 'inactive'
-                                const href = getResolvedHref(item)
-                                const title = getResolvedTitle(item)
-
-                                return (
-                                  <li key={item.href}>
-                                    <Link
-                                      href={href}
-                                      title={title}
-                                      onClick={onClose}
-                                      className={`group flex h-9 items-center rounded-lg px-2.5 transition-colors duration-200 ${
-                                        isActive
-                                          ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
-                                          : isLocked
-                                            ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
-                                            : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                                      }`}
-                                    >
-                                      <ItemIcon
-                                        size={16}
-                                        className={`shrink-0 ${
-                                          isActive
-                                            ? 'text-indigo-700 dark:text-indigo-200'
-                                            : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-100'
-                                        }`}
-                                      />
-                                      <span className="ml-2.5 truncate text-sm font-medium tracking-wide">
-                                        {item.name}
-                                      </span>
-                                      {isLocked ? (
-                                        <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                          Premium
-                                        </span>
-                                      ) : null}
-                                    </Link>
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                    </span>
+                    <span
+                      className={`min-w-0 overflow-hidden whitespace-nowrap pr-3 text-sm font-medium tracking-wide transition-[max-width,opacity,padding] duration-200 ease-out ${
+                        isCompact ? 'max-w-0 pr-0 opacity-0' : 'max-w-36 pr-3 opacity-100'
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                    <span
+                      className={`overflow-hidden transition-[max-width,opacity,margin] duration-200 ease-out ${
+                        isLocked && !isCompact ? 'ml-2 max-w-16 opacity-100' : 'ml-0 max-w-0 opacity-0'
+                      }`}
+                    >
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        Premium
+                      </span>
+                    </span>
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          )}
+              )
+            })}
+          </ul>
 
           <div className="mt-auto space-y-2 pt-2">
             {showManualToggleButton && !isMobile && onManualToggleClick && (
@@ -477,13 +372,15 @@ export default function Sidebar({
               type="button"
               onClick={() => signOut()}
               title="Sair"
-              className={`flex h-11 w-full items-center rounded-xl border border-slate-300/80 text-slate-700 transition-all duration-200 hover:border-red-300/70 hover:bg-red-50 hover:text-red-700 dark:border-slate-500/30 dark:text-slate-200 dark:hover:border-red-300/30 dark:hover:bg-red-500/14 dark:hover:text-red-100 ${isCompact ? 'justify-center px-0' : 'justify-start px-3.5'}`}
+              className="flex h-11 w-full items-center rounded-xl border border-slate-300/80 px-0 text-slate-700 transition-colors duration-200 hover:border-red-300/70 hover:bg-red-50 hover:text-red-700 dark:border-slate-500/30 dark:text-slate-200 dark:hover:border-red-300/30 dark:hover:bg-red-500/14 dark:hover:text-red-100"
             >
-              <LogOut size={18} className="shrink-0" />
+              <span className="inline-flex h-full w-12 shrink-0 items-center justify-center">
+                <LogOut size={18} className="shrink-0" />
+              </span>
               <span
-                className={`overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity,transform,margin-left] duration-200 ease-out ${isCompact
-                  ? 'ml-0 max-w-0 -translate-x-1 opacity-0'
-                  : 'ml-3 max-w-36 translate-x-0 opacity-100'
+                className={`min-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity,padding] duration-200 ease-out ${isCompact
+                  ? 'max-w-0 pr-0 opacity-0'
+                  : 'max-w-36 pr-3 opacity-100'
                   }`}
               >
                 Sair

@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { getDateRangeFromQuery } from '../_shared'
 import { expandOpportunityStatuses } from '@/lib/domain/status'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const range = getDateRangeFromQuery(request)
+  return withAuth(request, async (userId) => {
+    try {
+      const range = getDateRangeFromQuery(request)
     if ('error' in range) {
       return NextResponse.json({ error: range.error }, { status: 400 })
     }
@@ -80,11 +76,12 @@ export async function GET(request: NextRequest) {
       },
       motivos,
     })
-  } catch (error) {
-    console.error('Erro ao gerar relatorio de perdas:', error)
-    return NextResponse.json(
-      { error: 'Erro ao gerar relatorio de perdas' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao gerar relatorio de perdas:', error)
+      return NextResponse.json(
+        { error: 'Erro ao gerar relatorio de perdas' },
+        { status: 500 }
+      )
+    }
+  })
 }

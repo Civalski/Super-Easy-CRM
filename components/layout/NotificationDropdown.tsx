@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Calendar, AlertCircle, CheckCircle2, Trash2, X } from 'lucide-react';
+import { Calendar, AlertCircle, CheckCircle2, Trash2, X } from '@/lib/icons';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TaskNotification } from '@/types/notifications';

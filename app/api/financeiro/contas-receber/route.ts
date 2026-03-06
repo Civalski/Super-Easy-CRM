@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { addMonthsWithDay, deriveFinanceStatus, processFinanceAutomation } from '@/lib/financeiro/automation'
 import { roundMoney } from '@/lib/money'
 import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
@@ -96,17 +96,14 @@ function normalizeDates(values: string[]) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const premiumDenied = await ensurePremiumAccess(userId)
-    if (premiumDenied) return premiumDenied
+  return withAuth(request, async (userId) => {
+    try {
+      const premiumDenied = await ensurePremiumAccess(userId)
+      if (premiumDenied) return premiumDenied
 
-    await processFinanceAutomation(userId, RECURRING_MONTHS_AHEAD)
+      await processFinanceAutomation(userId, RECURRING_MONTHS_AHEAD)
 
-    const { searchParams } = new URL(request.url)
+      const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const tipo = searchParams.get('tipo')
     const ambienteParam = searchParams.get('ambiente')
@@ -305,28 +302,26 @@ export async function GET(request: NextRequest) {
       }),
     }))
 
-    return NextResponse.json(normalized)
-  } catch (error) {
-    console.error('Erro ao listar contas financeiras:', error)
-    return NextResponse.json({ error: 'Erro ao listar contas financeiras' }, { status: 500 })
-  }
+      return NextResponse.json(normalized)
+    } catch (error) {
+      console.error('Erro ao listar contas financeiras:', error)
+      return NextResponse.json({ error: 'Erro ao listar contas financeiras' }, { status: 500 })
+    }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const premiumDenied = await ensurePremiumAccess(userId)
-    if (premiumDenied) return premiumDenied
+  return withAuth(request, async (userId) => {
+    try {
+      const premiumDenied = await ensurePremiumAccess(userId)
+      if (premiumDenied) return premiumDenied
 
-    const body = await request.json().catch(() => null)
-    if (!body || typeof body !== 'object') {
-      return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
-    }
+      const body = await request.json().catch(() => null)
+      if (!body || typeof body !== 'object') {
+        return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
+      }
 
-    const payload = body as Record<string, unknown>
+      const payload = body as Record<string, unknown>
     const valorTotal = parseMoney(payload.valorTotal)
     const valorRecebido = parseMoney(payload.valorRecebido ?? 0)
 
@@ -491,30 +486,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(created[0], { status: 201 })
     }
 
-    return NextResponse.json(
-      {
-        parcelasCriadas: created.length,
-        grupoParcelaId,
-        contas: created,
-      },
-      { status: 201 }
-    )
-  } catch (error) {
-    console.error('Erro ao criar conta financeira:', error)
-    return NextResponse.json({ error: 'Erro ao criar conta financeira' }, { status: 500 })
-  }
+      return NextResponse.json(
+        {
+          parcelasCriadas: created.length,
+          grupoParcelaId,
+          contas: created,
+        },
+        { status: 201 }
+      )
+    } catch (error) {
+      console.error('Erro ao criar conta financeira:', error)
+      return NextResponse.json({ error: 'Erro ao criar conta financeira' }, { status: 500 })
+    }
+  })
 }
 
 export async function PATCH(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const premiumDenied = await ensurePremiumAccess(userId)
-    if (premiumDenied) return premiumDenied
+  return withAuth(request, async (userId) => {
+    try {
+      const premiumDenied = await ensurePremiumAccess(userId)
+      if (premiumDenied) return premiumDenied
 
-    const body = await request.json().catch(() => null)
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -673,9 +666,10 @@ export async function PATCH(request: NextRequest) {
       return conta
     })
 
-    return NextResponse.json(updated)
-  } catch (error) {
-    console.error('Erro ao atualizar conta financeira:', error)
-    return NextResponse.json({ error: 'Erro ao atualizar conta financeira' }, { status: 500 })
-  }
+      return NextResponse.json(updated)
+    } catch (error) {
+      console.error('Erro ao atualizar conta financeira:', error)
+      return NextResponse.json({ error: 'Erro ao atualizar conta financeira' }, { status: 500 })
+    }
+  })
 }

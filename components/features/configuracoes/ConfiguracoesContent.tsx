@@ -13,8 +13,11 @@ import {
   ExcluirDadosCard,
   OrcamentoPdfConfigCard,
 } from '@/components/features/configuracoes'
+import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 
 export function ConfiguracoesContent() {
+  const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+
   return (
     <div className="space-y-4">
       <section>
@@ -52,7 +55,7 @@ export function ConfiguracoesContent() {
           Dados da conta
         </h2>
         <div className="space-y-2">
-          <AssinaturaMercadoPagoCard />
+          {billingSubscriptionEnabled ? <AssinaturaMercadoPagoCard /> : null}
           <ExcluirDadosCard />
         </div>
       </section>

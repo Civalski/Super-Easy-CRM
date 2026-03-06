@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import {
   createMercadoPagoSubscription,
   getMercadoPagoSubscription,
@@ -8,9 +8,15 @@ import {
   normalizeMercadoPagoStatus,
 } from '@/lib/billing/mercado-pago'
 import { isSubscriptionSchemaMissingError } from '@/lib/billing/subscription-schema'
+import {
+  billingSubscriptionDisabledResponse,
+  isBillingSubscriptionDisabledServer,
+} from '@/lib/billing/feature-toggle'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
+
+const TEST_COUPON_PLAN_CODE = 'coupon-100-test'
 
 function subscriptionSchemaMissingResponse() {
   return NextResponse.json(
@@ -21,6 +27,10 @@ function subscriptionSchemaMissingResponse() {
     },
     { status: 503 }
   )
+}
+
+function getTestCouponCode() {
+  return process.env.MERCADOPAGO_TEST_COUPON_100?.trim() || ''
 }
 
 function parseDate(value: string | undefined) {
@@ -86,15 +96,15 @@ async function syncSubscriptionIfPossible(userId: string, subscriptionId: string
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (isBillingSubscriptionDisabledServer()) {
+    return billingSubscriptionDisabledResponse()
+  }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
+  return withAuth(request, async (userId) => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
         subscriptionProvider: true,
         subscriptionStatus: true,
         subscriptionExternalId: true,
@@ -102,55 +112,62 @@ export async function GET(request: NextRequest) {
         subscriptionCheckoutUrl: true,
         subscriptionNextBillingAt: true,
         subscriptionLastWebhookAt: true,
-      },
-    })
+        },
+      })
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 })
-    }
+      if (!user) {
+        return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 })
+      }
 
-    const shouldSync = ['1', 'true', 'yes'].includes(
-      request.nextUrl.searchParams.get('sync')?.toLowerCase() ?? ''
-    )
-
-    if (!shouldSync || !user.subscriptionExternalId) {
-      return NextResponse.json(toClientSubscriptionPayload(user))
-    }
-
-    try {
-      const refreshed = await syncSubscriptionIfPossible(
-        userId,
-        user.subscriptionExternalId
+      const shouldSync = ['1', 'true', 'yes'].includes(
+        request.nextUrl.searchParams.get('sync')?.toLowerCase() ?? ''
       )
-      return NextResponse.json({
-        ...toClientSubscriptionPayload(refreshed),
-        synced: true,
-      })
-    } catch (syncError) {
-      console.error('Erro ao sincronizar assinatura Mercado Pago:', syncError)
-      return NextResponse.json({
-        ...toClientSubscriptionPayload(user),
-        synced: false,
-      })
+
+      if (!shouldSync || !user.subscriptionExternalId) {
+        return NextResponse.json(toClientSubscriptionPayload(user))
+      }
+
+      try {
+        const refreshed = await syncSubscriptionIfPossible(
+          userId,
+          user.subscriptionExternalId
+        )
+        return NextResponse.json({
+          ...toClientSubscriptionPayload(refreshed),
+          synced: true,
+        })
+      } catch (syncError) {
+        console.error('Erro ao sincronizar assinatura Mercado Pago:', syncError)
+        return NextResponse.json({
+          ...toClientSubscriptionPayload(user),
+          synced: false,
+        })
+      }
+    } catch (error) {
+      if (isSubscriptionSchemaMissingError(error)) {
+        return subscriptionSchemaMissingResponse()
+      }
+      console.error('Erro ao obter assinatura:', error)
+      return NextResponse.json(
+        { error: 'Erro ao obter assinatura' },
+        { status: 500 }
+      )
     }
-  } catch (error) {
-    if (isSubscriptionSchemaMissingError(error)) {
-      return subscriptionSchemaMissingResponse()
-    }
-    console.error('Erro ao obter assinatura:', error)
-    return NextResponse.json(
-      { error: 'Erro ao obter assinatura' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (isBillingSubscriptionDisabledServer()) {
+    return billingSubscriptionDisabledResponse()
+  }
+
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => ({}))
+      const requestedCouponCode =
+      body && typeof body === 'object' && 'couponCode' in body
+        ? String((body as { couponCode?: unknown }).couponCode || '').trim()
+        : ''
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -184,6 +201,32 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       )
+    }
+
+    const configuredTestCoupon = getTestCouponCode()
+    if (
+      configuredTestCoupon &&
+      requestedCouponCode &&
+      requestedCouponCode.toLowerCase() === configuredTestCoupon.toLowerCase()
+    ) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          subscriptionProvider: 'mercado_pago',
+          subscriptionExternalId: null,
+          subscriptionStatus: 'authorized',
+          subscriptionPlanCode: TEST_COUPON_PLAN_CODE,
+          subscriptionCheckoutUrl: null,
+          subscriptionNextBillingAt: null,
+          subscriptionLastWebhookAt: new Date(),
+        },
+      })
+
+      return NextResponse.json({
+        active: true,
+        status: 'authorized',
+        couponApplied: true,
+      })
     }
 
     if (user.subscriptionExternalId) {
@@ -232,21 +275,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({
-      checkoutUrl: createdSubscription.init_point ?? null,
-      subscriptionId: createdSubscription.id,
-      status: normalizedStatus,
-      active: isMercadoPagoStatusActive(normalizedStatus),
-    })
-  } catch (error) {
-    if (isSubscriptionSchemaMissingError(error)) {
-      return subscriptionSchemaMissingResponse()
+      return NextResponse.json({
+        checkoutUrl: createdSubscription.init_point ?? null,
+        subscriptionId: createdSubscription.id,
+        status: normalizedStatus,
+        active: isMercadoPagoStatusActive(normalizedStatus),
+      })
+    } catch (error) {
+      if (isSubscriptionSchemaMissingError(error)) {
+        return subscriptionSchemaMissingResponse()
+      }
+      console.error('Erro ao criar assinatura Mercado Pago:', error)
+      return NextResponse.json(
+        { error: 'Erro ao criar assinatura' },
+        { status: 500 }
+      )
     }
-    console.error('Erro ao criar assinatura Mercado Pago:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Erro inesperado'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
-  }
+  })
 }

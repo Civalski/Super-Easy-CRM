@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { Filter, X } from 'lucide-react'
+import { Filter, X } from '@/lib/icons'
 import type { TabType } from './TarefasTypes'
 
 interface TarefasFiltersProps {

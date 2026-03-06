@@ -88,7 +88,6 @@ export async function DELETE(request: NextRequest) {
       {
         success: false,
         error: 'Erro ao excluir dados',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }
     )

@@ -51,6 +51,7 @@ const routeSeed = readFile('app/api/seed/route.ts')
 const routePedidosId = readFile('app/api/pedidos/[id]/route.ts')
 const routeOportunidadesId = readFile('app/api/oportunidades/[id]/route.ts')
 const routeProspectos = readFile('app/api/prospectos/route.ts')
+const routeHelpers = readFile('lib/api/route-helpers.ts')
 
 const criticalRoutes = [
   'app/api/seed/clear/route.ts',
@@ -62,10 +63,17 @@ const criticalRoutes = [
   'app/api/dashboard/route.ts',
 ]
 
+const routeHelpersHasAuth =
+  includesAll(routeHelpers, ['Unauthorized', 'status: 401'])
+
 const unauthorizedChecks = criticalRoutes.map((routeFile) =>
   check(`Auth guard em ${routeFile}`, () => {
     const content = readFile(routeFile)
-    return includesAll(content, ['Unauthorized', 'status: 401'])
+    const hasDirectAuth = includesAll(content, ['Unauthorized', 'status: 401'])
+    const usesWithAuth =
+      routeHelpersHasAuth &&
+      (content.includes('withAuth') || content.includes('getUserIdFromRequest'))
+    return hasDirectAuth || usesWithAuth
   })
 )
 

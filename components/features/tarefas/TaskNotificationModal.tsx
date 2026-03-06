@@ -10,11 +10,12 @@ import {
     Trash2,
     AlertCircle,
     Clock
-} from 'lucide-react';
+} from '@/lib/icons';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Button from '@/components/common/Button';
-import Swal from 'sweetalert2';
+import { toast } from '@/lib/toast';
+import { useConfirm } from '@/components/common';
 import type { TaskNotification } from '@/types/notifications';
 
 
@@ -32,6 +33,7 @@ export default function TaskNotificationModal({
     onUpdate
 }: TaskNotificationModalProps) {
     const router = useRouter();
+    const { confirm } = useConfirm();
     const [isProcessing, setIsProcessing] = useState(false);
 
     if (!isOpen || !task) return null;
@@ -48,58 +50,28 @@ export default function TaskNotificationModal({
             });
 
             if (response.ok) {
-                // Success Toast
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                })
-
-                Toast.fire({
-                    icon: 'success',
-                    title: 'Tarefa concluída!'
-                })
+                toast.success('Tarefa concluída!');
                 onUpdate();
                 onClose();
             }
         } catch (error) {
             console.error('Erro ao finalizar tarefa:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Não foi possível finalizar a tarefa.',
-                background: '#1f2937',
-                color: '#f3f4f6',
-                confirmButtonColor: '#6366f1',
-            });
+            toast.error('Erro!', { description: 'Não foi possível finalizar a tarefa.' });
         } finally {
             setIsProcessing(false);
         }
     };
 
     const handleDelete = async () => {
-        const result = await Swal.fire({
+        const ok = await confirm({
             title: 'Excluir tarefa?',
-            text: "Esta ação não poderá ser desfeita.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#4b5563',
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar',
-            background: '#1f2937',
-            color: '#f3f4f6',
+            description: "Esta ação não poderá ser desfeita.",
+            confirmLabel: 'Sim, excluir',
+            cancelLabel: 'Cancelar',
+            confirmVariant: 'danger',
         });
 
-        if (!result.isConfirmed) return;
+        if (!ok) return;
 
         try {
             setIsProcessing(true);
@@ -108,27 +80,13 @@ export default function TaskNotificationModal({
             });
 
             if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Excluído!',
-                    text: 'A tarefa foi excluída com sucesso.',
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                    confirmButtonColor: '#6366f1',
-                });
+                toast.success('Excluído!', { description: 'A tarefa foi excluída com sucesso.' });
                 onUpdate();
                 onClose();
             }
         } catch (error) {
             console.error('Erro ao excluir tarefa:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Ocorreu um erro ao excluir a tarefa.',
-                background: '#1f2937',
-                color: '#f3f4f6',
-                confirmButtonColor: '#6366f1',
-            });
+            toast.error('Erro!', { description: 'Ocorreu um erro ao excluir a tarefa.' });
         } finally {
             setIsProcessing(false);
         }

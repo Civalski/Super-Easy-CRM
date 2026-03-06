@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import {
   startOfDay,
   endOfDay,
@@ -11,18 +11,14 @@ import {
   subMonths,
   format,
 } from 'date-fns'
-import { mapOpportunityStatusForResponse } from '@/lib/domain/status'
+import { expandOpportunityStatuses, mapOpportunityStatusForResponse } from '@/lib/domain/status'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const filter = request.nextUrl.searchParams.get('filter')
+  return withAuth(request, async (userId) => {
+    try {
+      const filter = request.nextUrl.searchParams.get('filter')
     const dateParam = request.nextUrl.searchParams.get('date')
     const referenceDate = dateParam ? new Date(dateParam) : new Date()
 
@@ -58,9 +54,13 @@ export async function GET(request: NextRequest) {
 
     const [
       clientesCount,
+      pedidosCount,
+      pedidosSemPagamentoCount,
+      pedidosSemPagamentoValorAgg,
       oportunidadesCount,
+      orcamentosEmAbertoCount,
+      orcamentosEmAbertoValorAgg,
       tarefasCount,
-      valorTotalAgg,
       valorGanhosAgg,
       valorPerdidosAgg,
       oportunidadesStatusGroups,
@@ -70,19 +70,56 @@ export async function GET(request: NextRequest) {
       prisma.cliente.count({
         where: { userId, createdAt: dateFilter },
       }),
+      prisma.pedido.count({
+        where: { userId, createdAt: dateFilter },
+      }),
+      prisma.pedido.count({
+        where: {
+          userId,
+          pagamentoConfirmado: false,
+        },
+      }),
+      prisma.pedido.aggregate({
+        _sum: { totalLiquido: true },
+        where: {
+          userId,
+          pagamentoConfirmado: false,
+          oportunidade: {
+            is: {
+              userId,
+              status: {
+                not: 'perdida',
+              },
+            },
+          },
+        },
+      }),
       prisma.oportunidade.count({
         where: { userId, createdAt: dateFilter },
       }),
-      prisma.tarefa.count({
-        where: { userId, createdAt: dateFilter },
+      prisma.oportunidade.count({
+        where: {
+          userId,
+          status: { in: expandOpportunityStatuses(['orcamento']) },
+          pedido: {
+            is: null,
+          },
+        },
       }),
-
       prisma.oportunidade.aggregate({
         _sum: { valor: true },
         where: {
           userId,
-          status: { not: 'perdida' },
-          createdAt: dateFilter,
+          status: { in: expandOpportunityStatuses(['orcamento']) },
+          pedido: {
+            is: null,
+          },
+        },
+      }),
+      prisma.tarefa.count({
+        where: {
+          userId,
+          status: { in: ['pendente', 'em_andamento'] },
         },
       }),
 
@@ -151,9 +188,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const valorTotal = valorTotalAgg._sum.valor || 0
     const valorGanhos = valorGanhosAgg._sum.valor || 0
     const valorPerdidos = valorPerdidosAgg._sum.valor || 0
+    const pedidosSemPagamentoValor = pedidosSemPagamentoValorAgg._sum.totalLiquido || 0
+    const orcamentosEmAbertoValor = orcamentosEmAbertoValorAgg._sum.valor || 0
+    const valorEmAberto = Math.max(
+      pedidosSemPagamentoValor + orcamentosEmAbertoValor,
+      0
+    )
 
     const oportunidadesPorStatusMap = new Map<string, number>()
     for (const group of oportunidadesStatusGroups) {
@@ -174,20 +216,26 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       clientesCount,
+      pedidosCount,
+      pedidosSemPagamentoCount,
+      pedidosSemPagamentoValor,
       oportunidadesCount,
+      orcamentosEmAbertoCount,
+      orcamentosEmAbertoValor,
       tarefasCount,
-      valorTotal,
+      valorTotal: valorEmAberto,
       valorGanhos,
       valorPerdidos,
       faturamentoPerdaSerie: monthlyBuckets,
       oportunidadesPorStatus,
       tarefasPorStatus,
     })
-  } catch (error) {
-    console.error('Erro ao buscar estatisticas do dashboard:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar estatisticas do dashboard' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao buscar estatisticas do dashboard:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar estatisticas do dashboard' },
+        { status: 500 }
+      )
+    }
+  })
 }

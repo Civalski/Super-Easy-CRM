@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common'
-import { ArrowLeft, Save, Bell } from 'lucide-react'
+import { ArrowLeft, Save, Bell } from '@/lib/icons'
 import Link from 'next/link'
 
 interface Cliente {

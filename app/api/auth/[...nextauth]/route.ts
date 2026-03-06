@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { extractClientIpFromHeaders } from "@/lib/security/client-ip"
 import {
@@ -90,6 +91,13 @@ const handler = NextAuth({
                     return null
                 }
 
+                const sessionId = randomUUID()
+
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { activeSessionId: sessionId },
+                })
+
                 resetRateLimit(byIpKey)
                 resetRateLimit(byIdentifierKey)
 
@@ -99,6 +107,7 @@ const handler = NextAuth({
                     email: user.email,
                     role: user.role,
                     username: user.username,
+                    sessionId,
                 }
             }
         })
@@ -113,6 +122,7 @@ const handler = NextAuth({
                 token.userId = user.id
                 token.role = user.role
                 token.username = user.username
+                token.sessionId = user.sessionId
             }
             return token
         },

@@ -6,6 +6,7 @@ import {
   normalizeMercadoPagoStatus,
   validateMercadoPagoWebhookSignature,
 } from '@/lib/billing/mercado-pago'
+import { isBillingSubscriptionDisabledServer } from '@/lib/billing/feature-toggle'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -93,6 +94,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (isBillingSubscriptionDisabledServer()) {
+    return NextResponse.json({ ok: true, ignored: 'billing_subscription_disabled' })
+  }
+
   const bodyText = await request.text()
   let payload: Record<string, unknown> = {}
 

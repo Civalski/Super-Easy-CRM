@@ -1,260 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
-
+import { withAuth, zodErrorResponse } from '@/lib/api/route-helpers'
+import { listClientes, createCliente } from '@/lib/services/clientes'
+import { clienteCreateSchema } from '@/lib/validations/clientes'
+import { parseLimit, parsePage } from '@/lib/validations/common'
 export const dynamic = 'force-dynamic'
 
-type CampoPersonalizado = {
-  label: string
-  value: string
-}
-
-const normalizeOptionalString = (
-  value: unknown,
-  options: { maxLength?: number; upperCase?: boolean } = {}
-) => {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const normalized = options.upperCase ? trimmed.toUpperCase() : trimmed
-  if (options.maxLength && normalized.length > options.maxLength) {
-    return normalized.slice(0, options.maxLength)
-  }
-  return normalized
-}
-
-const sanitizeCamposPersonalizados = (value: unknown): CampoPersonalizado[] | null => {
-  if (!Array.isArray(value)) return null
-
-  const campos = value
-    .map((item) => {
-      if (!item || typeof item !== 'object') return null
-      const field = item as { label?: unknown; value?: unknown }
-      const label = normalizeOptionalString(field.label, { maxLength: 80 })
-      if (!label) return null
-      const fieldValue = normalizeOptionalString(field.value, { maxLength: 500 }) ?? ''
-      return { label, value: fieldValue }
-    })
-    .filter((item): item is CampoPersonalizado => item !== null)
-    .slice(0, 20)
-
-  return campos.length > 0 ? campos : null
-}
-
-const parseLimit = (value: string | null, fallback = 20, max = 50) => {
-  if (!value) return fallback
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed)) return fallback
-  return Math.min(max, Math.max(1, parsed))
-}
-
-const parsePage = (value: string | null, fallback = 1) => {
-  if (!value) return fallback
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed)) return fallback
-  return Math.max(1, parsed)
-}
-
 export async function GET(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const mode = searchParams.get('mode')
+      const paginated = searchParams.get('paginated') === 'true'
+      const rawProfile = searchParams.get('profile')
+      const rawSearch = searchParams.get('search')
+      const rawClienteCode = searchParams.get('clienteCode')
+      const topCustomers = searchParams.get('topCustomers') === 'true'
+      const rawCommercialStatus = searchParams.get('commercialStatus')
+      const rawLastPurchaseDays = searchParams.get('lastPurchaseDays')
+      const rawLastContactDays = searchParams.get('lastContactDays')
+      const rawCidade = searchParams.get('cidade')
+      const rawEstado = searchParams.get('estado')
+      const rawRevenueRange = searchParams.get('revenueRange')
+      const profile = rawProfile === 'b2b' || rawProfile === 'b2c' ? rawProfile : undefined
+      const search = rawSearch?.trim() || undefined
+      const clienteCode =
+        rawClienteCode && /^\d+$/.test(rawClienteCode.trim())
+          ? Number(rawClienteCode.trim())
+          : undefined
+      const commercialStatus =
+        rawCommercialStatus === 'sem_oportunidade' ||
+        rawCommercialStatus === 'oportunidade_aberta' ||
+        rawCommercialStatus === 'ativo' ||
+        rawCommercialStatus === 'inativo'
+          ? rawCommercialStatus
+          : undefined
+      const lastPurchaseDays =
+        rawLastPurchaseDays && /^(30|90|180|365)$/.test(rawLastPurchaseDays)
+          ? Number(rawLastPurchaseDays)
+          : undefined
+      const lastContactDays =
+        rawLastContactDays && /^(30|90|180)$/.test(rawLastContactDays)
+          ? Number(rawLastContactDays)
+          : undefined
+      const cidade = rawCidade?.trim() || undefined
+      const estado = rawEstado?.trim() || undefined
+      const revenueRange =
+        rawRevenueRange === 'ate_5000' ||
+        rawRevenueRange === 'de_5000_a_20000' ||
+        rawRevenueRange === 'acima_20000'
+          ? rawRevenueRange
+          : undefined
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const mode = searchParams.get('mode')
-    const paginated = searchParams.get('paginated') === 'true'
-
-    if (mode === 'options') {
-      const limit = parseLimit(searchParams.get('limit'))
-      const clientes = await prisma.cliente.findMany({
-        where: { userId },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: limit,
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          empresa: true,
-        },
-      })
-
-      return NextResponse.json(clientes)
-    }
-
-    if (paginated) {
+      const limit =
+        mode === 'options'
+          ? parseLimit(searchParams.get('limit'))
+          : parseLimit(searchParams.get('limit'), 25, 25)
       const page = parsePage(searchParams.get('page'))
-      const limit = parseLimit(searchParams.get('limit'), 20, 50)
-      const skip = (page - 1) * limit
 
-      const [clientes, total] = await Promise.all([
-        prisma.cliente.findMany({
-          where: { userId },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          skip,
-          take: limit,
-          include: {
-            _count: {
-              select: {
-                oportunidades: true,
-                contatos: true,
-              },
-            },
-            prospecto: {
-              select: {
-                cnaePrincipalDesc: true,
-                capitalSocial: true,
-              },
-            },
-          },
-        }),
-        prisma.cliente.count({ where: { userId } }),
-      ])
-
-      return NextResponse.json({
-        data: clientes,
-        meta: {
-          total,
-          page,
-          limit,
-          pages: Math.max(1, Math.ceil(total / limit)),
-        },
+      const result = await listClientes(userId, {
+        mode: mode === 'options' ? 'options' : undefined,
+        paginated: paginated || undefined,
+        limit,
+        page,
+        profile,
+        search,
+        clienteCode,
+        topCustomers: topCustomers || undefined,
+        commercialStatus,
+        lastPurchaseDays,
+        lastContactDays,
+        cidade,
+        estado,
+        revenueRange,
       })
+
+      return NextResponse.json(result)
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar clientes' },
+        { status: 500 }
+      )
     }
-
-    const limit = parseLimit(searchParams.get('limit'))
-    const clientes = await prisma.cliente.findMany({
-      where: { userId },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            oportunidades: true,
-            contatos: true,
-          },
-        },
-        prospecto: {
-          select: {
-            cnaePrincipalDesc: true,
-            capitalSocial: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json(clientes)
-  } catch (error) {
-    console.error('Erro ao buscar clientes:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar clientes' },
-      { status: 500 }
-    )
-  }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    await ensureDatabaseInitialized()
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json()
+      const parsed = clienteCreateSchema.safeParse(body)
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+      if (!parsed.success) {
+        return zodErrorResponse(parsed.error)
+      }
 
-    const body = await request.json()
-    const {
-      nome,
-      email,
-      telefone,
-      empresa,
-      endereco,
-      cidade,
-      estado,
-      cep,
-      cargo,
-      documento,
-      website,
-      dataNascimento,
-      observacoes,
-      camposPersonalizados,
-    } = body
+      const novoCliente = await createCliente(userId, parsed.data)
+      return NextResponse.json(novoCliente, { status: 201 })
+    } catch (error: unknown) {
+      console.error('Erro ao criar cliente:', error)
 
-    const nomeNormalizado = normalizeOptionalString(nome, { maxLength: 120 })
-    if (!nomeNormalizado) {
-      return NextResponse.json(
-        { error: 'Nome e obrigatorio' },
-        { status: 400 }
-      )
-    }
-
-    const emailNormalizado = normalizeOptionalString(email, { maxLength: 120 })
-    const camposPersonalizadosSanitizados = sanitizeCamposPersonalizados(camposPersonalizados)
-
-    if (emailNormalizado) {
-      const clienteExistente = await prisma.cliente.findFirst({
-        where: { email: emailNormalizado, userId },
-      })
-      if (clienteExistente) {
+      if (error instanceof Error && error.message === 'CLIENTE_EMAIL_DUPLICADO') {
         return NextResponse.json(
           { error: 'Ja existe um cliente com este email' },
           { status: 400 }
         )
       }
-    }
 
-    const novoCliente = await prisma.cliente.create({
-      data: {
-        userId,
-        nome: nomeNormalizado,
-        email: emailNormalizado,
-        telefone: normalizeOptionalString(telefone, { maxLength: 30 }),
-        empresa: normalizeOptionalString(empresa, { maxLength: 120 }),
-        endereco: normalizeOptionalString(endereco, { maxLength: 200 }),
-        cidade: normalizeOptionalString(cidade, { maxLength: 80 }),
-        estado: normalizeOptionalString(estado, { maxLength: 2, upperCase: true }),
-        cep: normalizeOptionalString(cep, { maxLength: 12 }),
-        cargo: normalizeOptionalString(cargo, { maxLength: 100 }),
-        documento: normalizeOptionalString(documento, { maxLength: 30 }),
-        website: normalizeOptionalString(website, { maxLength: 200 }),
-        dataNascimento: normalizeOptionalString(dataNascimento, { maxLength: 20 }),
-        observacoes: normalizeOptionalString(observacoes, { maxLength: 2000 }),
-        ...(camposPersonalizadosSanitizados && {
-          camposPersonalizados: camposPersonalizadosSanitizados,
-        }),
-      },
-      include: {
-        _count: {
-          select: {
-            oportunidades: true,
-            contatos: true,
-          },
-        },
-      },
-    })
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Ja existe um cliente com este email' },
+          { status: 400 }
+        )
+      }
 
-    return NextResponse.json(novoCliente, { status: 201 })
-  } catch (error: unknown) {
-    console.error('Erro ao criar cliente:', error)
-    const prismaError = error as { code?: string }
-    if (prismaError.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Ja existe um cliente com este email' },
-        { status: 400 }
+        { error: 'Erro ao criar cliente' },
+        { status: 500 }
       )
     }
-    return NextResponse.json(
-      { error: 'Erro ao criar cliente' },
-      { status: 500 }
-    )
-  }
+  })
 }

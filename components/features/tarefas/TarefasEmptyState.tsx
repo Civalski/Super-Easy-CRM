@@ -5,7 +5,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/common'
-import { Plus, Calendar, History } from 'lucide-react'
+import { Plus, Calendar, History } from '@/lib/icons'
 import type { TabType } from './TarefasTypes'
 
 interface TarefasEmptyStateProps {

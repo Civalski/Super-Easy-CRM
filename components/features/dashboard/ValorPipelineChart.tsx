@@ -3,23 +3,12 @@
  */
 'use client'
 
+import { formatCurrencyInt, formatCurrencyCompact } from '@/lib/format'
+
 interface ValorPipelineChartProps {
   valorTotal: number
   valorGanhos: number
   valorPerdidos: number
-}
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(value || 0)
-
-const formatCurrencyCompact = (value: number) => {
-  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}K`
-  return formatCurrency(value)
 }
 
 const composicaoConfig = [
@@ -35,7 +24,7 @@ const composicaoConfig = [
   },
   {
     key: 'ganhos',
-    label: 'Ganhos',
+    label: 'Vendas',
     color: '#10b981',
     dotClass: 'bg-emerald-400',
     textClass: 'text-emerald-600 dark:text-emerald-300',
@@ -45,7 +34,7 @@ const composicaoConfig = [
   },
   {
     key: 'perdidos',
-    label: 'Perdidos',
+    label: 'Orcamentos cancelados',
     color: '#f43f5e',
     dotClass: 'bg-rose-400',
     textClass: 'text-rose-600 dark:text-rose-300',
@@ -60,7 +49,7 @@ export function ValorPipelineChart({
   valorGanhos,
   valorPerdidos,
 }: ValorPipelineChartProps) {
-  const valorEmAberto = Math.max(valorTotal - valorGanhos, 0)
+  const valorEmAberto = Math.max(valorTotal, 0)
   const totalComposicao = valorEmAberto + valorGanhos + valorPerdidos
 
   const values: Record<string, number> = {
@@ -69,13 +58,14 @@ export function ValorPipelineChart({
     perdidos: valorPerdidos,
   }
 
-  let acumulado = 0
-  const slices = composicaoConfig.map((item) => {
+  const slices = composicaoConfig.map((item, index) => {
     const value = values[item.key] ?? 0
     const percent = totalComposicao > 0 ? (value / totalComposicao) * 100 : 0
-    const start = acumulado
-    acumulado += percent
-    return { ...item, value, percent, start, end: acumulado }
+    const start = composicaoConfig
+      .slice(0, index)
+      .reduce((sum, prev) => sum + (totalComposicao > 0 ? ((values[prev.key] ?? 0) / totalComposicao) * 100 : 0), 0)
+    const end = start + percent
+    return { ...item, value, percent, start, end }
   })
 
   const donutBackground =

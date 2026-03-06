@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Swal from 'sweetalert2'
+import { toast } from '@/lib/toast'
 import { AsyncSelect, Button, SideCreateDrawer } from '@/components/common'
 import { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import {
@@ -9,7 +9,7 @@ import {
   getProbabilityValueFromLevel,
   type ProbabilityLevel,
 } from '@/lib/domain/probabilidade'
-import { Loader2, Save, X } from 'lucide-react'
+import { Loader2, Save, X } from '@/lib/icons'
 import type { Pedido } from './types'
 import { PROBABILITY_LEVELS } from './constants'
 import { dateBr, dateInput, getPedidoSituacao, getProximaAcaoDate, parseCurrencyInput } from './utils'
@@ -147,17 +147,13 @@ export function EditPedidoDrawer({ pedido, saving, onClose, onSave, onCancelPedi
           clienteId = convData?.cliente?.id || null
         }
       } catch (error) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Erro',
-          text: error instanceof Error ? error.message : 'Nao foi possivel converter o lead.',
-        })
+        toast.error('Erro', { description: error instanceof Error ? error.message : 'Nao foi possivel converter o lead.' })
         return
       }
     }
 
     if (!clienteId) {
-      await Swal.fire({ icon: 'error', title: 'Cliente invalido', text: 'Nao foi possivel identificar o cliente.' })
+      toast.error('Cliente invalido', { description: 'Nao foi possivel identificar o cliente.' })
       return
     }
 

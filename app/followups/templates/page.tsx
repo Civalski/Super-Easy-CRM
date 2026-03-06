@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
-import { ArrowLeft, Loader2, MessageSquareText, Plus, Save, Trash2 } from 'lucide-react'
+import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/common'
+import { ArrowLeft, Loader2, MessageSquareText, Plus, Save, Trash2 } from '@/lib/icons'
 
 interface FollowUpTemplate {
   id: string
@@ -47,6 +48,7 @@ const toDraft = (template: FollowUpTemplate): TemplateDraft => ({
 })
 
 export default function FollowupsTemplatesPage() {
+  const { confirm } = useConfirm()
   const [templates, setTemplates] = useState<FollowUpTemplate[]>([])
   const [drafts, setDrafts] = useState<Record<string, TemplateDraft>>({})
   const [loading, setLoading] = useState(true)
@@ -94,7 +96,7 @@ export default function FollowupsTemplatesPage() {
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!createForm.mensagem.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Mensagem obrigatoria' })
+      toast.warning('Mensagem obrigatoria')
       return
     }
 
@@ -122,11 +124,7 @@ export default function FollowupsTemplatesPage() {
       })
       await fetchTemplates()
     } catch (error) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao criar template.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao criar template.' })
     } finally {
       setSaving(false)
     }
@@ -154,7 +152,7 @@ export default function FollowupsTemplatesPage() {
     const draft = drafts[templateId]
     if (!draft) return
     if (!draft.mensagem.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Mensagem obrigatoria' })
+      toast.warning('Mensagem obrigatoria')
       return
     }
 
@@ -178,26 +176,21 @@ export default function FollowupsTemplatesPage() {
       setTemplates((prev) => prev.map((item) => (item.id === templateId ? data : item)))
       setDrafts((prev) => ({ ...prev, [templateId]: toDraft(data) }))
     } catch (error) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao salvar template.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao salvar template.' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (template: FollowUpTemplate) => {
-    const confirm = await Swal.fire({
-      icon: 'warning',
+    const ok = await confirm({
       title: 'Excluir template?',
-      text: template.titulo || template.mensagem.slice(0, 60),
-      showCancelButton: true,
-      confirmButtonText: 'Excluir',
-      cancelButtonText: 'Cancelar',
+      description: template.titulo || template.mensagem.slice(0, 60),
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      confirmVariant: 'danger',
     })
-    if (!confirm.isConfirmed) return
+    if (!ok) return
 
     try {
       setSaving(true)
@@ -212,11 +205,7 @@ export default function FollowupsTemplatesPage() {
         return next
       })
     } catch (error) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: error instanceof Error ? error.message : 'Erro ao excluir template.',
-      })
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Erro ao excluir template.' })
     } finally {
       setSaving(false)
     }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common'
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Trash2 } from '@/lib/icons'
 import Link from 'next/link'
 
 type CampoPersonalizado = {

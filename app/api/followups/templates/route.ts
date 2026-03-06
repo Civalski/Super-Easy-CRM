@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,35 +8,28 @@ const ALLOWED_STAGE = new Set(['sem_contato', 'em_potencial', 'orcamento', 'fech
 const ALLOWED_CHANNEL = new Set(['whatsapp', 'email', 'ligacao', 'reuniao'])
 
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const templates = await prisma.followUpTemplate.findMany({
+  return withAuth(request, async (userId) => {
+    try {
+      const templates = await prisma.followUpTemplate.findMany({
       where: { userId },
       orderBy: [{ ativo: 'desc' }, { updatedAt: 'desc' }],
     })
 
-    return NextResponse.json(templates)
-  } catch (error) {
-    console.error('Erro ao listar templates de follow-up:', error)
-    return NextResponse.json(
-      { error: 'Erro ao listar templates de follow-up' },
-      { status: 500 }
-    )
-  }
+      return NextResponse.json(templates)
+    } catch (error) {
+      console.error('Erro ao listar templates de follow-up:', error)
+      return NextResponse.json(
+        { error: 'Erro ao listar templates de follow-up' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -68,24 +61,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(created, { status: 201 })
-  } catch (error) {
-    console.error('Erro ao criar template de follow-up:', error)
-    return NextResponse.json(
-      { error: 'Erro ao criar template de follow-up' },
-      { status: 500 }
-    )
-  }
+      return NextResponse.json(created, { status: 201 })
+    } catch (error) {
+      console.error('Erro ao criar template de follow-up:', error)
+      return NextResponse.json(
+        { error: 'Erro ao criar template de follow-up' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function PATCH(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 })
     }
@@ -137,30 +127,27 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(updated)
-  } catch (error) {
-    console.error('Erro ao atualizar template de follow-up:', error)
-    return NextResponse.json(
-      { error: 'Erro ao atualizar template de follow-up' },
-      { status: 500 }
-    )
-  }
+      return NextResponse.json(updated)
+    } catch (error) {
+      console.error('Erro ao atualizar template de follow-up:', error)
+      return NextResponse.json(
+        { error: 'Erro ao atualizar template de follow-up' },
+        { status: 500 }
+      )
+    }
+  })
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const id = searchParams.get('id')?.trim()
+      if (!id) {
+        return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })
+      }
 
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')?.trim()
-    if (!id) {
-      return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })
-    }
-
-    const deleted = await prisma.followUpTemplate.deleteMany({
+      const deleted = await prisma.followUpTemplate.deleteMany({
       where: { id, userId },
     })
 
@@ -168,12 +155,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Template nao encontrado' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Erro ao excluir template de follow-up:', error)
-    return NextResponse.json(
-      { error: 'Erro ao excluir template de follow-up' },
-      { status: 500 }
-    )
-  }
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      console.error('Erro ao excluir template de follow-up:', error)
+      return NextResponse.json(
+        { error: 'Erro ao excluir template de follow-up' },
+        { status: 500 }
+      )
+    }
+  })
 }

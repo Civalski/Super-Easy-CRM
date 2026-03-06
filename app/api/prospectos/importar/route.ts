@@ -91,12 +91,9 @@ export async function POST(request: NextRequest) {
             return heavyRoutesDisabledResponse();
         }
 
-        const { userId, role } = await getAuthIdentityFromRequest(request);
+        const { userId } = await getAuthIdentityFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-        if (role !== 'admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const rateLimitResponse = enforceApiRateLimit({
@@ -124,6 +121,13 @@ export async function POST(request: NextRequest) {
                 ? parsedBatchSize
                 : 30;
         const fileName = body.fileName || 'Importacao';
+
+        console.info('[prospectos/importar] solicitacao recebida', {
+            userId,
+            fileName,
+            empresasCount: Array.isArray(empresas) ? empresas.length : 0,
+            batchSize,
+        });
 
         if (!Array.isArray(empresas) || empresas.length === 0) {
             return NextResponse.json(
@@ -209,9 +213,12 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Erro ao importar prospectos:', error);
+        console.error('Erro ao importar prospectos:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+        });
         return NextResponse.json(
-            { error: 'Erro ao importar prospectos', detalhes: error instanceof Error ? error.message : 'Erro desconhecido' },
+            { error: 'Erro ao importar prospectos' },
             { status: 500 }
         );
     }

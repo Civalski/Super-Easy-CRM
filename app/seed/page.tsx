@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/common'
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle } from '@/lib/icons'
 import { useSession } from 'next-auth/react'
 
 const ALLOWED_MOCK_USERNAME = 'alisson355'

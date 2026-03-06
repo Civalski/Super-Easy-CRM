@@ -1,24 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
+import { parseLimit } from '@/lib/validations/common'
 
 export const dynamic = 'force-dynamic'
 
-function parseLimit(value: string | null, fallback = 20) {
-  if (!value) return fallback
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed)) return fallback
-  return Math.min(50, Math.max(1, parsed))
-}
-
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
+  return withAuth(request, async (userId) => {
+    try {
+      const { searchParams } = new URL(request.url)
     const query = searchParams.get('q')?.trim()
     const codigo = searchParams.get('codigo')?.trim()
     const limit = parseLimit(searchParams.get('limit'))
@@ -76,12 +66,13 @@ export async function GET(request: NextRequest) {
       original: produto,
     }))
 
-    return NextResponse.json(options)
-  } catch (error) {
-    console.error('Erro ao buscar produtos/servicos:', error)
-    return NextResponse.json(
-      { error: 'Erro ao buscar produtos/servicos' },
-      { status: 500 }
-    )
-  }
+      return NextResponse.json(options)
+    } catch (error) {
+      console.error('Erro ao buscar produtos/servicos:', error)
+      return NextResponse.json(
+        { error: 'Erro ao buscar produtos/servicos' },
+        { status: 500 }
+      )
+    }
+  })
 }

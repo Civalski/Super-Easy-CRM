@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { X, MessageCircle, Mail, Instagram } from 'lucide-react'
+import { X, MessageCircle, Mail, Instagram } from '@/lib/icons'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
@@ -155,7 +155,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         maxWidthClass="max-w-xl"
       >
         <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Configurações</h2>
             <button
               type="button"
@@ -178,7 +178,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         maxWidthClass="max-w-md"
       >
         <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Suporte</h2>
             <button
               type="button"

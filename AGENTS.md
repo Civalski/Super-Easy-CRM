@@ -11,6 +11,11 @@ Este arquivo define instrucoes locais para o Codex neste repositorio.
 ## Seguranca
 - Nunca gravar chaves de API ou segredos no repositorio. Usar variaveis de ambiente.
 
+## Execucao de comandos no terminal
+- Sempre que a solicitacao do usuario exigir validacao tecnica (build, type-check, lint, testes, migrate, generate), executar os comandos no terminal automaticamente, sem pedir confirmacao previa.
+- Em alteracoes de Prisma (`prisma/schema.prisma` ou migrations), rodar nesta ordem: `npm.cmd run db:generate` e `npm.cmd run db:deploy`.
+- Ao final, reportar no retorno quais comandos foram executados e o resultado principal (sucesso/falha).
+
 ## UX / Densidade visual (padrao global)
 - Priorizar layout compacto nas telas operacionais do CRM (listas, tabelas e cards de acompanhamento).
 - Evitar que itens repetitivos (como parcelas) ocupem varias linhas grandes por padrao: agrupar por entidade principal e exibir detalhes por expansao sob demanda.

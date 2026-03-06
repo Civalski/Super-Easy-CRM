@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 import { Prisma } from '@prisma/client';
 
 function parseLimit(value: string | null, fallback = 20, max = 50) {
@@ -24,13 +24,9 @@ function parseOffset(value: string | null) {
 
 // GET /api/prospectos - Lista todos os prospectos com filtros
 export async function GET(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const uf = searchParams.get('uf');
         const municipio = searchParams.get('municipio');
@@ -149,33 +145,30 @@ export async function GET(request: NextRequest) {
         }
 
 
-        return NextResponse.json({
-            prospectos,
-            estatisticas: stats,
-            paginacao: {
-                total,
-                limit,
-                offset,
-            }
-        });
+      return NextResponse.json({
+        prospectos,
+        estatisticas: stats,
+        paginacao: {
+          total,
+          limit,
+          offset,
+        }
+      });
     } catch (error) {
-        console.error('Erro ao buscar prospectos:', error);
-        return NextResponse.json(
-            { error: 'Erro ao buscar prospectos' },
-            { status: 500 }
-        );
+      console.error('Erro ao buscar prospectos:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar prospectos' },
+        { status: 500 }
+      );
     }
+  });
 }
 
 // POST /api/prospectos - Cria um novo prospecto
 export async function POST(request: NextRequest) {
+  return withAuth(request, async (userId) => {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const body = await request.json();
+      const body = await request.json();
 
         // Verificar se CNPJ já existe
         const existente = await prisma.prospecto.findUnique({
@@ -191,18 +184,50 @@ export async function POST(request: NextRequest) {
 
         const prospecto = await prisma.prospecto.create({
             data: {
-                ...body,
-                userId
+                userId,
+                cnpj: body.cnpj,
+                cnpjBasico: body.cnpjBasico,
+                cnpjOrdem: body.cnpjOrdem,
+                cnpjDv: body.cnpjDv,
+                razaoSocial: body.razaoSocial,
+                nomeFantasia: body.nomeFantasia ?? null,
+                capitalSocial: body.capitalSocial ?? null,
+                porte: body.porte ?? null,
+                naturezaJuridica: body.naturezaJuridica ?? null,
+                situacaoCadastral: body.situacaoCadastral ?? null,
+                dataAbertura: body.dataAbertura ?? null,
+                matrizFilial: body.matrizFilial ?? null,
+                cnaePrincipal: body.cnaePrincipal ?? null,
+                cnaePrincipalDesc: body.cnaePrincipalDesc ?? null,
+                cnaesSecundarios: body.cnaesSecundarios ?? null,
+                tipoLogradouro: body.tipoLogradouro ?? null,
+                logradouro: body.logradouro ?? null,
+                numero: body.numero ?? null,
+                complemento: body.complemento ?? null,
+                bairro: body.bairro ?? null,
+                cep: body.cep ?? null,
+                municipio: body.municipio,
+                uf: body.uf,
+                telefone1: body.telefone1 ?? null,
+                telefone2: body.telefone2 ?? null,
+                fax: body.fax ?? null,
+                email: body.email ?? null,
+                status: body.status ?? 'novo',
+                observacoes: body.observacoes ?? null,
+                prioridade: body.prioridade ?? 0,
+                lote: body.lote ?? null,
+                ultimoContato: body.ultimoContato ? new Date(body.ultimoContato) : null,
             }
         });
 
-        return NextResponse.json(prospecto, { status: 201 });
+      return NextResponse.json(prospecto, { status: 201 });
     } catch (error) {
-        console.error('Erro ao criar prospecto:', error);
-        return NextResponse.json(
-            { error: 'Erro ao criar prospecto' },
-            { status: 500 }
-        );
+      console.error('Erro ao criar prospecto:', error);
+      return NextResponse.json(
+        { error: 'Erro ao criar prospecto' },
+        { status: 500 }
+      );
     }
+  });
 }
 

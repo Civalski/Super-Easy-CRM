@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getUserIdFromRequest } from '@/lib/auth'
+import { withAuth } from '@/lib/api/route-helpers'
 import { logBusinessEvent } from '@/lib/observability/audit'
 
 export const dynamic = 'force-dynamic'
@@ -10,13 +10,10 @@ interface RouteParams {
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json().catch(() => null)
+  const { id } = await params
+  return withAuth(request, async (userId) => {
+    try {
+      const body = await request.json().catch(() => null)
     const requestedStatus =
       typeof body?.status === 'string' ? body.status.trim().toLowerCase() : null
 
@@ -28,9 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const { id } = await params
-
-    const result = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
       const prospecto = await tx.prospecto.findFirst({
         where: { id, userId },
       })
@@ -135,11 +130,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       mensagem: 'Prospecto promovido para orçamento',
     })
 
-  } catch (error) {
-    console.error('Erro ao promover prospecto:', error)
-    return NextResponse.json(
-      { error: 'Erro ao promover prospecto' },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('Erro ao promover prospecto:', error)
+      return NextResponse.json(
+        { error: 'Erro ao promover prospecto' },
+        { status: 500 }
+      )
+    }
+  })
 }

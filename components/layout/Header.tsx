@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings, LifeBuoy } from 'lucide-react'
+import { Search, Bell, Menu, X, Settings, LifeBuoy } from '@/lib/icons'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -150,7 +150,7 @@ export default function Header({
           <div className="flex-1 px-1 sm:px-3">
             <div
               ref={buscaRef}
-              className="relative flex mx-auto w-full max-w-xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
+              className="relative flex mx-auto w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
             >
               <div
                 className="flex h-11 w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400"

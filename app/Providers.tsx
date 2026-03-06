@@ -6,6 +6,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import {
     THEME_EVENT,
     applyThemeToDocument,
@@ -40,7 +41,9 @@ export function Providers({ children }: ProvidersProps) {
 
     return (
         <AuthProvider>
-            {children}
+            <ConfirmProvider>
+                {children}
+            </ConfirmProvider>
         </AuthProvider>
     );
 }

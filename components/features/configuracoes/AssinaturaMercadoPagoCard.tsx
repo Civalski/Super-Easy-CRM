@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CreditCard, Loader2, RefreshCw } from 'lucide-react'
+import { CreditCard, Loader2, RefreshCw } from '@/lib/icons'
 import { Button } from '@/components/common'
 
 interface SubscriptionPayload {
@@ -39,15 +39,16 @@ export function AssinaturaMercadoPagoCard() {
   const [syncing, setSyncing] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+  const [couponCode, setCouponCode] = useState('')
 
-  const loadStatus = useCallback(async (sync = false) => {
+  const loadStatus = useCallback(async (sync = false, signal?: AbortSignal) => {
     if (sync) setSyncing(true)
     else setLoading(true)
 
     try {
       const response = await fetch(
         `/api/billing/mercado-pago/subscription${sync ? '?sync=1' : ''}`,
-        { cache: 'no-store' }
+        { cache: 'no-store', signal }
       )
       const data = (await response.json()) as SubscriptionPayload & {
         error?: string
@@ -60,6 +61,7 @@ export function AssinaturaMercadoPagoCard() {
       setSubscription(data)
       setError('')
     } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') return
       setError(loadError instanceof Error ? loadError.message : 'Erro ao consultar assinatura')
     } finally {
       if (sync) setSyncing(false)
@@ -68,7 +70,9 @@ export function AssinaturaMercadoPagoCard() {
   }, [])
 
   useEffect(() => {
-    void loadStatus()
+    const controller = new AbortController()
+    void loadStatus(false, controller.signal)
+    return () => controller.abort()
   }, [loadStatus])
 
   const amountLabel = useMemo(() => {
@@ -92,9 +96,14 @@ export function AssinaturaMercadoPagoCard() {
     try {
       const response = await fetch('/api/billing/mercado-pago/subscription', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          couponCode: couponCode.trim() || undefined,
+        }),
       })
       const data = (await response.json()) as {
         checkoutUrl?: string | null
+        couponApplied?: boolean
         error?: string
       }
 
@@ -105,6 +114,10 @@ export function AssinaturaMercadoPagoCard() {
       if (data.checkoutUrl) {
         window.location.assign(data.checkoutUrl)
         return
+      }
+
+      if (data.couponApplied) {
+        setCouponCode('')
       }
 
       await loadStatus(true)
@@ -136,6 +149,17 @@ export function AssinaturaMercadoPagoCard() {
             </p>
           )}
           {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+          {!subscription?.active && (
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(event) => setCouponCode(event.target.value)}
+                placeholder="Cupom (opcional)"
+                className="h-8 w-40 rounded border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
