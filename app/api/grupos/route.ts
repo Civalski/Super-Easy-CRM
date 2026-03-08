@@ -6,6 +6,11 @@ import {
     normalizeOpportunityStatus,
     expandOpportunityStatuses,
 } from '@/lib/domain/status'
+import {
+    descartarContatadosStale,
+    DIAS_PARA_AVISO,
+    DIAS_PARA_DESCARTE,
+} from '@/lib/prospectos/descartarContatadosStale'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +32,9 @@ export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
       await ensureDatabaseInitialized()
+
+      // Descartar leads contatados há 8+ dias não movimentados (automático pelo calendário)
+      await descartarContatadosStale(userId)
 
       const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
@@ -50,13 +58,16 @@ export async function GET(request: NextRequest) {
         // sem_contato -> Prospecto (lead_frio e novo)
         // contatado -> Prospecto (em_contato)
         // em_potencial -> Prospecto (qualificado)
-        // others -> Oportunidade
-        if (normalizedStatus === 'sem_contato' || normalizedStatus === 'contatado' || normalizedStatus === 'em_potencial') {
+        // aguardando_orcamento -> Prospecto (aguardando_orcamento) - cliente pediu orçamento, ainda não foi feito
+        // orcamento -> Oportunidade (orcamento)
+        if (normalizedStatus === 'sem_contato' || normalizedStatus === 'contatado' || normalizedStatus === 'em_potencial' || normalizedStatus === 'aguardando_orcamento') {
             const prospectoStatus = normalizedStatus === 'sem_contato'
                 ? 'sem_contato'
                 : normalizedStatus === 'contatado'
                     ? 'em_contato'
-                    : 'qualificado'
+                    : normalizedStatus === 'em_potencial'
+                        ? 'qualificado'
+                        : 'aguardando_orcamento'
 
             const whereProspecto: Record<string, unknown> =
                 prospectoStatus === 'sem_contato'
@@ -81,22 +92,37 @@ export async function GET(request: NextRequest) {
                 prisma.prospecto.count({ where: whereProspecto }),
             ])
 
-            data = prospectos.map((p) => ({
-                id: p.id,
-                titulo: p.nomeFantasia || p.razaoSocial,
-                valor: null,
-                status: normalizedStatus,
-                subStatus: p.status,
-                createdAt: p.createdAt.toISOString(),
-                type: 'prospecto',
-                cliente: {
-                    nome: p.nomeFantasia || p.razaoSocial,
-                    email: p.email,
-                    telefone: p.telefone1,
-                    empresa: p.razaoSocial,
-                    cnpj: p.cnpj,
-                },
-            }))
+            const now = new Date()
+            const cutoffAviso = new Date(now)
+            cutoffAviso.setDate(cutoffAviso.getDate() - DIAS_PARA_AVISO)
+            const cutoffDescartar = new Date(now)
+            cutoffDescartar.setDate(cutoffDescartar.getDate() - DIAS_PARA_DESCARTE)
+
+            data = prospectos.map((p) => {
+                const dataRef = p.ultimoContato ?? p.updatedAt
+                const avisoDescartar =
+                    normalizedStatus === 'contatado' &&
+                    dataRef < cutoffAviso &&
+                    dataRef >= cutoffDescartar
+
+                return {
+                    id: p.id,
+                    titulo: p.nomeFantasia || p.razaoSocial,
+                    valor: null,
+                    status: normalizedStatus,
+                    subStatus: p.status,
+                    createdAt: p.createdAt.toISOString(),
+                    type: 'prospecto',
+                    avisoDescartar: avisoDescartar || undefined,
+                    cliente: {
+                        nome: p.nomeFantasia || p.razaoSocial,
+                        email: p.email,
+                        telefone: p.telefone1,
+                        empresa: p.razaoSocial,
+                        cnpj: p.cnpj,
+                    },
+                }
+            })
             total = count
         } else {
             const statusFilter = normalizeOpportunityStatus(normalizedStatus)

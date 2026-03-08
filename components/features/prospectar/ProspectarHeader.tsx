@@ -56,10 +56,10 @@ export function ProspectarHeader({
                 <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors cursor-pointer shadow-md shadow-sky-500/20">
                         <Target className="w-4 h-4" />
-                        <span>Importar XLSX</span>
+                        <span>Importar CSV</span>
                         <input
                             type="file"
-                            accept=".xlsx, .xls"
+                            accept=".csv"
                             className="hidden"
                             onChange={handleFileChange}
                         />

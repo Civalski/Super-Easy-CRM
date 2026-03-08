@@ -232,6 +232,9 @@ export async function GET(request: NextRequest) {
                     },
                   },
                 },
+                cliente: { select: { id: true, nome: true } },
+                fornecedor: { select: { id: true, nome: true } },
+                funcionario: { select: { id: true, nome: true } },
               },
               orderBy: [{ dataVencimento: 'asc' }, { createdAt: 'desc' }],
             })
@@ -283,6 +286,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        cliente: { select: { id: true, nome: true } },
+        fornecedor: { select: { id: true, nome: true } },
+        funcionario: { select: { id: true, nome: true } },
         movimentos: {
           orderBy: { createdAt: 'desc' },
           take: 5,
@@ -417,6 +423,10 @@ export async function POST(request: NextRequest) {
     const recorrenciaDiaVencimento =
       recorrenteMensal && dataVencimento ? dataVencimento.getDate() : null
 
+    const multaPorAtrasoPercentual = payload.multaPorAtrasoPercentual !== undefined ? parseMoney(payload.multaPorAtrasoPercentual) : null
+    const multaPorAtrasoValor = payload.multaPorAtrasoValor !== undefined ? parseMoney(payload.multaPorAtrasoValor) : null
+    const multaPorAtrasoPeriodo = typeof payload.multaPorAtrasoPeriodo === 'string' && ['dia', 'semana', 'mes'].includes(payload.multaPorAtrasoPeriodo) ? payload.multaPorAtrasoPeriodo : null
+
     const created = await prisma.$transaction(async (tx) => {
       const contasCriadas = []
 
@@ -430,6 +440,9 @@ export async function POST(request: NextRequest) {
             userId,
             pedidoId: typeof payload.pedidoId === 'string' ? payload.pedidoId : null,
             oportunidadeId: typeof payload.oportunidadeId === 'string' ? payload.oportunidadeId : null,
+            clienteId: typeof payload.clienteId === 'string' ? payload.clienteId : null,
+            fornecedorId: typeof payload.fornecedorId === 'string' ? payload.fornecedorId : null,
+            funcionarioId: typeof payload.funcionarioId === 'string' ? payload.funcionarioId : null,
             ambiente,
             tipo,
             descricao: typeof payload.descricao === 'string' ? payload.descricao : null,
@@ -449,6 +462,9 @@ export async function POST(request: NextRequest) {
             recorrenteMensal,
             recorrenciaAtiva: recorrenteMensal,
             recorrenciaDiaVencimento,
+            ...(multaPorAtrasoPercentual != null ? { multaPorAtrasoPercentual } : {}),
+            ...(multaPorAtrasoValor != null ? { multaPorAtrasoValor } : {}),
+            ...(multaPorAtrasoPeriodo != null ? { multaPorAtrasoPeriodo } : {}),
           },
         })
 
@@ -536,8 +552,14 @@ export async function PATCH(request: NextRequest) {
 
     const valorRecebidoRaw =
       payload.valorRecebido !== undefined ? parseMoney(payload.valorRecebido) : roundMoney(existing.valorRecebido)
-    const valorTotal =
+    let valorTotal =
       payload.valorTotal !== undefined ? parseMoney(payload.valorTotal) : roundMoney(existing.valorTotal)
+
+    const valorTaxa = payload.valorTaxa !== undefined ? parseMoney(payload.valorTaxa) : null
+    if (valorTaxa !== null && valorTaxa > 0) {
+      const base = valorTotal ?? existing.valorTotal
+      valorTotal = roundMoney(base + valorTaxa)
+    }
     const dataVencimento =
       payload.dataVencimento !== undefined
         ? payload.dataVencimento
@@ -633,6 +655,9 @@ export async function PATCH(request: NextRequest) {
           status,
           recorrenciaAtiva: recorrenciaAtivaInput,
           recorrenciaDiaVencimento: recorrenciaDiaInput,
+          clienteId: payload.clienteId !== undefined ? (typeof payload.clienteId === 'string' ? payload.clienteId : null) : existing.clienteId,
+          fornecedorId: payload.fornecedorId !== undefined ? (typeof payload.fornecedorId === 'string' ? payload.fornecedorId : null) : existing.fornecedorId,
+          funcionarioId: payload.funcionarioId !== undefined ? (typeof payload.funcionarioId === 'string' ? payload.funcionarioId : null) : existing.funcionarioId,
         },
       })
 

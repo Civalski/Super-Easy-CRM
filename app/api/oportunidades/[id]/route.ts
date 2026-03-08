@@ -262,7 +262,7 @@ export async function PATCH(
     }
 
     if (titulo !== undefined) {
-      if (typeof titulo !== 'string' || titulo.trim() === '') {
+      if (typeof titulo !== 'string') {
         return NextResponse.json(
           { error: 'Titulo invalido' },
           { status: 400 }

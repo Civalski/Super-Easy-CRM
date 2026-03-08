@@ -1,25 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Bell, ChevronDown, Info, Save, X } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { AsyncSelect, Button, SideCreateDrawer } from '@/components/common'
-import { AsyncSelectOption } from '@/components/common/AsyncSelect'
+import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { getProbabilityValueFromLevel, type ProbabilityLevel } from '@/lib/domain/probabilidade'
-import { Info, Minus, PackagePlus, Plus, ShoppingCart, X } from '@/lib/icons'
-import type { DraftCreateItem, DraftEditableField, ItemForm } from './types'
+import { formatDate } from '@/lib/format'
+import { useOrcamentoCarrinho } from '@/components/features/oportunidades/hooks/useOrcamentoCarrinho'
+import CarrinhoDrawer from '@/components/features/oportunidades/CarrinhoDrawer'
+import { FIELD_CLASS, LABEL_CLASS, CANAL_OPTIONS, FORMA_PAGAMENTO_OPTIONS } from '@/components/features/oportunidades/constants'
+import { getProximaAcaoDate, parseCurrencyInput, formatCurrencyInput, currency } from '@/components/features/oportunidades/utils'
 import { PROBABILITY_LEVELS } from './constants'
-import {
-  buildItemForm,
-  calculateSubtotal,
-  currency,
-  dateBr,
-  getProdutoFromOption,
-  getProximaAcaoDate,
-  normalizeItemNumbers,
-  parseCurrencyInput,
-  summarizeCartItems,
-  toNumber,
-} from './utils'
+
+const PROBABILITY_LABELS: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta' }
+const today = () => new Date().toISOString().split('T')[0]
 
 interface CreatePedidoDiretoModalProps {
   initialPerson?: AsyncSelectOption | null
@@ -28,15 +23,18 @@ interface CreatePedidoDiretoModalProps {
 }
 
 export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreated }: CreatePedidoDiretoModalProps) {
-  const [loading, setLoading] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<{ titulo?: string; cliente?: string }>({})
+  const carrinho = useOrcamentoCarrinho()
+  const { hasCartItems, totalCarrinho, itens, showCarrinhoDrawer, setShowCarrinhoDrawer } = carrinho
+
   const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(initialPerson)
-  const [statusInfo, setStatusInfo] = useState<string | null>(null)
-  const [selectedProdutoLabel, setSelectedProdutoLabel] = useState('')
-  const [itemForm, setItemForm] = useState<ItemForm>(buildItemForm())
-  const [itens, setItens] = useState<DraftCreateItem[]>([])
+  const [statusInfo, setStatusInfo] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ cliente?: string }>({})
+  const [probOpen, setProbOpen] = useState(false)
+  const probRef = useRef<HTMLDivElement>(null)
   const [proximaAcaoNumero, setProximaAcaoNumero] = useState(15)
   const [proximaAcaoUnidade, setProximaAcaoUnidade] = useState<'dias' | 'semanas' | 'meses'>('dias')
+
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
@@ -44,122 +42,52 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
     formaPagamento: '',
     parcelas: '',
     desconto: '',
-    probabilidade: 'media',
-    dataFechamento: new Date().toISOString().split('T')[0],
+    probabilidade: 'media' as ProbabilityLevel,
+    dataFechamento: today(),
     proximaAcaoEm: getProximaAcaoDate(15, 'dias'),
     canalProximaAcao: '',
     responsavelProximaAcao: '',
     lembreteProximaAcao: true,
   })
 
-  const cartSummary = useMemo(() => summarizeCartItems(itens), [itens])
-  const draftSubtotal = calculateSubtotal(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
-  const hasCartItems = itens.length > 0
-
   useEffect(() => {
     setSelectedPerson(initialPerson)
-    setStatusInfo(initialPerson?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null)
+    setStatusInfo(initialPerson?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : '')
   }, [initialPerson])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    if (e.target.name === 'lembreteProximaAcao') {
-      const target = e.target as HTMLInputElement
-      setForm((prev) => ({ ...prev, lembreteProximaAcao: target.checked }))
-      return
-    }
-    if (e.target.name === 'formaPagamento' && e.target.value !== 'parcelado') {
-      setForm((prev) => ({ ...prev, formaPagamento: e.target.value, parcelas: '' }))
-      return
-    }
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-    if (e.target.name === 'titulo' && fieldErrors.titulo && e.target.value.trim()) {
-      setFieldErrors((prev) => ({ ...prev, titulo: undefined }))
-    }
-  }
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(proximaAcaoNumero, proximaAcaoUnidade) }))
+  }, [proximaAcaoNumero, proximaAcaoUnidade])
 
-  const handleCurrencyChange = (name: 'valor' | 'desconto') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, '')
-    if (!rawValue) {
-      setForm((prev) => ({ ...prev, [name]: '' }))
-      return
+  useEffect(() => {
+    const onOutside = (e: MouseEvent) => {
+      if (probRef.current && !probRef.current.contains(e.target as Node)) setProbOpen(false)
     }
-    const numericValue = parseInt(rawValue, 10) / 100
-    const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue)
-    setForm((prev) => ({ ...prev, [name]: formatted }))
-  }
+    if (probOpen) document.addEventListener('click', onOutside)
+    return () => document.removeEventListener('click', onOutside)
+  }, [probOpen])
 
-  const handleItemForm = (field: keyof ItemForm, value: string) => {
-    setItemForm((prev) => {
-      if (field === 'descricao' || field === 'produtoServicoId') return { ...prev, [field]: value }
-      const numericValue = toNumber(value, 0)
-      const next = { ...prev, [field]: numericValue }
-      const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
-      return { ...next, quantidade: normalized.quantidade, precoUnitario: normalized.precoUnitario, desconto: normalized.desconto }
+  const handleChange = useCallback((field: string, value: string | boolean) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'formaPagamento' && value !== 'parcelado') next.parcelas = ''
+      return next
     })
-  }
+  }, [])
 
-  const handleSelectProduto = (option: AsyncSelectOption | null) => {
-    const selected = getProdutoFromOption(option)
-    setItemForm((prev) => ({
-      ...prev,
-      produtoServicoId: selected?.id || '',
-      descricao: selected ? selected.nome : prev.descricao,
-      precoUnitario: selected ? selected.precoPadrao : prev.precoUnitario,
-    }))
-    setSelectedProdutoLabel(option?.nome || '')
-  }
+  const handlePersonChange = useCallback((option: AsyncSelectOption | null) => {
+    setSelectedPerson(option)
+    setStatusInfo(option?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : '')
+    if (option && fieldErrors.cliente) setFieldErrors((prev) => ({ ...prev, cliente: undefined }))
+  }, [fieldErrors.cliente])
 
-  const handleAddDraftItem = () => {
-    if (!itemForm.descricao.trim()) return
-    const normalized = normalizeItemNumbers(itemForm.quantidade, itemForm.precoUnitario, itemForm.desconto)
-    if (normalized.quantidade <= 0) return
-    setItens((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random()}`,
-        ...itemForm,
-        quantidade: normalized.quantidade,
-        precoUnitario: normalized.precoUnitario,
-        desconto: normalized.desconto,
-        subtotal: normalized.subtotal,
-      },
-    ])
-    setItemForm(buildItemForm())
-    setSelectedProdutoLabel('')
-  }
-
-  const handleDraftItemField = (id: string, field: DraftEditableField, value: string) => {
-    setItens((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        if (field === 'descricao') return { ...item, descricao: value }
-        const numericValue = toNumber(value, 0)
-        const next = { ...item, [field]: numericValue }
-        const normalized = normalizeItemNumbers(next.quantidade, next.precoUnitario, next.desconto)
-        return { ...next, quantidade: normalized.quantidade, precoUnitario: normalized.precoUnitario, desconto: normalized.desconto, subtotal: normalized.subtotal }
-      })
-    )
-  }
-
-  const handleStepQuantity = (id: string, delta: number) => {
-    setItens((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        const nextQuantidade = Math.max(0, item.quantidade + delta)
-        const normalized = normalizeItemNumbers(nextQuantidade, item.precoUnitario, item.desconto)
-        return { ...item, quantidade: normalized.quantidade, desconto: normalized.desconto, subtotal: normalized.subtotal }
-      })
-    )
-  }
-
-  const handleRemoveDraftItem = (id: string) => setItens((prev) => prev.filter((item) => item.id !== id))
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    const nextErrors: { titulo?: string; cliente?: string } = {}
-    if (!form.titulo.trim()) nextErrors.titulo = 'Titulo obrigatorio.'
+  const handleSubmit = async () => {
+    const nextErrors: { cliente?: string } = {}
     if (!selectedPerson) nextErrors.cliente = 'Cliente ou lead obrigatorio.'
-    if (nextErrors.titulo || nextErrors.cliente) { setFieldErrors(nextErrors); return }
+    if (nextErrors.cliente) {
+      setFieldErrors(nextErrors)
+      return
+    }
 
     const person = selectedPerson
     if (!person) return
@@ -181,22 +109,21 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
       if (!clienteId) throw new Error('Cliente nao identificado')
 
       const valorManual = form.valor ? parseCurrencyInput(form.valor) : null
+      const valor = hasCartItems ? totalCarrinho : (valorManual ?? 0)
 
       const res = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titulo: form.titulo.trim(),
+          titulo: form.titulo.trim() || null,
           descricao: form.descricao || null,
-          valor: hasCartItems ? cartSummary.totalLiquido : valorManual,
+          valor,
           clienteId,
           formaPagamento: form.formaPagamento || null,
           parcelas: form.formaPagamento === 'parcelado' && form.parcelas ? parseInt(form.parcelas, 10) : null,
-          desconto: form.desconto ? parseCurrencyInput(form.desconto) : null,
+          desconto: parseCurrencyInput(form.desconto) ?? 0,
           probabilidade: getProbabilityValueFromLevel(
-            PROBABILITY_LEVELS.includes(form.probabilidade as ProbabilityLevel)
-              ? (form.probabilidade as ProbabilityLevel)
-              : 'media'
+            PROBABILITY_LEVELS.includes(form.probabilidade) ? form.probabilidade : 'media'
           ),
           dataFechamento: form.dataFechamento || null,
           proximaAcaoEm: form.proximaAcaoEm || null,
@@ -226,371 +153,293 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
   }
 
   return (
-    <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-4xl">
-      <div className="h-full overflow-y-auto p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Novo Pedido Direto</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-            <X size={18} className="text-gray-500" />
+    <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-2xl">
+      <div className="flex h-full flex-col">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Novo Pedido</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          >
+            <X size={18} />
           </button>
         </div>
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
-          <div className="flex items-start gap-2">
-            <Info size={14} className="mt-0.5" />
-            Use os mesmos dados do orcamento. O pedido nasce aprovado e segue para pagamento/entrega.
-          </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
-              Titulo <span className="text-red-500">*</span>
-            </label>
+            <label className={LABEL_CLASS}>Cliente / Lead</label>
+            <AsyncSelect
+              fetchUrl="/api/pessoas/busca?context=oportunidade"
+              value={selectedPerson?.id || ''}
+              initialLabel={selectedPerson?.nome || ''}
+              onChange={handlePersonChange}
+              placeholder="Buscar cliente ou lead..."
+            />
+            {statusInfo && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-300">
+                <Info size={12} /> {statusInfo}
+              </p>
+            )}
+            {fieldErrors.cliente && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.cliente}</p>
+            )}
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Título</label>
             <input
-              name="titulo"
-              required
+              className={FIELD_CLASS}
               value={form.titulo}
-              onChange={handleChange}
-              placeholder="Ex: Orcamento de servico para empresa X"
-              className={`w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 ${
-                fieldErrors.titulo ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
-              }`}
+              onChange={(e) => handleChange('titulo', e.target.value)}
+              placeholder="Opcional"
             />
-            {fieldErrors.titulo && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.titulo}</p>}
           </div>
 
-          <AsyncSelect
-            label="Cliente / Lead"
-            placeholder="Busque por nome, email ou empresa..."
-            value={selectedPerson ? selectedPerson.id : ''}
-            initialLabel={selectedPerson ? selectedPerson.nome : ''}
-            onChange={(option) => {
-              setSelectedPerson(option)
-              setStatusInfo(option?.tipo === 'prospecto' ? 'Este lead sera convertido em cliente automaticamente.' : null)
-              if (option && fieldErrors.cliente) setFieldErrors((prev) => ({ ...prev, cliente: undefined }))
-            }}
-            fetchUrl="/api/pessoas/busca?context=oportunidade"
-            required
-          />
-          {fieldErrors.cliente && <p className="-mt-3 text-xs text-red-600 dark:text-red-400">{fieldErrors.cliente}</p>}
-          {statusInfo && <p className="text-xs text-blue-600 dark:text-blue-400">{statusInfo}</p>}
-
-          <label>
-            <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descricao</span>
+          <div>
+            <label className={LABEL_CLASS}>Descrição</label>
             <textarea
-              name="descricao"
-              rows={3}
+              className={FIELD_CLASS}
+              rows={2}
               value={form.descricao}
-              onChange={handleChange}
-              placeholder="Descricao detalhada do pedido"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              onChange={(e) => handleChange('descricao', e.target.value)}
             />
-          </label>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor (R$)</span>
-              <input
-                name="valor"
-                value={form.valor}
-                onChange={handleCurrencyChange('valor')}
-                placeholder={hasCartItems ? 'Calculado pelo carrinho' : '0,00'}
-                disabled={hasCartItems}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:disabled:bg-gray-700"
-              />
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Forma de pagamento</span>
-              <select
-                name="formaPagamento"
-                value={form.formaPagamento}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-              >
-                <option value="">Selecione</option>
-                <option value="pix">Pix</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="cartao">Cartao</option>
-                <option value="parcelado">Parcelado</option>
-              </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Desconto (R$)</span>
-              <input
-                name="desconto"
-                value={form.desconto}
-                onChange={handleCurrencyChange('desconto')}
-                placeholder="0,00"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-              />
-            </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Probabilidade</span>
-              <select
-                name="probabilidade"
-                value={form.probabilidade}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Valor (R$)</label>
+              <input
+                className={FIELD_CLASS}
+                value={hasCartItems ? currency(totalCarrinho) : form.valor}
+                onChange={(e) => handleChange('valor', formatCurrencyInput(e.target.value))}
+                disabled={hasCartItems}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Desconto (R$)</label>
+              <input
+                className={FIELD_CLASS}
+                value={form.desconto}
+                onChange={(e) => handleChange('desconto', formatCurrencyInput(e.target.value))}
+              />
+            </div>
+            <div ref={probRef} className="relative">
+              <label className={LABEL_CLASS}>Probabilidade</label>
+              <button
+                type="button"
+                onClick={() => setProbOpen((o) => !o)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                  form.probabilidade === 'alta'
+                    ? 'border-emerald-500/60 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200'
+                    : form.probabilidade === 'baixa'
+                      ? 'border-amber-500/50 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200'
+                      : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'
+                }`}
               >
-                <option value="baixa">baixa</option>
-                <option value="media">media</option>
-                <option value="alta">alta</option>
+                <span className="capitalize">{PROBABILITY_LABELS[form.probabilidade] ?? form.probabilidade}</span>
+                <ChevronDown size={14} className={`shrink-0 transition-transform ${probOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {probOpen && (
+                <div className="absolute left-0 top-full z-10 mt-1 min-w-[90px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800">
+                  {PROBABILITY_LEVELS.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => {
+                        handleChange('probabilidade', level)
+                        setProbOpen(false)
+                      }}
+                      className={`flex w-full items-center justify-between px-2.5 py-1.5 text-left text-xs capitalize transition hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        form.probabilidade === level
+                          ? 'bg-violet-50 font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {PROBABILITY_LABELS[level] ?? level}
+                      {form.probabilidade === level && <span className="text-violet-500">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Forma de Pagamento</label>
+              <select
+                className={FIELD_CLASS}
+                value={form.formaPagamento}
+                onChange={(e) => handleChange('formaPagamento', e.target.value)}
+              >
+                {FORMA_PAGAMENTO_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Parcelas</span>
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Parcelas</label>
               <input
                 type="number"
-                name="parcelas"
-                min="2"
-                max="24"
+                min={1}
+                className={FIELD_CLASS}
                 value={form.parcelas}
-                onChange={handleChange}
+                onChange={(e) => handleChange('parcelas', e.target.value)}
                 disabled={form.formaPagamento !== 'parcelado'}
-                placeholder={form.formaPagamento === 'parcelado' ? 'Ex: 3' : 'Somente parcelado'}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:disabled:bg-gray-700"
               />
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data prevista</span>
-              <input
-                type="date"
-                name="dataFechamento"
-                value={form.dataFechamento}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:scheme-dark"
-              />
-            </label>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Proxima acao</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Em</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Data de Fechamento</label>
+              <input
+                type="date"
+                className={FIELD_CLASS}
+                value={form.dataFechamento}
+                onChange={(e) => handleChange('dataFechamento', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Próxima Ação Em</label>
+              <div className="flex gap-2">
                 <input
                   type="number"
                   min={1}
-                  max={999}
+                  className={`${FIELD_CLASS} w-20`}
                   value={proximaAcaoNumero}
-                  onChange={(e) => {
-                    const n = Math.max(1, Math.min(999, parseInt(e.target.value, 10) || 1))
-                    setProximaAcaoNumero(n)
-                    setForm((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(n, proximaAcaoUnidade) }))
-                  }}
-                  className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  onChange={(e) => setProximaAcaoNumero(Math.max(1, Number(e.target.value)))}
                 />
                 <select
+                  className={FIELD_CLASS}
                   value={proximaAcaoUnidade}
-                  onChange={(e) => {
-                    const u = e.target.value as 'dias' | 'semanas' | 'meses'
-                    setProximaAcaoUnidade(u)
-                    setForm((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(proximaAcaoNumero, u) }))
-                  }}
-                  className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  onChange={(e) => setProximaAcaoUnidade(e.target.value as 'dias' | 'semanas' | 'meses')}
                 >
                   <option value="dias">dias</option>
                   <option value="semanas">semanas</option>
                   <option value="meses">meses</option>
                 </select>
-                <span className="text-xs text-gray-500 dark:text-gray-400">({dateBr(form.proximaAcaoEm)})</span>
               </div>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Canal da acao</span>
-              <select
-                name="canalProximaAcao"
-                value={form.canalProximaAcao}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-              >
-                <option value="">Selecione</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="email">Email</option>
-                <option value="ligacao">Ligacao</option>
-                <option value="reuniao">Reuniao</option>
-                <option value="outro">Outro</option>
-              </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Responsavel</span>
-              <input
-                type="text"
-                name="responsavelProximaAcao"
-                value={form.responsavelProximaAcao}
-                onChange={handleChange}
-                placeholder="Ex: Joao"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-              />
-            </label>
-          </div>
-
-          <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              name="lembreteProximaAcao"
-              checked={form.lembreteProximaAcao}
-              onChange={handleChange}
-              className="h-4 w-4 rounded-sm border-gray-300 text-violet-600"
-            />
-            Gerar lembrete para a proxima acao
-          </label>
-
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)]">
-            <div className="space-y-3 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <p className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  <ShoppingCart size={14} />
-                  Carrinho
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{itens.length} item(ns)</p>
-              </div>
-              {itens.length === 0 && (
-                <p className="rounded-lg border border-dashed border-gray-300 p-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  Adicione produtos ou servicos para montar o pedido.
+              {form.proximaAcaoEm && (
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  {formatDate(form.proximaAcaoEm)}
                 </p>
               )}
-              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                {itens.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
-                      <label className="md:col-span-4">
-                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Item</span>
-                        <input
-                          value={item.descricao}
-                          onChange={(e) => handleDraftItemField(item.id, 'descricao', e.target.value)}
-                          className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
-                        />
-                      </label>
-                      <div className="md:col-span-3">
-                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Quantidade</span>
-                        <div className="flex items-center gap-1">
-                          <button type="button" onClick={() => handleStepQuantity(item.id, -1)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-                            <Minus size={12} />
-                          </button>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={item.quantidade}
-                            onChange={(e) => handleDraftItemField(item.id, 'quantidade', e.target.value)}
-                            className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800"
-                          />
-                          <button type="button" onClick={() => handleStepQuantity(item.id, 1)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-                            <Plus size={12} />
-                          </button>
-                        </div>
-                      </div>
-                      <label className="md:col-span-2">
-                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unitario</span>
-                        <input type="number" min={0} step="0.01" value={item.precoUnitario} onChange={(e) => handleDraftItemField(item.id, 'precoUnitario', e.target.value)} className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                      </label>
-                      <label className="md:col-span-2">
-                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
-                        <input type="number" min={0} step="0.01" value={item.desconto} onChange={(e) => handleDraftItemField(item.id, 'desconto', e.target.value)} className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                      </label>
-                      <div className="md:col-span-1">
-                        <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
-                        <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">{currency(item.subtotal)}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-end">
-                      <button type="button" onClick={() => handleRemoveDraftItem(item.id)} className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20">
-                        <X size={12} />
-                        Remover
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700">
-                <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  <PackagePlus size={14} />
-                  Adicionar item
-                </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-12">
-                  <label className="md:col-span-4">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Produto/Servico</span>
-                    <AsyncSelect
-                      className="min-w-0"
-                      placeholder="Buscar produto/servico..."
-                      value={itemForm.produtoServicoId || ''}
-                      initialLabel={selectedProdutoLabel}
-                      onChange={handleSelectProduto}
-                      fetchUrl="/api/produtos-servicos/busca"
-                    />
-                  </label>
-                  <label className="md:col-span-4">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Descricao</span>
-                    <input value={itemForm.descricao} onChange={(e) => handleItemForm('descricao', e.target.value)} placeholder="Nome exibido no pedido" className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                  </label>
-                  <label className="md:col-span-1">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Qtd</span>
-                    <input type="number" min={0} step="0.01" value={itemForm.quantidade} onChange={(e) => handleItemForm('quantidade', e.target.value)} className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                  </label>
-                  <label className="md:col-span-1">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Preco</span>
-                    <input type="number" min={0} step="0.01" value={itemForm.precoUnitario} onChange={(e) => handleItemForm('precoUnitario', e.target.value)} className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                  </label>
-                  <label className="md:col-span-1">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desconto</span>
-                    <input type="number" min={0} step="0.01" value={itemForm.desconto} onChange={(e) => handleItemForm('desconto', e.target.value)} className="w-full min-w-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800" />
-                  </label>
-                  <div className="md:col-span-1">
-                    <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Subtotal</span>
-                    <p className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">{currency(draftSubtotal)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddDraftItem}
-                    disabled={!itemForm.descricao.trim() || itemForm.quantidade <= 0}
-                    className="md:col-span-12 inline-flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-2 text-xs font-medium text-purple-700 shadow-xs hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-800"
-                  >
-                    <Plus size={14} />
-                    Adicionar ao carrinho
-                  </button>
-                </div>
-              </div>
             </div>
+          </div>
 
-            <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Resumo</p>
-              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-                <span>Itens</span>
-                <strong>{itens.length}</strong>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-                <span>Quantidade total</span>
-                <strong>{cartSummary.quantidadeTotal.toFixed(2)}</strong>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-                <span>Subtotal bruto</span>
-                <strong>{currency(cartSummary.totalBruto)}</strong>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-                <span>Descontos</span>
-                <strong className="text-red-600 dark:text-red-400">-{currency(cartSummary.totalDesconto)}</strong>
-              </div>
-              <div className="flex items-center justify-between border-t border-gray-200 pt-2 text-sm font-semibold text-blue-700 dark:border-gray-700 dark:text-blue-300">
-                <span>Total do pedido</span>
-                <span>{currency(hasCartItems ? cartSummary.totalLiquido : parseCurrencyInput(form.valor))}</span>
-              </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Quando ha itens no carrinho, o valor do pedido e calculado automaticamente.
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Canal</label>
+              <select
+                className={FIELD_CLASS}
+                value={form.canalProximaAcao}
+                onChange={(e) => handleChange('canalProximaAcao', e.target.value)}
+              >
+                {CANAL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Responsável</label>
+              <input
+                className={FIELD_CLASS}
+                value={form.responsavelProximaAcao}
+                onChange={(e) => handleChange('responsavelProximaAcao', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleChange('lembreteProximaAcao', !form.lembreteProximaAcao)}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+              form.lembreteProximaAcao
+                ? 'border-violet-400/60 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/40'
+                : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-500'
+            }`}
+          >
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                form.lembreteProximaAcao
+                  ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300'
+                  : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <Bell size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Lembrete da próxima ação</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {form.lembreteProximaAcao
+                  ? 'Você será notificado na data definida'
+                  : 'Clique para ativar notificação'}
               </p>
             </div>
-          </div>
+            <span
+              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                form.lembreteProximaAcao ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                  form.lembreteProximaAcao ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </span>
+          </button>
 
-          <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Salvando...' : 'Criar Pedido'}</Button>
-          </div>
-        </form>
+          {hasCartItems && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/40">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Carrinho: {itens.length} {itens.length === 1 ? 'item' : 'itens'} — {currency(totalCarrinho)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-700">
+          <Button variant="outline" size="sm" onClick={() => setShowCarrinhoDrawer(true)}>
+            Carrinho {hasCartItems && `(${itens.length})`}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={loading || !selectedPerson}
+          >
+            <Save size={14} className="mr-1.5" />
+            {loading ? 'Salvando...' : 'Criar Pedido'}
+          </Button>
+        </div>
       </div>
+
+      <CarrinhoDrawer
+        open={showCarrinhoDrawer}
+        onClose={() => setShowCarrinhoDrawer(false)}
+        itens={carrinho.itens}
+        itemForm={carrinho.itemForm}
+        selectedProdutoLabel={carrinho.selectedProdutoLabel}
+        cartSummary={carrinho.cartSummary}
+        totalCarrinho={carrinho.totalCarrinho}
+        draftSubtotal={carrinho.draftSubtotal}
+        onItemForm={carrinho.handleItemForm}
+        onSelectProduto={carrinho.handleSelectProduto}
+        onAddDraftItem={carrinho.handleAddDraftItem}
+        onRemoveDraftItem={carrinho.handleRemoveDraftItem}
+        onDraftItemField={carrinho.handleDraftItemField}
+        onStepQuantity={carrinho.handleStepQuantity}
+        footer={
+          <Button size="sm" onClick={() => setShowCarrinhoDrawer(false)}>
+            Concluir carrinho
+          </Button>
+        }
+      />
     </SideCreateDrawer>
   )
 }

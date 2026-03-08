@@ -17,6 +17,6 @@ export const STATUS_CLASS_MAP: Record<string, string> = {
 export const STATUS_CLASS_DEFAULT = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
 
 export const MODAL_INPUT_CLASS =
-  'w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25'
+  'w-full rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2.5 text-sm text-gray-900 dark:text-slate-100 outline-hidden transition focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/25'
 
-export const MODAL_LABEL_CLASS = 'text-xs font-medium uppercase tracking-wide text-slate-300'
+export const MODAL_LABEL_CLASS = 'text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-slate-300'

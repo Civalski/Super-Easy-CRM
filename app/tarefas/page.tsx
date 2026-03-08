@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SideCreateDrawer } from '@/components/common'
-import { Loader2, Save, X } from '@/lib/icons'
+import { Bell, Loader2, Save, X } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import {
@@ -573,16 +573,52 @@ export default function TarefasPage() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                name="notificar"
-                checked={createForm.notificar}
-                onChange={handleCreateField}
-                className="h-4 w-4 rounded-sm border-gray-300 text-purple-600 dark:border-gray-600"
-              />
-              Ativar notificacao
-            </label>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setCreateForm((prev) => ({ ...prev, notificar: !prev.notificar }))}
+              onKeyDown={(e) => e.key === 'Enter' && setCreateForm((prev) => ({ ...prev, notificar: !prev.notificar }))}
+              className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all border ${
+                createForm.notificar
+                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500/30'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`p-2 rounded-full ${
+                    createForm.notificar
+                      ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                  }`}
+                >
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <p
+                    className={`font-medium ${
+                      createForm.notificar ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Notificacao no Navegador
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Receba um alerta visual quando a tarefa vencer
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  createForm.notificar ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                    createForm.notificar ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
               <button

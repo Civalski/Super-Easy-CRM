@@ -14,12 +14,16 @@ import {
   FileText,
   Hash,
   Mail,
+  MessageCircle,
   Phone,
   Trash2,
   MoreVertical,
   Building2,
   User,
+  XCircle,
+  CheckCircle2,
 } from '@/lib/icons'
+import { getEmailComposeUrl } from '@/lib/emailCompose'
 import { ClienteDetalhesDrawer } from './ClienteDetalhesDrawer'
 import type { Cliente } from './types'
 
@@ -76,7 +80,7 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
 
   return (
     <div className="crm-card overflow-x-auto">
-      <table className="w-full min-w-[680px]">
+      <table className="w-full min-w-[900px]">
         <thead className="crm-table-head">
           <tr>
             <th className="w-[8%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -103,13 +107,37 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
                 Email
               </span>
             </th>
-            <th className="w-[22%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <span className="inline-flex items-center gap-1.5">
                 <Building2 size={14} />
                 Empresa
               </span>
             </th>
-            <th className="w-[20%] px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <th className="w-[6%] px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" title="Orçamentos">
+              <span className="inline-flex items-center justify-center gap-1">
+                <FileText size={14} />
+                Orç.
+              </span>
+            </th>
+            <th className="w-[6%] px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" title="Vendas">
+              <span className="inline-flex items-center justify-center gap-1">
+                <CheckCircle2 size={14} />
+                Vend.
+              </span>
+            </th>
+            <th className="w-[6%] px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" title="Pedidos">
+              <span className="inline-flex items-center justify-center gap-1">
+                <ClipboardList size={14} />
+                Ped.
+              </span>
+            </th>
+            <th className="w-[6%] px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" title="Cancelamentos">
+              <span className="inline-flex items-center justify-center gap-1">
+                <XCircle size={14} />
+                Canc.
+              </span>
+            </th>
+            <th className="w-[14%] px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <span className="inline-flex items-center gap-1.5 justify-end">
                 <MoreVertical size={14} />
                 Ações
@@ -118,7 +146,10 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {clientes.map((cliente) => (
+          {clientes.map((cliente) => {
+            const cleanPhone = cliente.telefone?.replace(/\D/g, '') ?? ''
+            const phoneWithCountry = cleanPhone ? (cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`) : ''
+            return (
             <tr key={cliente.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-900">
               <td className="px-4 py-3">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -158,6 +189,27 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
+                </span>
+              </td>
+
+              <td className="px-2 py-3 text-center">
+                <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
+                  {cliente.orcamentos ?? 0}
+                </span>
+              </td>
+              <td className="px-2 py-3 text-center">
+                <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
+                  {cliente.vendas ?? 0}
+                </span>
+              </td>
+              <td className="px-2 py-3 text-center">
+                <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
+                  {cliente.pedidos ?? 0}
+                </span>
+              </td>
+              <td className="px-2 py-3 text-center">
+                <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
+                  {cliente.cancelamentos ?? 0}
                 </span>
               </td>
 
@@ -202,6 +254,30 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
                         <Eye size={12} className="mr-1.5" />
                         Ver detalhes
                       </button>
+                      {phoneWithCountry && (
+                        <a
+                          href={`https://wa.me/${phoneWithCountry}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setOpenMenuId(null)}
+                          className="flex items-center rounded-md px-3 py-2 text-xs text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+                        >
+                          <MessageCircle size={12} className="mr-1.5" />
+                          Enviar WhatsApp
+                        </a>
+                      )}
+                      {cliente.email && (
+                        <a
+                          href={getEmailComposeUrl(cliente.email)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setOpenMenuId(null)}
+                          className="flex items-center rounded-md px-3 py-2 text-xs text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                        >
+                          <Mail size={12} className="mr-1.5" />
+                          Enviar email
+                        </a>
+                      )}
                       <Link
                         href={{
                           pathname: '/oportunidades',
@@ -261,7 +337,8 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
                 </div>
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
 

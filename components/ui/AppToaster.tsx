@@ -31,5 +31,13 @@ export function AppToaster() {
     }
   }, [])
 
-  return <Toaster position="top-right" richColors closeButton theme={theme} />
+  return (
+    <Toaster
+      position="top-right"
+      richColors
+      closeButton
+      theme={theme}
+      style={{ zIndex: 99999 }}
+    />
+  )
 }

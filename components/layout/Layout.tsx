@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { X, MessageCircle, Mail, Instagram } from '@/lib/icons'
+import { X } from '@/lib/icons'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
@@ -13,6 +13,11 @@ import {
   getSidebarOpenMode,
   type SidebarOpenMode,
 } from '@/lib/ui/sidebarPreference'
+import {
+  MENU_LAYOUT_EVENT,
+  getMenuLayout,
+  type MenuLayoutType,
+} from '@/lib/ui/menuLayoutPreference'
 
 const SIDEBAR_COLLAPSED_WIDTH = '4.5rem'
 const SIDEBAR_EXPANDED_WIDTH = '16rem'
@@ -22,10 +27,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
-  const [supportDrawerOpen, setSupportDrawerOpen] = useState(false)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [isSidebarOpenedByButton, setIsSidebarOpenedByButton] = useState(false)
   const [sidebarOpenMode, setSidebarOpenMode] = useState<SidebarOpenMode>('auto')
+  const [menuLayout, setMenuLayout] = useState<MenuLayoutType>('sidebar')
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -49,6 +54,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('storage', syncSidebarMode)
       window.removeEventListener(SIDEBAR_OPEN_MODE_EVENT, handleSidebarModeChange as EventListener)
+    }
+  }, [])
+
+  useEffect(() => {
+    const syncMenuLayout = () => {
+      setMenuLayout(getMenuLayout())
+    }
+
+    const handleMenuLayoutChange = (event: Event) => {
+      const customEvent = event as CustomEvent<MenuLayoutType>
+      setMenuLayout(customEvent.detail)
+    }
+
+    syncMenuLayout()
+    window.addEventListener('storage', syncMenuLayout)
+    window.addEventListener(MENU_LAYOUT_EVENT, handleMenuLayoutChange as EventListener)
+
+    return () => {
+      window.removeEventListener('storage', syncMenuLayout)
+      window.removeEventListener(MENU_LAYOUT_EVENT, handleMenuLayoutChange as EventListener)
     }
   }, [])
 
@@ -94,14 +119,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isDesktopSidebarExpanded =
     sidebarOpenMode === 'button' ? isSidebarOpenedByButton : isSidebarHovered
 
+  const useSidebarLayout = menuLayout === 'sidebar'
+  const sidebarWidth =
+    useSidebarLayout && isDesktopSidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : useSidebarLayout ? SIDEBAR_COLLAPSED_WIDTH : '0px'
+
   const layoutStyle = {
-    '--sidebar-width': isDesktopSidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
+    '--sidebar-width': sidebarWidth,
   } as CSSProperties
 
   return (
     <div className="crm-shell">
       <div className="relative flex min-h-screen">
-        {/* Sidebar Desktop */}
+        {/* Sidebar Desktop - oculto quando menu no header */}
+        {useSidebarLayout && (
         <div className="hidden lg:block">
           <Sidebar
             collapsed={!isDesktopSidebarExpanded}
@@ -112,6 +142,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             manualOpen={isSidebarOpenedByButton}
           />
         </div>
+        )}
 
         {/* Sidebar Mobile */}
         <div
@@ -141,7 +172,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Header
             onMobileMenuClick={() => setMobileSidebarOpen((prev) => !prev)}
             onOpenConfig={() => setConfigDrawerOpen(true)}
-            onOpenSupport={() => setSupportDrawerOpen(true)}
+            menuLayout={menuLayout}
           />
           <main className="flex-1 overflow-auto px-4 pb-6 pt-[calc(var(--top-bar-height)+1rem)] md:px-6 md:pb-8 lg:px-8">
             {children}
@@ -168,58 +199,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <ConfiguracoesContent />
-          </div>
-        </div>
-      </SideCreateDrawer>
-
-      <SideCreateDrawer
-        open={supportDrawerOpen}
-        onClose={() => setSupportDrawerOpen(false)}
-        maxWidthClass="max-w-md"
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Suporte</h2>
-            <button
-              type="button"
-              onClick={() => setSupportDrawerOpen(false)}
-              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-              aria-label="Fechar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Entre em contato por WhatsApp, Instagram ou e-mail para reportar problemas, sugestões ou dúvidas.
-            </p>
-            <div className="space-y-3">
-              <a
-                href="https://wa.me/5519998205608?text=Ol%C3%A1%2C%20gostaria%20de%20reportar%20um%20problema%2C%20sugest%C3%A3o%20ou%20d%C3%BAvida"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-gray-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800/60"
-              >
-                <MessageCircle className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium">WhatsApp</span>
-              </a>
-              <a
-                href="https://ig.me/m/arkersoft"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-gray-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800/60"
-              >
-                <Instagram className="h-5 w-5 shrink-0 text-pink-600 dark:text-pink-400" />
-                <span className="text-sm font-medium">Instagram (Direct)</span>
-              </a>
-              <a
-                href="mailto:arkersoft@gmail.com"
-                className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-gray-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800/60"
-              >
-                <Mail className="h-5 w-5 shrink-0 text-slate-600 dark:text-slate-400" />
-                <span className="text-sm font-medium">arkersoft@gmail.com</span>
-              </a>
-            </div>
           </div>
         </div>
       </SideCreateDrawer>

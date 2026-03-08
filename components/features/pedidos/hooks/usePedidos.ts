@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/lib/toast'
-import { useConfirm } from '@/components/common'
 import type { Pedido, PaginationMeta } from '../types'
 import { PEDIDOS_PAGE_SIZE } from '../constants'
 import { getPedidoSituacao } from '../utils'
@@ -12,7 +11,6 @@ interface UsePedidosOptions {
 }
 
 export function usePedidos({ queryFilter }: UsePedidosOptions) {
-  const { confirm } = useConfirm()
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<PaginationMeta>({
@@ -75,7 +73,8 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
     const emAndamento = pedidos.filter((p) => getPedidoSituacao(p) === 'pedido').length
     const vendas = pedidos.filter((p) => getPedidoSituacao(p) === 'venda').length
     const cancelados = pedidos.filter((p) => getPedidoSituacao(p) === 'cancelado').length
-    return { total, emAndamento, vendas, cancelados }
+    const valorTotal = pedidos.reduce((acc, p) => acc + p.totalLiquido, 0)
+    return { total, emAndamento, vendas, cancelados, valorTotal }
   }, [pedidos])
 
   const pedidosByStatus = useMemo(
@@ -160,25 +159,15 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
     }
   }
 
-  const handleCancelarPedido = async (pedido: Pedido): Promise<boolean> => {
+  const handleCancelarPedido = async (pedido: Pedido, motivo: string): Promise<boolean> => {
     if (getPedidoSituacao(pedido) !== 'pedido') return false
-
-    const ok = await confirm({
-      title: `Cancelar pedido #${pedido.numero}?`,
-      description: 'Este pedido saira da lista de orcamentos e ficara marcado como pedido cancelado.',
-      confirmLabel: 'Sim, cancelar pedido',
-      cancelLabel: 'Voltar',
-      confirmVariant: 'danger',
-    })
-
-    if (!ok) return false
 
     try {
       setSavingById((prev) => ({ ...prev, [pedido.id]: true }))
       const res = await fetch(`/api/oportunidades/${pedido.oportunidade.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'perdida', motivoPerda: 'Pedido cancelado' }),
+        body: JSON.stringify({ status: 'perdida', motivoPerda: motivo.trim() || 'Pedido cancelado' }),
       })
       const payload = await res.json().catch(() => null)
       if (!res.ok) throw new Error(payload?.error || 'Erro ao cancelar pedido')

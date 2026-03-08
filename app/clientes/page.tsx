@@ -110,6 +110,9 @@ export default function ClientesPage() {
     handleEditAddCustomField,
     handleEditRemoveCustomField,
     handleUpdateCliente,
+    backupLoading,
+    handleDownloadBackup,
+    handleRestoreBackup,
   } = useClientesPage({ queryFilter })
 
   const hasActiveFilters = Boolean(
@@ -168,6 +171,9 @@ export default function ClientesPage() {
       <ClientesHeader
         onCreateClick={openCreateDrawer}
         onFilterClick={() => setFiltersOpen((prev) => !prev)}
+        onDownloadBackup={handleDownloadBackup}
+        onRestoreBackup={handleRestoreBackup}
+        backupLoading={backupLoading}
         searchValue={searchInput}
         onSearchChange={setSearchInput}
       />

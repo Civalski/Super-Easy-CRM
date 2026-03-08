@@ -102,12 +102,41 @@ export async function GET(request: NextRequest) {
     const clienteIdFilter = searchParams.get('clienteId')?.trim()
     const possuiPedidoFilterRaw = searchParams.get('possuiPedido')?.trim().toLowerCase()
     const searchFilter = searchParams.get('search')?.trim()
+    const formaPagamentoFilter = searchParams.get('formaPagamento')?.trim().toLowerCase()
+    const probabilidadeFilter = searchParams.get('probabilidade')?.trim().toLowerCase()
+    const dataInicioFilter = parseOptionalDate(searchParams.get('dataInicio'))
+    const dataFimFilter = parseOptionalDate(searchParams.get('dataFim'))
     const mode = searchParams.get('mode')
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: Prisma.OportunidadeWhereInput = { userId }
     if (clienteIdFilter) {
       where.clienteId = clienteIdFilter
+    }
+    if (formaPagamentoFilter && ALLOWED_PAYMENT_METHODS.has(formaPagamentoFilter)) {
+      where.formaPagamento = formaPagamentoFilter
+    }
+    if (probabilidadeFilter) {
+      const ranges: Record<string, { gte: number; lte: number }> = {
+        baixa: { gte: 0, lte: 33 },
+        media: { gte: 34, lte: 66 },
+        alta: { gte: 67, lte: 100 },
+      }
+      const range = ranges[probabilidadeFilter]
+      if (range) {
+        where.probabilidade = { gte: range.gte, lte: range.lte }
+      }
+    }
+    if (dataInicioFilter || dataFimFilter) {
+      where.createdAt = {}
+      if (dataInicioFilter) {
+        (where.createdAt as Prisma.DateTimeFilter).gte = dataInicioFilter
+      }
+      if (dataFimFilter) {
+        const endOfDay = new Date(dataFimFilter)
+        endOfDay.setHours(23, 59, 59, 999)
+        ;(where.createdAt as Prisma.DateTimeFilter).lte = endOfDay
+      }
     }
     if (searchFilter) {
       const term = searchFilter
@@ -298,14 +327,7 @@ export async function POST(request: NextRequest) {
       lembreteProximaAcao,
     } = body
 
-    // Validacao basica
-    if (!titulo || titulo.trim() === '') {
-      return NextResponse.json(
-        { error: 'Titulo e obrigatorio' },
-        { status: 400 }
-      )
-    }
-
+    // Validacao basica: apenas cliente e obrigatorio
     if (!clienteId || clienteId.trim() === '') {
       return NextResponse.json(
         { error: 'Cliente e obrigatorio' },
@@ -417,7 +439,7 @@ export async function POST(request: NextRequest) {
       const created = await tx.oportunidade.create({
         data: {
           userId,
-          titulo: titulo.trim(),
+          titulo: (titulo && typeof titulo === 'string' ? titulo.trim() : '') || '',
           descricao: descricao && descricao.trim() !== '' ? descricao.trim() : null,
           valor:
             valor === null || valor === '' || valor === undefined
@@ -459,10 +481,11 @@ export async function POST(request: NextRequest) {
           ? `Responsavel: ${normalizedResponsavelProximaAcao}.`
           : null
 
+        const tituloOrcamento = created.titulo?.trim() || `Orçamento #${created.numero}`
         await tx.tarefa.create({
           data: {
             userId,
-            titulo: `Proxima acao do orçamento: ${created.titulo}`,
+            titulo: `Proxima acao do orçamento: ${tituloOrcamento}`,
             descricao: [canalLabel, responsavelLabel].filter(Boolean).join(' '),
             status: 'pendente',
             prioridade: 'media',

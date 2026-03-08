@@ -6,13 +6,12 @@ import Link from 'next/link'
 import { ArrowLeft, Clock3, Send, Loader2 } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 
-interface FollowUpTemplate {
+interface NotaTemplate {
   id: string
-  etapa: string
-  canal: string
+  tipo: string
   titulo: string | null
-  mensagem: string
-  ativo: boolean
+  descricao: string | null
+  conteudo: string
 }
 
 interface FollowUpAttempt {
@@ -21,10 +20,9 @@ interface FollowUpAttempt {
   mensagem: string
   resultado: string | null
   createdAt: string
-  template?: {
+  nota?: {
     id: string
-    etapa: string
-    canal: string
+    tipo: string
     titulo: string | null
   } | null
 }
@@ -51,10 +49,10 @@ export default function OportunidadeFollowupsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [oportunidade, setOportunidade] = useState<OportunidadeData | null>(null)
-  const [templates, setTemplates] = useState<FollowUpTemplate[]>([])
+  const [notasTemplates, setNotasTemplates] = useState<NotaTemplate[]>([])
   const [attempts, setAttempts] = useState<FollowUpAttempt[]>([])
   const [form, setForm] = useState({
-    templateId: '',
+    notaId: '',
     canal: 'whatsapp',
     mensagem: '',
     resultado: '',
@@ -65,18 +63,24 @@ export default function OportunidadeFollowupsPage() {
 
     try {
       setLoading(true)
-      const [oppRes, templatesRes, attemptsRes] = await Promise.all([
-        fetch(`/api/oportunidades/${oportunidadeId}`),
-        fetch('/api/followups/templates'),
-        fetch(`/api/oportunidades/${oportunidadeId}/followups`),
-      ])
+      const [oppRes, notasEmailRes, notasWhatsappRes, attemptsRes] =
+        await Promise.all([
+          fetch(`/api/oportunidades/${oportunidadeId}`),
+          fetch('/api/notas?tipo=email'),
+          fetch('/api/notas?tipo=whatsapp'),
+          fetch(`/api/oportunidades/${oportunidadeId}/followups`),
+        ])
 
       const oppData = await oppRes.json().catch(() => null)
-      const templatesData = await templatesRes.json().catch(() => [])
+      const notasEmail = await notasEmailRes.json().catch(() => [])
+      const notasWhatsapp = await notasWhatsappRes.json().catch(() => [])
       const attemptsData = await attemptsRes.json().catch(() => [])
 
       setOportunidade(oppData && oppData.id ? oppData : null)
-      setTemplates(Array.isArray(templatesData) ? templatesData : [])
+      setNotasTemplates([
+        ...(Array.isArray(notasEmail) ? notasEmail : []),
+        ...(Array.isArray(notasWhatsapp) ? notasWhatsapp : []),
+      ])
       setAttempts(Array.isArray(attemptsData) ? attemptsData : [])
     } catch (error) {
       console.error('Erro ao carregar follow-ups:', error)
@@ -89,19 +93,14 @@ export default function OportunidadeFollowupsPage() {
     fetchData()
   }, [fetchData])
 
-  const activeTemplates = useMemo(
-    () =>
-      templates.filter((item) => item.ativo && (!oportunidade || item.etapa === oportunidade.status)),
-    [templates, oportunidade]
-  )
-
-  const handleTemplateChange = (templateId: string) => {
-    const template = templates.find((item) => item.id === templateId)
+  const handleNotaChange = (notaId: string) => {
+    const nota = notasTemplates.find((item) => item.id === notaId)
+    const canal = nota?.tipo === 'email' ? 'email' : 'whatsapp'
     setForm((prev) => ({
       ...prev,
-      templateId,
-      canal: template?.canal || prev.canal,
-      mensagem: template?.mensagem || '',
+      notaId,
+      canal,
+      mensagem: nota?.conteudo || '',
     }))
   }
 
@@ -119,7 +118,7 @@ export default function OportunidadeFollowupsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateId: form.templateId || null,
+          notaId: form.notaId || null,
           canal: form.canal,
           mensagem: form.mensagem.trim(),
           resultado: form.resultado.trim() || null,
@@ -154,10 +153,10 @@ export default function OportunidadeFollowupsPage() {
         </Link>
         <div className="mb-3">
           <Link
-            href="/followups/templates"
+            href="/notas"
             className="inline-flex items-center rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/20"
           >
-            Gerenciar templates globais
+            Gerenciar notas e templates
           </Link>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Playbook de Follow-up</h1>
@@ -173,14 +172,14 @@ export default function OportunidadeFollowupsPage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <select
-              value={form.templateId}
-              onChange={(event) => handleTemplateChange(event.target.value)}
+              value={form.notaId}
+              onChange={(event) => handleNotaChange(event.target.value)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             >
               <option value="">Sem template</option>
-              {activeTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.titulo || `${template.etapa} - ${template.canal}`}
+              {notasTemplates.map((nota) => (
+                <option key={nota.id} value={nota.id}>
+                  {nota.titulo || nota.descricao || `${nota.tipo}`}
                 </option>
               ))}
             </select>

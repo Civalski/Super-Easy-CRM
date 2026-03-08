@@ -14,7 +14,7 @@ import type {
   PaginationMeta,
 } from '../types'
 import { CONTAS_PAGE_SIZE } from '../constants'
-import { getClienteNome, getContaTitulo, getSortDate, getStatusResumo, formatDateForInput } from '../utils'
+import { getClienteNome, getContaTitulo, getSortDate, getStatusResumo, formatDateForInput, getDefaultDataVencimento, parseCurrencyInput } from '../utils'
 
 const EMPTY_STATS: FinanceStats = { total: 0, receber: 0, pagar: 0, receberEmAberto: 0, pagarEmAberto: 0 }
 
@@ -36,12 +36,13 @@ export function useFinanceiro() {
   const [expandedGrupos, setExpandedGrupos] = useState<Record<string, boolean>>({})
 
   const [createForm, setCreateForm] = useState<CreateContaForm>({
-    ambiente: 'geral', tipo: 'receber', descricao: '', valorTotal: '', dataVencimento: '',
-    autoDebito: true, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '',
+    ambiente: 'geral', tipo: 'receber', tipoVinculo: 'nenhum', entidadeId: '', descricao: '', valorTotal: '', dataVencimento: getDefaultDataVencimento(),
+    autoDebito: false, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '',
+    multaPorAtrasoAtiva: false, multaPorAtrasoTipo: 'percentual', multaPorAtrasoValor: '', multaPorAtrasoPeriodo: 'mes',
   })
 
   const [editForm, setEditForm] = useState<EditContaForm>({
-    ambiente: 'geral', tipo: 'receber', descricao: '', valorTotal: '', dataVencimento: '',
+    ambiente: 'geral', tipo: 'receber', tipoVinculo: 'nenhum', entidadeId: '', descricao: '', valorTotal: '', dataVencimento: '',
     autoDebito: true, recorrenciaAtiva: true, aplicarNoGrupoRecorrente: true,
   })
 
@@ -120,15 +121,26 @@ export function useFinanceiro() {
 
   const toggleGrupoExpansao = (id: string) => setExpandedGrupos((p) => ({ ...p, [id]: !p[id] }))
 
-  const resetCreateForm = () => setCreateForm({ ambiente: activeAmbiente, tipo: 'receber', descricao: '', valorTotal: '', dataVencimento: '', autoDebito: true, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '' })
+  const resetCreateForm = () => setCreateForm({ ambiente: activeAmbiente, tipo: 'receber', tipoVinculo: 'nenhum', entidadeId: '', descricao: '', valorTotal: '', dataVencimento: getDefaultDataVencimento(), autoDebito: false, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '', multaPorAtrasoAtiva: false, multaPorAtrasoTipo: 'percentual', multaPorAtrasoValor: '', multaPorAtrasoPeriodo: 'mes' })
 
   const handleCreateConta = async (event: React.FormEvent) => {
     event.preventDefault()
-    const valor = Number(String(createForm.valorTotal).replace(',', '.'))
-    if (!Number.isFinite(valor) || valor <= 0) { toast.warning('Valor invalido'); return }
+    const valor = parseCurrencyInput(createForm.valorTotal)
+    if (valor === null || valor <= 0) { toast.warning('Valor invalido'); return }
 
     const datasParcelas = createForm.datasParcelas.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean)
     const payload: Record<string, unknown> = { ambiente: createForm.ambiente, tipo: createForm.tipo, descricao: createForm.descricao || null, valorTotal: valor, dataVencimento: createForm.dataVencimento || null, autoDebito: createForm.tipo === 'pagar' ? createForm.autoDebito : false }
+    if (createForm.multaPorAtrasoAtiva && createForm.multaPorAtrasoValor.trim()) {
+      const multaVal = Number(String(createForm.multaPorAtrasoValor).replace(',', '.'))
+      if (Number.isFinite(multaVal) && multaVal > 0) {
+        if (createForm.multaPorAtrasoTipo === 'percentual') payload.multaPorAtrasoPercentual = multaVal
+        else payload.multaPorAtrasoValor = multaVal
+        payload.multaPorAtrasoPeriodo = createForm.multaPorAtrasoPeriodo
+      }
+    }
+    if (createForm.tipoVinculo === 'cliente' && createForm.entidadeId) payload.clienteId = createForm.entidadeId
+    else if (createForm.tipoVinculo === 'fornecedor' && createForm.entidadeId) payload.fornecedorId = createForm.entidadeId
+    else if (createForm.tipoVinculo === 'funcionario' && createForm.entidadeId) payload.funcionarioId = createForm.entidadeId
 
     if (createForm.recorrenteMensal) {
       if (!createForm.dataVencimento) { toast.warning('Informe o primeiro vencimento da recorrencia'); return }
@@ -168,9 +180,70 @@ export function useFinanceiro() {
     } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao registrar movimento.' }) }
   }
 
+  const handleAcrescentarTaxa = async (conta: ContaFinanceira) => {
+    const value = await prompt({ title: 'Acrescentar taxa', label: `Valor da taxa para ${conta.descricao || conta.id}`, placeholder: 'Ex: 50,00', confirmLabel: 'Acrescentar' })
+    if (!value) return
+    const valorTaxa = Number(String(value).replace(',', '.'))
+    if (!Number.isFinite(valorTaxa) || valorTaxa <= 0) { toast.warning('Valor invalido'); return }
+    try {
+      const res = await fetch('/api/financeiro/contas-receber', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: conta.id, valorTaxa }) })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Erro ao acrescentar taxa')
+      toast.success('Taxa acrescentada')
+      await refreshAll()
+    } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao acrescentar taxa.' }) }
+  }
+
+  const handleAplicarMulta = async (conta: ContaFinanceira) => {
+    const pct = conta.multaPorAtrasoPercentual
+    const fixo = conta.multaPorAtrasoValor
+    const periodo = conta.multaPorAtrasoPeriodo || 'mes'
+    const diasPorPeriodo = periodo === 'dia' ? 1 : periodo === 'semana' ? 7 : 30
+    const venc = conta.dataVencimento ? new Date(conta.dataVencimento).getTime() : 0
+    const diasAtraso = venc > 0 ? Math.max(0, Math.floor((Date.now() - venc) / 86400000)) : 0
+    const periodosAtraso = Math.max(1, Math.ceil(diasAtraso / diasPorPeriodo))
+    let valorTaxa = 0
+    if (pct != null && pct > 0) valorTaxa = Math.round((conta.valorTotal * pct / 100) * periodosAtraso * 100) / 100
+    else if (fixo != null && fixo > 0) valorTaxa = Math.round(fixo * periodosAtraso * 100) / 100
+    if (valorTaxa <= 0) { toast.warning('Multa nao configurada para esta conta'); return }
+    try {
+      const res = await fetch('/api/financeiro/contas-receber', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: conta.id, valorTaxa }) })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Erro ao aplicar multa')
+      toast.success('Multa aplicada')
+      await refreshAll()
+    } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao aplicar multa.' }) }
+  }
+
+  const handleGerarLembrete = async (conta: ContaFinanceira) => {
+    const titulo = `Lembrete: ${conta.descricao || `Conta ${conta.id.slice(0, 8)}`}`
+    const vencStr = conta.dataVencimento ? new Date(conta.dataVencimento).toISOString().slice(0, 10) : null
+    const descricao = `Conta a ${conta.tipo === 'pagar' ? 'pagar' : 'receber'} - vencimento ${vencStr || 'a definir'}. Valor: R$ ${conta.valorTotal.toFixed(2).replace('.', ',')}.`
+    try {
+      const res = await fetch('/api/tarefas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo,
+          descricao,
+          status: 'pendente',
+          prioridade: 'alta',
+          dataVencimento: vencStr || new Date().toISOString().slice(0, 10),
+          clienteId: conta.cliente?.id || null,
+          notificar: true,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Erro ao criar lembrete')
+      toast.success('Lembrete criado')
+    } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao gerar lembrete.' }) }
+  }
+
   const handleOpenEditConta = (conta: ContaFinanceira) => {
     setEditingConta(conta)
-    setEditForm({ ambiente: conta.ambiente, tipo: conta.tipo, descricao: conta.descricao || '', valorTotal: String(conta.valorTotal), dataVencimento: formatDateForInput(conta.dataVencimento), autoDebito: conta.autoDebito, recorrenciaAtiva: conta.recorrenciaAtiva ?? true, aplicarNoGrupoRecorrente: true })
+    const tipoVinculo: 'nenhum' | 'cliente' | 'fornecedor' | 'funcionario' = conta.cliente ? 'cliente' : conta.fornecedor ? 'fornecedor' : conta.funcionario ? 'funcionario' : 'nenhum'
+    const entidadeId = conta.cliente?.id || conta.fornecedor?.id || conta.funcionario?.id || ''
+    setEditForm({ ambiente: conta.ambiente, tipo: conta.tipo, tipoVinculo, entidadeId, descricao: conta.descricao || '', valorTotal: String(conta.valorTotal), dataVencimento: formatDateForInput(conta.dataVencimento), autoDebito: conta.autoDebito, recorrenciaAtiva: conta.recorrenciaAtiva ?? true, aplicarNoGrupoRecorrente: true })
     setShowEditModal(true)
   }
 
@@ -181,7 +254,13 @@ export function useFinanceiro() {
     if (!Number.isFinite(valorTotal) || valorTotal <= 0) { toast.warning('Valor invalido'); return }
     try {
       setEditSaving(true)
-      const res = await fetch('/api/financeiro/contas-receber', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingConta.id, ambiente: editForm.ambiente, tipo: editForm.tipo, descricao: editForm.descricao || null, valorTotal, dataVencimento: editForm.dataVencimento || null, autoDebito: editForm.tipo === 'pagar' ? editForm.autoDebito : false, ...(editingConta.recorrenteMensal ? { recorrenciaAtiva: editForm.recorrenciaAtiva, aplicarNoGrupoRecorrente: editForm.aplicarNoGrupoRecorrente } : {}) }) })
+      const patchPayload: Record<string, unknown> = { id: editingConta.id, ambiente: editForm.ambiente, tipo: editForm.tipo, descricao: editForm.descricao || null, valorTotal, dataVencimento: editForm.dataVencimento || null, autoDebito: editForm.tipo === 'pagar' ? editForm.autoDebito : false }
+      if (editForm.tipoVinculo === 'cliente') patchPayload.clienteId = editForm.entidadeId || null
+      else if (editForm.tipoVinculo === 'fornecedor') patchPayload.fornecedorId = editForm.entidadeId || null
+      else if (editForm.tipoVinculo === 'funcionario') patchPayload.funcionarioId = editForm.entidadeId || null
+      else { patchPayload.clienteId = null; patchPayload.fornecedorId = null; patchPayload.funcionarioId = null }
+      if (editingConta.recorrenteMensal) Object.assign(patchPayload, { recorrenciaAtiva: editForm.recorrenciaAtiva, aplicarNoGrupoRecorrente: editForm.aplicarNoGrupoRecorrente })
+      const res = await fetch('/api/financeiro/contas-receber', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patchPayload) })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao editar conta')
       toast.success('Conta atualizada')
@@ -196,6 +275,7 @@ export function useFinanceiro() {
     gruposContas, expandedGrupos, toggleGrupoExpansao,
     showCreateModal, setShowCreateModal, saving, createForm, setCreateForm, handleCreateConta, resetCreateForm,
     showEditModal, setShowEditModal, editSaving, editingConta, setEditingConta, editForm, setEditForm, handleEditConta, handleOpenEditConta,
-    handleRegistrarMovimento,
+    handleRegistrarMovimento, handleAcrescentarTaxa, handleAplicarMulta, handleGerarLembrete,
+    refreshAll,
   }
 }

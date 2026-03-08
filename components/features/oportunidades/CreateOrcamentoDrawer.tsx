@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Info, Minus, Plus, Save, X } from '@/lib/icons'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Bell, ChevronDown, Info, Minus, Plus, Save, X } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { Button, SideCreateDrawer, AsyncSelect } from '@/components/common'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
@@ -20,6 +20,7 @@ interface CreateOrcamentoDrawerProps {
 }
 
 const PROBABILITY_LEVELS: ProbabilityLevel[] = ['baixa', 'media', 'alta']
+const PROBABILITY_LABELS: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta' }
 const today = () => new Date().toISOString().split('T')[0]
 
 export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerson }: CreateOrcamentoDrawerProps) {
@@ -29,6 +30,8 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
   const [selectedPerson, setSelectedPerson] = useState<AsyncSelectOption | null>(initialPerson ?? null)
   const [statusInfo, setStatusInfo] = useState('')
   const [saving, setSaving] = useState(false)
+  const [probOpen, setProbOpen] = useState(false)
+  const probRef = useRef<HTMLDivElement>(null)
   const [proximaAcaoNumero, setProximaAcaoNumero] = useState(15)
   const [proximaAcaoUnidade, setProximaAcaoUnidade] = useState<'dias' | 'semanas' | 'meses'>('dias')
 
@@ -50,6 +53,14 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
   useEffect(() => {
     setFormData((prev) => ({ ...prev, proximaAcaoEm: getProximaAcaoDate(proximaAcaoNumero, proximaAcaoUnidade) }))
   }, [proximaAcaoNumero, proximaAcaoUnidade])
+
+  useEffect(() => {
+    const onOutside = (e: MouseEvent) => {
+      if (probRef.current && !probRef.current.contains(e.target as Node)) setProbOpen(false)
+    }
+    if (probOpen) document.addEventListener('click', onOutside)
+    return () => document.removeEventListener('click', onOutside)
+  }, [probOpen])
 
   const handleChange = (field: keyof OrcamentoFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -106,7 +117,7 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
   }
 
   return (
-    <SideCreateDrawer open onClose={onClose}>
+    <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-2xl">
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">Novo Orçamento</h2>
@@ -137,14 +148,14 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
           </div>
 
           <div>
-            <label className={LABEL_CLASS}>Título *</label>
-            <input className={FIELD_CLASS} value={formData.titulo} onChange={(e) => handleChange('titulo', e.target.value)} required />
+            <label className={LABEL_CLASS}>Título</label>
+            <input className={FIELD_CLASS} value={formData.titulo} onChange={(e) => handleChange('titulo', e.target.value)} placeholder="Opcional" />
           </div>
           <div>
             <label className={LABEL_CLASS}>Descrição</label>
             <textarea className={FIELD_CLASS} rows={2} value={formData.descricao} onChange={(e) => handleChange('descricao', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-3">
             <div>
               <label className={LABEL_CLASS}>Valor (R$)</label>
               <input className={FIELD_CLASS} value={hasCartItems ? currency(totalCarrinho) : formData.valor} onChange={(e) => handleCurrencyChange(e.target.value)} disabled={hasCartItems} />
@@ -152,6 +163,32 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
             <div>
               <label className={LABEL_CLASS}>Desconto (R$)</label>
               <input className={FIELD_CLASS} value={formData.desconto} onChange={(e) => handleDiscountCurrencyChange(e.target.value)} />
+            </div>
+            <div ref={probRef} className="relative">
+              <label className={LABEL_CLASS}>Probabilidade</label>
+              <button
+                type="button"
+                onClick={() => setProbOpen((o) => !o)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${formData.probabilidade === 'alta' ? 'border-emerald-500/60 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200' : formData.probabilidade === 'baixa' ? 'border-amber-500/50 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200' : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'}`}
+              >
+                <span className="capitalize">{PROBABILITY_LABELS[formData.probabilidade] ?? formData.probabilidade}</span>
+                <ChevronDown size={14} className={`shrink-0 transition-transform ${probOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {probOpen && (
+                <div className="absolute left-0 top-full z-10 mt-1 min-w-[90px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800">
+                  {PROBABILITY_LEVELS.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => { handleChange('probabilidade', level); setProbOpen(false) }}
+                      className={`flex w-full items-center justify-between px-2.5 py-1.5 text-left text-xs capitalize transition hover:bg-gray-100 dark:hover:bg-gray-700 ${formData.probabilidade === level ? 'bg-violet-50 font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' : 'text-gray-700 dark:text-gray-300'}`}
+                    >
+                      {PROBABILITY_LABELS[level] ?? level}
+                      {formData.probabilidade === level && <span className="text-violet-500">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -164,16 +201,6 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
             <div>
               <label className={LABEL_CLASS}>Parcelas</label>
               <input type="number" min={1} className={FIELD_CLASS} value={formData.parcelas} onChange={(e) => handleChange('parcelas', e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className={LABEL_CLASS}>Probabilidade</label>
-            <div className="flex gap-2">
-              {PROBABILITY_LEVELS.map((level) => (
-                <button key={level} type="button" onClick={() => handleChange('probabilidade', level)}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition ${formData.probabilidade === level ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300 dark:hover:border-gray-500'}`}
-                >{level === 'media' ? 'média' : level}</button>
-              ))}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -204,10 +231,22 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
               <input className={FIELD_CLASS} value={formData.responsavelProximaAcao} onChange={(e) => handleChange('responsavelProximaAcao', e.target.value)} />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={formData.lembreteProximaAcao} onChange={(e) => handleChange('lembreteProximaAcao', e.target.checked)} className="rounded border-gray-600" />
-            Lembrete da próxima ação
-          </label>
+          <button
+            type="button"
+            onClick={() => handleChange('lembreteProximaAcao', !formData.lembreteProximaAcao)}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${formData.lembreteProximaAcao ? 'border-violet-400/60 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/40' : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-500'}`}
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${formData.lembreteProximaAcao ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
+              <Bell size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Lembrete da próxima ação</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formData.lembreteProximaAcao ? 'Você será notificado na data definida' : 'Clique para ativar notificação'}</p>
+            </div>
+            <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${formData.lembreteProximaAcao ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${formData.lembreteProximaAcao ? 'left-5' : 'left-0.5'}`} />
+            </span>
+          </button>
           {hasCartItems && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/40">
               <p className="text-xs text-blue-700 dark:text-blue-300">Carrinho: {itens.length} {itens.length === 1 ? 'item' : 'itens'} — {currency(totalCarrinho)}</p>
@@ -219,7 +258,7 @@ export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerso
           <Button variant="outline" size="sm" onClick={() => setShowCarrinhoDrawer(true)}>
             Carrinho {hasCartItems && `(${itens.length})`}
           </Button>
-          <Button size="sm" onClick={handleSubmit} disabled={saving || !selectedPerson || !formData.titulo}>
+          <Button size="sm" onClick={handleSubmit} disabled={saving || !selectedPerson}>
             <Save size={14} className="mr-1.5" />
             {saving ? 'Salvando...' : 'Criar Orçamento'}
           </Button>

@@ -515,19 +515,27 @@ export async function DELETE(
   const { id } = await params
   return withAuth(request, async (userId) => {
     try {
-      const result = await prisma.cliente.deleteMany({
-        where: { id, userId },
+      await prisma.$transaction(async (tx) => {
+        // Desvincula prospectos do cliente antes de deletar (evita violar prospectos_clienteId_userId_fkey RESTRICT)
+        await tx.prospecto.updateMany({
+          where: { clienteId: id, userId },
+          data: { clienteId: null },
+        })
+        const result = await tx.cliente.deleteMany({
+          where: { id, userId },
+        })
+        if (result.count === 0) {
+          throw new Error('NOT_FOUND')
+        }
       })
-
-      if (result.count === 0) {
+      return NextResponse.json({ success: true })
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'NOT_FOUND') {
         return NextResponse.json(
           { error: 'Cliente nao encontrado' },
           { status: 404 }
         )
       }
-
-      return NextResponse.json({ success: true })
-    } catch (error: unknown) {
       console.error('Erro ao deletar cliente:', error)
       const prismaError = error as { code?: string }
       if (prismaError.code === 'P2025') {

@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings, LifeBuoy } from '@/lib/icons'
+import { Search, Bell, Menu, X, Settings } from '@/lib/icons'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -22,13 +22,15 @@ import { useNotifications } from '@/components/features/tarefas/NotificationsPro
 interface HeaderProps {
   onMobileMenuClick: () => void
   onOpenConfig?: () => void
-  onOpenSupport?: () => void
+  menuLayout?: 'sidebar' | 'header'
 }
+
+import { HeaderNav } from './HeaderNav'
 
 export default function Header({
   onMobileMenuClick,
   onOpenConfig,
-  onOpenSupport,
+  menuLayout = 'sidebar',
 }: HeaderProps) {
   const router = useRouter()
   const buscaRef = useRef<HTMLDivElement>(null)
@@ -134,10 +136,19 @@ export default function Header({
   }
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:left-(--sidebar-width)">
+    <header
+      className={`fixed left-0 right-0 top-0 z-40 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        menuLayout === 'header' ? 'lg:left-0' : 'lg:left-(--sidebar-width)'
+      }`}
+    >
       <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs">
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {menuLayout === 'header' && (
+              <div className="hidden lg:block shrink-0">
+                <HeaderNav />
+              </div>
+            )}
             <button
               onClick={onMobileMenuClick}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 lg:hidden"
@@ -223,16 +234,6 @@ export default function Header({
                 />
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => onOpenSupport?.()}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
-              aria-label="Suporte"
-              title="Suporte"
-            >
-              <LifeBuoy size={18} />
-            </button>
 
             <button
               type="button"

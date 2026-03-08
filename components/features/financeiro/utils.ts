@@ -6,7 +6,13 @@ export function getContaTitulo(conta: ContaFinanceira): string {
 }
 
 export function getClienteNome(conta: ContaFinanceira): string {
-  return conta.pedido?.oportunidade?.cliente?.nome || '-'
+  return (
+    conta.cliente?.nome ||
+    conta.fornecedor?.nome ||
+    conta.funcionario?.nome ||
+    conta.pedido?.oportunidade?.cliente?.nome ||
+    '-'
+  )
 }
 
 export function getSortDate(value?: string | null): number {
@@ -33,4 +39,36 @@ export function formatDateForInput(value?: string | null): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toISOString().slice(0, 10)
+}
+
+/** Formata input de moeda com pontuação pt-BR (ex: 123456 -> 1.234,56) */
+export function formatCurrencyInput(rawValue: string): string {
+  const digits = rawValue.replace(/\D/g, '')
+  if (!digits) return ''
+  const numericValue = parseInt(digits, 10) / 100
+  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue)
+}
+
+/** Converte string formatada pt-BR em número (ex: 1.234,56 -> 1234.56) */
+export function parseCurrencyInput(value: string): number | null {
+  if (!value) return null
+  const parsed = parseFloat(value.replace(/\./g, '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/** Retorna o quinto dia útil do mês atual em formato YYYY-MM-DD (exclui sábado e domingo) */
+export function getDefaultDataVencimento(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const businessDays: number[] = []
+  for (let d = 1; d <= 31; d++) {
+    const date = new Date(year, month, d)
+    if (date.getMonth() !== month) break
+    const dow = date.getDay()
+    if (dow !== 0 && dow !== 6) businessDays.push(d)
+  }
+  const fifth = businessDays[4] ?? businessDays[businessDays.length - 1] ?? 1
+  const d = new Date(year, month, fifth)
+  return d.toISOString().slice(0, 10)
 }

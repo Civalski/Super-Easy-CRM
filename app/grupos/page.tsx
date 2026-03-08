@@ -1,13 +1,39 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { readExcelToObjects } from '@/lib/excel'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
+import { readCsvToObjects } from '@/lib/csv'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, ChevronDown, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle, Upload, Plus, PhoneCall } from '@/lib/icons'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle, Plus, PhoneCall, LayoutList, ShoppingCart, MoreVertical, Edit2, Trash2, UserPlus } from '@/lib/icons'
+import { FunilKanban, CadastrarLeadDrawer, EditarLeadDrawer, ComprarLeadDrawer } from '@/components/features/grupos'
+import CreateOrcamentoDrawer from '@/components/features/oportunidades/CreateOrcamentoDrawer'
+import { CreatePedidoDiretoModal } from '@/components/features/pedidos/CreatePedidoDiretoModal'
+import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
 import { SideCreateDrawer } from '@/components/common'
 import { formatCurrency } from '@/lib/format'
+import { getEmailComposeUrl } from '@/lib/emailCompose'
+import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
+
+let lastMetaBatidaAt = 0
+const META_BATIDA_DEBOUNCE_MS = 10000
+
+async function checkMetaDiariaCompletada(onMetaBatida?: () => void) {
+  try {
+    const res = await fetch('/api/metas/contatos-diarios')
+    if (!res.ok) return
+    const data = await res.json()
+    if (!data.ativo || typeof data.metaDiaria !== 'number') return
+    if ((data.contatosHoje ?? 0) < data.metaDiaria) return
+    if (Date.now() - lastMetaBatidaAt < META_BATIDA_DEBOUNCE_MS) return
+    lastMetaBatidaAt = Date.now()
+    onMetaBatida?.()
+  } catch {
+    /* ignore */
+  }
+}
 
 interface Oportunidade {
     id: string
@@ -15,6 +41,7 @@ interface Oportunidade {
     valor: number | null
     status: string
     createdAt: string
+    clienteId?: string
     cliente: {
         nome: string
         email: string | null
@@ -37,8 +64,20 @@ const TABS = [
     { label: 'Sem contato', value: 'sem_contato', icon: Target },
     { label: 'Contatado', value: 'contatado', icon: MessageCircle },
     { label: 'Em potencial', value: 'em_potencial', icon: Layers },
-    { label: 'Orçamento', value: 'orcamento', icon: Briefcase },
+    { label: 'Aguardando orçamento', value: 'aguardando_orcamento', icon: FileText },
 ]
+
+function getNextStatus(status: string): string | null {
+    const idx = TABS.findIndex((t) => t.value === status)
+    if (idx < 0 || idx >= TABS.length - 1) return null
+    return TABS[idx + 1].value
+}
+
+function getPrevStatus(status: string): string | null {
+    const idx = TABS.findIndex((t) => t.value === status)
+    if (idx <= 0) return null
+    return TABS[idx - 1].value
+}
 
 const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
 /** Limite para o link wa.me suportar o parâmetro text (URL segura) */
@@ -48,9 +87,188 @@ const DEFAULT_WHATSAPP_MESSAGE = 'Olá, você trabalha com " "?'
 /** Mensagem padrão antiga: migrar para a nova ao carregar */
 const LEGACY_DEFAULT_MESSAGE = 'ola {nome} como vai?'
 
+function ListaItemActions({
+    item,
+    updatingId,
+    onViewDetails,
+    onStartContact,
+    onSendEmail,
+    onEdit,
+    onDelete,
+    onStatusChange,
+    onTransformarCliente,
+    onCreatePedido,
+}: {
+    item: Oportunidade
+    updatingId: string | null
+    onViewDetails: (item: Oportunidade) => void
+    onStartContact?: (item: Oportunidade) => void
+    onSendEmail?: (item: Oportunidade) => void
+    onEdit?: (item: Oportunidade) => void
+    onDelete?: (item: Oportunidade) => void
+    onStatusChange: (item: Oportunidade, newStatus: string) => Promise<void>
+    onTransformarCliente?: (item: Oportunidade) => void
+    onCreatePedido?: (item: Oportunidade) => void
+}) {
+    const [menuOpen, setMenuOpen] = useState(false)
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+    const menuRef = useRef<HTMLDivElement>(null)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+
+    const hasValidPhone = item.cliente.telefone && item.cliente.telefone.replace(/\D/g, '').length > 0
+    const showWhatsApp = hasValidPhone && onStartContact
+    const showEmail =
+        item.cliente.email && onSendEmail
+    const nextStatus = getNextStatus(item.status)
+    const prevStatus = getPrevStatus(item.status)
+
+    useEffect(() => {
+        if (menuOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect()
+            const menuW = 176
+            const left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8))
+            const top = Math.min(rect.bottom + 4, window.innerHeight - 200)
+            setMenuPos({ top, left })
+        }
+    }, [menuOpen])
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as Node
+            if (menuRef.current && !menuRef.current.contains(target) && triggerRef.current && !triggerRef.current.contains(target)) {
+                setMenuOpen(false)
+            }
+        }
+        if (menuOpen) document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside)
+    }, [menuOpen])
+
+    return (
+        <div className="flex items-center gap-2">
+            {showWhatsApp && (
+                <button
+                    onClick={() => onStartContact?.(item)}
+                    disabled={updatingId === item.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-emerald-300 dark:border-emerald-600 shadow-xs text-xs font-medium rounded-sm text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                    title="Enviar WhatsApp"
+                >
+                    <MessageCircle size={12} />
+                    WhatsApp
+                </button>
+            )}
+            {showEmail && (
+                <button
+                    onClick={() => onSendEmail?.(item)}
+                    disabled={updatingId === item.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-sky-300 dark:border-sky-600 shadow-xs text-xs font-medium rounded-sm text-sky-700 dark:text-sky-200 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50"
+                    title="Enviar email"
+                >
+                    <Mail size={12} />
+                    Email
+                </button>
+            )}
+            <div className="relative inline-block">
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    className="p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700"
+                    title="Ações"
+                >
+                    <MoreVertical size={16} />
+                </button>
+                {menuOpen && typeof document !== 'undefined' && createPortal(
+                    <div
+                        ref={menuRef}
+                        className="fixed z-[9999] w-52 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
+                        style={{ top: menuPos.top, left: menuPos.left }}
+                    >
+                        {onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => { onDelete(item); setMenuOpen(false) }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                            >
+                                <Trash2 size={12} />
+                                Excluir
+                            </button>
+                        )}
+                        {onEdit && (
+                            <button
+                                type="button"
+                                onClick={() => { onEdit(item); setMenuOpen(false) }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                                <Edit2 size={12} />
+                                Editar
+                            </button>
+                        )}
+                        {item.type === 'prospecto' && onTransformarCliente && (
+                            <button
+                                type="button"
+                                onClick={() => { onTransformarCliente(item); setMenuOpen(false) }}
+                                disabled={updatingId === item.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                            >
+                                <UserPlus size={12} />
+                                Transformar em cliente
+                            </button>
+                        )}
+                        {onCreatePedido && (
+                            <button
+                                type="button"
+                                onClick={() => { onCreatePedido(item); setMenuOpen(false) }}
+                                disabled={updatingId === item.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                            >
+                                <ShoppingCart size={12} />
+                                Criar pedido
+                            </button>
+                        )}
+                        {prevStatus && (
+                            <button
+                                type="button"
+                                onClick={() => { void onStatusChange(item, prevStatus); setMenuOpen(false) }}
+                                disabled={updatingId === item.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                            >
+                                <ChevronLeft size={12} />
+                                Voltar etapa
+                            </button>
+                        )}
+                        {nextStatus && (
+                            <button
+                                type="button"
+                                onClick={() => { void onStatusChange(item, nextStatus); setMenuOpen(false) }}
+                                disabled={updatingId === item.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                            >
+                                <ChevronRight size={12} />
+                                Avançar etapa
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => { onViewDetails(item); setMenuOpen(false) }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                            <Eye size={12} />
+                            Ver detalhes
+                        </button>
+                    </div>,
+                    document.body
+                )}
+            </div>
+        </div>
+    )
+}
+
 export default function GruposPage() {
-    const { prompt } = useConfirm()
+    const router = useRouter()
+    const { prompt, confirm } = useConfirm()
     const [activeTab, setActiveTab] = useState('sem_contato')
+    const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista')
+    const [kanbanRefreshTrigger, setKanbanRefreshTrigger] = useState(0)
     const [page, setPage] = useState(1)
     const [data, setData] = useState<Oportunidade[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
@@ -60,6 +278,15 @@ export default function GruposPage() {
     const [motivoOportunidadeId, setMotivoOportunidadeId] = useState<string | null>(null)
     const [motivoItemType, setMotivoItemType] = useState<'prospecto' | 'oportunidade'>('oportunidade')
     const [motivoLoading, setMotivoLoading] = useState(false)
+    const [showCadastrarLead, setShowCadastrarLead] = useState(false)
+    const [showEditarLead, setShowEditarLead] = useState(false)
+    const [editarLeadId, setEditarLeadId] = useState<string | null>(null)
+    const [showCreateOrcamento, setShowCreateOrcamento] = useState(false)
+    const [createOrcamentoInitialPerson, setCreateOrcamentoInitialPerson] = useState<AsyncSelectOption | null>(null)
+    const [showCreatePedido, setShowCreatePedido] = useState(false)
+    const [createPedidoInitialPerson, setCreatePedidoInitialPerson] = useState<AsyncSelectOption | null>(null)
+    const [showComprarLead, setShowComprarLead] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Detail modal state
     const [detailModal, setDetailModal] = useState<any | null>(null)
@@ -69,6 +296,9 @@ export default function GruposPage() {
     const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<string[]>([DEFAULT_WHATSAPP_MESSAGE])
     const [contatosIniciadosHoje, setContatosIniciadosHoje] = useState<number | null>(null)
     const [metaContatosHoje, setMetaContatosHoje] = useState<number | null>(null)
+    const [showMetaBatidaModal, setShowMetaBatidaModal] = useState(false)
+
+    const onMetaBatida = useCallback(() => setShowMetaBatidaModal(true), [])
 
     const handleViewDetails = useCallback(async (item: Oportunidade) => {
         if (item.type === 'prospecto') {
@@ -105,6 +335,15 @@ export default function GruposPage() {
         }
     }, [])
 
+    const handleEdit = useCallback((item: Oportunidade) => {
+        if (item.type === 'oportunidade') {
+            window.location.href = `/oportunidades/${item.id}/editar`
+        } else {
+            setEditarLeadId(item.id)
+            setShowEditarLead(true)
+        }
+    }, [])
+
     const fetchGrupos = useCallback(async () => {
         setLoading(true)
         try {
@@ -122,6 +361,79 @@ export default function GruposPage() {
             setLoading(false)
         }
     }, [activeTab, page])
+
+    const handleTransformarCliente = useCallback(async (item: Oportunidade) => {
+        if (item.type !== 'prospecto') return
+        setUpdatingId(item.id)
+        try {
+            const res = await fetch(`/api/prospectos/${item.id}/converter`, { method: 'POST' })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data.error || 'Erro ao converter')
+            toast.success('Lead convertido em cliente!', {
+                description: data.cliente?.numero ? `Código do cliente: ${data.cliente.numero}` : undefined,
+            })
+            await fetchGrupos()
+            if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+        } catch (e) {
+            toast.error('Erro', { description: e instanceof Error ? e.message : 'Não foi possível converter.' })
+        } finally {
+            setUpdatingId(null)
+        }
+    }, [fetchGrupos, viewMode])
+
+    const handleCreateOrcamento = useCallback((item: Oportunidade) => {
+        if (item.type !== 'prospecto') return
+        setCreateOrcamentoInitialPerson({
+            id: item.id,
+            nome: item.cliente.nome,
+            tipo: 'prospecto',
+        })
+        setShowCreateOrcamento(true)
+    }, [])
+
+    const handleCreatePedido = useCallback((item: Oportunidade) => {
+        if (item.type === 'prospecto') {
+            setCreatePedidoInitialPerson({
+                id: item.id,
+                nome: item.cliente.nome,
+                tipo: 'prospecto',
+            })
+        } else if (item.type === 'oportunidade' && item.clienteId) {
+            setCreatePedidoInitialPerson({
+                id: item.clienteId,
+                nome: item.cliente.nome,
+                tipo: 'cliente',
+            })
+        } else return
+        setShowCreatePedido(true)
+    }, [])
+
+    const handleDelete = useCallback(async (item: Oportunidade) => {
+        const ok = await confirm({
+            title: 'Excluir lead',
+            description: `Deseja realmente excluir ${item.cliente.nome}? Esta ação não pode ser desfeita.`,
+            confirmLabel: 'Sim, excluir',
+            cancelLabel: 'Cancelar',
+        })
+        if (!ok) return
+        setUpdatingId(item.id)
+        try {
+            if (item.type === 'prospecto') {
+                const res = await fetch(`/api/prospectos/${item.id}`, { method: 'DELETE' })
+                if (!res.ok) throw new Error('Erro ao excluir')
+            } else {
+                const res = await fetch(`/api/oportunidades/${item.id}`, { method: 'DELETE' })
+                if (!res.ok) throw new Error('Erro ao excluir')
+            }
+            toast.success('Excluído com sucesso')
+            await fetchGrupos()
+            if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+        } catch (e) {
+            toast.error('Erro ao excluir', { description: e instanceof Error ? e.message : 'Tente novamente.' })
+        } finally {
+            setUpdatingId(null)
+        }
+    }, [fetchGrupos, viewMode, confirm])
 
     const fetchStats = useCallback(async () => {
         try {
@@ -195,8 +507,8 @@ export default function GruposPage() {
         try {
             const fileName = typeof file?.name === 'string' ? file.name : ''
             const lowerName = fileName.toLowerCase()
-            if (!lowerName.endsWith('.xlsx')) {
-                throw new Error('Formato nao suportado. Use apenas arquivo .xlsx')
+            if (!lowerName.endsWith('.csv')) {
+                throw new Error('Formato nao suportado. Use apenas arquivo .csv')
             }
 
             console.info('[grupos/importacao] iniciando leitura de arquivo', {
@@ -205,8 +517,8 @@ export default function GruposPage() {
                 fileType: file.type,
             })
 
-            const data = await file.arrayBuffer()
-            const jsonData = await readExcelToObjects(data)
+            const text = await file.text()
+            const jsonData = await readCsvToObjects(text)
 
             if (jsonData.length === 0) {
                 throw new Error('O arquivo esta vazio')
@@ -355,7 +667,7 @@ export default function GruposPage() {
         const messageQuery = message ? `?text=${encodeURIComponent(message)}` : ''
         window.open(`https://wa.me/${phoneWithCountry}${messageQuery}`, '_blank')
 
-        if (activeTab !== 'sem_contato' || item.type !== 'prospecto') return
+        if (item.status !== 'sem_contato' || item.type !== 'prospecto') return
 
         setUpdatingId(item.id)
         try {
@@ -371,11 +683,47 @@ export default function GruposPage() {
             if (response.ok) {
                 await fetchGrupos()
                 await fetchStats()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                checkMetaDiariaCompletada(onMetaBatida)
             } else {
                 alert('Erro ao iniciar contato')
             }
         } catch (error) {
             console.error('Erro ao iniciar contato:', error)
+        } finally {
+            setUpdatingId(null)
+        }
+    }
+
+    const handleSendEmail = async (item: Oportunidade) => {
+        if (!item.cliente.email) return
+
+        const url = getEmailComposeUrl(item.cliente.email)
+        window.open(url, '_blank')
+
+        if (item.status !== 'sem_contato' || item.type !== 'prospecto') return
+
+        setUpdatingId(item.id)
+        try {
+            const response = await fetch(`/api/prospectos/${item.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'em_contato',
+                    ultimoContato: new Date().toISOString(),
+                }),
+            })
+
+            if (response.ok) {
+                await fetchGrupos()
+                await fetchStats()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                checkMetaDiariaCompletada(onMetaBatida)
+            } else {
+                alert('Erro ao atualizar status')
+            }
+        } catch (error) {
+            console.error('Erro ao enviar e-mail:', error)
         } finally {
             setUpdatingId(null)
         }
@@ -431,11 +779,39 @@ export default function GruposPage() {
                         const errorPayload = await response.json().catch(() => null)
                         throw new Error(errorPayload?.error || 'Erro ao promover prospecto')
                     }
+                } else if (['sem_contato', 'contatado'].includes(newStatus)) {
+                    const prospectoStatus = newStatus === 'sem_contato' ? 'novo' : 'em_contato'
+                    const response = await fetch(`/api/prospectos/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            status: prospectoStatus,
+                            ...(prospectoStatus === 'em_contato' && { ultimoContato: new Date().toISOString() }),
+                        })
+                    })
+                    if (!response.ok) {
+                        const errorPayload = await response.json().catch(() => null)
+                        throw new Error(errorPayload?.error || 'Erro ao atualizar status')
+                    }
+                    if (prospectoStatus === 'em_contato') checkMetaDiariaCompletada(onMetaBatida)
+                } else if (['em_potencial', 'aguardando_orcamento'].includes(newStatus)) {
+                    const prospectoStatus = newStatus === 'em_potencial' ? 'qualificado' : 'aguardando_orcamento'
+                    const response = await fetch(`/api/prospectos/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: prospectoStatus })
+                    })
+                    if (!response.ok) {
+                        const errorPayload = await response.json().catch(() => null)
+                        throw new Error(errorPayload?.error || 'Erro ao atualizar status')
+                    }
                 }
                 await fetchGrupos()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
             } else {
                 await updateOportunidadeStatus(item.id, { status: newStatus })
                 await fetchGrupos()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
             }
         } catch (error) {
             console.error('Erro ao atualizar status:', error)
@@ -464,12 +840,14 @@ export default function GruposPage() {
                     throw new Error(errorPayload?.error || 'Erro ao atualizar prospecto')
                 }
                 await fetchGrupos()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
             } else {
                 await updateOportunidadeStatus(motivoOportunidadeId, {
                     status: 'perdida',
                     motivoPerda: motivo,
                 })
                 await fetchGrupos()
+                if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
             }
         } catch (error) {
             console.error('Error updating status', error)
@@ -537,6 +915,15 @@ export default function GruposPage() {
 
     return (
         <div className="space-y-6">
+            <MetaBatidaModal
+                open={showMetaBatidaModal}
+                onClose={() => setShowMetaBatidaModal(false)}
+                isMetaDiaria
+                onCreateNewMeta={() => {
+                    setShowMetaBatidaModal(false)
+                    router.push('/metas?new=1')
+                }}
+            />
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-500/25">
@@ -565,22 +952,35 @@ export default function GruposPage() {
                             {metaContatosHoje != null ? ` / ${metaContatosHoje}` : ''}
                         </span>
                     </button>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800">
-                        <Upload size={16} />
-                        Importar XLSX
-                        <input
-                            type="file"
-                            accept=".xlsx"
-                            className="hidden"
-                            onChange={(event) => {
-                                const file = event.target.files?.[0]
-                                if (file) {
-                                    void handleImport(file)
-                                }
-                                event.target.value = ''
-                            }}
-                        />
-                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setShowCadastrarLead(true)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/30 px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 shadow-xs hover:bg-purple-100 dark:hover:bg-purple-800"
+                    >
+                        <Plus size={16} />
+                        Cadastrar lead
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowComprarLead(true)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800"
+                    >
+                        <ShoppingCart size={16} />
+                        Comprar lead
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            if (file) {
+                                void handleImport(file)
+                            }
+                            event.target.value = ''
+                        }}
+                    />
                     <button
                         onClick={handleOpenMessageConfig}
                         className="inline-flex items-center px-3 py-2 border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-medium rounded-lg text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
@@ -692,33 +1092,83 @@ export default function GruposPage() {
                 </SideCreateDrawer>
             )}
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700">
-                <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.value}
-                            onClick={() => handleTabChange(tab.value)}
-                            className={`
+            {/* Tabs (só na lista) + View Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                {viewMode === 'lista' ? (
+                    <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+                        {TABS.map((tab) => (
+                            <button
+                                key={tab.value}
+                                onClick={() => handleTabChange(tab.value)}
+                                className={`
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
                 ${activeTab === tab.value
                                     ? 'border-purple-600 text-purple-600 dark:text-purple-400'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                                 }
               `}
-                        >
-                            <div className="flex items-center gap-2">
-                                {tab.icon && <tab.icon size={18} />}
-                                <span>{tab.label}</span>
-                            </div>
-                        </button>
-                    ))}
-                </nav>
+                            >
+                                <div className="flex items-center gap-2">
+                                    {tab.icon && <tab.icon size={18} />}
+                                    <span>{tab.label}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </nav>
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
+                        Arraste os cards entre as colunas para alterar a etapa do lead no funil.
+                    </p>
+                )}
+                <div className={`flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/50 ${viewMode === 'kanban' ? 'ml-auto' : ''}`}>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('lista')}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'lista'
+                                ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                        title="Visualização em lista"
+                    >
+                        <LayoutList size={16} />
+                        Lista
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('kanban')}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'kanban'
+                                ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                        title="Visualização em Kanban"
+                    >
+                        <Layers size={16} />
+                        Kanban
+                    </button>
+                </div>
             </div>
 
             {/* Content */}
             <div className="bg-white dark:bg-gray-800 shadow-xs rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                {loading ? (
+                {viewMode === 'kanban' ? (
+                    <div className="p-4">
+                        <FunilKanban
+                            onViewDetails={handleViewDetails}
+                            onStatusChange={handleStatusChange}
+                            getAvailableActions={getAvailableActions}
+                            onStartContact={handleStartContact}
+                            onSendEmail={handleSendEmail}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onTransformarCliente={handleTransformarCliente}
+                            onCreatePedido={handleCreatePedido}
+                            updatingId={updatingId}
+                            refreshTrigger={kanbanRefreshTrigger}
+                        />
+                    </div>
+                ) : loading ? (
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
                             <Loader2 className="animate-spin mx-auto mb-4 text-purple-600" size={32} />
@@ -775,47 +1225,18 @@ export default function GruposPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-wrap gap-2">
-                                                <button
-                                                    onClick={() => handleViewDetails(item)}
-                                                    className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-xs text-xs font-medium rounded-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                                                >
-                                                    <Eye className="w-3 h-3 mr-1.5" />
-                                                    Ver mais
-                                                </button>
-                                                {item.type === 'prospecto' && activeTab === 'sem_contato' && item.cliente.telefone && (
-                                                    <button
-                                                        onClick={() => handleStartContact(item)}
-                                                        disabled={updatingId === item.id}
-                                                        className="inline-flex items-center px-2.5 py-1.5 border border-purple-300 dark:border-purple-600 shadow-xs text-xs font-medium rounded-sm text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
-                                                    >
-                                                        Iniciar Contato
-                                                    </button>
-                                                )}
-                                                <div className="relative inline-block">
-                                                    <select
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            // Reset select value visually (handled by value="" prop, but good to be safe)
-                                                            e.target.value = "";
-                                                            handleStatusChange(item, val);
-                                                        }}
-                                                        value=""
-                                                        disabled={updatingId === item.id}
-                                                        className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-1.5 pl-3 pr-8 rounded-sm text-xs font-medium shadow-xs focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer disabled:opacity-50"
-                                                    >
-                                                        <option value="" disabled>Mover para...</option>
-                                                        {getAvailableActions(item.status).map((action) => (
-                                                            <option key={action.value} value={action.value} className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800">
-                                                                {action.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
-                                                        <ChevronDown size={14} />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <ListaItemActions
+                                                item={item}
+                                                updatingId={updatingId}
+                                                onViewDetails={handleViewDetails}
+                                                onStartContact={handleStartContact}
+                                                onSendEmail={handleSendEmail}
+                                                onEdit={handleEdit}
+                                                onDelete={handleDelete}
+                                                onStatusChange={handleStatusChange}
+                                                onTransformarCliente={handleTransformarCliente}
+                                                onCreatePedido={handleCreatePedido}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -850,6 +1271,68 @@ export default function GruposPage() {
                 )}
             </div>
 
+
+            <CadastrarLeadDrawer
+                open={showCadastrarLead}
+                onClose={() => setShowCadastrarLead(false)}
+                onCreated={async () => {
+                    setActiveTab('sem_contato')
+                    setPage(1)
+                    await fetchGrupos()
+                    if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                }}
+            />
+
+            <EditarLeadDrawer
+                open={showEditarLead}
+                prospectoId={editarLeadId}
+                onClose={() => {
+                    setShowEditarLead(false)
+                    setEditarLeadId(null)
+                }}
+                onSaved={async () => {
+                    await fetchGrupos()
+                    if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                }}
+            />
+
+            {showCreateOrcamento && (
+                <CreateOrcamentoDrawer
+                    onClose={() => {
+                        setShowCreateOrcamento(false)
+                        setCreateOrcamentoInitialPerson(null)
+                    }}
+                    onCreated={async () => {
+                        setShowCreateOrcamento(false)
+                        setCreateOrcamentoInitialPerson(null)
+                        await fetchGrupos()
+                        if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                    }}
+                    initialPerson={createOrcamentoInitialPerson}
+                />
+            )}
+
+            {showCreatePedido && (
+                <CreatePedidoDiretoModal
+                    onClose={() => {
+                        setShowCreatePedido(false)
+                        setCreatePedidoInitialPerson(null)
+                    }}
+                    onCreated={async () => {
+                        setShowCreatePedido(false)
+                        setCreatePedidoInitialPerson(null)
+                        await fetchGrupos()
+                        if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
+                    }}
+                    initialPerson={createPedidoInitialPerson}
+                />
+            )}
+
+            <ComprarLeadDrawer
+                open={showComprarLead}
+                onClose={() => setShowComprarLead(false)}
+                onImportClick={() => fileInputRef.current?.click()}
+            />
 
             <MotivoPerdaModal
                 open={motivoModalOpen}

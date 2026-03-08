@@ -82,7 +82,7 @@ export function ProspectosList({
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="font-medium">Nenhum lead encontrado</p>
-                    <p className="text-sm mt-1">Importe um arquivo XLSX para adicionar leads frios</p>
+                    <p className="text-sm mt-1">Importe um arquivo CSV para adicionar leads frios</p>
                 </div>
             </div>
         );

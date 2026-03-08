@@ -49,7 +49,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       const body = await request.json();
 
         // Campos permitidos para atualização
-        const { status, observacoes, prioridade, ultimoContato } = body;
+        const {
+            status,
+            observacoes,
+            prioridade,
+            ultimoContato,
+            razaoSocial,
+            nomeFantasia,
+            telefone,
+            telefone1,
+            email,
+            municipio,
+            uf,
+        } = body;
+
+        const telefoneVal = telefone ?? telefone1;
 
         const updated = await prisma.prospecto.updateMany({
             where: { id, userId },
@@ -58,6 +72,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
                 ...(observacoes !== undefined && { observacoes }),
                 ...(prioridade !== undefined && { prioridade }),
                 ...(ultimoContato && { ultimoContato: new Date(ultimoContato) }),
+                ...(typeof razaoSocial === 'string' && razaoSocial.trim() && { razaoSocial: razaoSocial.trim() }),
+                ...(nomeFantasia !== undefined && { nomeFantasia: nomeFantasia?.trim() || null }),
+                ...(telefoneVal !== undefined && { telefone1: telefoneVal?.trim() || null }),
+                ...(email !== undefined && { email: email?.trim() || null }),
+                ...(typeof municipio === 'string' && { municipio: municipio.trim() || 'Não informado' }),
+                ...(typeof uf === 'string' && { uf: uf.trim().toUpperCase().slice(0, 2) || 'NI' }),
             }
         });
 

@@ -1203,41 +1203,50 @@ export async function POST(request: NextRequest) {
       metaContatoDiasCriados++
     }
 
-    // Criar templates e tentativas de follow-up
+    // Criar notas (templates) e tentativas de follow-up
     console.log('?? Criando follow-ups...')
-    const canais = ['whatsapp', 'email', 'ligacao', 'reuniao']
-    const templates = [] as Array<{ id: string; canal: string; mensagem: string }>
-    let followUpTemplatesCriados = 0
+    const tiposCanal = [
+      { tipo: 'whatsapp' as const, canal: 'whatsapp' },
+      { tipo: 'email' as const, canal: 'email' },
+    ]
+    const notas = [] as Array<{ id: string; tipo: string; canal: string; conteudo: string }>
+    let notasCriadas = 0
 
     for (const etapa of statusOportunidades) {
-      for (const canal of canais) {
+      for (const { tipo, canal } of tiposCanal) {
         const titulo = `Template ${etapa} ${canal}`
-        const mensagem = `Mensagem ${canal} para etapa ${etapa}`
-        const existente = await prisma.followUpTemplate.findFirst({
+        const conteudo = `Mensagem ${canal} para etapa ${etapa}`
+        const existente = await prisma.nota.findFirst({
           where: { userId, titulo },
           select: { id: true },
         })
 
-        const template = existente
-          ? await prisma.followUpTemplate.update({
+        const nota = existente
+          ? await prisma.nota.update({
               where: { id: existente.id },
-              data: { etapa, canal, titulo, mensagem, ativo: true },
-              select: { id: true, canal: true, mensagem: true },
+              data: { tipo, titulo, descricao: etapa, conteudo },
+              select: { id: true, tipo: true, conteudo: true },
             })
-          : await prisma.followUpTemplate.create({
-              data: { userId, etapa, canal, titulo, mensagem, ativo: true },
-              select: { id: true, canal: true, mensagem: true },
+          : await prisma.nota.create({
+              data: {
+                userId,
+                tipo,
+                titulo,
+                descricao: etapa,
+                conteudo,
+              },
+              select: { id: true, tipo: true, conteudo: true },
             })
-        templates.push(template)
-        followUpTemplatesCriados++
+        notas.push({ ...nota, canal })
+        notasCriadas++
       }
     }
 
     let followUpAttemptsCriados = 0
     for (let i = 0; i < MOCK_FOLLOW_UP_ATTEMPTS_TOTAL; i++) {
       const oportunidade = oportunidadesCriadas[i % oportunidadesCriadas.length]
-      const template = templates[i % templates.length]
-      const mensagem = `${template.mensagem} [${String(i + 1).padStart(2, '0')}]`
+      const nota = notas[i % notas.length]
+      const mensagem = `${nota.conteudo} [${String(i + 1).padStart(2, '0')}]`
       const existente = await prisma.followUpAttempt.findFirst({
         where: {
           userId,
@@ -1251,8 +1260,8 @@ export async function POST(request: NextRequest) {
         await prisma.followUpAttempt.update({
           where: { id: existente.id },
           data: {
-            templateId: template.id,
-            canal: template.canal,
+            notaId: nota.id,
+            canal: nota.canal,
             mensagem,
             resultado: i % 3 === 0 ? 'Retorno positivo' : i % 3 === 1 ? 'Sem resposta' : 'Reagendado',
           },
@@ -1262,8 +1271,8 @@ export async function POST(request: NextRequest) {
           data: {
             userId,
             oportunidadeId: oportunidade.id,
-            templateId: template.id,
-            canal: template.canal,
+            notaId: nota.id,
+            canal: nota.canal,
             mensagem,
             resultado: i % 3 === 0 ? 'Retorno positivo' : i % 3 === 1 ? 'Sem resposta' : 'Reagendado',
           },
@@ -1289,7 +1298,7 @@ export async function POST(request: NextRequest) {
       metasSnapshots: metasSnapshotsCriados,
       metaContatoConfig: 1,
       metaContatoDias: metaContatoDiasCriados,
-      followUpTemplates: followUpTemplatesCriados,
+      notas: notasCriadas,
       followUpAttempts: followUpAttemptsCriados,
     }
 

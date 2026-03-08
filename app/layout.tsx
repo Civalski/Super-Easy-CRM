@@ -36,16 +36,17 @@ export const metadata: Metadata = {
 
 const themeInitScript = `
   (function () {
+    var root = document.documentElement;
     try {
       var storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}');
       var theme = storedTheme === 'light' ? 'light' : '${DEFAULT_THEME}';
-      var root = document.documentElement;
       root.classList.remove('dark', 'light');
       root.classList.add(theme);
     } catch (_error) {
-      document.documentElement.classList.remove('light');
-      document.documentElement.classList.add('${DEFAULT_THEME}');
+      root.classList.remove('light');
+      root.classList.add('${DEFAULT_THEME}');
     }
+    root.classList.add('theme-loaded');
   })();
 `
 
@@ -58,9 +59,12 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${bodyFont.variable} ${headingFont.variable} dark`}
+      className={`${bodyFont.variable} ${headingFont.variable}`}
     >
       <body className="antialiased">
+        <noscript>
+          <style dangerouslySetInnerHTML={{ __html: 'html{visibility:visible!important}' }} />
+        </noscript>
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>

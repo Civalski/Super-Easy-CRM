@@ -40,6 +40,14 @@ export interface Cliente {
     cnaePrincipalDesc: string | null
     capitalSocial: string | null
   } | null
+  /** Contagem de orçamentos (oportunidades com status orcamento) */
+  orcamentos?: number
+  /** Contagem de vendas (oportunidades com status fechada) */
+  vendas?: number
+  /** Contagem de pedidos */
+  pedidos?: number
+  /** Contagem de cancelamentos (oportunidades com status perdida) */
+  cancelamentos?: number
 }
 
 export type PaginationMeta = {

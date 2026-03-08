@@ -24,19 +24,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       const attempts = await prisma.followUpAttempt.findMany({
         where: { userId, oportunidadeId: id },
-      include: {
-        template: {
-          select: {
-            id: true,
-            etapa: true,
-            canal: true,
-            titulo: true,
+        include: {
+          nota: {
+            select: {
+              id: true,
+              tipo: true,
+              titulo: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    })
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      })
 
       return NextResponse.json(attempts)
     } catch (error) {
@@ -72,8 +71,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         typeof payload.mensagem === 'string' ? payload.mensagem.trim() : ''
       const resultado =
         typeof payload.resultado === 'string' ? payload.resultado.trim() : null
-      const templateId =
-        typeof payload.templateId === 'string' ? payload.templateId.trim() : null
+      const notaId =
+        typeof payload.notaId === 'string' ? payload.notaId.trim() : null
 
       if (!ALLOWED_CHANNEL.has(canal)) {
         return NextResponse.json({ error: 'Canal invalido' }, { status: 400 })
@@ -82,13 +81,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Mensagem obrigatoria' }, { status: 400 })
       }
 
-      if (templateId) {
-        const template = await prisma.followUpTemplate.findFirst({
-          where: { id: templateId, userId },
+      if (notaId) {
+        const nota = await prisma.nota.findFirst({
+          where: { id: notaId, userId },
           select: { id: true },
         })
-        if (!template) {
-          return NextResponse.json({ error: 'Template nao encontrado' }, { status: 404 })
+        if (!nota) {
+          return NextResponse.json({ error: 'Nota nao encontrada' }, { status: 404 })
         }
       }
 
@@ -96,17 +95,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         data: {
           userId,
           oportunidadeId: id,
-          templateId,
+          notaId,
           canal,
           mensagem,
           resultado,
         },
         include: {
-          template: {
+          nota: {
             select: {
               id: true,
-              etapa: true,
-              canal: true,
+              tipo: true,
               titulo: true,
             },
           },

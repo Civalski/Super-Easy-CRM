@@ -173,7 +173,7 @@ function PromptDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
         {label && (

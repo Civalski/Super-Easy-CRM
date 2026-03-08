@@ -1,25 +1,45 @@
 'use client'
 
-import { Loader2, PlusCircle, Wallet } from '@/lib/icons'
+import { useState } from 'react'
+import { ChevronDown, Building2, Eye, PlusCircle, UserCheck, Wallet } from '@/lib/icons'
 import { formatCurrency } from '@/lib/format'
+import { toast } from '@/lib/toast'
 import {
   FluxoCaixaSection,
   ContasList,
   CreateContaModal,
   EditContaModal,
+  CreateFornecedorDrawer,
+  CreateFuncionarioDrawer,
+  EntidadesListDrawer,
   useFinanceiro,
 } from '@/components/features/financeiro'
 import { AMBIENTE_LABEL } from '@/components/features/financeiro/constants'
 
 export default function FinanceiroPage() {
+  const [showFornecedorModal, setShowFornecedorModal] = useState(false)
+  const [showFuncionarioModal, setShowFuncionarioModal] = useState(false)
+  const [showEntidadesList, setShowEntidadesList] = useState(false)
+  const [cadastroDropdownOpen, setCadastroDropdownOpen] = useState(false)
+
   const {
     loading, stats, fluxo, meta, page, setPage,
     activeAmbiente, setActiveAmbiente, activeTipo, setActiveTipo,
     gruposContas, expandedGrupos, toggleGrupoExpansao,
     showCreateModal, setShowCreateModal, saving, createForm, setCreateForm, handleCreateConta, resetCreateForm,
     showEditModal, setShowEditModal, editSaving, editingConta, setEditingConta, editForm, setEditForm, handleEditConta, handleOpenEditConta,
-    handleRegistrarMovimento,
+    handleRegistrarMovimento, handleAcrescentarTaxa, handleAplicarMulta, handleGerarLembrete, refreshAll,
   } = useFinanceiro()
+
+  const handleFornecedorCreated = () => {
+    toast.success('Fornecedor cadastrado')
+    refreshAll?.()
+  }
+
+  const handleFuncionarioCreated = () => {
+    toast.success('Funcionario cadastrado')
+    refreshAll?.()
+  }
 
   return (
     <div className="space-y-6">
@@ -36,15 +56,59 @@ export default function FinanceiroPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => { setCreateForm((prev) => ({ ...prev, ambiente: activeAmbiente })); setShowCreateModal(true) }}
-          disabled={saving}
-          className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nova Conta
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setCreateForm((prev) => ({ ...prev, ambiente: activeAmbiente })); setShowCreateModal(true) }}
+            disabled={saving}
+            className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova Conta
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setCadastroDropdownOpen((o) => !o)}
+              className="inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
+            >
+              Cadastrar
+              <ChevronDown className="ml-1 h-4 w-4" />
+            </button>
+            {cadastroDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setCadastroDropdownOpen(false)} aria-hidden />
+                <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 shadow-lg py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setShowEntidadesList(true); setCadastroDropdownOpen(false) }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Visualizar cadastros
+                  </button>
+                  <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                  <button
+                    type="button"
+                    onClick={() => { setShowFornecedorModal(true); setCadastroDropdownOpen(false) }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Cadastrar Fornecedor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowFuncionarioModal(true); setCadastroDropdownOpen(false) }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    Cadastrar Funcionário
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="inline-flex w-fit rounded-lg border border-gray-200 p-1 dark:border-gray-700">
@@ -124,6 +188,9 @@ export default function FinanceiroPage() {
           onToggleExpand={toggleGrupoExpansao}
           onRegistrarMovimento={handleRegistrarMovimento}
           onEditConta={handleOpenEditConta}
+          onAcrescentarTaxa={handleAcrescentarTaxa}
+          onAplicarMulta={handleAplicarMulta}
+          onGerarLembrete={handleGerarLembrete}
           loading={loading}
         />
       </div>
@@ -148,6 +215,32 @@ export default function FinanceiroPage() {
           onSubmit={handleEditConta}
         />
       )}
+
+      <CreateFornecedorDrawer
+        open={showFornecedorModal}
+        onClose={() => setShowFornecedorModal(false)}
+        onCreated={handleFornecedorCreated}
+      />
+      <CreateFuncionarioDrawer
+        open={showFuncionarioModal}
+        onClose={() => setShowFuncionarioModal(false)}
+        onCreated={handleFuncionarioCreated}
+      />
+      <EntidadesListDrawer
+        open={showEntidadesList}
+        onClose={() => setShowEntidadesList(false)}
+        onOpenCreateConta={(tipo, id, _nome, contaTipo) => {
+          setShowEntidadesList(false)
+          setCreateForm((prev) => ({
+            ...prev,
+            ambiente: activeAmbiente,
+            tipo: contaTipo,
+            tipoVinculo: tipo,
+            entidadeId: id,
+          }))
+          setShowCreateModal(true)
+        }}
+      />
     </div>
   )
 }

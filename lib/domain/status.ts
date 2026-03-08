@@ -67,6 +67,7 @@ export const PROSPECT_STATUSES = [
   'novo',
   'em_contato',
   'qualificado',
+  'aguardando_orcamento',
   'descartado',
   'convertido',
 ] as const

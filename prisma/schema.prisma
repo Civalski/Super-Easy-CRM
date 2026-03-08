@@ -60,13 +60,15 @@ model User {
   metaContato           MetaContatoConfig?
   workspacesOwned       Workspace[]              @relation("WorkspaceOwner")
   workspaceMemberships  WorkspaceMember[]
-  followUpTemplates     FollowUpTemplate[]
+  notas                Nota[]
   followUpAttempts      FollowUpAttempt[]
   produtosServicos      ProdutoServico[]
   pedidoItens           PedidoItem[]
   contasReceber         ContaReceber[]
   movimentosFinanceiros MovimentoFinanceiro[]
   pdfConfig             PdfConfig?
+  fornecedores          Fornecedor[]
+  funcionarios          Funcionario[]
 
   @@map("users")
 }
@@ -140,17 +142,63 @@ model Cliente {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  contatos      Contato[]
-  oportunidades Oportunidade[]
-  tarefas       Tarefa[]
-  prospecto     Prospecto?
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contatos       Contato[]
+  oportunidades  Oportunidade[]
+  tarefas        Tarefa[]
+  prospecto      Prospecto?
+  contasReceber  ContaReceber[]
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([id, userId])
   @@unique([userId, email])
   @@index([userId])
   @@index([userId, createdAt])
   @@map("clientes")
+}
+
+model Fornecedor {
+  id          String   @id @default(cuid())
+  userId      String
+  nome        String
+  email       String?
+  telefone    String?
+  documento   String?
+  empresa     String?
+  endereco    String?
+  cidade      String?
+  estado      String?
+  cep         String?
+  observacoes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contasReceber ContaReceber[]
+
+  @@index([userId])
+  @@index([userId, nome])
+  @@map("fornecedores")
+}
+
+model Funcionario {
+  id          String   @id @default(cuid())
+  userId      String
+  nome        String
+  email       String?
+  telefone    String?
+  documento   String?
+  cargo       String?
+  departamento String?
+  observacoes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contasReceber ContaReceber[]
+
+  @@index([userId])
+  @@index([userId, nome])
+  @@map("funcionarios")
 }
 
 model Contato {
@@ -323,7 +371,7 @@ model Prospecto {
   email     String?
 
   // Controle de Prospecção
-  status      String  @default("novo") // novo | em_contato | qualificado | descartado | convertido
+  status      String  @default("novo") // novo | em_contato | qualificado | aguardando_orcamento | descartado | convertido
   observacoes String?
   prioridade  Int     @default(0) // 0-5 estrelas
   lote        String? // Lote de importação
@@ -413,14 +461,13 @@ model MetaContatoDiaEsquecido {
   @@map("meta_contato_dias_esquecidos")
 }
 
-model FollowUpTemplate {
+model Nota {
   id        String   @id @default(cuid())
   userId    String
-  etapa     String
-  canal     String
+  tipo      String   @default("bloco") // bloco | email | whatsapp
   titulo    String?
-  mensagem  String
-  ativo     Boolean  @default(true)
+  descricao String?
+  conteudo  String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -428,24 +475,24 @@ model FollowUpTemplate {
   attempts FollowUpAttempt[]
 
   @@unique([id, userId])
-  @@index([userId, etapa, canal, ativo])
-  @@map("followup_templates")
+  @@index([userId, tipo])
+  @@map("notas")
 }
 
 model FollowUpAttempt {
   id             String   @id @default(cuid())
   userId         String
   oportunidadeId String
-  templateId     String?
+  notaId         String?
   canal          String
   mensagem       String
   resultado      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oportunidade Oportunidade      @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
-  template     FollowUpTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oportunidade Oportunidade @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: Cascade)
+  nota         Nota?        @relation(fields: [notaId], references: [id], onDelete: SetNull)
 
   @@index([userId, oportunidadeId, createdAt])
   @@map("followup_attempts")
@@ -515,6 +562,9 @@ model ContaReceber {
   userId                   String
   pedidoId                 String?   @unique
   oportunidadeId           String?
+  clienteId                String?
+  fornecedorId             String?
+  funcionarioId            String?
   ambiente                 String    @default("geral") // geral | pessoal
   tipo                     String    @default("receber") // receber | pagar
   descricao                String?
@@ -529,12 +579,18 @@ model ContaReceber {
   recorrenciaDiaVencimento Int?
   dataVencimento           DateTime?
   status                   String    @default("pendente") // pendente | parcial | pago | atrasado | cancelado
+  multaPorAtrasoPercentual  Float?
+  multaPorAtrasoValor      Float?
+  multaPorAtrasoPeriodo    String?   // dia | semana | mes
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   pedido       Pedido?               @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
   oportunidade Oportunidade?         @relation(fields: [oportunidadeId], references: [id], onDelete: SetNull)
+  cliente      Cliente?             @relation(fields: [clienteId, userId], references: [id, userId], onDelete: SetNull)
+  fornecedor   Fornecedor?          @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  funcionario  Funcionario?         @relation(fields: [funcionarioId], references: [id], onDelete: SetNull)
   movimentos   MovimentoFinanceiro[]
 
   @@unique([id, userId])

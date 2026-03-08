@@ -155,11 +155,18 @@ export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
       const { searchParams } = new URL(request.url)
+      const aba = searchParams.get('aba') ?? undefined
+      const dataInicio = searchParams.get('dataInicio') ?? undefined
+      const dataFim = searchParams.get('dataFim') ?? undefined
       const result = await listPedidos(userId, {
         filters: {
           statusEntrega: searchParams.get('statusEntrega') ?? undefined,
           clienteId: searchParams.get('clienteId') ?? undefined,
           search: searchParams.get('search')?.trim() || undefined,
+          formaPagamento: searchParams.get('formaPagamento') ?? undefined,
+          dataInicio,
+          dataFim,
+          aba,
         },
         paginated: searchParams.get('paginated') === 'true',
         limit: parseLimit(searchParams.get('limit')),
@@ -374,13 +381,6 @@ export async function POST(request: NextRequest) {
       const descricao = parseOptionalString(body.descricao)
       const clienteId = typeof body.clienteId === 'string' ? body.clienteId.trim() : ''
 
-      if (!titulo) {
-        return NextResponse.json(
-          { error: 'Titulo e obrigatorio para criar pedido direto' },
-          { status: 400 }
-        )
-      }
-
       if (!clienteId) {
         return NextResponse.json(
           { error: 'Cliente e obrigatorio para criar pedido direto' },
@@ -408,7 +408,7 @@ export async function POST(request: NextRequest) {
       }
 
       pedidoDiretoData = {
-        titulo,
+        titulo: titulo || 'Pedido',
         descricao: descricao ?? null,
         valor: valor === undefined ? null : valor,
         clienteId: cliente.id,

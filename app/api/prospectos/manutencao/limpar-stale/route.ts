@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
+import { descartarContatadosStale } from '@/lib/prospectos/descartarContatadosStale'
 
 export const dynamic = 'force-dynamic'
 
+const DEFAULT_DAYS = 8 // Aviso aos 7 dias; descarte automático aos 8
+
 function parseDays(value: unknown) {
-  if (value === undefined) return 30
+  if (value === undefined) return DEFAULT_DAYS
   const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) return null
   return parsed
@@ -31,7 +34,10 @@ export async function POST(request: NextRequest) {
     const where = {
       userId,
       status: 'em_contato',
-      ultimoContato: { lt: cutoff },
+      OR: [
+        { ultimoContato: { lt: cutoff } },
+        { ultimoContato: null, updatedAt: { lt: cutoff } },
+      ],
     } as const
 
     const affected = await prisma.prospecto.count({ where })
@@ -46,16 +52,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const deleted = await prisma.prospecto.deleteMany({ where })
+    const descartados = await descartarContatadosStale(userId, days)
 
     console.info(
       '[maintenance]',
       JSON.stringify({
-        event: 'prospecto.cleanup_stale_contacts',
+        event: 'prospecto.descartar_contatados_stale',
         userId,
         days,
         cutoff: cutoff.toISOString(),
-        deleted: deleted.count,
+        descartados,
       })
     )
 
@@ -64,7 +70,7 @@ export async function POST(request: NextRequest) {
       dryRun: false,
       days,
       cutoff: cutoff.toISOString(),
-      deleted: deleted.count,
+      descartados,
     })
     } catch (error) {
       console.error('Erro ao limpar prospectos stale:', error)

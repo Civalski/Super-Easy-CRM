@@ -3,11 +3,12 @@
 import dynamic from 'next/dynamic'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Briefcase, DollarSign, FileText, Loader2, Plus, Search } from '@/lib/icons'
+import { Briefcase, DollarSign, FileText, Filter, Loader2, Plus } from '@/lib/icons'
 import { Button } from '@/components/common'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { formatCurrency } from '@/lib/format'
-import { OrcamentosList, useOrcamentos } from '@/components/features/oportunidades'
+import { CancelarOrcamentoModal, OrcamentosList, useOrcamentos } from '@/components/features/oportunidades'
+import { OrcamentosFilters, type OrcamentosFiltersValues } from '@/components/features/oportunidades/OrcamentosFilters'
 
 const CreateOrcamentoDrawer = dynamic(
   () => import('@/components/features/oportunidades/CreateOrcamentoDrawer'),
@@ -17,6 +18,14 @@ const EditOrcamentoDrawer = dynamic(
   () => import('@/components/features/oportunidades/EditOrcamentoDrawer'),
   { ssr: false }
 )
+const VerOrcamentoDrawer = dynamic(
+  () => import('@/components/features/oportunidades/VerOrcamentoDrawer'),
+  { ssr: false }
+)
+const DuplicarOrcamentoDrawer = dynamic(
+  () => import('@/components/features/oportunidades/DuplicarOrcamentoDrawer'),
+  { ssr: false }
+)
 
 function OrcamentosPageContent() {
   const router = useRouter()
@@ -24,10 +33,29 @@ function OrcamentosPageContent() {
   const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
   const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
   const searchFilter = searchParams.get('search')?.trim() || ''
+  const formaPagamentoFilter = searchParams.get('formaPagamento')?.trim() || ''
+  const probabilidadeFilter = searchParams.get('probabilidade')?.trim() || ''
+  const periodoFilter = searchParams.get('periodo')?.trim() || ''
   const hasClienteFilter = clienteIdFilter.length > 0
   const hasSearchFilter = searchFilter.length > 0
+  const hasFiltersFilter = formaPagamentoFilter || probabilidadeFilter || periodoFilter
   const clienteQuery = hasClienteFilter ? `&clienteId=${encodeURIComponent(clienteIdFilter)}` : ''
   const searchQuery = hasSearchFilter ? `&search=${encodeURIComponent(searchFilter)}` : ''
+  const filtersQueryParts: string[] = []
+  if (formaPagamentoFilter) filtersQueryParts.push(`formaPagamento=${encodeURIComponent(formaPagamentoFilter)}`)
+  if (probabilidadeFilter) filtersQueryParts.push(`probabilidade=${encodeURIComponent(probabilidadeFilter)}`)
+  if (periodoFilter) {
+    const days = parseInt(periodoFilter, 10)
+    if (!Number.isNaN(days) && days > 0) {
+      const dataFim = new Date()
+      const dataInicio = new Date()
+      dataInicio.setDate(dataInicio.getDate() - days)
+      dataInicio.setHours(0, 0, 0, 0)
+      filtersQueryParts.push(`dataInicio=${dataInicio.toISOString().split('T')[0]}`)
+      filtersQueryParts.push(`dataFim=${dataFim.toISOString().split('T')[0]}`)
+    }
+  }
+  const filtersQuery = filtersQueryParts.length > 0 ? `&${filtersQueryParts.join('&')}` : ''
 
   const [activeTab, setActiveTab] = useState<'abertas' | 'canceladas'>('abertas')
   const [searchInput, setSearchInput] = useState(searchFilter)
@@ -59,10 +87,14 @@ function OrcamentosPageContent() {
   useEffect(() => () => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
   }, [])
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingOrcamentoId, setEditingOrcamentoId] = useState<string | null>(null)
+  const [viewingOrcamentoId, setViewingOrcamentoId] = useState<string | null>(null)
+  const [duplicandoOrcamentoId, setDuplicandoOrcamentoId] = useState<string | null>(null)
+  const [cancelandoOrcamentoId, setCancelandoOrcamentoId] = useState<string | null>(null)
   const [prefillPerson, setPrefillPerson] = useState<AsyncSelectOption | null>(null)
-  const [expandedOrcamentoId, setExpandedOrcamentoId] = useState<string | null>(null)
 
   const {
     loading,
@@ -81,7 +113,9 @@ function OrcamentosPageContent() {
     handleTransformarEmPedido,
     handleDownloadOrcamentoPdf,
     handleReturnToPipeline,
-  } = useOrcamentos({ activeTab, clienteQuery, searchQuery })
+    handleCancelarOrcamento,
+    cancelandoLoading,
+  } = useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQuery })
 
   useEffect(() => {
     const shouldOpen = searchParams.get('novoOrcamento') === '1'
@@ -128,6 +162,31 @@ function OrcamentosPageContent() {
     setSearchInput('')
   }, [router, searchParams])
 
+  const clearFiltersFilter = useCallback(() => {
+    if (!formaPagamentoFilter && !probabilidadeFilter && !periodoFilter) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('formaPagamento')
+    params.delete('probabilidade')
+    params.delete('periodo')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/oportunidades?${nextQuery}` : '/oportunidades')
+  }, [router, searchParams, formaPagamentoFilter, probabilidadeFilter, periodoFilter])
+
+  const handleFiltersChange = useCallback(
+    (values: OrcamentosFiltersValues) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (values.formaPagamento) params.set('formaPagamento', values.formaPagamento)
+      else params.delete('formaPagamento')
+      if (values.probabilidade) params.set('probabilidade', values.probabilidade)
+      else params.delete('probabilidade')
+      if (values.periodo) params.set('periodo', values.periodo)
+      else params.delete('periodo')
+      const nextQuery = params.toString()
+      router.replace(nextQuery ? `/oportunidades?${nextQuery}` : '/oportunidades')
+    },
+    [router, searchParams]
+  )
+
   const handleOrcamentoCreated = () => {
     clearOrcamentoPrefillParams()
     setPrefillPerson(null)
@@ -140,6 +199,13 @@ function OrcamentosPageContent() {
   const handleOrcamentoEdited = () => {
     setEditingOrcamentoId(null)
     void fetchOportunidades()
+  }
+
+  const handleOrcamentoDuplicated = () => {
+    setDuplicandoOrcamentoId(null)
+    setActiveTab('abertas')
+    setPageAbertas(1)
+    void fetchOportunidades(undefined, { pageAbertas: 1 })
   }
 
   return (
@@ -161,15 +227,44 @@ function OrcamentosPageContent() {
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-[280px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="relative flex flex-1 max-w-[400px] items-center gap-2">
           <input
             type="text"
             placeholder="Buscar por número ou nome do cliente"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-gray-600 dark:bg-gray-800"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-sm dark:border-gray-600 dark:bg-gray-800"
           />
+          <div className="absolute right-2 flex items-center">
+            <button
+              ref={filterButtonRef}
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`rounded p-1.5 transition-colors ${
+                hasFiltersFilter
+                  ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400'
+                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300'
+              }`}
+              title="Filtrar orçamentos"
+              aria-label="Filtrar orçamentos"
+            >
+              <Filter size={18} />
+            </button>
+          </div>
+          <div className="absolute right-2 top-full">
+            <OrcamentosFilters
+              open={filtersOpen}
+              anchorRef={filterButtonRef}
+              values={{
+                formaPagamento: formaPagamentoFilter,
+                probabilidade: probabilidadeFilter,
+                periodo: periodoFilter,
+              }}
+              onClose={() => setFiltersOpen(false)}
+              onChange={handleFiltersChange}
+              onClear={clearFiltersFilter}
+            />
+          </div>
         </div>
       </div>
 
@@ -184,14 +279,38 @@ function OrcamentosPageContent() {
         </div>
       )}
 
-      {hasSearchFilter && (
+      {(hasSearchFilter || hasFiltersFilter) && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
-            Busca: {searchFilter}
-          </span>
-          <Button size="sm" variant="outline" onClick={clearSearchFilter}>
-            Limpar busca
-          </Button>
+          {hasSearchFilter && (
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
+              Busca: {searchFilter}
+            </span>
+          )}
+          {formaPagamentoFilter && (
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+              Pagamento: {formaPagamentoFilter}
+            </span>
+          )}
+          {probabilidadeFilter && (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+              Probabilidade: {probabilidadeFilter}
+            </span>
+          )}
+          {periodoFilter && (
+            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-200">
+              Período: últimos {periodoFilter} dias
+            </span>
+          )}
+          {hasSearchFilter && (
+            <Button size="sm" variant="outline" onClick={clearSearchFilter}>
+              Limpar busca
+            </Button>
+          )}
+          {hasFiltersFilter && (
+            <Button size="sm" variant="outline" onClick={clearFiltersFilter}>
+              Limpar filtros
+            </Button>
+          )}
         </div>
       )}
 
@@ -208,10 +327,10 @@ function OrcamentosPageContent() {
             <DollarSign size={16} />
             <span className="text-xs font-medium">Valor Total</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(stats.valorTotal)}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.valorTotal)}</p>
         </div>
         <div className="crm-card p-4">
-          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-1">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
             <FileText size={16} />
             <span className="text-xs font-medium">Orçamento</span>
           </div>
@@ -256,8 +375,7 @@ function OrcamentosPageContent() {
           meta={metaAbertas}
           page={pageAbertas}
           onPageChange={setPageAbertas}
-          expandedId={expandedOrcamentoId}
-          onToggleExpand={(id) => setExpandedOrcamentoId((prev) => (prev === id ? null : id))}
+          onVerDetalhes={setViewingOrcamentoId}
           onEdit={setEditingOrcamentoId}
           tab="abertas"
           onDownloadPdf={handleDownloadOrcamentoPdf}
@@ -265,6 +383,8 @@ function OrcamentosPageContent() {
           onTransformarEmPedido={handleTransformarEmPedido}
           creatingPedidoById={creatingPedidoById}
           onShowCreateModal={() => setShowCreateModal(true)}
+          onDuplicar={setDuplicandoOrcamentoId}
+          onCancelar={setCancelandoOrcamentoId}
         />
       )}
 
@@ -274,8 +394,7 @@ function OrcamentosPageContent() {
           meta={metaPerdidas}
           page={pagePerdidas}
           onPageChange={setPagePerdidas}
-          expandedId={expandedOrcamentoId}
-          onToggleExpand={(id) => setExpandedOrcamentoId((prev) => (prev === id ? null : id))}
+          onVerDetalhes={setViewingOrcamentoId}
           onEdit={setEditingOrcamentoId}
           tab="canceladas"
           onReturnToPipeline={handleReturnToPipeline}
@@ -301,6 +420,33 @@ function OrcamentosPageContent() {
           onSaved={handleOrcamentoEdited}
         />
       )}
+
+      {viewingOrcamentoId && (
+        <VerOrcamentoDrawer
+          oportunidadeId={viewingOrcamentoId}
+          onClose={() => setViewingOrcamentoId(null)}
+        />
+      )}
+
+      {duplicandoOrcamentoId && (
+        <DuplicarOrcamentoDrawer
+          oportunidadeId={duplicandoOrcamentoId}
+          onClose={() => setDuplicandoOrcamentoId(null)}
+          onDuplicated={handleOrcamentoDuplicated}
+        />
+      )}
+
+      <CancelarOrcamentoModal
+        open={Boolean(cancelandoOrcamentoId)}
+        onConfirm={async (motivo) => {
+          if (cancelandoOrcamentoId) {
+            await handleCancelarOrcamento(cancelandoOrcamentoId, motivo)
+            setCancelandoOrcamentoId(null)
+          }
+        }}
+        onCancel={() => setCancelandoOrcamentoId(null)}
+        loading={cancelandoLoading}
+      />
     </div>
   )
 }

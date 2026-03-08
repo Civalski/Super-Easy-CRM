@@ -2,6 +2,7 @@ export interface Pedido {
   id: string
   numero: number
   statusEntrega: string
+  createdAt?: string
   pagamentoConfirmado: boolean
   formaPagamento: string | null
   dataEntrega: string | null
@@ -26,6 +27,9 @@ export interface Pedido {
     responsavelProximaAcao: string | null
     lembreteProximaAcao: boolean | null
     status: string
+    motivoPerda: string | null
+    createdAt?: string
+    updatedAt?: string
     cliente: { nome: string }
   }
 }

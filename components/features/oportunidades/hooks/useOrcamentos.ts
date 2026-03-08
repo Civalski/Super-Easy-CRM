@@ -11,9 +11,10 @@ interface UseOrcamentosOptions {
   activeTab: 'abertas' | 'canceladas'
   clienteQuery: string
   searchQuery: string
+  filtersQuery?: string
 }
 
-export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcamentosOptions) {
+export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQuery = '' }: UseOrcamentosOptions) {
   const { confirm } = useConfirm()
   const [orcamentosAbertos, setOrcamentosAbertos] = useState<Oportunidade[]>([])
   const [historicoPerdidas, setHistoricoPerdidas] = useState<Oportunidade[]>([])
@@ -24,6 +25,7 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
   const [pagePerdidas, setPagePerdidas] = useState(1)
   const [creatingPedidoById, setCreatingPedidoById] = useState<Record<string, boolean>>({})
   const [downloadingPdfById, setDownloadingPdfById] = useState<Record<string, boolean>>({})
+  const [cancelandoLoading, setCancelandoLoading] = useState(false)
 
   const fetchOportunidades = useCallback(async (signal?: AbortSignal, overrides?: { pageAbertas?: number; pagePerdidas?: number }) => {
     const pageA = overrides?.pageAbertas ?? pageAbertas
@@ -32,7 +34,7 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
       setLoading(true)
       if (activeTab === 'abertas') {
         const response = await fetch(
-          `/api/oportunidades?status=orcamento&possuiPedido=false&paginated=true&page=${pageA}&limit=${LIST_PAGE_SIZE}${clienteQuery}${searchQuery}`,
+          `/api/oportunidades?status=orcamento&possuiPedido=false&paginated=true&page=${pageA}&limit=${LIST_PAGE_SIZE}${clienteQuery}${searchQuery}${filtersQuery}`,
           { signal }
         )
         const payload = await response.json().catch(() => null)
@@ -53,7 +55,7 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
         setMetaAbertas(meta)
       } else {
         const response = await fetch(
-          `/api/oportunidades?status=perdida&possuiPedido=false&paginated=true&page=${pageP}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}${searchQuery}`,
+          `/api/oportunidades?status=perdida&possuiPedido=false&paginated=true&page=${pageP}&limit=${HISTORICO_PAGE_SIZE}${clienteQuery}${searchQuery}${filtersQuery}`,
           { signal }
         )
         const payload = await response.json().catch(() => null)
@@ -86,7 +88,7 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
     } finally {
       setLoading(false)
     }
-  }, [activeTab, clienteQuery, searchQuery, pageAbertas, pagePerdidas])
+  }, [activeTab, clienteQuery, searchQuery, filtersQuery, pageAbertas, pagePerdidas])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -196,6 +198,26 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
     handleStatusChange(id, previousStatus)
   }
 
+  const handleCancelarOrcamento = async (id: string, motivo: string) => {
+    try {
+      setCancelandoLoading(true)
+      const response = await fetch(`/api/oportunidades/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'perdida', motivoPerda: motivo.trim() }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(data?.error || 'Erro ao cancelar orçamento')
+
+      void fetchOportunidades()
+      toast.success('Orçamento cancelado', { description: 'O orçamento foi movido para a aba de cancelados.' })
+    } catch (error: unknown) {
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Não foi possível cancelar o orçamento.' })
+    } finally {
+      setCancelandoLoading(false)
+    }
+  }
+
   return {
     loading,
     orcamentosAbertos,
@@ -214,5 +236,7 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery }: UseOrcam
     handleTransformarEmPedido,
     handleDownloadOrcamentoPdf,
     handleReturnToPipeline,
+    handleCancelarOrcamento,
+    cancelandoLoading,
   }
 }

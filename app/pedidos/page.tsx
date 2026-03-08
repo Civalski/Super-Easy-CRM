@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/common'
-import { CheckCircle2, ClipboardList, Loader2, Plus, Search, Truck, X } from '@/lib/icons'
+import { CheckCircle2, ClipboardList, DollarSign, Filter, Loader2, Plus, Search, Truck, X } from '@/lib/icons'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 
 import { StatCard } from '@/components/features/pedidos/StatCard'
-import { PedidosFilterBadges } from '@/components/features/pedidos/PedidosFilterBadges'
+import { PedidosFilters, type PedidosFiltersValues } from '@/components/features/pedidos/PedidosFilters'
+import { STATUS_ENTREGA_LABEL } from '@/components/features/pedidos/constants'
 import { PedidosTabs } from '@/components/features/pedidos/PedidosTabs'
 import { PedidosList } from '@/components/features/pedidos/PedidosList'
 import { PedidosPagination } from '@/components/features/pedidos/PedidosPagination'
@@ -33,6 +34,11 @@ const QuickApproveModal = dynamic(
   () => import('@/components/features/pedidos/QuickApproveModal').then((m) => ({ default: m.QuickApproveModal })),
   { ssr: false }
 )
+const CancelarPedidoModal = dynamic(
+  () => import('@/components/features/pedidos/CancelarPedidoModal').then((m) => ({ default: m.default })),
+  { ssr: false }
+)
+import { formatCurrency } from '@/lib/format'
 import type { Pedido, PedidoTab, QuickApproveChoice } from '@/components/features/pedidos/types'
 import { buildItemForm, getPedidoSituacao } from '@/components/features/pedidos/utils'
 
@@ -41,18 +47,52 @@ function PedidosPageContent() {
   const searchParams = useSearchParams()
   const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
   const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
+  const abaParam = searchParams.get('aba')?.trim() || ''
+  const activeTabFromUrl: PedidoTab = abaParam === 'vendas' || abaParam === 'cancelados' ? abaParam : 'andamento'
   const statusEntregaFilter = searchParams.get('statusEntrega')?.trim() || ''
   const searchFilter = searchParams.get('search')?.trim() || ''
+  const formaPagamentoFilter = searchParams.get('formaPagamento')?.trim() || ''
+  const periodoFilter = searchParams.get('periodo')?.trim() || ''
+  const dataInicioFilter = searchParams.get('dataInicio')?.trim() || ''
+  const dataFimFilter = searchParams.get('dataFim')?.trim() || ''
   const hasClienteFilter = clienteIdFilter.length > 0
   const hasStatusFilter = statusEntregaFilter.length > 0
   const hasSearchFilter = searchFilter.length > 0
-  const queryFilter = [
-    hasClienteFilter ? `clienteId=${encodeURIComponent(clienteIdFilter)}` : null,
-    hasStatusFilter ? `statusEntrega=${encodeURIComponent(statusEntregaFilter)}` : null,
-    hasSearchFilter ? `search=${encodeURIComponent(searchFilter)}` : null,
-  ]
-    .filter(Boolean)
-    .join('&')
+  const hasFiltersFilter =
+    formaPagamentoFilter ||
+    periodoFilter ||
+    statusEntregaFilter ||
+    (activeTabFromUrl !== 'andamento' && (dataInicioFilter || dataFimFilter))
+  const queryFilterParts: string[] = []
+  if (hasClienteFilter) queryFilterParts.push(`clienteId=${encodeURIComponent(clienteIdFilter)}`)
+  if (hasStatusFilter) queryFilterParts.push(`statusEntrega=${encodeURIComponent(statusEntregaFilter)}`)
+  if (hasSearchFilter) queryFilterParts.push(`search=${encodeURIComponent(searchFilter)}`)
+  if (formaPagamentoFilter) queryFilterParts.push(`formaPagamento=${encodeURIComponent(formaPagamentoFilter)}`)
+  if (activeTabFromUrl === 'vendas' || activeTabFromUrl === 'cancelados') {
+    queryFilterParts.push(`aba=${activeTabFromUrl}`)
+    let di = dataInicioFilter
+    let df = dataFimFilter
+    if (!di || !df) {
+      const now = new Date()
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      di = di || firstDay.toISOString().split('T')[0]
+      df = df || lastDay.toISOString().split('T')[0]
+    }
+    queryFilterParts.push(`dataInicio=${di}`)
+    queryFilterParts.push(`dataFim=${df}`)
+  } else if (periodoFilter) {
+    const days = parseInt(periodoFilter, 10)
+    if (!Number.isNaN(days) && days > 0) {
+      const dataFim = new Date()
+      const dataInicio = new Date()
+      dataInicio.setDate(dataInicio.getDate() - days)
+      dataInicio.setHours(0, 0, 0, 0)
+      queryFilterParts.push(`dataInicio=${dataInicio.toISOString().split('T')[0]}`)
+      queryFilterParts.push(`dataFim=${dataFim.toISOString().split('T')[0]}`)
+    }
+  }
+  const queryFilter = queryFilterParts.join('&')
 
   const [searchInput, setSearchInput] = useState(searchFilter)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -84,19 +124,51 @@ function PedidosPageContent() {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
   }, [])
 
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [prefillPerson, setPrefillPerson] = useState<AsyncSelectOption | null>(null)
   const [quickApprovePedido, setQuickApprovePedido] = useState<Pedido | null>(null)
+  const [cancelPedidoToConfirm, setCancelPedidoToConfirm] = useState<Pedido | null>(null)
   const [activeItemsPedidoId, setActiveItemsPedidoId] = useState<string | null>(null)
   const [editingPedidoId, setEditingPedidoId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<PedidoTab>('andamento')
+
+  const handleTabChange = useCallback(
+    (tab: PedidoTab) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (tab === 'andamento') {
+        params.delete('aba')
+        params.delete('dataInicio')
+        params.delete('dataFim')
+      } else {
+        params.set('aba', tab)
+        if (!params.get('dataInicio') || !params.get('dataFim')) {
+          const now = new Date()
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+          const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+          params.set('dataInicio', firstDay.toISOString().split('T')[0])
+          params.set('dataFim', lastDay.toISOString().split('T')[0])
+        }
+      }
+      const nextQuery = params.toString()
+      router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
+    },
+    [router, searchParams]
+  )
 
   useEffect(() => {
     const aba = searchParams.get('aba')
-    if (aba === 'vendas' || aba === 'cancelados' || aba === 'andamento') {
-      setActiveTab(aba)
+    if ((aba === 'vendas' || aba === 'cancelados') && !searchParams.get('dataInicio')) {
+      const params = new URLSearchParams(searchParams.toString())
+      const now = new Date()
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      params.set('dataInicio', firstDay.toISOString().split('T')[0])
+      params.set('dataFim', lastDay.toISOString().split('T')[0])
+      router.replace(`/pedidos?${params.toString()}`)
+      return
     }
-  }, [searchParams])
+  }, [searchParams, router])
 
   useEffect(() => {
     const shouldOpen = searchParams.get('novoPedido') === '1'
@@ -140,10 +212,10 @@ function PedidosPageContent() {
   } = usePedidoItems({ updatePedidoTotals })
 
   const activePedidos = useMemo(() => {
-    if (activeTab === 'vendas') return pedidosByStatus.vendas
-    if (activeTab === 'cancelados') return pedidosByStatus.cancelados
+    if (activeTabFromUrl === 'vendas') return pedidosByStatus.vendas
+    if (activeTabFromUrl === 'cancelados') return pedidosByStatus.cancelados
     return pedidosByStatus.andamento
-  }, [activeTab, pedidosByStatus])
+  }, [activeTabFromUrl, pedidosByStatus])
 
   const activePedido = useMemo(
     () => pedidos.find((p) => p.id === activeItemsPedidoId) || null,
@@ -183,17 +255,76 @@ function PedidosPageContent() {
     })
   }
 
-  const clearListFilters = useCallback(() => {
-    if (!searchParams.get('clienteId') && !searchParams.get('clienteNome') && !searchParams.get('statusEntrega') && !searchParams.get('search')) return
+  const clearClienteFilter = useCallback(() => {
+    if (!searchParams.get('clienteId') && !searchParams.get('clienteNome')) return
     const params = new URLSearchParams(searchParams.toString())
     params.delete('clienteId')
     params.delete('clienteNome')
-    params.delete('statusEntrega')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
+  }, [router, searchParams])
+
+  const clearSearchFilter = useCallback(() => {
+    if (!searchParams.get('search')) return
+    const params = new URLSearchParams(searchParams.toString())
     params.delete('search')
     const nextQuery = params.toString()
     router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
     setSearchInput('')
   }, [router, searchParams])
+
+  const clearFiltersFilter = useCallback(() => {
+    const hasAny =
+      statusEntregaFilter ||
+      formaPagamentoFilter ||
+      periodoFilter ||
+      (activeTabFromUrl !== 'andamento' && (dataInicioFilter || dataFimFilter))
+    if (!hasAny) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('statusEntrega')
+    params.delete('formaPagamento')
+    params.delete('periodo')
+    if (activeTabFromUrl === 'vendas' || activeTabFromUrl === 'cancelados') {
+      const now = new Date()
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      params.set('dataInicio', firstDay.toISOString().split('T')[0])
+      params.set('dataFim', lastDay.toISOString().split('T')[0])
+    } else {
+      params.delete('dataInicio')
+      params.delete('dataFim')
+    }
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
+  }, [
+    router,
+    searchParams,
+    statusEntregaFilter,
+    formaPagamentoFilter,
+    periodoFilter,
+    activeTabFromUrl,
+    dataInicioFilter,
+    dataFimFilter,
+  ])
+
+  const handleFiltersChange = useCallback(
+    (values: PedidosFiltersValues) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (values.statusEntrega) params.set('statusEntrega', values.statusEntrega)
+      else params.delete('statusEntrega')
+      if (values.formaPagamento) params.set('formaPagamento', values.formaPagamento)
+      else params.delete('formaPagamento')
+      if (values.periodo) params.set('periodo', values.periodo)
+      else params.delete('periodo')
+      if (values.dataInicio) params.set('dataInicio', values.dataInicio)
+      else params.delete('dataInicio')
+      if (values.dataFim) params.set('dataFim', values.dataFim)
+      else params.delete('dataFim')
+      const nextQuery = params.toString()
+      router.replace(nextQuery ? `/pedidos?${nextQuery}` : '/pedidos')
+    },
+    [router, searchParams]
+  )
 
   const clearPedidoPrefillParams = useCallback(() => {
     if (!searchParams.get('novoPedido') && !searchParams.get('clienteId') && !searchParams.get('clienteNome')) return
@@ -227,37 +358,112 @@ function PedidosPageContent() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-[280px]">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex flex-1 max-w-[400px] items-center gap-2">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Buscar por número ou nome do cliente"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-gray-600 dark:bg-gray-800"
+            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-10 text-sm dark:border-gray-600 dark:bg-gray-800"
           />
+          <div className="absolute right-2 flex items-center">
+            <button
+              ref={filterButtonRef}
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`rounded p-1.5 transition-colors ${
+                hasFiltersFilter
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300'
+              }`}
+              title="Filtrar pedidos"
+              aria-label="Filtrar pedidos"
+            >
+              <Filter size={18} />
+            </button>
+          </div>
+          <div className="absolute right-2 top-full">
+            <PedidosFilters
+              open={filtersOpen}
+              anchorRef={filterButtonRef}
+              activeTab={activeTabFromUrl}
+              values={{
+                statusEntrega: statusEntregaFilter,
+                formaPagamento: formaPagamentoFilter,
+                periodo: periodoFilter,
+                dataInicio: dataInicioFilter,
+                dataFim: dataFimFilter,
+              }}
+              onClose={() => setFiltersOpen(false)}
+              onChange={handleFiltersChange}
+              onClear={clearFiltersFilter}
+            />
+          </div>
         </div>
       </div>
 
-      <PedidosFilterBadges
-        clienteNomeFilter={clienteNomeFilter}
-        statusEntregaFilter={statusEntregaFilter}
-        searchFilter={searchFilter}
-        hasClienteFilter={hasClienteFilter}
-        hasStatusFilter={hasStatusFilter}
-        hasSearchFilter={hasSearchFilter}
-        onClearFilters={clearListFilters}
-      />
+      {hasClienteFilter && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+            Cliente: {clienteNomeFilter}
+          </span>
+          <Button size="sm" variant="outline" onClick={clearClienteFilter}>
+            Limpar filtro cliente
+          </Button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {(hasSearchFilter || hasFiltersFilter) && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {hasSearchFilter && (
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
+              Busca: {searchFilter}
+            </span>
+          )}
+          {statusEntregaFilter && (
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+              Status: {STATUS_ENTREGA_LABEL[statusEntregaFilter] || statusEntregaFilter}
+            </span>
+          )}
+          {formaPagamentoFilter && (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+              Pagamento: {formaPagamentoFilter.charAt(0).toUpperCase() + formaPagamentoFilter.slice(1)}
+            </span>
+          )}
+          {periodoFilter && (
+            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-200">
+              Período: últimos {periodoFilter} dias
+            </span>
+          )}
+          {activeTabFromUrl !== 'andamento' && dataInicioFilter && (
+            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-200">
+              Mês: {new Date(dataInicioFilter + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+          )}
+          {hasSearchFilter && (
+            <Button size="sm" variant="outline" onClick={clearSearchFilter}>
+              Limpar busca
+            </Button>
+          )}
+          {hasFiltersFilter && (
+            <Button size="sm" variant="outline" onClick={clearFiltersFilter}>
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard icon={<ClipboardList size={16} />} title="Total de Pedidos" value={String(stats.total)} />
+        <StatCard icon={<DollarSign size={16} />} title="Valor Total" value={formatCurrency(stats.valorTotal)} />
         <StatCard icon={<Truck size={16} />} title="Em Andamento" value={String(stats.emAndamento)} />
         <StatCard icon={<CheckCircle2 size={16} />} title="Vendas" value={String(stats.vendas)} />
         <StatCard icon={<X size={16} />} title="Cancelados" value={String(stats.cancelados)} />
       </div>
 
-      <PedidosTabs activeTab={activeTab} stats={stats} onTabChange={setActiveTab} />
+      <PedidosTabs activeTab={activeTabFromUrl} stats={stats} onTabChange={handleTabChange} />
 
       {loading && (
         <div className="flex min-h-[220px] items-center justify-center">
@@ -267,12 +473,14 @@ function PedidosPageContent() {
 
       {!loading && (
         <PedidosList
-          activeTab={activeTab}
+          activeTab={activeTabFromUrl}
           pedidos={activePedidos}
           savingById={savingById}
           onQuickApprove={(pedido) => void handleQuickApprove(pedido)}
           onOpenItems={(id) => void handleOpenItemsModal(id)}
           onEdit={(id) => setEditingPedidoId(id)}
+          onCancelPedido={(pedido) => setCancelPedidoToConfirm(pedido)}
+          onShowCreateModal={activeTabFromUrl === 'andamento' ? () => setShowCreateModal(true) : undefined}
         />
       )}
 
@@ -310,10 +518,22 @@ function PedidosPageContent() {
           onSave={(values) => void handleSavePedidoComercial(editingPedido.id, values).then((ok) => {
             if (ok) setEditingPedidoId(null)
           })}
-          onCancelPedido={async () => {
-            const success = await handleCancelarPedido(editingPedido)
-            if (success) setEditingPedidoId(null)
+          onCancelPedido={() => setCancelPedidoToConfirm(editingPedido)}
+        />
+      )}
+
+      {cancelPedidoToConfirm && (
+        <CancelarPedidoModal
+          open
+          loading={Boolean(savingById[cancelPedidoToConfirm.id])}
+          onConfirm={async (motivo) => {
+            const success = await handleCancelarPedido(cancelPedidoToConfirm, motivo)
+            if (success) {
+              setCancelPedidoToConfirm(null)
+              setEditingPedidoId(null)
+            }
           }}
+          onCancel={() => setCancelPedidoToConfirm(null)}
         />
       )}
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@/components/common'
 import type { Pedido, QuickApproveChoice } from './types'
 import { QUICK_APPROVE_OPTIONS, STATUS_ENTREGA_LABEL } from './constants'
 
@@ -23,14 +24,18 @@ export function QuickApproveModal({ pedido, initialChoice, onConfirm, onCancel }
         </div>
         <div className="mt-4 flex flex-col gap-2">
           {(Object.entries(QUICK_APPROVE_OPTIONS) as Array<[QuickApproveChoice, string]>).map(([choice, label]) => {
-            const isInitial = choice === initialChoice
-            const bg = choice === 'pagamento' ? 'bg-blue-600 hover:bg-blue-700' : choice === 'entrega' ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-green-600 hover:bg-green-700'
+            const choiceStyle =
+              choice === 'pagamento'
+                ? 'border border-emerald-300 dark:border-emerald-600 text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800'
+                : choice === 'entrega'
+                  ? 'border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800'
+                  : 'border border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800'
             return (
               <button
                 key={choice}
                 type="button"
                 onClick={() => onConfirm(choice)}
-                className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${bg} ${isInitial ? 'ring-2 ring-white/40' : ''}`}
+                className={`inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-base font-medium shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${choiceStyle}`}
               >
                 {label}
               </button>
@@ -38,13 +43,9 @@ export function QuickApproveModal({ pedido, initialChoice, onConfirm, onCancel }
           })}
         </div>
         <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

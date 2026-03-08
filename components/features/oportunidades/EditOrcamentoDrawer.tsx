@@ -123,7 +123,7 @@ export default function EditOrcamentoDrawer({ oportunidadeId, onClose, onSaved }
 
   if (loadingData) {
     return (
-      <SideCreateDrawer open onClose={onClose}>
+      <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-2xl">
         <div className="flex h-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
         </div>
@@ -133,7 +133,7 @@ export default function EditOrcamentoDrawer({ oportunidadeId, onClose, onSaved }
 
   return (
     <>
-      <SideCreateDrawer open onClose={onClose}>
+      <SideCreateDrawer open onClose={onClose} maxWidthClass="max-w-2xl">
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">Editar Orçamento</h2>
@@ -221,7 +221,7 @@ export default function EditOrcamentoDrawer({ oportunidadeId, onClose, onSaved }
 
           <div className="flex items-center justify-end gap-2 border-t border-gray-200 dark:border-gray-700 px-5 py-3">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving || !formData.titulo}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
               Salvar
             </Button>

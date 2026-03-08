@@ -5,25 +5,15 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import type { LucideIcon } from '@/lib/icons'
 import {
-  BarChart3,
-  Briefcase,
-  Calendar,
   ChevronsLeft,
   ChevronsRight,
-  ClipboardList,
-  LayoutDashboard,
-  Layers,
   LogOut,
-  MessageSquareText,
-  Package,
-  Trophy,
-  Users,
-  Wallet,
   X,
 } from '@/lib/icons'
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
+import { menuItems } from '@/lib/menuItems'
+import type { MenuItem } from '@/lib/menuItems'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -36,113 +26,6 @@ interface SidebarProps {
   onManualToggleClick?: () => void
   manualOpen?: boolean
 }
-
-interface MenuItem {
-  name: string
-  href: string
-  icon: LucideIcon
-  requiresPremium?: boolean
-}
-
-interface MenuCategory {
-  id: string
-  items: MenuItem[]
-}
-
-interface MenuSection {
-  categories: MenuCategory[]
-}
-
-const menuSections: MenuSection[] = [
-  {
-    categories: [
-      {
-        id: 'visao-geral',
-        items: [
-          {
-            name: 'Dashboard',
-            href: '/dashboard',
-            icon: LayoutDashboard,
-          },
-          {
-            name: 'Relatorios',
-            href: '/relatorios',
-            icon: BarChart3,
-          },
-        ],
-      },
-      {
-        id: 'comercial',
-        items: [
-          {
-            name: 'Clientes',
-            href: '/clientes',
-            icon: Users,
-          },
-          {
-            name: 'Orcamentos',
-            href: '/oportunidades',
-            icon: Briefcase,
-          },
-          {
-            name: 'Pedidos',
-            href: '/pedidos',
-            icon: ClipboardList,
-          },
-          {
-            name: 'Funil',
-            href: '/grupos',
-            icon: Layers,
-          },
-          {
-            name: 'Metas',
-            href: '/metas',
-            icon: Trophy,
-          },
-        ],
-      },
-      {
-        id: 'operacao',
-        items: [
-          {
-            name: 'Tarefas',
-            href: '/tarefas',
-            icon: Calendar,
-          },
-          {
-            name: 'Templates',
-            href: '/followups/templates',
-            icon: MessageSquareText,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    categories: [
-      {
-        id: 'cadastro',
-        items: [
-          {
-            name: 'Produtos',
-            href: '/produtos',
-            icon: Package,
-          },
-          {
-            name: 'Financeiro',
-            href: '/financeiro',
-            icon: Wallet,
-            requiresPremium: true,
-          },
-        ],
-      },
-    ],
-  },
-]
-
-const menuCategories: MenuCategory[] = menuSections.flatMap((section) => section.categories)
-
-const menuItems: MenuItem[] = menuCategories.flatMap((category) => category.items)
 
 export default function Sidebar({
   collapsed = false,

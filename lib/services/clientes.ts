@@ -193,6 +193,77 @@ function buildClienteWhere({
   return andConditions.length === 1 ? andConditions[0] : { AND: andConditions }
 }
 
+export type ClienteCounts = {
+  orcamentos: number
+  vendas: number
+  pedidos: number
+  cancelamentos: number
+}
+
+async function fetchClienteCounts(
+  userId: string,
+  clienteIds: string[]
+): Promise<Map<string, ClienteCounts>> {
+  if (clienteIds.length === 0) {
+    return new Map()
+  }
+
+  const [orcamentos, vendas, cancelamentos, pedidosData] = await Promise.all([
+    prisma.oportunidade.groupBy({
+      by: ['clienteId'],
+      where: { userId, clienteId: { in: clienteIds }, status: 'orcamento' },
+      _count: { _all: true },
+    }),
+    prisma.oportunidade.groupBy({
+      by: ['clienteId'],
+      where: { userId, clienteId: { in: clienteIds }, status: 'fechada' },
+      _count: { _all: true },
+    }),
+    prisma.oportunidade.groupBy({
+      by: ['clienteId'],
+      where: { userId, clienteId: { in: clienteIds }, status: 'perdida' },
+      _count: { _all: true },
+    }),
+    prisma.pedido.findMany({
+      where: {
+        oportunidade: {
+          userId,
+          clienteId: { in: clienteIds },
+        },
+      },
+      select: {
+        oportunidade: {
+          select: { clienteId: true },
+        },
+      },
+    }),
+  ])
+
+  const pedidosByCliente = pedidosData.reduce<Map<string, number>>((acc, p) => {
+    const cid = p.oportunidade.clienteId
+    acc.set(cid, (acc.get(cid) ?? 0) + 1)
+    return acc
+  }, new Map())
+
+  const toMap = (arr: { clienteId: string; _count: { _all: number } }[]) =>
+    new Map(arr.map((x) => [x.clienteId, x._count._all]))
+
+  const orcMap = toMap(orcamentos)
+  const vendasMap = toMap(vendas)
+  const cancelMap = toMap(cancelamentos)
+
+  const result = new Map<string, ClienteCounts>()
+  for (const id of clienteIds) {
+    result.set(id, {
+      orcamentos: orcMap.get(id) ?? 0,
+      vendas: vendasMap.get(id) ?? 0,
+      pedidos: pedidosByCliente.get(id) ?? 0,
+      cancelamentos: cancelMap.get(id) ?? 0,
+    })
+  }
+  return result
+}
+
 export async function listClientes(
   userId: string,
   options: {
@@ -324,9 +395,15 @@ export async function listClientes(
         : []
 
       const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]))
+      const countsMap = await fetchClienteCounts(userId, clienteIds)
       const data = rankedClientes
-        .map((item) => clienteById.get(item.clienteId))
-        .filter((item): item is (typeof clientes)[number] => Boolean(item))
+        .map((item) => {
+          const c = clienteById.get(item.clienteId)
+          if (!c) return null
+          const counts = countsMap.get(c.id) ?? { orcamentos: 0, vendas: 0, pedidos: 0, cancelamentos: 0 }
+          return { ...c, ...counts }
+        })
+        .filter((item): item is (typeof clientes)[number] & ClienteCounts => Boolean(item))
 
       return {
         data,
@@ -350,8 +427,15 @@ export async function listClientes(
       prisma.cliente.count({ where }),
     ])
 
+    const clienteIds = clientes.map((c) => c.id)
+    const countsMap = await fetchClienteCounts(userId, clienteIds)
+    const data = clientes.map((c) => {
+      const counts = countsMap.get(c.id) ?? { orcamentos: 0, vendas: 0, pedidos: 0, cancelamentos: 0 }
+      return { ...c, ...counts }
+    })
+
     return {
-      data: clientes,
+      data,
       meta: {
         total,
         page,

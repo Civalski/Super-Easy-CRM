@@ -26,6 +26,7 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
   const [clienteToEditId, setClienteToEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<CreateClienteForm>(initialCreateForm)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [backupLoading, setBackupLoading] = useState(false)
   const lastQueryFilterRef = useRef(queryFilter)
 
   const fetchClientes = useCallback(
@@ -279,6 +280,84 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
     setPage(1)
   }, [fetchClientes, profile])
 
+  const handleDownloadBackup = useCallback(async () => {
+    setBackupLoading(true)
+    try {
+      const response = await fetch('/api/clientes/backup')
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Erro ao gerar backup')
+      }
+      const blob = await response.blob()
+      const disposition = response.headers.get('Content-Disposition')
+      const match = disposition?.match(/filename="(.+)"/)
+      const filename = match?.[1] ?? `backup-clientes-${new Date().toISOString().slice(0, 10)}.json`
+      const url = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      anchor.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('Backup gerado', { description: 'O arquivo foi baixado com sucesso.' })
+    } catch (error) {
+      toast.error('Erro', { description: getErrorMessage(error, 'Erro ao gerar backup') })
+    } finally {
+      setBackupLoading(false)
+    }
+  }, [])
+
+  const handleRestoreBackup = useCallback(
+    async (file: File) => {
+      setBackupLoading(true)
+      try {
+        const text = (await file.text()).replace(/^\uFEFF/, '')
+        let body: { clientes?: unknown[] }
+        try {
+          body = JSON.parse(text) as { clientes?: unknown[] }
+        } catch {
+          throw new Error('Arquivo inválido. Use um arquivo JSON exportado pelo backup de clientes.')
+        }
+        if (!Array.isArray(body?.clientes)) {
+          throw new Error('Arquivo de backup inválido. O arquivo deve conter uma lista de clientes.')
+        }
+        const formData = new FormData()
+        formData.append('backup', new Blob([text], { type: 'application/json' }), file.name || 'backup.json')
+        const response = await fetch('/api/clientes/backup/restore', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          const msg = data?.error || `Erro ${response.status} ao importar backup`
+          const details = data?.errors?.length ? ` Detalhes: ${data.errors.slice(0, 2).join('; ')}` : ''
+          throw new Error(msg + details)
+        }
+        const { created, skipped, total, skippedReasons } = data
+        if (created > 0) {
+          toast.success('Backup importado', {
+            description: `${created} cliente(s) importado(s)${skipped > 0 ? `. ${skipped} ignorado(s) (duplicados ou inválidos).` : ''}`,
+          })
+        } else {
+          const reasons = Array.isArray(skippedReasons) && skippedReasons.length > 0
+            ? ` Motivos: ${skippedReasons.join('; ')}`
+            : ''
+          toast.warning('Nenhum cliente importado', {
+            description: `${skipped} de ${total} ignorado(s).${reasons}`,
+          })
+        }
+        await fetchClientes(1, profile)
+        setPage(1)
+      } catch (error) {
+        toast.error('Erro ao importar backup', { description: getErrorMessage(error, 'Erro ao importar backup') })
+      } finally {
+        setBackupLoading(false)
+      }
+    },
+    [fetchClientes, profile]
+  )
+
   return {
     clientes,
     loading,
@@ -312,5 +391,8 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
     handleEditRemoveCustomField,
     handleUpdateCliente,
     handleImportCompleted,
+    backupLoading,
+    handleDownloadBackup,
+    handleRestoreBackup,
   }
 }

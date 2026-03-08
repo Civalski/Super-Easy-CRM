@@ -10,6 +10,7 @@ import {
   endOfMonth,
   subMonths,
   format,
+  eachDayOfInterval,
 } from 'date-fns'
 import { expandOpportunityStatuses, mapOpportunityStatusForResponse } from '@/lib/domain/status'
 
@@ -188,6 +189,131 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const { dayKeys, seriesRange, isMonthByWeeks } = (() => {
+      if (filter === 'day') {
+        return { dayKeys: [] as string[], seriesRange: null as { gte: Date; lte: Date } | null, isMonthByWeeks: false }
+      }
+      if (filter === 'week') {
+        const start = startOfDay(startOfWeek(referenceDate, { weekStartsOn: 1 }))
+        const end = endOfDay(endOfWeek(referenceDate, { weekStartsOn: 1 }))
+        const keys = eachDayOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM-dd'))
+        return { dayKeys: keys, seriesRange: { gte: start, lte: end }, isMonthByWeeks: false }
+      }
+      const monthStart = startOfMonth(referenceDate)
+      const monthEnd = endOfMonth(referenceDate)
+      const keys = ['S1', 'S2', 'S3', 'S4'].map((_, i) => {
+        const day = i * 7 + 1
+        const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), Math.min(day, 28))
+        return format(d, 'yyyy-MM-dd')
+      })
+      return {
+        dayKeys: keys,
+        seriesRange: { gte: startOfDay(monthStart), lte: endOfDay(monthEnd) },
+        isMonthByWeeks: true,
+      }
+    })()
+
+    const [
+      vendasUltimos7Dias,
+      perdidasUltimos7Dias,
+      oportunidadesCriadas7Dias,
+      oportunidadesFechadas7Dias,
+      tarefasCriadas7Dias,
+      contatosCriados7Dias,
+    ] = seriesRange
+      ? await Promise.all([
+          prisma.oportunidade.findMany({
+            where: {
+              userId,
+              status: 'fechada',
+              updatedAt: seriesRange,
+            },
+            select: { valor: true, updatedAt: true },
+          }),
+          prisma.oportunidade.findMany({
+            where: {
+              userId,
+              status: 'perdida',
+              updatedAt: seriesRange,
+            },
+            select: { valor: true, updatedAt: true },
+          }),
+          prisma.oportunidade.findMany({
+            where: { userId, createdAt: seriesRange },
+            select: { clienteId: true, createdAt: true },
+          }),
+          prisma.oportunidade.findMany({
+            where: {
+              userId,
+              status: 'fechada',
+              updatedAt: seriesRange,
+            },
+            select: { clienteId: true, updatedAt: true },
+          }),
+          prisma.tarefa.findMany({
+            where: { userId, clienteId: { not: null }, createdAt: seriesRange },
+            select: { clienteId: true, createdAt: true },
+          }),
+          prisma.contato.findMany({
+            where: { userId, createdAt: seriesRange },
+            select: { clienteId: true, createdAt: true },
+          }),
+        ])
+      : [[], [], [], [], [], []]
+    const monthStart = isMonthByWeeks ? startOfMonth(referenceDate) : null
+
+    const toBucketKey = (d: Date): string => {
+      if (isMonthByWeeks && monthStart) {
+        const dayOfMonth = d.getDate()
+        const weekIndex = Math.min(Math.floor((dayOfMonth - 1) / 7), 3)
+        const weekStartDay = weekIndex * 7 + 1
+        return format(new Date(d.getFullYear(), d.getMonth(), weekStartDay), 'yyyy-MM-dd')
+      }
+      return format(d, 'yyyy-MM-dd')
+    }
+
+    const vendasPorDia = dayKeys.map((day) => ({ date: day, valor: 0 }))
+    const orcamentosCanceladosPorDia = dayKeys.map((day) => ({ date: day, valor: 0 }))
+    const contatosFeitosPorDia = dayKeys.map((day) => ({ date: day, count: 0 }))
+    const vendasPorDiaMap = new Map(dayKeys.map((k, i) => [k, vendasPorDia[i]]))
+    const perdidasPorDiaMap = new Map(dayKeys.map((k, i) => [k, orcamentosCanceladosPorDia[i]]))
+    const contatosPorDiaMap = new Map<string, Set<string>>(dayKeys.map((k) => [k, new Set()]))
+
+    for (const o of vendasUltimos7Dias) {
+      const dayKey = toBucketKey(o.updatedAt)
+      const bucket = vendasPorDiaMap.get(dayKey)
+      if (bucket) bucket.valor += o.valor || 0
+    }
+    for (const o of perdidasUltimos7Dias) {
+      const dayKey = toBucketKey(o.updatedAt)
+      const bucket = perdidasPorDiaMap.get(dayKey)
+      if (bucket) bucket.valor += o.valor || 0
+    }
+    for (const o of oportunidadesCriadas7Dias) {
+      const dayKey = toBucketKey(o.createdAt)
+      const set = contatosPorDiaMap.get(dayKey)
+      if (set && o.clienteId) set.add(o.clienteId)
+    }
+    for (const o of oportunidadesFechadas7Dias) {
+      const dayKey = toBucketKey(o.updatedAt)
+      const set = contatosPorDiaMap.get(dayKey)
+      if (set && o.clienteId) set.add(o.clienteId)
+    }
+    for (const t of tarefasCriadas7Dias) {
+      const dayKey = toBucketKey(t.createdAt)
+      const set = contatosPorDiaMap.get(dayKey)
+      if (set && t.clienteId) set.add(t.clienteId)
+    }
+    for (const c of contatosCriados7Dias) {
+      const dayKey = toBucketKey(c.createdAt)
+      const set = contatosPorDiaMap.get(dayKey)
+      if (set && c.clienteId) set.add(c.clienteId)
+    }
+    for (let i = 0; i < dayKeys.length; i++) {
+      const set = contatosPorDiaMap.get(dayKeys[i])
+      contatosFeitosPorDia[i].count = set?.size ?? 0
+    }
+
     const valorGanhos = valorGanhosAgg._sum.valor || 0
     const valorPerdidos = valorPerdidosAgg._sum.valor || 0
     const pedidosSemPagamentoValor = pedidosSemPagamentoValorAgg._sum.totalLiquido || 0
@@ -229,6 +355,9 @@ export async function GET(request: NextRequest) {
       faturamentoPerdaSerie: monthlyBuckets,
       oportunidadesPorStatus,
       tarefasPorStatus,
+      vendasPorDia,
+      orcamentosCanceladosPorDia,
+      contatosFeitosPorDia,
     })
     } catch (error) {
       console.error('Erro ao buscar estatisticas do dashboard:', error)

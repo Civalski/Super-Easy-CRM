@@ -11,6 +11,7 @@ import {
   Search,
   X,
   FilterX,
+  MoreVertical,
 } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
@@ -204,6 +205,7 @@ export default function ProdutosPage() {
     status: 'todos',
     categoria: '',
   })
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
   const lastFiltrosKeyRef = useRef(filtrosKey)
 
@@ -323,6 +325,13 @@ export default function ProdutosPage() {
     if (!showForm || editingId) return
     fetchNextCode()
   }, [showForm, editingId, fetchNextCode])
+
+  useEffect(() => {
+    if (!openMenuId) return
+    const handleClickOutside = () => setOpenMenuId(null)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [openMenuId])
 
   const categories = useMemo(() => {
     const uniq = new Set(
@@ -970,7 +979,7 @@ export default function ProdutosPage() {
         )}
 
         {!loading && filteredItems.length > 0 && (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {filteredItems.map((item) => {
               const margem = item.precoPadrao - (item.custoPadrao || 0)
               const margemPerc = item.custoPadrao > 0 ? (margem / item.custoPadrao) * 100 : 0
@@ -978,7 +987,7 @@ export default function ProdutosPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-3 rounded-lg border border-gray-100 p-3 dark:border-gray-700 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-lg border border-gray-100 p-3 dark:border-gray-700"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1052,32 +1061,57 @@ export default function ProdutosPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="relative flex justify-end">
                     <button
                       type="button"
-                      onClick={() => handleEdit(item)}
-                      className="rounded-lg border border-cyan-300 px-3 py-1.5 text-xs font-medium text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/20"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(openMenuId === item.id ? null : item.id)
+                      }}
+                      className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      aria-label="Acoes"
                     >
-                      <span className="inline-flex items-center gap-1">
-                        <Pencil className="h-3.5 w-3.5" />
-                        Editar
-                      </span>
+                      <MoreVertical className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleAtivo(item)}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                    >
-                      {item.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item)}
-                      className="rounded-lg border border-red-300 px-2 py-1.5 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
-                      aria-label={`Excluir ${item.nome}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {openMenuId === item.id && (
+                      <div
+                        className="absolute right-0 top-full z-10 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleEdit(item)
+                            setOpenMenuId(null)
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleToggleAtivo(item)
+                            setOpenMenuId(null)
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          {item.ativo ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDelete(item)
+                            setOpenMenuId(null)
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

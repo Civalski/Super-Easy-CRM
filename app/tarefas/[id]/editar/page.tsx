@@ -323,21 +323,32 @@ export default function EditarTarefaPage() {
 
             <div className="flex flex-col justify-end">
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setFormData({ ...formData, notificar: !formData.notificar })}
-                className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${formData.notificar
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
-                  }`}
+                onKeyDown={(e) => e.key === 'Enter' && setFormData({ ...formData, notificar: !formData.notificar })}
+                className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${
+                  formData.notificar
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${formData.notificar
-                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
-                    }`}>
+                  <div
+                    className={`p-2 rounded-full ${
+                      formData.notificar
+                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                        : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                    }`}
+                  >
                     <Bell size={20} />
                   </div>
                   <div>
-                    <p className={`font-medium ${formData.notificar ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <p
+                      className={`font-medium ${
+                        formData.notificar ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
                       Notificação no Navegador
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -346,10 +357,16 @@ export default function EditarTarefaPage() {
                   </div>
                 </div>
 
-                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.notificar ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                  }`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.notificar ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                <div
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                    formData.notificar ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                      formData.notificar ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
                 </div>
               </div>
             </div>

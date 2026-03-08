@@ -29,6 +29,7 @@ const pedidoListInclude = {
       parcelas: true,
       desconto: true,
       status: true,
+      motivoPerda: true,
       probabilidade: true,
       dataFechamento: true,
       proximaAcaoEm: true,
@@ -36,6 +37,7 @@ const pedidoListInclude = {
       responsavelProximaAcao: true,
       lembreteProximaAcao: true,
       createdAt: true,
+      updatedAt: true,
       cliente: {
         select: {
           nome: true,
@@ -49,6 +51,11 @@ export type ListPedidosFilters = {
   statusEntrega?: string
   clienteId?: string
   search?: string
+  formaPagamento?: string
+  dataInicio?: string
+  dataFim?: string
+  /** 'vendas' | 'cancelados' - filtra por situacao e usa data relevante (dataEntrega/updatedAt) */
+  aba?: string
 }
 
 export async function listPedidos(
@@ -61,17 +68,31 @@ export async function listPedidos(
   } = {}
 ) {
   const { filters = {}, paginated, limit = 20, page = 1 } = options
-  const { statusEntrega: statusFilter, clienteId: clienteIdFilter, search: searchFilter } = filters
+  const {
+    statusEntrega: statusFilter,
+    clienteId: clienteIdFilter,
+    search: searchFilter,
+    formaPagamento: formaPagamentoFilter,
+    dataInicio: dataInicioFilter,
+    dataFim: dataFimFilter,
+    aba: abaFilter,
+  } = filters
 
   const where: Prisma.PedidoWhereInput = { userId }
 
+  const oportunidadeBase: Prisma.OportunidadeWhereInput = { userId }
   if (clienteIdFilter?.trim()) {
-    where.oportunidade = {
-      is: {
-        userId,
-        clienteId: clienteIdFilter.trim(),
-      },
-    }
+    oportunidadeBase.clienteId = clienteIdFilter.trim()
+  }
+  if (abaFilter === 'vendas') {
+    oportunidadeBase.status = 'fechada'
+    where.statusEntrega = 'entregue'
+    where.pagamentoConfirmado = true
+  } else if (abaFilter === 'cancelados') {
+    oportunidadeBase.status = 'perdida'
+  }
+  if (Object.keys(oportunidadeBase).length > 1 || oportunidadeBase.status) {
+    where.oportunidade = { is: oportunidadeBase }
   }
 
   if (searchFilter?.trim()) {
@@ -127,6 +148,44 @@ export async function listPedidos(
     )
     if (statuses.length > 0) {
       where.statusEntrega = { in: statuses }
+    }
+  }
+
+  if (formaPagamentoFilter?.trim()) {
+    const normalized = formaPagamentoFilter.trim().toLowerCase()
+    if (['pix', 'dinheiro', 'cartao', 'parcelado'].includes(normalized)) {
+      where.formaPagamento = normalized
+    }
+  }
+
+  if (dataInicioFilter || dataFimFilter) {
+    const dateFilter: Prisma.DateTimeFilter = {}
+    if (dataInicioFilter) {
+      const dataInicio = new Date(dataInicioFilter)
+      if (!Number.isNaN(dataInicio.getTime())) {
+        dateFilter.gte = dataInicio
+      }
+    }
+    if (dataFimFilter) {
+      const dataFim = new Date(dataFimFilter)
+      if (!Number.isNaN(dataFim.getTime())) {
+        dataFim.setHours(23, 59, 59, 999)
+        dateFilter.lte = dataFim
+      }
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      if (abaFilter === 'vendas') {
+        where.OR = [
+          { dataEntrega: dateFilter },
+          { dataEntrega: null, dataAprovacao: dateFilter },
+        ]
+      } else if (abaFilter === 'cancelados') {
+        where.oportunidade = {
+          is: { ...oportunidadeBase, updatedAt: dateFilter },
+        }
+      } else {
+        where.createdAt = dateFilter
+      }
     }
   }
 

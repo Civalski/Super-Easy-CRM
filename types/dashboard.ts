@@ -17,6 +17,9 @@ export interface DashboardData {
     faturamento: number
     perda: number
   }>
+  vendasPorDia: Array<{ date: string; valor: number }>
+  orcamentosCanceladosPorDia: Array<{ date: string; valor: number }>
+  contatosFeitosPorDia: Array<{ date: string; count: number }>
   oportunidadesPorStatus: Array<{
     status: string
     _count: number

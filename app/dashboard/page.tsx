@@ -16,7 +16,7 @@ import {
 import { useDashboard, useMetas, useFluxoCaixa } from '@/lib/hooks/useDashboardData'
 
 export default function Dashboard() {
-  const [dateFilter, setDateFilter] = useState<'day' | 'week' | 'month'>('month')
+  const [dateFilter, setDateFilter] = useState<'day' | 'week' | 'month'>('week')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
   const {
@@ -60,7 +60,11 @@ export default function Dashboard() {
         onDateChange={setSelectedDate}
       />
 
-      <DashboardStatsGrid data={data} />
+      <DashboardStatsGrid
+        data={data}
+        showCharts={dateFilter === 'week' || dateFilter === 'month'}
+        dateFilter={dateFilter}
+      />
 
       <div className="mb-6">
         <DashboardGoals goals={goals} loading={goalsLoading} />

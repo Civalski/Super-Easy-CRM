@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, SideCreateDrawer } from '@/components/common'
 import {
   Loader2, Plus, Trash2, Pencil, Target, TrendingUp,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
+import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
 
 type GoalMetricType =
   | 'CLIENTES_CONTATADOS'
@@ -175,9 +176,10 @@ function getProgressBg(value: number, completed: boolean) {
 }
 
 export default function MetasPage() {
-  const { confirm, prompt } = useConfirm()
-  const initialDates = useMemo(() => getDefaultDates('DAILY'), [])
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { confirm } = useConfirm()
+  const initialDates = useMemo(() => getDefaultDates('DAILY'), [])
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -194,6 +196,10 @@ export default function MetasPage() {
     useDateRange: false,
   })
   const [showForm, setShowForm] = useState(false)
+  const [metaBatidaModal, setMetaBatidaModal] = useState<{
+    metaName?: string
+    isMetaDiaria?: boolean
+  } | null>(null)
 
   // Meta Diária de Contatos state
   const [metaData, setMetaData] = useState<MetaContatoData | null>(null)
@@ -252,6 +258,86 @@ export default function MetasPage() {
     fetchGoals()
     fetchMetaDiaria()
   }, [fetchGoals, fetchMetaDiaria])
+
+  // Abre o form de nova meta quando ?new=1 na URL (ex: vindo do grupos)
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      router.replace('/metas', { scroll: false })
+      setShowForm(true)
+      setEditingId(null)
+    }
+  }, [searchParams, router])
+
+  // Detecta metas recém-batidas e exibe modal de parabéns
+  useEffect(() => {
+    if (loading || metaLoading) return
+
+    const activeGoals = goals.filter((g) => g.active !== false)
+    const completedGoals = activeGoals.filter((g) => (g.progress ?? 0) >= 100)
+    const hasMetaDiariaAtiva = Boolean(metaData?.ativo && typeof metaData.metaDiaria === 'number')
+    const metaDiariaCompleted = hasMetaDiariaAtiva
+      ? (metaData!.contatosHoje ?? 0) >= (metaData!.metaDiaria as number)
+      : false
+
+    const STORAGE_KEY = 'metas_celebre_state'
+    const stored = (() => {
+      try {
+        const raw = typeof window !== 'undefined' ? sessionStorage.getItem(STORAGE_KEY) : null
+        return raw ? (JSON.parse(raw) as { completedGoalIds: string[]; metaDiariaCompleted: boolean }) : null
+      } catch {
+        return null
+      }
+    })()
+
+    // Primeira vez na sessão: só armazena o estado, não exibe toast
+    if (!stored) {
+      try {
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            completedGoalIds: completedGoals.map((g) => g.id),
+            metaDiariaCompleted,
+          })
+        )
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+
+    const prevGoalIds = new Set(stored.completedGoalIds ?? [])
+    const prevMetaDiaria = stored?.metaDiariaCompleted ?? false
+
+    const newCompletedGoals = completedGoals.filter((g) => !prevGoalIds.has(g.id))
+    const metaDiariaJustCompleted = metaDiariaCompleted && !prevMetaDiaria
+
+    if (newCompletedGoals.length > 0 || metaDiariaJustCompleted) {
+      const metricOptionsMap: Record<string, string> = Object.fromEntries(
+        metricOptions.map((o) => [o.value, o.label])
+      )
+      const firstGoal = newCompletedGoals[0]
+      const label = firstGoal
+        ? firstGoal.title?.trim() || metricOptionsMap[firstGoal.metricType] || firstGoal.metricType
+        : undefined
+      setMetaBatidaModal(
+        metaDiariaJustCompleted
+          ? { isMetaDiaria: true }
+          : { metaName: label }
+      )
+    }
+
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          completedGoalIds: completedGoals.map((g) => g.id),
+          metaDiariaCompleted,
+        })
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [goals, metaData, loading, metaLoading])
 
   const resetForm = () => {
     const defaults = getDefaultDates('DAILY')
@@ -485,39 +571,6 @@ export default function MetasPage() {
     }
   }
 
-  const handleCreateMetaDiaria = async () => {
-    const value = await prompt({
-      title: 'Criar meta diária de contatos',
-      label: 'Meta diária',
-      placeholder: 'Ex: 25',
-      defaultValue: '25',
-      confirmLabel: 'Criar',
-      cancelLabel: 'Cancelar',
-    })
-
-    if (!value) return
-
-    const numericValue = Number(value)
-    if (!Number.isInteger(numericValue) || numericValue < 1) {
-      toast.error('Valor inválido', { description: 'Informe um número inteiro maior que zero.' })
-      return
-    }
-
-    try {
-      const response = await fetch('/api/metas/contatos-diarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'atualizar_meta', metaDiaria: numericValue }),
-      })
-
-      if (response.ok) {
-        await fetchMetaDiaria()
-      }
-    } catch (error) {
-      console.error('Erro ao criar meta diária:', error)
-    }
-  }
-
   const activeGoals = goals.filter((goal) => goal.active !== false)
   const completedGoals = activeGoals.filter((goal) => (goal.progress ?? 0) >= 100)
   const averageProgress = activeGoals.length
@@ -546,6 +599,17 @@ export default function MetasPage() {
 
   return (
     <div className="space-y-6 pb-8">
+      <MetaBatidaModal
+        open={!!metaBatidaModal}
+        onClose={() => setMetaBatidaModal(null)}
+        metaName={metaBatidaModal?.metaName}
+        isMetaDiaria={metaBatidaModal?.isMetaDiaria}
+        onCreateNewMeta={() => {
+          setMetaBatidaModal(null)
+          setShowForm(true)
+          setEditingId(null)
+        }}
+      />
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -560,15 +624,6 @@ export default function MetasPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!metaLoading && !metaData?.configurada && (
-            <button
-              onClick={handleCreateMetaDiaria}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 shadow-xs text-sm font-semibold text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
-            >
-              <Phone size={16} />
-              Criar meta diária
-            </button>
-          )}
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"
@@ -635,153 +690,177 @@ export default function MetasPage() {
 
       {/* Form (collapses) */}
       {showForm && (
-        <SideCreateDrawer open={showForm} onClose={resetForm} maxWidthClass="max-w-4xl">
-        <div className="h-full overflow-y-auto p-4 md:p-6">
-        <div className="crm-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {editingId ? 'Editar Meta' : 'Nova Meta'}
-            </h2>
+        <SideCreateDrawer open={showForm} onClose={resetForm} maxWidthClass="max-w-xl">
+        <div className="h-full flex flex-col">
+          {/* Header — mais espaço */}
+          <div className="shrink-0 px-6 pt-8 pb-6 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {editingId ? 'Editar Meta' : 'Nova Meta'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Defina o tipo, período e valor da meta
+              </p>
+            </div>
             <button
               onClick={resetForm}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Fechar"
             >
-              <XIcon size={16} />
+              <XIcon size={20} />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Conteúdo rolável */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 pb-6 flex flex-col gap-8">
             {error && (
-              <div className="md:col-span-2 lg:col-span-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+              <div className="shrink-0 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                 {error}
               </div>
             )}
 
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Título (opcional)
-              <input
-                type="text"
-                value={form.title}
-                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="Ex: Meta personalizada"
-              />
-            </label>
-
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Tipo de meta
-              <select
-                value={form.metricType}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, metricType: event.target.value as GoalMetricType }))
-                }
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              >
-                {metricOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Período
-              <select
-                value={form.periodType}
-                onChange={(event) => handlePeriodTypeChange(event.target.value as GoalPeriodType)}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {form.metricType === 'FATURAMENTO' ? 'Meta de Faturamento (R$)' : 'Meta (quantidade)'}
-              <input
-                type="number"
-                min="1"
-                step={form.metricType === 'FATURAMENTO' ? '0.01' : '1'}
-                value={form.target}
-                onChange={(event) => setForm((prev) => ({ ...prev, target: event.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder={form.metricType === 'FATURAMENTO' ? 'Ex: 50000' : 'Ex: 10'}
-                required
-              />
-            </label>
-
-            {form.periodType === 'WEEKLY' && (
-              <div className="md:col-span-2 space-y-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dias da semana</p>
-                <div className="flex flex-wrap gap-2">
-                  {weekDayOptions.map((day) => {
-                    const active = form.weekDays.includes(day.value)
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => toggleWeekDay(day.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${active
-                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
-                          : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600'
-                          }`}
-                      >
-                        {day.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {form.periodType !== 'CUSTOM' && (
-              <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Limitar por datas</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Desmarcado = meta automática contínua</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleDateRange}
-                  aria-pressed={form.useDateRange}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-emerald-500 ${form.useDateRange ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.useDateRange ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-            )}
-
-            {(form.periodType === 'CUSTOM' || form.useDateRange) && (
-              <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Início
+            {/* Seção: Informações básicas */}
+            <section className="space-y-5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Informações básicas
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <label className="block sm:col-span-2">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título (opcional)</span>
                   <input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    required
+                    type="text"
+                    value={form.title}
+                    onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder="Ex: Meta personalizada"
                   />
                 </label>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Fim
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de meta</span>
+                  <select
+                    value={form.metricType}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, metricType: event.target.value as GoalMetricType }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  >
+                    {metricOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {form.metricType === 'FATURAMENTO' ? 'Meta de Faturamento (R$)' : 'Meta'}
+                  </span>
                   <input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    type="number"
+                    min="1"
+                    step={form.metricType === 'FATURAMENTO' ? '0.01' : '1'}
+                    value={form.target}
+                    onChange={(event) => setForm((prev) => ({ ...prev, target: event.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder={form.metricType === 'FATURAMENTO' ? 'Ex: 50000' : 'Ex: 10'}
                     required
                   />
                 </label>
               </div>
-            )}
+            </section>
 
-            <div className="lg:col-span-3 flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
-              <button type="button" onClick={resetForm} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            {/* Seção: Período */}
+            <section className="space-y-5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Período
+              </h3>
+              <div className="space-y-5">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de período</span>
+                  <select
+                    value={form.periodType}
+                    onChange={(event) => handlePeriodTypeChange(event.target.value as GoalPeriodType)}
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  >
+                    {periodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {form.periodType === 'WEEKLY' && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dias da semana</p>
+                    <div className="flex flex-wrap gap-2">
+                      {weekDayOptions.map((day) => {
+                        const active = form.weekDays.includes(day.value)
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => toggleWeekDay(day.value)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${active
+                              ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                              : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-600'
+                              }`}
+                          >
+                            {day.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {form.periodType !== 'CUSTOM' && (
+                  <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-900/50 px-5 py-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Limitar por datas</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Desmarcado = meta automática contínua</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleDateRange}
+                      aria-pressed={form.useDateRange}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${form.useDateRange ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${form.useDateRange ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                )}
+
+                {(form.periodType === 'CUSTOM' || form.useDateRange) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Início</span>
+                      <input
+                        type="date"
+                        value={form.startDate}
+                        onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                        className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fim</span>
+                      <input
+                        type="date"
+                        value={form.endDate}
+                        onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
+                        className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Footer fixo visual */}
+            <div className="shrink-0 pt-6 mt-auto border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button type="button" onClick={resetForm} className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-xl">
                 Cancelar
               </button>
               <Button type="submit" disabled={submitting} className="min-w-[160px]">
@@ -799,7 +878,6 @@ export default function MetasPage() {
               </Button>
             </div>
           </form>
-        </div>
         </div>
         </SideCreateDrawer>
       )}
@@ -890,7 +968,7 @@ export default function MetasPage() {
               return (
                 <div
                   key={goal.id}
-                  className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow"
+                  className="max-w-[50%] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex-1 min-w-0">
@@ -1022,7 +1100,7 @@ function MetaDiariaCard({
   const hasDebt = debito.length > 0
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs">
+    <div className="max-w-[50%] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 rounded-2xl p-5 shadow-xs">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-xl ${metaBatida ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-purple-50 dark:bg-purple-500/10'}`}>

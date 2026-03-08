@@ -76,9 +76,13 @@ export function TarefaCard({
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
                 <Link href={`/tarefas/${tarefa.id}/editar`} className="flex-1">
-                    <Button variant="outline" size="sm" className="w-full" title="Editar">
+                    <button
+                        type="button"
+                        className="inline-flex w-full items-center justify-center rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-600 dark:text-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-800"
+                        title="Editar"
+                    >
                         <Pencil size={16} />
-                    </Button>
+                    </button>
                 </Link>
                 <Button
                     variant="danger"
@@ -111,12 +115,11 @@ export function TarefaCard({
                         )}
                     </Button>
                 ) : (
-                    <Button
-                        variant="primary"
-                        size="sm"
+                    <button
+                        type="button"
                         onClick={() => onConcluirTarefa(tarefa.id)}
                         disabled={isAtualizando || isExcluindo}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                        className="inline-flex flex-1 items-center justify-center rounded-lg border border-emerald-400 px-3 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-emerald-600 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-800"
                         title="Concluir Tarefa"
                     >
                         {isAtualizando ? (
@@ -124,7 +127,7 @@ export function TarefaCard({
                         ) : (
                             <CheckCircle2 size={16} />
                         )}
-                    </Button>
+                    </button>
                 )}
             </div>
         </div>

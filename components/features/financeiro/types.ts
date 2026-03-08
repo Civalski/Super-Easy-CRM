@@ -16,12 +16,18 @@ export interface ContaFinanceira {
   recorrenciaAtiva: boolean
   recorrenciaDiaVencimento: number | null
   dataVencimento: string | null
+  multaPorAtrasoPercentual?: number | null
+  multaPorAtrasoValor?: number | null
+  multaPorAtrasoPeriodo?: string | null
   pedido?: {
     oportunidade?: {
       titulo: string
       cliente?: { nome: string }
     }
   } | null
+  cliente?: { id: string; nome: string } | null
+  fornecedor?: { id: string; nome: string } | null
+  funcionario?: { id: string; nome: string } | null
 }
 
 export interface FluxoSerie {
@@ -83,9 +89,13 @@ export interface GrupoContas {
   proximaContaAberta: ContaFinanceira | null
 }
 
+export type TipoVinculoConta = 'nenhum' | 'cliente' | 'fornecedor' | 'funcionario'
+
 export interface CreateContaForm {
   ambiente: AmbienteFinanceiro
   tipo: 'receber' | 'pagar'
+  tipoVinculo: TipoVinculoConta
+  entidadeId: string
   descricao: string
   valorTotal: string
   dataVencimento: string
@@ -95,11 +105,17 @@ export interface CreateContaForm {
   parcelas: string
   intervaloDias: string
   datasParcelas: string
+  multaPorAtrasoAtiva: boolean
+  multaPorAtrasoTipo: 'percentual' | 'valor'
+  multaPorAtrasoValor: string
+  multaPorAtrasoPeriodo: 'dia' | 'semana' | 'mes'
 }
 
 export interface EditContaForm {
   ambiente: AmbienteFinanceiro
   tipo: 'receber' | 'pagar'
+  tipoVinculo: TipoVinculoConta
+  entidadeId: string
   descricao: string
   valorTotal: string
   dataVencimento: string

@@ -5,7 +5,7 @@
 'use client'
 
 import { RefreshCw, LayoutDashboard, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from '@/lib/icons'
-import { format, addMonths, subMonths, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns'
+import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useEffect } from 'react'
 
@@ -46,9 +46,6 @@ export function DashboardHeader({
   }, [showMonthPicker])
 
   const formattedMonth = format(selectedDate, 'MMMM yyyy', { locale: ptBR })
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 })
-  const formattedWeek = `${format(weekStart, 'dd MMM', { locale: ptBR })} - ${format(weekEnd, 'dd MMM yyyy', { locale: ptBR })}`
   const now = new Date()
   const isCurrentMonthContext =
     selectedDate.getMonth() === now.getMonth() && selectedDate.getFullYear() === now.getFullYear()
@@ -78,6 +75,12 @@ export function DashboardHeader({
     onFilterChange('week')
   }
 
+  const handleMonthClick = () => {
+    onDateChange(new Date())
+    onFilterChange('month')
+    setShowMonthPicker(true)
+  }
+
   const handleMonthSelect = (monthIndex: number) => {
     const newDate = new Date(pickerYear, monthIndex, 2)
     onDateChange(newDate)
@@ -100,14 +103,14 @@ export function DashboardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="z-20 flex items-center crm-card-soft p-1.5">
+        <div className="z-20 flex items-center gap-1 crm-card-soft p-1.5">
           <button
             onClick={handleTodayClick}
             disabled={!isCurrentMonthContext && filterType !== 'day'}
             className={`
-              rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200
+              min-w-[4.5rem] rounded-lg px-4 py-2 text-center text-sm font-semibold transition-colors
               ${filterType === 'day'
-                ? 'bg-slate-700/80 text-slate-100 ring-1 ring-slate-500/60'
+                ? 'bg-slate-700/80 text-slate-100 ring-[0.5px] ring-slate-500/50 dark:bg-slate-700 dark:text-slate-100'
                 : 'text-gray-600 hover:bg-slate-700/45 hover:text-slate-100 dark:text-gray-400'}
               disabled:cursor-not-allowed disabled:opacity-50
             `}
@@ -119,9 +122,9 @@ export function DashboardHeader({
             onClick={handleWeekClick}
             disabled={!isCurrentMonthContext && filterType !== 'week'}
             className={`
-              rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200
+              min-w-[4.5rem] rounded-lg px-4 py-2 text-center text-sm font-semibold transition-colors
               ${filterType === 'week'
-                ? 'bg-slate-700/80 text-slate-100 ring-1 ring-slate-500/60'
+                ? 'bg-slate-700/80 text-slate-100 ring-[0.5px] ring-slate-500/50 dark:bg-slate-700 dark:text-slate-100'
                 : 'text-gray-600 hover:bg-slate-700/45 hover:text-slate-100 dark:text-gray-400'}
               disabled:cursor-not-allowed disabled:opacity-50
             `}
@@ -129,7 +132,19 @@ export function DashboardHeader({
             Semana
           </button>
 
-          <div className="mx-2 h-5 w-px bg-gray-200 dark:bg-gray-700" />
+          <button
+            onClick={handleMonthClick}
+            className={`
+              min-w-[4.5rem] rounded-lg px-4 py-2 text-center text-sm font-semibold transition-colors
+              ${filterType === 'month'
+                ? 'bg-slate-700/80 text-slate-100 ring-[0.5px] ring-slate-500/50 dark:bg-slate-700 dark:text-slate-100'
+                : 'text-gray-600 hover:bg-slate-700/45 hover:text-slate-100 dark:text-gray-400'}
+            `}
+          >
+            Mês
+          </button>
+
+          <div className="mx-2 h-5 w-px bg-gray-200 dark:bg-gray-600" />
 
           <div className="month-picker-container relative flex items-center gap-1">
             <button
@@ -149,22 +164,16 @@ export function DashboardHeader({
                 }
               }}
               className={`
-                relative cursor-pointer select-none rounded-lg px-3 py-1.5 transition-all duration-200
+                relative flex min-w-[12.5rem] cursor-pointer select-none items-center justify-center gap-2 rounded-lg px-3 py-1.5 transition-colors
                 ${filterType === 'month'
-                  ? 'bg-slate-700/80 ring-1 ring-slate-500/60'
-                  : 'hover:bg-slate-700/45'}
+                  ? 'bg-slate-700/80 text-slate-100 ring-[0.5px] ring-slate-500/50 dark:bg-slate-700 dark:text-slate-100'
+                  : 'text-gray-700 hover:bg-slate-700/45 hover:text-slate-100 dark:text-gray-300 dark:hover:bg-slate-700/50 dark:hover:text-slate-100'}
               `}
             >
-              <div className="flex items-center gap-2">
-                <CalendarIcon size={16} className={filterType === 'month' ? 'text-indigo-200' : 'text-gray-400'} />
-                <span
-                  className={`text-sm font-semibold capitalize ${filterType === 'month'
-                    ? 'text-slate-100'
-                    : 'text-gray-700 dark:text-gray-300'}`}
-                >
-                  {filterType === 'week' ? formattedWeek : formattedMonth}
-                </span>
-              </div>
+              <CalendarIcon size={16} className={filterType === 'month' ? 'text-indigo-200 dark:text-slate-300' : 'text-gray-500 dark:text-gray-400'} />
+              <span className="text-sm font-semibold capitalize">
+                {formattedMonth}
+              </span>
             </div>
 
             {showMonthPicker && filterType === 'month' && (
