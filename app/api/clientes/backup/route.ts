@@ -49,6 +49,7 @@ const CSV_COLUMNS = [
 
 function inferPerfil(c: {
   empresa?: string | null
+  nome?: string | null
   cnpj?: string | null
   razaoSocial?: string | null
 }): 'b2b' | 'b2c' {
