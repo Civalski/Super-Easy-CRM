@@ -67,6 +67,18 @@ export function normalizeItemNumbers(quantidade: number, precoUnitario: number, 
 export const calculateSubtotal = (quantidade: number, precoUnitario: number, desconto: number) =>
   normalizeItemNumbers(quantidade, precoUnitario, desconto).subtotal
 
+/** Converte percentual em valor absoluto de desconto. bruto * (pct / 100) */
+export function descontoFromPercentual(bruto: number, percentual: number): number {
+  if (bruto <= 0 || !Number.isFinite(percentual)) return 0
+  return Math.min(bruto, Math.max(0, (bruto * percentual) / 100))
+}
+
+/** Converte valor absoluto de desconto em percentual. (desconto / bruto) * 100 */
+export function percentualFromDesconto(bruto: number, desconto: number): number {
+  if (bruto <= 0 || desconto <= 0) return 0
+  return Math.min(100, (desconto / bruto) * 100)
+}
+
 export function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'precoUnitario' | 'desconto'>>) {
   return items.reduce(
     (acc, item) => {
@@ -79,6 +91,14 @@ export function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'p
     },
     { quantidadeTotal: 0, totalBruto: 0, totalDesconto: 0, totalLiquido: 0 }
   )
+}
+
+export function getDownloadFileNameFromHeader(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null
+  const fileNameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (fileNameStarMatch?.[1]) return decodeURIComponent(fileNameStarMatch[1]).replace(/["']/g, '').trim()
+  const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/i)
+  return fileNameMatch?.[1]?.trim() || null
 }
 
 export function getProdutoFromOption(option: AsyncSelectOption | null): ProdutoServico | null {

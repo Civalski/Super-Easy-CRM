@@ -5,6 +5,7 @@
 'use client'
 
 import { RefreshCw, LayoutDashboard, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useEffect } from 'react'
@@ -26,6 +27,7 @@ export function DashboardHeader({
   selectedDate,
   onDateChange,
 }: DashboardHeaderProps) {
+  const minimal = usePageHeaderMinimal()
   const [showMonthPicker, setShowMonthPicker] = useState(false)
   const [pickerYear, setPickerYear] = useState(selectedDate.getFullYear())
 
@@ -92,17 +94,19 @@ export function DashboardHeader({
 
   return (
     <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-center">
-      <div className="flex items-center gap-4">
-        <div className="rounded-2xl bg-linear-to-br from-slate-600 to-indigo-500 p-3 shadow-lg shadow-slate-900/45 ring-1 ring-white/10">
-          <LayoutDashboard className="h-8 w-8 text-white" />
+      {!minimal && (
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-linear-to-br from-slate-600 to-indigo-500 p-3 shadow-lg shadow-slate-900/45 ring-1 ring-white/10">
+            <LayoutDashboard className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Visão geral de desempenho</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Visao geral de desempenho</p>
-        </div>
-      </div>
+      )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={`flex flex-wrap items-center gap-3 ${minimal ? 'md:ml-auto' : ''}`}>
         <div className="z-20 flex items-center gap-1 crm-card-soft p-1.5">
           <button
             onClick={handleTodayClick}

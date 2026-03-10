@@ -19,6 +19,7 @@ import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import { SideCreateDrawer } from '@/components/common'
 import { formatCurrency } from '@/lib/format'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 interface ProdutoServico {
   id: string
@@ -173,6 +174,7 @@ const buildDefaultForm = (): FormState => ({
 
 export default function ProdutosPage() {
   const { confirm } = useConfirm()
+  const minimal = usePageHeaderMinimal()
   const [items, setItems] = useState<ProdutoServico[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -627,15 +629,19 @@ export default function ProdutosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 p-2.5 shadow-lg shadow-cyan-500/25">
-          <Box className="h-6 w-6 text-white" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Produtos</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Cadastro unico de produtos e servicos para pedidos
-          </p>
-        </div>
+        {!minimal && (
+          <>
+            <div className="rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 p-2.5 shadow-lg shadow-cyan-500/25">
+              <Box className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Produtos</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Cadastro unico de produtos e servicos para pedidos
+              </p>
+            </div>
+          </>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -645,7 +651,7 @@ export default function ProdutosPage() {
             setForm(buildDefaultForm())
             setShowForm(true)
           }}
-          className="inline-flex items-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+          className={`inline-flex items-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 ${minimal ? 'ml-auto' : ''}`}
         >
           <Plus className="h-4 w-4" />
           Novo produto

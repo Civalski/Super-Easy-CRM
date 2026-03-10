@@ -15,6 +15,7 @@ export { MockDataCard } from './MockDataCard';
 export { SeedResultCard } from './SeedResultCard';
 export { ConfiguracoesEmptyState } from './ConfiguracoesEmptyState';
 export { OrcamentoPdfConfigCard } from './OrcamentoPdfConfigCard'
+export { PageHeaderPreferenceCard } from './PageHeaderPreferenceCard'
 export { PlataformaEmailCard } from './PlataformaEmailCard';
 export { SuporteCard } from './SuporteCard';
 export type { SeedResult } from './ConfiguracoesTypes';

@@ -5,8 +5,11 @@
 'use client'
 
 import { BarChart3 } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 export function RelatoriosHeader() {
+    const minimal = usePageHeaderMinimal()
+    if (minimal) return null
     return (
         <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-linear-to-br from-rose-500 to-red-500 rounded-xl shadow-lg shadow-rose-500/25">

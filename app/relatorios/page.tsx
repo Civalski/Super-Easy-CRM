@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BarChart3, AlertTriangle, TrendingUp, Loader2 } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 import type { FunnelReport, LossesReport, PerformanceReport } from '@/types/reports'
 import { formatCurrency, formatDate } from '@/lib/format'
 
 export default function RelatoriosPage() {
+  const minimal = usePageHeaderMinimal()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [funnel, setFunnel] = useState<FunnelReport | null>(null)
@@ -63,19 +65,21 @@ export default function RelatoriosPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-linear-to-br from-rose-500 to-red-500 p-2.5 shadow-lg shadow-rose-500/25">
-            <BarChart3 className="h-6 w-6 text-white" />
+        {!minimal && (
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-linear-to-br from-rose-500 to-red-500 p-2.5 shadow-lg shadow-rose-500/25">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Relatorios</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Funil, perdas e performance comercial
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Relatorios</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Funil, perdas e performance comercial
-            </p>
-          </div>
-        </div>
+        )}
 
-        <div className="flex flex-wrap items-end gap-2">
+        <div className={`flex flex-wrap items-end gap-2 ${minimal ? 'md:ml-auto' : ''}`}>
           <div>
             <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">Inicio</label>
             <input

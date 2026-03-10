@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom'
 import {
   CheckCircle2,
   ClipboardList,
+  Download,
+  Eye,
   MoreVertical,
   PackagePlus,
   Pencil,
@@ -21,9 +23,12 @@ interface PedidosListProps {
   activeTab: PedidoTab
   pedidos: Pedido[]
   savingById: Record<string, boolean>
+  downloadingPdfById?: Record<string, boolean>
   onQuickApprove: (pedido: Pedido) => void
   onOpenItems: (pedidoId: string) => void
+  onView: (pedidoId: string) => void
   onEdit: (pedidoId: string) => void
+  onDownloadPdf?: (pedido: Pedido) => void
   onCancelPedido?: (pedido: Pedido) => void
   onShowCreateModal?: () => void
 }
@@ -65,9 +70,12 @@ export function PedidosList({
   activeTab,
   pedidos,
   savingById,
+  downloadingPdfById = {},
   onQuickApprove,
   onOpenItems,
+  onView,
   onEdit,
+  onDownloadPdf,
   onCancelPedido,
   onShowCreateModal,
 }: PedidosListProps) {
@@ -192,7 +200,12 @@ export function PedidosList({
               activeTab={activeTab}
               position={menuPosition}
               saving={Boolean(savingById[openPedido.id])}
+              downloadingPdf={Boolean(downloadingPdfById[openPedido.id])}
               onClose={() => setOpenMenuId(null)}
+              onView={(id) => {
+                setOpenMenuId(null)
+                onView(id)
+              }}
               onEdit={(id) => {
                 setOpenMenuId(null)
                 onEdit(id)
@@ -201,6 +214,7 @@ export function PedidosList({
                 setOpenMenuId(null)
                 onOpenItems(id)
               }}
+              onDownloadPdf={onDownloadPdf}
               onQuickApprove={onQuickApprove}
               onCancelPedido={onCancelPedido}
             />,
@@ -217,9 +231,12 @@ function PedidoMenuDropdown({
   activeTab,
   position,
   saving,
+  downloadingPdf,
   onClose,
+  onView,
   onEdit,
   onOpenItems,
+  onDownloadPdf,
   onQuickApprove,
   onCancelPedido,
 }: {
@@ -227,9 +244,12 @@ function PedidoMenuDropdown({
   activeTab: PedidoTab
   position: { top: number; left: number }
   saving: boolean
+  downloadingPdf: boolean
   onClose: () => void
+  onView: (id: string) => void
   onEdit: (id: string) => void
   onOpenItems: (id: string) => void
+  onDownloadPdf?: (pedido: Pedido) => void
   onQuickApprove: (pedido: Pedido) => void
   onCancelPedido?: (pedido: Pedido) => void
 }) {
@@ -241,6 +261,14 @@ function PedidoMenuDropdown({
       className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       style={{ top: position.top, left: position.left }}
     >
+      <button
+        type="button"
+        onClick={() => { onView(pedido.id); onClose() }}
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <Eye size={12} />
+        Ver pedido
+      </button>
       <button
         type="button"
         onClick={() => { onEdit(pedido.id); onClose() }}
@@ -255,8 +283,19 @@ function PedidoMenuDropdown({
         className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
       >
         <PackagePlus size={12} />
-        Produtos do pedido
+        Adicionar produto
       </button>
+      {onDownloadPdf && (
+        <button
+          type="button"
+          onClick={() => { onDownloadPdf(pedido); onClose() }}
+          disabled={downloadingPdf}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50"
+        >
+          <Download size={12} />
+          {downloadingPdf ? 'Gerando...' : 'Gerar PDF'}
+        </button>
+      )}
       {situacao === 'pedido' && (
         <button
           type="button"

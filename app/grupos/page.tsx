@@ -16,6 +16,7 @@ import { SideCreateDrawer } from '@/components/common'
 import { formatCurrency } from '@/lib/format'
 import { getEmailComposeUrl } from '@/lib/emailCompose'
 import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 let lastMetaBatidaAt = 0
 const META_BATIDA_DEBOUNCE_MS = 10000
@@ -265,6 +266,7 @@ function ListaItemActions({
 
 export default function GruposPage() {
     const router = useRouter()
+    const minimal = usePageHeaderMinimal()
     const { prompt, confirm } = useConfirm()
     const [activeTab, setActiveTab] = useState('sem_contato')
     const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista')
@@ -911,20 +913,22 @@ export default function GruposPage() {
                 }}
             />
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-500/25">
-                        <Layers className="w-6 h-6 text-white" />
+                {!minimal && (
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-500/25">
+                            <Layers className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                Funil de Vendas
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Gerencie contatos frios e oportunidades
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Funil de Vendas
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Gerencie contatos frios e oportunidades
-                        </p>
-                    </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
+                )}
+                <div className={`flex flex-wrap items-center gap-3 ${minimal ? 'md:ml-auto' : ''}`}>
                     <button
                         type="button"
                         onClick={handleDefinirMetaContatos}

@@ -7,3 +7,4 @@ export { ConfirmProvider, useConfirm } from './ConfirmProvider';
 export { default as StatCard } from './StatCard';
 export { default as AsyncSelect } from './AsyncSelect';
 export { default as SideCreateDrawer } from './SideCreateDrawer';
+export { DescontoInput } from './DescontoInput';

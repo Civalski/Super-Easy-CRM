@@ -36,6 +36,18 @@ export function calculateSubtotal(quantidade: number, precoUnitario: number, des
   return normalizeItemNumbers(quantidade, precoUnitario, desconto).subtotal
 }
 
+/** Converte percentual em valor absoluto de desconto. bruto * (pct / 100) */
+export function descontoFromPercentual(bruto: number, percentual: number): number {
+  if (bruto <= 0 || !Number.isFinite(percentual)) return 0
+  return Math.min(bruto, Math.max(0, (bruto * percentual) / 100))
+}
+
+/** Converte valor absoluto de desconto em percentual. (desconto / bruto) * 100 */
+export function percentualFromDesconto(bruto: number, desconto: number): number {
+  if (bruto <= 0 || desconto <= 0) return 0
+  return Math.min(100, (desconto / bruto) * 100)
+}
+
 export function summarizeCartItems(items: Array<Pick<ItemForm, 'quantidade' | 'precoUnitario' | 'desconto'>>) {
   return items.reduce(
     (acc, item) => {

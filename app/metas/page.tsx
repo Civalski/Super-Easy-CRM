@@ -11,6 +11,7 @@ import {
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 type GoalMetricType =
   | 'CLIENTES_CONTATADOS'
@@ -178,6 +179,7 @@ function getProgressBg(value: number, completed: boolean) {
 function MetasPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const minimal = usePageHeaderMinimal()
   const { confirm } = useConfirm()
   const initialDates = useMemo(() => getDefaultDates('DAILY'), [])
   const [goals, setGoals] = useState<Goal[]>([])
@@ -612,18 +614,20 @@ function MetasPageContent() {
       />
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-linear-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/20">
-            <Target className="w-6 h-6 text-white" />
+        {!minimal && (
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-linear-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/20">
+              <Target className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Metas e Objetivos</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Defina e acompanhe suas metas de desempenho
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Metas e Objetivos</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Defina e acompanhe suas metas de desempenho
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+        )}
+        <div className={`flex items-center gap-2 ${minimal ? 'ml-auto' : ''}`}>
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs text-sm font-semibold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors"

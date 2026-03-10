@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/common'
 import { ChevronDown, Download, Filter, Plus, Upload, Users } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 interface ClientesHeaderProps {
   onCreateClick?: () => void
@@ -22,6 +23,7 @@ export function ClientesHeader({
   searchValue,
   onSearchChange,
 }: ClientesHeaderProps) {
+  const minimal = usePageHeaderMinimal()
   const [backupOpen, setBackupOpen] = useState(false)
 
   const handleExport = () => {
@@ -36,17 +38,19 @@ export function ClientesHeader({
 
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 p-2.5 shadow-lg shadow-blue-500/25">
-          <Users className="h-6 w-6 text-white" />
+      {!minimal && (
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 p-2.5 shadow-lg shadow-blue-500/25">
+            <Users className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie seus clientes e contatos</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie seus clientes e contatos</p>
-        </div>
-      </div>
+      )}
 
-      <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+      <div className={`flex w-full flex-wrap items-center gap-2 md:w-auto ${minimal ? 'md:ml-auto' : ''}`}>
         <label className="w-full md:w-[328px] lg:w-[388px]">
           <input
             type="text"

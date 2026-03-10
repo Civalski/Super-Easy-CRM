@@ -12,6 +12,7 @@ import {
   DateFormatCard,
   ExcluirDadosCard,
   OrcamentoPdfConfigCard,
+  PageHeaderPreferenceCard,
   PlataformaEmailCard,
   SuporteCard,
 } from '@/components/features/configuracoes'
@@ -40,6 +41,7 @@ export function ConfiguracoesContent() {
         <div className="space-y-2">
           <ConfirmBeforeDeleteCard />
           <DateFormatCard />
+          <PageHeaderPreferenceCard />
         </div>
       </section>
 

@@ -3,13 +3,12 @@
  */
 'use client'
 
-import { QuestionMarkCircle, MessageCircle, Instagram, Mail } from '@/lib/icons'
+import { MessageCircle, Instagram, Mail } from '@/lib/icons'
 
 export function SuporteCard() {
   return (
     <div className="crm-card p-3">
       <div className="flex items-start gap-2">
-        <QuestionMarkCircle className="h-4 w-4 shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-900 dark:text-white">Suporte</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">

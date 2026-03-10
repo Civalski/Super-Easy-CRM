@@ -311,17 +311,6 @@ export function FunilKanban({
         )
     }
 
-    const totalCards = Object.values(dataByStatus).reduce((acc, arr) => acc + arr.length, 0)
-    if (totalCards === 0) {
-        return (
-            <div className="p-12 text-center">
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                    Nenhum lead encontrado no funil.
-                </p>
-            </div>
-        )
-    }
-
     return (
         <DndContext
             sensors={sensors}
@@ -559,12 +548,16 @@ function KanbanColumn({
             <div
                 className={`flex-1 max-h-[calc(100vh-320px)] p-2 space-y-1.5 overscroll-contain ${
                     isDragging ? 'overflow-hidden' : 'overflow-y-auto'
-                }`}
+                } ${items.length === 0 && !loading ? 'min-h-[280px] flex items-center justify-center' : ''}`}
             >
                 {loading ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="animate-spin text-purple-600" size={24} />
                     </div>
+                ) : items.length === 0 ? (
+                    <p className="text-sm text-gray-400 dark:text-gray-500 text-center px-2">
+                        Arraste leads aqui
+                    </p>
                 ) : (
                     items.map((item) => (
                         <DraggableCard

@@ -5,8 +5,11 @@
 'use client'
 
 import { Settings } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 export function ConfiguracoesHeader() {
+    const minimal = usePageHeaderMinimal()
+    if (minimal) return null
     return (
         <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-linear-to-br from-gray-600 to-slate-700 rounded-xl shadow-lg shadow-gray-500/25">

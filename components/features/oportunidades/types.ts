@@ -52,7 +52,7 @@ export interface DraftCreateItem extends ItemForm {
   subtotal: number
 }
 
-export type DraftEditableField = 'quantidade' | 'desconto'
+export type DraftEditableField = 'quantidade' | 'precoUnitario' | 'desconto'
 
 export interface PaginationMeta {
   total: number

@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings } from '@/lib/icons'
+import { Search, Bell, Menu, X, Settings, QuestionMarkCircle } from '@/lib/icons'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -26,6 +26,7 @@ interface HeaderProps {
 }
 
 import { HeaderNav } from './HeaderNav'
+import { useHelpMode } from './HelpModeProvider'
 
 export default function Header({
   onMobileMenuClick,
@@ -37,6 +38,7 @@ export default function Header({
   const notificacaoRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
   const { notifications, isLoading, refresh } = useNotifications()
+  const { helpMode, toggleHelpMode } = useHelpMode()
 
   const [localNotifications, setLocalNotifications] = useState<TaskNotification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
@@ -209,6 +211,20 @@ export default function Header({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={toggleHelpMode}
+              className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+                helpMode
+                  ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500/70 dark:bg-indigo-500/20 dark:text-indigo-300'
+                  : 'border-slate-300/70 text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100'
+              }`}
+              aria-label="Modo ajuda"
+              title={helpMode ? 'Clique nas abas do menu para ver explicações' : 'Ativar modo ajuda'}
+            >
+              <QuestionMarkCircle size={20} />
+            </button>
+
             <div ref={notificacaoRef} className="relative">
               <button
                 onClick={toggleNotifications}

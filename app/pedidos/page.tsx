@@ -22,8 +22,8 @@ const EditPedidoDrawer = dynamic(
   () => import('@/components/features/pedidos/EditPedidoDrawer').then((m) => ({ default: m.EditPedidoDrawer })),
   { ssr: false }
 )
-const PedidoItemsModal = dynamic(
-  () => import('@/components/features/pedidos/PedidoItemsModal').then((m) => ({ default: m.PedidoItemsModal })),
+const PedidoItemsDrawer = dynamic(
+  () => import('@/components/features/pedidos/PedidoItemsDrawer').then((m) => ({ default: m.PedidoItemsDrawer })),
   { ssr: false }
 )
 const CreatePedidoDiretoModal = dynamic(
@@ -39,12 +39,15 @@ const CancelarPedidoModal = dynamic(
   { ssr: false }
 )
 import { formatCurrency } from '@/lib/format'
+import { getDownloadFileNameFromHeader } from '@/components/features/pedidos/utils'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 import type { Pedido, PedidoTab, QuickApproveChoice } from '@/components/features/pedidos/types'
 import { buildItemForm, getPedidoSituacao } from '@/components/features/pedidos/utils'
 
 function PedidosPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const minimal = usePageHeaderMinimal()
   const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
   const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
   const abaParam = searchParams.get('aba')?.trim() || ''
@@ -132,6 +135,8 @@ function PedidosPageContent() {
   const [cancelPedidoToConfirm, setCancelPedidoToConfirm] = useState<Pedido | null>(null)
   const [activeItemsPedidoId, setActiveItemsPedidoId] = useState<string | null>(null)
   const [editingPedidoId, setEditingPedidoId] = useState<string | null>(null)
+  const [viewingPedidoId, setViewingPedidoId] = useState<string | null>(null)
+  const [downloadingPdfById, setDownloadingPdfById] = useState<Record<string, boolean>>({})
 
   const handleTabChange = useCallback(
     (tab: PedidoTab) => {
@@ -211,6 +216,13 @@ function PedidosPageContent() {
     loadItems,
   } = usePedidoItems({ updatePedidoTotals })
 
+  useEffect(() => {
+    if (editingPedidoId && !itemsLoaded[editingPedidoId]) void loadItems(editingPedidoId)
+  }, [editingPedidoId, itemsLoaded, loadItems])
+  useEffect(() => {
+    if (viewingPedidoId && !itemsLoaded[viewingPedidoId]) void loadItems(viewingPedidoId)
+  }, [viewingPedidoId, itemsLoaded, loadItems])
+
   const activePedidos = useMemo(() => {
     if (activeTabFromUrl === 'vendas') return pedidosByStatus.vendas
     if (activeTabFromUrl === 'cancelados') return pedidosByStatus.cancelados
@@ -225,10 +237,38 @@ function PedidosPageContent() {
     () => pedidos.find((p) => p.id === editingPedidoId) || null,
     [editingPedidoId, pedidos]
   )
+  const viewingPedido = useMemo(
+    () => pedidos.find((p) => p.id === viewingPedidoId) || null,
+    [viewingPedidoId, pedidos]
+  )
 
   const handleOpenItemsModal = async (pedidoId: string) => {
     setActiveItemsPedidoId(pedidoId)
     if (!itemsLoaded[pedidoId]) await loadItems(pedidoId)
+  }
+
+  const handleDownloadPedidoPdf = async (pedido: Pedido) => {
+    try {
+      setDownloadingPdfById((prev) => ({ ...prev, [pedido.id]: true }))
+      const response = await fetch(`/api/pedidos/${pedido.id}/pdf`)
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Nao foi possivel gerar o PDF do pedido.')
+      }
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = downloadUrl
+      anchor.download = getDownloadFileNameFromHeader(response.headers.get('Content-Disposition')) || 'Pedido.pdf'
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (error: unknown) {
+      toast.error('Erro', { description: error instanceof Error ? error.message : 'Nao foi possivel baixar o PDF do pedido.' })
+    } finally {
+      setDownloadingPdfById((prev) => ({ ...prev, [pedido.id]: false }))
+    }
   }
 
   const handleQuickApprove = (pedido: Pedido) => {
@@ -339,16 +379,18 @@ function PedidosPageContent() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-linear-to-br from-blue-500 to-cyan-600 p-2.5 shadow-lg shadow-blue-500/25">
-            <ClipboardList className="h-6 w-6 text-white" />
+        {!minimal && (
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-linear-to-br from-blue-500 to-cyan-600 p-2.5 shadow-lg shadow-blue-500/25">
+              <ClipboardList className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pedidos</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Entregas, pagamentos e itens</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pedidos</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Entregas, pagamentos e itens</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+        )}
+        <div className={`flex items-center gap-2 ${minimal ? 'sm:ml-auto' : ''}`}>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus size={16} className="mr-1.5" />Novo Pedido
           </Button>
@@ -476,9 +518,12 @@ function PedidosPageContent() {
           activeTab={activeTabFromUrl}
           pedidos={activePedidos}
           savingById={savingById}
+          downloadingPdfById={downloadingPdfById}
           onQuickApprove={(pedido) => void handleQuickApprove(pedido)}
           onOpenItems={(id) => void handleOpenItemsModal(id)}
-          onEdit={(id) => setEditingPedidoId(id)}
+          onView={(id) => { setViewingPedidoId(id); setEditingPedidoId(null) }}
+          onEdit={(id) => { setEditingPedidoId(id); setViewingPedidoId(null) }}
+          onDownloadPdf={(pedido) => void handleDownloadPedidoPdf(pedido)}
           onCancelPedido={(pedido) => setCancelPedidoToConfirm(pedido)}
           onShowCreateModal={activeTabFromUrl === 'andamento' ? () => setShowCreateModal(true) : undefined}
         />
@@ -493,7 +538,7 @@ function PedidosPageContent() {
       )}
 
       {activePedido && (
-        <PedidoItemsModal
+        <PedidoItemsDrawer
           pedido={activePedido}
           itens={itemsByPedido[activePedido.id] || []}
           form={itemFormByPedido[activePedido.id] || buildItemForm()}
@@ -510,15 +555,32 @@ function PedidosPageContent() {
         />
       )}
 
+
       {editingPedido && (
         <EditPedidoDrawer
           pedido={editingPedido}
+          readOnly={false}
           saving={Boolean(savingById[editingPedido.id])}
+          itemsCount={itemsByPedido[editingPedido.id]?.length ?? 0}
           onClose={() => setEditingPedidoId(null)}
           onSave={(values) => void handleSavePedidoComercial(editingPedido.id, values).then((ok) => {
             if (ok) setEditingPedidoId(null)
           })}
           onCancelPedido={() => setCancelPedidoToConfirm(editingPedido)}
+          onOpenAdicionarProduto={() => void handleOpenItemsModal(editingPedido.id)}
+        />
+      )}
+
+      {viewingPedido && (
+        <EditPedidoDrawer
+          pedido={viewingPedido}
+          readOnly
+          saving={false}
+          itemsCount={itemsByPedido[viewingPedido.id]?.length ?? 0}
+          onClose={() => setViewingPedidoId(null)}
+          onSave={() => {}}
+          onCancelPedido={() => {}}
+          onOpenAdicionarProduto={undefined}
         />
       )}
 

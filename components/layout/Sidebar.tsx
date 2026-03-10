@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
+  ArrowLeft,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -14,6 +15,7 @@ import {
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 import { menuItems } from '@/lib/menuItems'
 import type { MenuItem } from '@/lib/menuItems'
+import { useHelpMode } from './HelpModeProvider'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -25,6 +27,8 @@ interface SidebarProps {
   showManualToggleButton?: boolean
   onManualToggleClick?: () => void
   manualOpen?: boolean
+  /** Quando true, destaca o sidebar no modo ajuda */
+  helpModeActive?: boolean
 }
 
 export default function Sidebar({
@@ -37,13 +41,17 @@ export default function Sidebar({
   showManualToggleButton = false,
   onManualToggleClick,
   manualOpen = false,
+  helpModeActive = false,
 }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+  const { helpMode, showHelpFor } = useHelpMode()
 
   const username = (session?.user?.username ?? '').trim().toLowerCase()
+  const role = session?.user?.role ?? ''
   const visibleMenuItems = menuItems.filter((item) => {
+    if (item.requiresAdmin && role !== 'admin') return false
     if (!item.visibleForUsernames) return true
     return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
   })
@@ -107,12 +115,17 @@ export default function Sidebar({
   }
 
   return (
+    <>
     <aside
       className={`fixed inset-y-0 left-0 z-50 ${sidebarWidthClass} ${mobileTransformClass} text-slate-800 transition-[width,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:text-slate-100`}
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
-      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
+      <div
+        className={`flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 backdrop-blur-xl shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)] transition-shadow duration-300 ${
+          helpModeActive ? 'ring-[1.5px] ring-purple-500 ring-inset' : ''
+        }`}
+      >
         <div
           className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
@@ -191,19 +204,28 @@ export default function Sidebar({
               const href = getResolvedHref(item)
               const title = getResolvedTitle(item)
 
+              const handleItemClick = (e: React.MouseEvent) => {
+                if (helpMode && item.helpDescription) {
+                  e.preventDefault()
+                  showHelpFor(item, e.currentTarget as HTMLElement)
+                } else {
+                  onClose?.()
+                }
+              }
+
               return (
                 <li key={item.href}>
                   <Link
                     href={href}
                     title={title}
-                    onClick={onClose}
+                    onClick={handleItemClick}
                     className={`group flex h-11 items-center rounded-xl px-0 transition-colors duration-200 ${
                       isActive
                         ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                         : isLocked
                           ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                           : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                    }`}
+                    } ${helpMode && item.helpDescription ? 'cursor-help' : ''}`}
                   >
                     <span className="inline-flex h-full w-12 shrink-0 items-center justify-center">
                       <ItemIcon
@@ -280,5 +302,22 @@ export default function Sidebar({
         </nav>
       </div>
     </aside>
+
+    {helpModeActive && (
+      <div
+        className="fixed left-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-0 animate-in fade-in slide-in-from-left-2 duration-200"
+        style={{ marginLeft: isMobile ? '18rem' : isCompact ? '4.5rem' : '16rem' }}
+      >
+        <span className="shrink-0 text-purple-500 dark:text-purple-400" aria-hidden>
+          <ArrowLeft size={32} strokeWidth={2.5} />
+        </span>
+        <div className="rounded-xl border border-purple-200 bg-white px-5 py-3.5 shadow-lg dark:border-purple-800 dark:bg-slate-900">
+          <span className="text-base font-medium text-slate-700 dark:text-slate-200">
+            Selecione uma opção
+          </span>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

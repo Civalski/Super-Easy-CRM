@@ -3,7 +3,8 @@
  */
 'use client'
 
-import { Target, RefreshCw, Send, Loader2 } from '@/lib/icons';
+import { Target, RefreshCw, Send, Loader2 } from '@/lib/icons'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 interface ProspectarHeaderProps {
     loading: boolean;
@@ -34,26 +35,29 @@ export function ProspectarHeader({
         event.target.value = '';
     };
 
+    const minimal = usePageHeaderMinimal()
     const showEnviarBtn = onEnviarAoFunil && totalLeadsFrios > 0;
 
     return (
         <div className="space-y-4 mb-6">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-linear-to-br from-sky-500 to-cyan-600 rounded-xl shadow-lg shadow-sky-500/25">
-                        <Target className="w-6 h-6 text-white" />
+                {!minimal && (
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-linear-to-br from-sky-500 to-cyan-600 rounded-xl shadow-lg shadow-sky-500/25">
+                            <Target className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                Prospeccao
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Prospectos importados aguardando envio ao funil
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Prospeccao
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Prospectos importados aguardando envio ao funil
-                        </p>
-                    </div>
-                </div>
+                )}
 
-                <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-3 ${minimal ? 'ml-auto' : ''}`}>
                     <label className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors cursor-pointer shadow-md shadow-sky-500/20">
                         <Target className="w-4 h-4" />
                         <span>Importar CSV</span>

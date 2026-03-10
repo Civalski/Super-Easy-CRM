@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation'
 import { X } from '@/lib/icons'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import { HelpModeProvider, useHelpMode } from './HelpModeProvider'
+import { HelpPopover } from './HelpPopover'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
 import { ConfiguracoesContent } from '@/components/features/configuracoes'
 import {
@@ -23,8 +25,9 @@ const SIDEBAR_COLLAPSED_WIDTH = '4.5rem'
 const SIDEBAR_EXPANDED_WIDTH = '16rem'
 const SIDEBAR_COLLAPSE_DELAY_MS = 120
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { helpMode, toggleHelpMode } = useHelpMode()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
@@ -36,6 +39,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileSidebarOpen(false)
   }, [pathname])
+
+  useEffect(() => {
+    if (helpMode) {
+      setMobileSidebarOpen(true)
+      setIsSidebarHovered(true)
+      setIsSidebarOpenedByButton(true)
+    }
+  }, [helpMode])
 
   useEffect(() => {
     const syncSidebarMode = () => {
@@ -78,9 +89,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    setIsSidebarHovered(false)
-    setIsSidebarOpenedByButton(false)
-  }, [sidebarOpenMode])
+    if (!helpMode) {
+      setIsSidebarHovered(false)
+      setIsSidebarOpenedByButton(false)
+    }
+  }, [sidebarOpenMode, helpMode])
 
   useEffect(() => {
     return () => {
@@ -128,18 +141,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   } as CSSProperties
 
   return (
-    <div className="crm-shell">
-      <div className="relative flex min-h-screen">
+    <div className="crm-shell" style={layoutStyle}>
+        <div className="relative flex min-h-screen">
+        {/* Overlay quando modo ajuda ativo */}
+        {helpMode && (
+          <div
+            className="fixed inset-0 z-40 cursor-pointer bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 lg:left-[var(--sidebar-width)] lg:top-[var(--top-bar-height)]"
+            aria-hidden
+            onClick={() => {
+              toggleHelpMode()
+              setMobileSidebarOpen(false)
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                toggleHelpMode()
+                setMobileSidebarOpen(false)
+              }
+            }}
+          />
+        )}
+
         {/* Sidebar Desktop - oculto quando menu no header */}
         {useSidebarLayout && (
         <div className="hidden lg:block">
           <Sidebar
             collapsed={!isDesktopSidebarExpanded}
-            onMouseEnter={sidebarOpenMode === 'auto' ? handleSidebarMouseEnter : undefined}
-            onMouseLeave={sidebarOpenMode === 'auto' ? handleSidebarMouseLeave : undefined}
+            onMouseEnter={sidebarOpenMode === 'auto' && !helpMode ? handleSidebarMouseEnter : undefined}
+            onMouseLeave={sidebarOpenMode === 'auto' && !helpMode ? handleSidebarMouseLeave : undefined}
             showManualToggleButton={sidebarOpenMode === 'button'}
             onManualToggleClick={() => setIsSidebarOpenedByButton((prev) => !prev)}
             manualOpen={isSidebarOpenedByButton}
+            helpModeActive={helpMode}
           />
         </div>
         )}
@@ -155,12 +189,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             className={`absolute inset-0 bg-slate-900/25 backdrop-blur-xs transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-slate-950/55 ${
               mobileSidebarOpen ? 'opacity-100' : 'opacity-0'
             }`}
-            onClick={() => setMobileSidebarOpen(false)}
+            onClick={() => !helpMode && setMobileSidebarOpen(false)}
           ></div>
           <Sidebar
             isMobile
             mobileOpen={mobileSidebarOpen}
             onClose={() => setMobileSidebarOpen(false)}
+            helpModeActive={helpMode}
           />
         </div>
 
@@ -203,5 +238,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </SideCreateDrawer>
     </div>
+  )
+}
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
+  if (pathname === '/login' || pathname === '/register') {
+    return <>{children}</>
+  }
+
+  return (
+    <HelpModeProvider>
+      <LayoutContent>{children}</LayoutContent>
+      <HelpPopover />
+    </HelpModeProvider>
   )
 }

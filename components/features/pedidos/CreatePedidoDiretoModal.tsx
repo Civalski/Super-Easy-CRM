@@ -398,7 +398,7 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
           {hasCartItems && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/40">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                Carrinho: {itens.length} {itens.length === 1 ? 'item' : 'itens'} — {currency(totalCarrinho)}
+                Produtos: {itens.length} {itens.length === 1 ? 'item' : 'itens'} — {currency(totalCarrinho)}
               </p>
             </div>
           )}
@@ -406,7 +406,7 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
 
         <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-700">
           <Button variant="outline" size="sm" onClick={() => setShowCarrinhoDrawer(true)}>
-            Carrinho {hasCartItems && `(${itens.length})`}
+            Adicionar produto {hasCartItems && `(${itens.length})`}
           </Button>
           <Button
             size="sm"
@@ -436,7 +436,7 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
         onStepQuantity={carrinho.handleStepQuantity}
         footer={
           <Button size="sm" onClick={() => setShowCarrinhoDrawer(false)}>
-            Concluir carrinho
+            Concluir
           </Button>
         }
       />

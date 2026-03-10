@@ -7,6 +7,7 @@ import { isActiveUserSession } from "@/lib/auth-session"
 const adminApiPrefixes = [
     '/api/seed',
     '/api/prospectos/bulk',
+    '/api/usuarios',
 ]
 
 const publicApiPrefixes = [

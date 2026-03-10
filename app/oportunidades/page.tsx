@@ -9,6 +9,7 @@ import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { formatCurrency } from '@/lib/format'
 import { CancelarOrcamentoModal, OrcamentosList, useOrcamentos } from '@/components/features/oportunidades'
 import { OrcamentosFilters, type OrcamentosFiltersValues } from '@/components/features/oportunidades/OrcamentosFilters'
+import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 
 const CreateOrcamentoDrawer = dynamic(
   () => import('@/components/features/oportunidades/CreateOrcamentoDrawer'),
@@ -30,6 +31,7 @@ const DuplicarOrcamentoDrawer = dynamic(
 function OrcamentosPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const minimal = usePageHeaderMinimal()
   const clienteIdFilter = searchParams.get('clienteId')?.trim() || ''
   const clienteNomeFilter = searchParams.get('clienteNome') || 'Cliente selecionado'
   const searchFilter = searchParams.get('search')?.trim() || ''
@@ -211,19 +213,23 @@ function OrcamentosPageContent() {
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/25">
-            <Briefcase className="w-6 h-6 text-white" />
+        {!minimal && (
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/25">
+              <Briefcase className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Orçamentos</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie seus orçamentos comerciais</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Orçamentos</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie seus orçamentos comerciais</p>
-          </div>
+        )}
+        <div className={minimal ? 'sm:ml-auto' : ''}>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus size={20} className="mr-2" />
+            Novo Orçamento
+          </Button>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus size={20} className="mr-2" />
-          Novo Orçamento
-        </Button>
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
