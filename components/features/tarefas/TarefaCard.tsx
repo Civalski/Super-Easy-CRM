@@ -43,7 +43,7 @@ export function TarefaCard({
     const statusInfo = statusConfig[tarefa.status as keyof typeof statusConfig] || statusConfig.pendente
     const prioridadeInfo = prioridadeConfig[tarefa.prioridade as keyof typeof prioridadeConfig] || prioridadeConfig.media
     const StatusIcon = statusInfo.icon
-    const iconColor = 'iconColor' in statusInfo ? statusInfo.iconColor : statusInfo.color.split(' ')[0]
+    const iconColor = statusInfo.iconColor
     const isAtualizando = atualizandoTarefa === tarefa.id
     const isExcluindo = excluindoTarefa === tarefa.id
     const vencimentoStatus = getVencimentoStatus(tarefa.dataVencimento)

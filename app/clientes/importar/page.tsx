@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -7,7 +8,7 @@ import { ArrowLeft, Upload } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { readCsvToObjects } from '@/lib/csv'
 
-export default function ImportarClientesPage() {
+function ImportarClientesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -128,5 +129,13 @@ export default function ImportarClientesPage() {
         </label>
       </div>
     </div>
+  )
+}
+
+export default function ImportarClientesPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-2xl animate-pulse rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900" />}>
+      <ImportarClientesContent />
+    </Suspense>
   )
 }
