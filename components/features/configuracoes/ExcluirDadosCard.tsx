@@ -26,7 +26,14 @@ export function ExcluirDadosCard() {
     setClearing(true)
     try {
       const response = await fetch('/api/users/me/data', { method: 'DELETE' })
-      const data = await response.json()
+      let data: { error?: string; message?: string }
+      try {
+        const text = await response.text()
+        data = text ? JSON.parse(text) : {}
+      } catch {
+        // Servidor retornou HTML (ex: página de erro 500/404) em vez de JSON
+        throw new Error('Resposta inválida do servidor. Tente novamente mais tarde.')
+      }
       if (!response.ok) throw new Error(data.error || 'Erro ao excluir dados')
 
       toast.success('Dados excluídos', { description: data.message || 'Os dados da sua conta foram excluídos com sucesso.' })

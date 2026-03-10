@@ -87,7 +87,6 @@ Cada `route.ts` exporta handlers HTTP (`GET`, `POST`, `PATCH`, `DELETE`). Todas 
 | `motivos-perda/` | Motivos de perda de oportunidades. |
 | `configuracoes/pdf/` | Configuração de layout do PDF de orçamentos. |
 | `grupos/` | Gestão de workspaces. |
-| `notas/` | Notas em bloco e templates de email/WhatsApp. |
 | `relatorios/` | Relatórios: `funil/`, `performance/`, `perdas/`. Compartilham `_shared.ts`. |
 | `billing/mercado-pago/` | `subscription/` (criar/consultar assinatura), `webhook/` (receber eventos). |
 | `seed/` | Seed de dados para desenvolvimento. `clear/` limpa dados do usuário. |

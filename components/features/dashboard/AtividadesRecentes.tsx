@@ -25,7 +25,7 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
   const [showAll, setShowAll] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<DashboardActivity | null>(null)
 
-  const maxVisible = compact ? 2 : 4
+  const maxVisible = compact ? 3 : 4
 
   const handleActivityUpdate = () => {
     if (onRefreshRequest) {
@@ -82,7 +82,7 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
 
         {isLoading ? (
           <div className={`flex-1 ${compact ? 'space-y-3' : 'space-y-4'}`}>
-            {(compact ? [1, 2] : [1, 2, 3]).map((item) => (
+            {(compact ? [1, 2, 3] : [1, 2, 3, 4]).map((item) => (
               <div key={item} className={`flex animate-pulse ${compact ? 'gap-3' : 'gap-4'}`}>
                 <div className={`rounded-full bg-gray-200 dark:bg-gray-700 ${compact ? 'w-8 h-8' : 'w-10 h-10'}`} />
                 <div className="flex-1 space-y-2">

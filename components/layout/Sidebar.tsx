@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -39,7 +39,14 @@ export default function Sidebar({
   manualOpen = false,
 }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+
+  const username = (session?.user?.username ?? '').trim().toLowerCase()
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!item.visibleForUsernames) return true
+    return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
+  })
   const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>(
     billingSubscriptionEnabled ? 'loading' : 'active'
   )
@@ -177,7 +184,7 @@ export default function Sidebar({
 
         <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3">
           <ul className="space-y-1.5">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const ItemIcon = item.icon
               const isActive = isItemActive(item.href)
               const isLocked = item.requiresPremium && premiumAccess === 'inactive'

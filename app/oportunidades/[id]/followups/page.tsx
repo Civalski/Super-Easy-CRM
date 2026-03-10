@@ -1,18 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock3, Send, Loader2 } from '@/lib/icons'
 import { toast } from '@/lib/toast'
-
-interface NotaTemplate {
-  id: string
-  tipo: string
-  titulo: string | null
-  descricao: string | null
-  conteudo: string
-}
 
 interface FollowUpAttempt {
   id: string
@@ -49,10 +41,8 @@ export default function OportunidadeFollowupsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [oportunidade, setOportunidade] = useState<OportunidadeData | null>(null)
-  const [notasTemplates, setNotasTemplates] = useState<NotaTemplate[]>([])
   const [attempts, setAttempts] = useState<FollowUpAttempt[]>([])
   const [form, setForm] = useState({
-    notaId: '',
     canal: 'whatsapp',
     mensagem: '',
     resultado: '',
@@ -63,24 +53,15 @@ export default function OportunidadeFollowupsPage() {
 
     try {
       setLoading(true)
-      const [oppRes, notasEmailRes, notasWhatsappRes, attemptsRes] =
-        await Promise.all([
-          fetch(`/api/oportunidades/${oportunidadeId}`),
-          fetch('/api/notas?tipo=email'),
-          fetch('/api/notas?tipo=whatsapp'),
-          fetch(`/api/oportunidades/${oportunidadeId}/followups`),
-        ])
+      const [oppRes, attemptsRes] = await Promise.all([
+        fetch(`/api/oportunidades/${oportunidadeId}`),
+        fetch(`/api/oportunidades/${oportunidadeId}/followups`),
+      ])
 
       const oppData = await oppRes.json().catch(() => null)
-      const notasEmail = await notasEmailRes.json().catch(() => [])
-      const notasWhatsapp = await notasWhatsappRes.json().catch(() => [])
       const attemptsData = await attemptsRes.json().catch(() => [])
 
       setOportunidade(oppData && oppData.id ? oppData : null)
-      setNotasTemplates([
-        ...(Array.isArray(notasEmail) ? notasEmail : []),
-        ...(Array.isArray(notasWhatsapp) ? notasWhatsapp : []),
-      ])
       setAttempts(Array.isArray(attemptsData) ? attemptsData : [])
     } catch (error) {
       console.error('Erro ao carregar follow-ups:', error)
@@ -92,17 +73,6 @@ export default function OportunidadeFollowupsPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
-
-  const handleNotaChange = (notaId: string) => {
-    const nota = notasTemplates.find((item) => item.id === notaId)
-    const canal = nota?.tipo === 'email' ? 'email' : 'whatsapp'
-    setForm((prev) => ({
-      ...prev,
-      notaId,
-      canal,
-      mensagem: nota?.conteudo || '',
-    }))
-  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -118,7 +88,6 @@ export default function OportunidadeFollowupsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          notaId: form.notaId || null,
           canal: form.canal,
           mensagem: form.mensagem.trim(),
           resultado: form.resultado.trim() || null,
@@ -151,14 +120,6 @@ export default function OportunidadeFollowupsPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar para orçamento
         </Link>
-        <div className="mb-3">
-          <Link
-            href="/notas"
-            className="inline-flex items-center rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/20"
-          >
-            Gerenciar notas e templates
-          </Link>
-        </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Playbook de Follow-up</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {oportunidade
@@ -171,19 +132,6 @@ export default function OportunidadeFollowupsPage() {
         <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Novo Follow-up</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <select
-              value={form.notaId}
-              onChange={(event) => handleNotaChange(event.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-            >
-              <option value="">Sem template</option>
-              {notasTemplates.map((nota) => (
-                <option key={nota.id} value={nota.id}>
-                  {nota.titulo || nota.descricao || `${nota.tipo}`}
-                </option>
-              ))}
-            </select>
-
             <select
               value={form.canal}
               onChange={(event) => setForm((prev) => ({ ...prev, canal: event.target.value }))}

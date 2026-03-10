@@ -3,12 +3,20 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { menuItems } from '@/lib/menuItems'
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 
 export function HeaderNav() {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+
+  const username = (session?.user?.username ?? '').trim().toLowerCase()
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!item.visibleForUsernames) return true
+    return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
+  })
   const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>(
     billingSubscriptionEnabled ? 'loading' : 'active'
   )
@@ -45,14 +53,14 @@ export function HeaderNav() {
     }
   }, [billingSubscriptionEnabled])
 
-  const getResolvedHref = (item: (typeof menuItems)[0]) => {
+  const getResolvedHref = (item: (typeof visibleMenuItems)[0]) => {
     if (item.requiresPremium && premiumAccess === 'inactive') {
       return '/configuracoes'
     }
     return item.href
   }
 
-  const getResolvedTitle = (item: (typeof menuItems)[0]) => {
+  const getResolvedTitle = (item: (typeof visibleMenuItems)[0]) => {
     if (item.requiresPremium && premiumAccess === 'inactive') {
       return `${item.name} (Premium - assine para liberar)`
     }
@@ -61,7 +69,7 @@ export function HeaderNav() {
 
   return (
     <nav className="hidden lg:flex items-center gap-0.5 overflow-x-auto scrollbar-thin">
-      {menuItems.map((item) => {
+      {visibleMenuItems.map((item) => {
         const ItemIcon = item.icon
         const isActive = isItemActive(item.href)
         const isLocked = item.requiresPremium && premiumAccess === 'inactive'
