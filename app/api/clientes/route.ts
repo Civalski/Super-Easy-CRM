@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, zodErrorResponse } from '@/lib/api/route-helpers'
 import { listClientes, createCliente } from '@/lib/services/clientes'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 import { clienteCreateSchema } from '@/lib/validations/clientes'
 import { parseLimit, parsePage } from '@/lib/validations/common'
 export const dynamic = 'force-dynamic'
 
+const clientesListRateLimitConfig = {
+  windowMs: 60 * 1000,
+  maxAttempts: 30,
+  blockDurationMs: 60 * 1000,
+} as const
+
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
+    const rateLimitResponse = enforceApiRateLimit({
+      key: `api:clientes:user:${userId}`,
+      config: clientesListRateLimitConfig,
+      error: 'Muitas requisicoes em pouco tempo. Aguarde alguns segundos.',
+    })
+    if (rateLimitResponse) return rateLimitResponse
+
     try {
       const { searchParams } = new URL(request.url)
       const mode = searchParams.get('mode')

@@ -1,21 +1,15 @@
-/**
- * Header da pagina de clientes
- * Design consistente com outras paginas do CRM
- */
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { createPortal } from 'react-dom'
 import { Button } from '@/components/common'
-import { ChevronDown, Download, Filter, Loader2, Plus, Upload, Users } from '@/lib/icons'
+import { ChevronDown, Download, Filter, Plus, Upload, Users } from '@/lib/icons'
 
 interface ClientesHeaderProps {
   onCreateClick?: () => void
   onFilterClick?: () => void
-  onDownloadBackup?: () => void
-  onRestoreBackup?: (file: File) => void
-  backupLoading?: boolean
+  onExportCsvClick?: () => void
+  onImportClick?: () => void
   searchValue: string
   onSearchChange: (value: string) => void
 }
@@ -23,49 +17,22 @@ interface ClientesHeaderProps {
 export function ClientesHeader({
   onCreateClick,
   onFilterClick,
-  onDownloadBackup,
-  onRestoreBackup,
-  backupLoading,
+  onExportCsvClick,
+  onImportClick,
   searchValue,
   onSearchChange,
 }: ClientesHeaderProps) {
-  const [backupMenuOpen, setBackupMenuOpen] = useState(false)
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
-  const backupButtonRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [backupOpen, setBackupOpen] = useState(false)
 
-  useEffect(() => {
-    if (!backupMenuOpen || !backupButtonRef.current) return
-    const updatePos = () => {
-      const el = backupButtonRef.current
-      if (el) {
-        const rect = el.getBoundingClientRect()
-        setMenuPosition({ top: rect.bottom + 4, left: rect.right - 180 })
-      }
-    }
-    updatePos()
-    window.addEventListener('scroll', updatePos, true)
-    window.addEventListener('resize', updatePos)
-    return () => {
-      window.removeEventListener('scroll', updatePos, true)
-      window.removeEventListener('resize', updatePos)
-    }
-  }, [backupMenuOpen])
-
-  const handleRestoreClick = () => {
-    setBackupMenuOpen(false)
-    fileInputRef.current?.click()
+  const handleExport = () => {
+    setBackupOpen(false)
+    onExportCsvClick?.()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (file && onRestoreBackup) {
-      onRestoreBackup(file)
-    }
+  const handleImport = () => {
+    setBackupOpen(false)
+    onImportClick?.()
   }
-
-  const hasBackupActions = Boolean(onDownloadBackup || onRestoreBackup)
 
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -89,79 +56,54 @@ export function ClientesHeader({
             className="h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
           />
         </label>
+
         {onFilterClick ? (
           <Button variant="secondary" onClick={onFilterClick}>
             <Filter size={20} className="mr-2" />
             Filtrar
           </Button>
         ) : null}
-        {hasBackupActions ? (
-          <div className="relative" ref={backupButtonRef}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <Button
-              variant="secondary"
-              disabled={backupLoading}
-              onClick={() => setBackupMenuOpen((prev) => !prev)}
+
+        {(onExportCsvClick || onImportClick) ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setBackupOpen((o) => !o)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 shadow-xs bg-white dark:bg-gray-800 px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              {backupLoading ? (
-                <Loader2 size={20} className="mr-2 animate-spin" />
-              ) : (
-                <Download size={20} className="mr-2" />
-              )}
               Backup
-              <ChevronDown size={16} className="ml-1" />
-            </Button>
-            {backupMenuOpen &&
-              typeof document !== 'undefined' &&
-              createPortal(
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    aria-hidden
-                    onClick={() => setBackupMenuOpen(false)}
-                  />
-                  <div
-                    className="fixed z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                    style={{ top: menuPosition.top, left: menuPosition.left }}
-                    role="menu"
-                  >
-                    {onDownloadBackup && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-                        onClick={() => {
-                          setBackupMenuOpen(false)
-                          onDownloadBackup()
-                        }}
-                      >
-                        <Download size={18} />
-                        Baixar backup
-                      </button>
-                    )}
-                    {onRestoreBackup && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-                        onClick={handleRestoreClick}
-                      >
-                        <Upload size={18} />
-                        Importar backup
-                      </button>
-                    )}
-                  </div>
-                </>,
-                document.body
-              )}
+              <ChevronDown size={18} className={`transition-transform ${backupOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {backupOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setBackupOpen(false)} aria-hidden />
+                <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
+                  {onExportCsvClick && (
+                    <button
+                      type="button"
+                      onClick={handleExport}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Download size={18} />
+                      Exportar
+                    </button>
+                  )}
+                  {onImportClick && (
+                    <button
+                      type="button"
+                      onClick={handleImport}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Upload size={18} />
+                      Importar
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         ) : null}
+
         {onCreateClick ? (
           <Button onClick={onCreateClick}>
             <Plus size={20} className="mr-2" />

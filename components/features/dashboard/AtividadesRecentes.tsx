@@ -10,6 +10,7 @@ import type { DashboardActivity, DashboardActivityType } from '@/types/dashboard
 
 interface AtividadesRecentesProps {
   onRefreshRequest?: () => void
+  compact?: boolean
 }
 
 const sanitizeMockText = (value?: string | null) =>
@@ -19,10 +20,12 @@ const sanitizeMockText = (value?: string | null) =>
     .replace(/^[\s\-:|*]+|[\s\-:|*]+$/g, '')
     .trim()
 
-export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps) {
+export function AtividadesRecentes({ onRefreshRequest, compact = false }: AtividadesRecentesProps) {
   const { activities, isLoading, mutate } = useAtividadesRecentes()
   const [showAll, setShowAll] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<DashboardActivity | null>(null)
+
+  const maxVisible = compact ? 2 : 4
 
   const handleActivityUpdate = () => {
     if (onRefreshRequest) {
@@ -31,16 +34,18 @@ export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps
     void mutate()
   }
 
+  const iconSize = compact ? 16 : 20
+
   const getIcon = (type: DashboardActivityType) => {
     switch (type) {
       case 'tarefa':
-        return <CheckSquare className="text-blue-500" size={20} />
+        return <CheckSquare className="text-blue-500" size={iconSize} />
       case 'oportunidade':
-        return <DollarSign className="text-green-500" size={20} />
+        return <DollarSign className="text-green-500" size={iconSize} />
       case 'cliente':
-        return <User className="text-purple-500" size={20} />
+        return <User className="text-purple-500" size={iconSize} />
       default:
-        return <Plus className="text-gray-500" size={20} />
+        return <Plus className="text-gray-500" size={iconSize} />
     }
   }
 
@@ -57,21 +62,29 @@ export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps
     }
   }
 
-  const visibleActivities = showAll ? activities : activities.slice(0, 4)
-  const hasMore = activities.length > 4
+  const visibleActivities = showAll ? activities : activities.slice(0, maxVisible)
+  const hasMore = activities.length > maxVisible
 
   return (
     <>
-      <div className="crm-card p-6 flex flex-col h-full">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div
+        className={`crm-card flex flex-col h-full border border-gray-200/80 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/50 ${
+          compact ? 'p-5' : 'p-6'
+        }`}
+      >
+        <h3
+          className={`font-semibold text-gray-900 dark:text-white border-b border-gray-100 pb-3 dark:border-slate-700/50 mb-4 ${
+            compact ? 'text-sm text-gray-800 dark:text-slate-100' : 'text-lg'
+          }`}
+        >
           Atividades Recentes
         </h3>
 
         {isLoading ? (
-          <div className="space-y-4 flex-1">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="flex gap-4 animate-pulse">
-                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          <div className={`flex-1 ${compact ? 'space-y-3' : 'space-y-4'}`}>
+            {(compact ? [1, 2] : [1, 2, 3]).map((item) => (
+              <div key={item} className={`flex animate-pulse ${compact ? 'gap-3' : 'gap-4'}`}>
+                <div className={`rounded-full bg-gray-200 dark:bg-gray-700 ${compact ? 'w-8 h-8' : 'w-10 h-10'}`} />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-sm w-3/4" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-sm w-1/2" />
@@ -80,12 +93,12 @@ export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps
             ))}
           </div>
         ) : activities.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400 flex-1">
+          <div className={`text-center text-gray-500 dark:text-gray-400 flex-1 ${compact ? 'py-4' : 'py-8'}`}>
             <p>Nenhuma atividade recente</p>
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="space-y-4">
+            <div className={compact ? 'space-y-3' : 'space-y-4'}>
               {visibleActivities.map((activity) => {
                 const sanitizedTitle = sanitizeMockText(activity.title) || 'Atividade'
                 const sanitizedDescription = sanitizeMockText(activity.description)
@@ -93,14 +106,18 @@ export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps
                 return (
                   <button
                     key={`${activity.type}-${activity.id}`}
-                    className="w-full flex gap-4 text-left p-2 -mx-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group"
+                    className={`w-full flex text-left p-2 -mx-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group ${compact ? 'gap-3' : 'gap-4'}`}
                     onClick={() => setSelectedActivity(activity)}
                   >
-                    <div className="shrink-0 w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center border border-gray-100 dark:border-gray-600 group-hover:border-gray-200 dark:group-hover:border-gray-500 transition-colors">
+                    <div
+                      className={`shrink-0 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center border border-gray-100 dark:border-gray-600 group-hover:border-gray-200 dark:group-hover:border-gray-500 transition-colors ${
+                        compact ? 'w-8 h-8' : 'w-10 h-10'
+                      }`}
+                    >
                       {getIcon(activity.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className={`font-medium text-gray-900 dark:text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>
                         {sanitizedTitle}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
@@ -120,7 +137,7 @@ export function AtividadesRecentes({ onRefreshRequest }: AtividadesRecentesProps
             </div>
 
             {hasMore && (
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
+              <div className={`border-t border-gray-100 dark:border-gray-700 text-center ${compact ? 'mt-3 pt-3' : 'mt-4 pt-4'}`}>
                 <button
                   onClick={() => setShowAll(!showAll)}
                   className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 inline-flex items-center gap-1 transition-colors"

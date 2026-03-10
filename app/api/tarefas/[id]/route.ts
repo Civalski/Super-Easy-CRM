@@ -59,6 +59,7 @@ export async function PATCH(
       status,
       prioridade,
       dataVencimento,
+      dataAviso,
       clienteId,
       oportunidadeId,
       notificar,
@@ -70,6 +71,7 @@ export async function PATCH(
       status?: string
       prioridade?: string
       dataVencimento?: Date | null
+      dataAviso?: Date | null
       clienteId?: string | null
       oportunidadeId?: string | null
       notificar?: boolean
@@ -126,6 +128,17 @@ export async function PATCH(
         )
       }
       updateData.dataVencimento = parsedDate ?? null
+    }
+
+    if (dataAviso !== undefined) {
+      const parsedDate = parseOptionalDate(dataAviso)
+      if (dataAviso && !parsedDate) {
+        return NextResponse.json(
+          { error: 'Data do aviso invalida' },
+          { status: 400 }
+        )
+      }
+      updateData.dataAviso = parsedDate ?? null
     }
 
     if (notificar !== undefined) {

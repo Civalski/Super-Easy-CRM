@@ -79,8 +79,8 @@ export function ClientesTable({ clientes, deletingId, onDeleteClick, onEditClick
   }, [openMenuId])
 
   return (
-    <div className="crm-card overflow-x-auto">
-      <table className="w-full min-w-[900px]">
+    <div className="crm-card">
+      <table className="w-full table-fixed">
         <thead className="crm-table-head">
           <tr>
             <th className="w-[8%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">

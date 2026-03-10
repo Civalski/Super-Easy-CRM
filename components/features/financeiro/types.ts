@@ -1,5 +1,8 @@
 export type AmbienteFinanceiro = 'geral' | 'pessoal'
 
+/** Ambiente de visualização: geral, pessoal ou total (soma de ambos) */
+export type AmbienteFinanceiroView = 'geral' | 'pessoal' | 'total'
+
 export interface ContaFinanceira {
   id: string
   ambiente: AmbienteFinanceiro

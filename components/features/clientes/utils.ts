@@ -1,7 +1,6 @@
-import type { CreateClienteForm } from './types'
+import type { ClientePerfil, CreateClienteForm } from './types'
 
-/** Cliente da API com campos usados no formulário de edição */
-type ClienteParaForm = {
+type ClienteFormSource = {
   nome?: string | null
   email?: string | null
   telefone?: string | null
@@ -15,35 +14,52 @@ type ClienteParaForm = {
   website?: string | null
   dataNascimento?: string | null
   observacoes?: string | null
-  camposPersonalizados?: Array<{ label?: string; value?: string }> | null
+  camposPersonalizados?: Array<{ label?: string | null; value?: string | null }> | null
 }
 
-export function clienteToCreateForm(cliente: ClienteParaForm, perfil: 'b2c' | 'b2b' = 'b2c'): CreateClienteForm {
-  const cp = cliente.camposPersonalizados
-  const isB2B =
-    perfil === 'b2b' ||
-    (Array.isArray(cp) &&
-      cp.some(
-        (c) =>
-          c?.label?.trim().toLowerCase() === 'perfil' && c?.value?.trim().toLowerCase() === 'b2b'
-      ))
+function readText(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function inferClientePerfil(cliente: ClienteFormSource): ClientePerfil {
+  const perfilField =
+    Array.isArray(cliente.camposPersonalizados)
+      ? cliente.camposPersonalizados
+          .find((item) => item?.label?.trim().toLowerCase() === 'perfil')
+          ?.value?.trim()
+          .toLowerCase()
+      : undefined
+
+  if (perfilField === 'b2b' || perfilField === 'b2c') {
+    return perfilField
+  }
+
+  return cliente.empresa?.trim() ? 'b2b' : 'b2c'
+}
+
+export function clienteToCreateForm(cliente: ClienteFormSource, perfil?: ClientePerfil): CreateClienteForm {
+  const isB2B = (perfil ?? inferClientePerfil(cliente)) === 'b2b'
+
   return {
     perfil: isB2B ? 'b2b' : 'b2c',
-    nome: cliente.nome || '',
-    email: cliente.email || '',
-    telefone: cliente.telefone || '',
-    empresa: cliente.empresa || '',
-    endereco: cliente.endereco || '',
-    cidade: cliente.cidade || '',
-    estado: cliente.estado || '',
-    cep: cliente.cep || '',
-    cargo: cliente.cargo || '',
-    documento: cliente.documento || '',
-    website: cliente.website || '',
-    dataNascimento: cliente.dataNascimento || '',
-    observacoes: cliente.observacoes || '',
+    nome: readText(cliente.nome),
+    email: readText(cliente.email),
+    telefone: readText(cliente.telefone),
+    empresa: readText(cliente.empresa),
+    endereco: readText(cliente.endereco),
+    cidade: readText(cliente.cidade),
+    estado: readText(cliente.estado),
+    cep: readText(cliente.cep),
+    cargo: readText(cliente.cargo),
+    documento: readText(cliente.documento),
+    website: readText(cliente.website),
+    dataNascimento: readText(cliente.dataNascimento),
+    observacoes: readText(cliente.observacoes),
     camposPersonalizados: Array.isArray(cliente.camposPersonalizados)
-      ? cliente.camposPersonalizados.map((f) => ({ label: f?.label || '', value: f?.value || '' }))
+      ? cliente.camposPersonalizados.map((campo) => ({
+          label: campo?.label || '',
+          value: campo?.value || '',
+        }))
       : [],
   }
 }

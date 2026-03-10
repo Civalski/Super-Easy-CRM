@@ -134,6 +134,37 @@ export function ClienteInfoCards({
               <FileText className="h-4 w-4" />
               Mais informacoes
             </h3>
+            {(() => {
+              const hasB2B =
+                cliente.cnpj || cliente.razaoSocial || cliente.nomeFantasia || cliente.capitalSocial ||
+                cliente.porte || cliente.naturezaJuridica || cliente.situacaoCadastral || cliente.dataAbertura ||
+                cliente.matrizFilial || cliente.cnaePrincipal || cliente.cnaePrincipalDesc || cliente.logradouro ||
+                cliente.numeroEndereco || cliente.bairro || cliente.telefone2 || cliente.fax
+              if (!hasB2B) return null
+              return (
+                <div className="mt-3 rounded-lg border border-gray-200/80 bg-gray-50/40 p-3 dark:border-gray-700 dark:bg-gray-900/30">
+                  <p className="mb-2 text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Dados da empresa (B2B)</p>
+                  <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                    {cliente.cnpj && <ViewGridItem label="CNPJ" value={cliente.cnpj} />}
+                    {cliente.razaoSocial && <ViewGridItem label="Razao social" value={cliente.razaoSocial} />}
+                    {cliente.nomeFantasia && <ViewGridItem label="Nome fantasia" value={cliente.nomeFantasia} />}
+                    {cliente.matrizFilial && <ViewGridItem label="Matriz/Filial" value={cliente.matrizFilial} />}
+                    {cliente.capitalSocial && <ViewGridItem label="Capital social" value={cliente.capitalSocial} />}
+                    {cliente.porte && <ViewGridItem label="Porte" value={cliente.porte} />}
+                    {cliente.naturezaJuridica && <ViewGridItem label="Natureza juridica" value={cliente.naturezaJuridica} />}
+                    {cliente.situacaoCadastral && <ViewGridItem label="Situacao cadastral" value={cliente.situacaoCadastral} />}
+                    {cliente.dataAbertura && <ViewGridItem label="Data abertura" value={cliente.dataAbertura} />}
+                    {cliente.cnaePrincipal && <ViewGridItem label="CNAE principal" value={cliente.cnaePrincipal} />}
+                    {cliente.cnaePrincipalDesc && <ViewGridItem label="Atividade principal" value={cliente.cnaePrincipalDesc} />}
+                    {cliente.logradouro && <ViewGridItem label="Logradouro" value={cliente.logradouro} />}
+                    {cliente.numeroEndereco && <ViewGridItem label="Numero" value={cliente.numeroEndereco} />}
+                    {cliente.bairro && <ViewGridItem label="Bairro" value={cliente.bairro} />}
+                    {cliente.telefone2 && <ViewGridItem label="Telefone 2" value={cliente.telefone2} />}
+                    {cliente.fax && <ViewGridItem label="Fax" value={cliente.fax} />}
+                  </div>
+                </div>
+              )
+            })()}
             {isEditing ? (
               <div className="grid gap-1.5 sm:grid-cols-2">
                 <EditField label="Cargo" name="cargo" value={source.cargo} onChange={(event) => inputChangeHandler?.(event)} />

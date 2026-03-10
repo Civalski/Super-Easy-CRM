@@ -48,7 +48,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             }
         }
 
-        // Criar cliente a partir do prospecto
+        // Criar cliente B2B a partir do prospecto (preserva todos os campos)
         const cliente = await prisma.cliente.create({
             data: {
                 userId,
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 email: emailParaUsar,
                 telefone: prospecto.telefone1,
                 empresa: prospecto.razaoSocial,
+                documento: prospecto.cnpj,
                 endereco: [
                     prospecto.tipoLogradouro,
                     prospecto.logradouro,
@@ -65,6 +66,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 cidade: prospecto.municipio,
                 estado: prospecto.uf,
                 cep: prospecto.cep,
+                // Campos B2B
+                cnpj: prospecto.cnpj,
+                matrizFilial: prospecto.matrizFilial,
+                razaoSocial: prospecto.razaoSocial,
+                nomeFantasia: prospecto.nomeFantasia,
+                capitalSocial: prospecto.capitalSocial,
+                porte: prospecto.porte,
+                naturezaJuridica: prospecto.naturezaJuridica,
+                situacaoCadastral: prospecto.situacaoCadastral,
+                dataAbertura: prospecto.dataAbertura,
+                tipoLogradouro: prospecto.tipoLogradouro,
+                logradouro: prospecto.logradouro,
+                numeroEndereco: prospecto.numero,
+                complemento: prospecto.complemento,
+                bairro: prospecto.bairro,
+                telefone2: prospecto.telefone2,
+                fax: prospecto.fax,
+                cnaePrincipal: prospecto.cnaePrincipal,
+                cnaePrincipalDesc: prospecto.cnaePrincipalDesc,
+                cnaesSecundarios: prospecto.cnaesSecundarios,
             }
         });
 

@@ -72,6 +72,7 @@ export const MessageCircle = createIcon('ChatBubbleLeftRightIcon');
 export const MessageSquare = createIcon('ChatBubbleBottomCenterTextIcon');
 export const MessageSquareText = createIcon('ChatBubbleBottomCenterTextIcon');
 export const Minus = createIcon('MinusIcon');
+export const NoSymbol = createIcon('NoSymbolIcon');
 export const Moon = createIcon('MoonIcon');
 export const MoreVertical = createIcon('EllipsisVerticalIcon');
 export const Package = createIcon('ArchiveBoxIcon');

@@ -76,7 +76,7 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
               <label className="space-y-1.5">
                 <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-slate-300">Ambiente</span>
                 <select value={form.ambiente} onChange={e => set('ambiente', e.target.value as AmbienteFinanceiro)} className={MODAL_INPUT_CLASS}>
-                  <option value="geral">Geral</option>
+                  <option value="geral">Empresarial</option>
                   <option value="pessoal">Pessoal</option>
                 </select>
               </label>
@@ -88,8 +88,8 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
                 </select>
               </label>
               <label className="space-y-1.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-slate-300">Descrição</span>
-                <input type="text" value={form.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Ex: Aluguel" className={MODAL_INPUT_CLASS} />
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-slate-300">Nome da conta <span className="text-red-500">*</span></span>
+                <input type="text" value={form.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Ex: Aluguel" required className={MODAL_INPUT_CLASS} />
               </label>
             </div>
 
@@ -129,14 +129,14 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
               <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">Opções</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <label className={`relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-all ${form.parcelado ? 'border-purple-400 bg-purple-50 dark:border-purple-500/60 dark:bg-purple-950/40' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-white/10 dark:bg-slate-800/50 dark:hover:border-white/20'}`}>
-                  <input type="checkbox" checked={form.parcelado} onChange={e => set('parcelado', e.target.checked)} className="sr-only" />
+                  <input type="checkbox" checked={form.parcelado} onChange={e => { const v = e.target.checked; set('parcelado', v); if (v) set('recorrenteMensal', false) }} className="sr-only" />
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${form.parcelado ? 'bg-purple-100 dark:bg-purple-900/60' : 'bg-gray-100 dark:bg-slate-700/50'}`}>
                     <Layers className={`h-4 w-4 ${form.parcelado ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-slate-400'}`} />
                   </div>
                   <span className={`text-sm font-medium ${form.parcelado ? 'text-purple-800 dark:text-purple-200' : 'text-gray-700 dark:text-slate-300'}`}>Parcelado</span>
                 </label>
                 <label className={`relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-all ${form.recorrenteMensal ? 'border-cyan-400 bg-cyan-50 dark:border-cyan-500/60 dark:bg-cyan-950/40' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-white/10 dark:bg-slate-800/50 dark:hover:border-white/20'}`}>
-                  <input type="checkbox" checked={form.recorrenteMensal} onChange={e => set('recorrenteMensal', e.target.checked)} className="sr-only" />
+                  <input type="checkbox" checked={form.recorrenteMensal} onChange={e => { const v = e.target.checked; set('recorrenteMensal', v); if (v) set('parcelado', false) }} className="sr-only" />
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${form.recorrenteMensal ? 'bg-cyan-100 dark:bg-cyan-900/60' : 'bg-gray-100 dark:bg-slate-700/50'}`}>
                     <RefreshCw className={`h-4 w-4 ${form.recorrenteMensal ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-slate-400'}`} />
                   </div>
@@ -163,23 +163,26 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
             </div>
 
             {form.multaPorAtrasoAtiva && (
-              <div className="space-y-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+              <div className="space-y-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20 p-4">
                 <div className="flex items-center gap-2">
                   <Percent className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   <span className="text-sm font-medium text-amber-800 dark:text-amber-200">Configurar multa por atraso</span>
                 </div>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="multaTipo" checked={form.multaPorAtrasoTipo === 'percentual'} onChange={() => set('multaPorAtrasoTipo', 'percentual')} className="rounded border-gray-300" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Percentual (%)</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="multaTipo" checked={form.multaPorAtrasoTipo === 'valor'} onChange={() => set('multaPorAtrasoTipo', 'valor')} className="rounded border-gray-300" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Valor fixo (R$)</span>
-                  </label>
+                <div className="space-y-2">
+                  <span className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Tipo da multa</span>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
+                    <label className={`relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all ${form.multaPorAtrasoTipo === 'percentual' ? 'border-amber-400 bg-amber-100/80 dark:border-amber-500/60 dark:bg-amber-900/40' : 'border-amber-200/70 bg-white/50 hover:border-amber-300 dark:border-amber-800/50 dark:bg-slate-800/30 dark:hover:border-amber-700/60'}`}>
+                      <input type="radio" name="multaTipo" checked={form.multaPorAtrasoTipo === 'percentual'} onChange={() => set('multaPorAtrasoTipo', 'percentual')} className="sr-only" />
+                      <span className={`text-sm font-medium ${form.multaPorAtrasoTipo === 'percentual' ? 'text-amber-800 dark:text-amber-200' : 'text-gray-700 dark:text-slate-300'}`}>Percentual (%)</span>
+                    </label>
+                    <label className={`relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all ${form.multaPorAtrasoTipo === 'valor' ? 'border-amber-400 bg-amber-100/80 dark:border-amber-500/60 dark:bg-amber-900/40' : 'border-amber-200/70 bg-white/50 hover:border-amber-300 dark:border-amber-800/50 dark:bg-slate-800/30 dark:hover:border-amber-700/60'}`}>
+                      <input type="radio" name="multaTipo" checked={form.multaPorAtrasoTipo === 'valor'} onChange={() => set('multaPorAtrasoTipo', 'valor')} className="sr-only" />
+                      <span className={`text-sm font-medium ${form.multaPorAtrasoTipo === 'valor' ? 'text-amber-800 dark:text-amber-200' : 'text-gray-700 dark:text-slate-300'}`}>Valor fixo (R$)</span>
+                    </label>
+                  </div>
                 </div>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Periodo da multa</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Periodo da multa</span>
                   <select value={form.multaPorAtrasoPeriodo} onChange={e => set('multaPorAtrasoPeriodo', e.target.value as 'dia' | 'semana' | 'mes')} className={MODAL_INPUT_CLASS}>
                     <option value="dia">Por dia</option>
                     <option value="semana">Por semana</option>
@@ -187,11 +190,11 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
                   </select>
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                  <span className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     {form.multaPorAtrasoTipo === 'percentual' ? 'Percentual da multa' : 'Valor da multa'}
                   </span>
-                  <input type="text" inputMode="decimal" value={form.multaPorAtrasoValor} onChange={e => set('multaPorAtrasoValor', e.target.value)}
-                    placeholder={form.multaPorAtrasoTipo === 'percentual' ? 'Ex: 2' : 'Ex: 50,00'} className={MODAL_INPUT_CLASS} />
+                  <input type="text" inputMode="decimal" value={form.multaPorAtrasoValor} onChange={e => set('multaPorAtrasoValor', form.multaPorAtrasoTipo === 'valor' ? formatCurrencyInput(e.target.value) : e.target.value)}
+                    placeholder={form.multaPorAtrasoTipo === 'percentual' ? 'Ex: 2' : '0,00'} className={MODAL_INPUT_CLASS} />
                 </label>
               </div>
             )}

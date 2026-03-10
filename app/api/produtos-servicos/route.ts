@@ -112,6 +112,7 @@ export async function GET(request: NextRequest) {
     const categoria = searchParams.get('categoria')?.trim()
     const marca = searchParams.get('marca')?.trim()
     const busca = searchParams.get('busca')?.trim()
+    const estoqueBaixoFilter = searchParams.get('estoqueBaixo') === 'true'
 
     if (tipo && !ITEM_TYPES.includes(tipo as (typeof ITEM_TYPES)[number])) {
       return NextResponse.json({ error: 'Tipo invalido' }, { status: 400 })
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
       searchOr.push({ descricao: { contains: busca, mode: 'insensitive' } })
     }
 
-    const where: Prisma.ProdutoServicoWhereInput = {
+    let where: Prisma.ProdutoServicoWhereInput = {
       userId,
       ...(onlyActive === 'true' ? { ativo: true } : {}),
       ...(onlyActive === 'false' ? { ativo: false } : {}),
@@ -168,6 +169,20 @@ export async function GET(request: NextRequest) {
             OR: searchOr,
           }
         : {}),
+    }
+
+    if (estoqueBaixoFilter) {
+      const lowStockRows = await prisma.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT id FROM "produtos_servicos"
+          WHERE "userId" = ${userId}
+            AND "tipo" = 'produto'
+            AND "controlaEstoque" = true
+            AND COALESCE("estoqueAtual", 0) <= COALESCE("estoqueMinimo", 0)
+        `
+      )
+      const lowStockIds = lowStockRows.map((r) => r.id)
+      where = { ...where, id: { in: lowStockIds.length > 0 ? lowStockIds : [''] } }
     }
 
     if (paginated) {

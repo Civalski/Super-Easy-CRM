@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from '@/lib/icons'
 import { ConfirmDialog } from '@/components/common'
+import { toast } from '@/lib/toast'
 import {
   ClientesHeader,
   ClientesFilters,
@@ -23,6 +25,7 @@ type OptionalFilterKey =
   | 'revenueRange'
 
 export default function ClientesPage() {
+  const router = useRouter()
   const [searchInput, setSearchInput] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [enabledFilters, setEnabledFilters] = useState<OptionalFilterKey[]>([])
@@ -94,6 +97,7 @@ export default function ClientesPage() {
     savingEdit,
     setPage,
     setProfile,
+    fetchClientes,
     setClienteToDelete,
     openCreateDrawer,
     closeCreateDrawer,
@@ -110,9 +114,6 @@ export default function ClientesPage() {
     handleEditAddCustomField,
     handleEditRemoveCustomField,
     handleUpdateCliente,
-    backupLoading,
-    handleDownloadBackup,
-    handleRestoreBackup,
   } = useClientesPage({ queryFilter })
 
   const hasActiveFilters = Boolean(
@@ -155,6 +156,26 @@ export default function ClientesPage() {
     setPage(1)
   }
 
+  const handleExportCsv = async () => {
+    try {
+      const res = await fetch('/api/clientes/backup?format=csv')
+      if (!res.ok) throw new Error('Falha ao gerar CSV')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backup-clientes-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Erro ao exportar CSV')
+    }
+  }
+
+  const triggerImportClick = () => {
+    router.push('/clientes/importar?auto=1')
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -171,9 +192,8 @@ export default function ClientesPage() {
       <ClientesHeader
         onCreateClick={openCreateDrawer}
         onFilterClick={() => setFiltersOpen((prev) => !prev)}
-        onDownloadBackup={handleDownloadBackup}
-        onRestoreBackup={handleRestoreBackup}
-        backupLoading={backupLoading}
+        onExportCsvClick={handleExportCsv}
+        onImportClick={triggerImportClick}
         searchValue={searchInput}
         onSearchChange={setSearchInput}
       />
@@ -253,7 +273,11 @@ export default function ClientesPage() {
         title="Excluir cliente"
         description={
           clienteToDelete
-            ? `Deseja realmente excluir ${clienteToDelete.nome}? Esta acao nao pode ser desfeita.`
+            ? `Deseja realmente excluir ${clienteToDelete.nome}? Esta acao nao pode ser desfeita.${
+                (clienteToDelete.orcamentos ?? 0) > 0
+                  ? ` O(s) ${clienteToDelete.orcamentos} orcamento(s) em aberto tambem sera(o) excluido(s).`
+                  : ''
+              }`
             : undefined
         }
         confirmLabel="Sim, excluir"

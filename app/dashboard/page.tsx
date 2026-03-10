@@ -9,7 +9,6 @@ import {
   ValorPipelineChart,
   FaturamentoPerdaLineChart,
   TarefasStatusChart,
-  AtividadesRecentes,
   DashboardLoading,
   FluxoCaixaResumo,
 } from '@/components/features/dashboard'
@@ -64,14 +63,15 @@ export default function Dashboard() {
         data={data}
         showCharts={dateFilter === 'week' || dateFilter === 'month'}
         dateFilter={dateFilter}
+        onRefreshRequest={handleRefresh}
       />
 
       <div className="mb-6">
-        <DashboardGoals goals={goals} loading={goalsLoading} />
+        <FluxoCaixaResumo fluxo={fluxo} />
       </div>
 
       <div className="mb-6">
-        <FluxoCaixaResumo fluxo={fluxo} />
+        <DashboardGoals goals={goals} loading={goalsLoading} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
@@ -87,12 +87,11 @@ export default function Dashboard() {
         <FaturamentoPerdaLineChart data={data.faturamentoPerdaSerie} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="mb-6">
         <TarefasStatusChart
           tarefasPorStatus={data.tarefasPorStatus}
           oportunidadesCount={data.oportunidadesCount}
         />
-        <AtividadesRecentes onRefreshRequest={handleRefresh} />
       </div>
     </div>
   )

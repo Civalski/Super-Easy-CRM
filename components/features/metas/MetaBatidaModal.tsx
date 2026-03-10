@@ -120,7 +120,7 @@ export function MetaBatidaModal({
               Você bateu a meta <span className="font-semibold text-gray-900 dark:text-white">{title}</span>!
             </p>
             <blockquote className="mt-3 text-sm italic text-gray-600 dark:text-gray-400">
-              "{fraseMotivacional.texto}"
+              &ldquo;{fraseMotivacional.texto}&rdquo;
               {fraseMotivacional.autor && (
                 <cite className="mt-1 block not-italic text-gray-500 dark:text-gray-500">
                   — {fraseMotivacional.autor}

@@ -13,6 +13,7 @@ const ALLOWED_STATUS = new Set(['pendente', 'parcial', 'pago', 'atrasado', 'canc
 const ALLOWED_TIPO_CONTA = new Set(['receber', 'pagar'])
 const ALLOWED_TIPO_MOVIMENTO = new Set(['entrada', 'saida', 'estorno'])
 const ALLOWED_AMBIENTE = new Set(['geral', 'pessoal'])
+const ALLOWED_AMBIENTE_QUERY = new Set(['geral', 'pessoal', 'total'])
 const RECURRING_MONTHS_AHEAD = 6
 
 async function ensurePremiumAccess(userId: string) {
@@ -107,17 +108,17 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const tipo = searchParams.get('tipo')
     const ambienteParam = searchParams.get('ambiente')
-    const ambiente = ambienteParam && ALLOWED_AMBIENTE.has(ambienteParam) ? ambienteParam : 'geral'
+    const ambienteQuery = ambienteParam && ALLOWED_AMBIENTE_QUERY.has(ambienteParam) ? ambienteParam : 'geral'
     const paginated = searchParams.get('paginated') === 'true'
 
     const where: {
       userId: string
-      ambiente: string
+      ambiente?: string | { in: string[] }
       status?: string
       tipo?: string
     } = {
       userId,
-      ambiente,
+      ...(ambienteQuery === 'total' ? { ambiente: { in: ['geral', 'pessoal'] } } : { ambiente: ambienteQuery }),
       ...(status && ALLOWED_STATUS.has(status) ? { status } : {}),
       ...(tipo && ALLOWED_TIPO_CONTA.has(tipo) ? { tipo } : {}),
     }
@@ -128,7 +129,11 @@ export async function GET(request: NextRequest) {
       const skip = (page - 1) * limit
 
       const dynamicWhere: Prisma.Sql[] = [Prisma.sql`"userId" = ${userId}`]
-      dynamicWhere.push(Prisma.sql`"ambiente" = ${ambiente}`)
+      dynamicWhere.push(
+        ambienteQuery === 'total'
+          ? Prisma.sql`"ambiente" IN ('geral', 'pessoal')`
+          : Prisma.sql`"ambiente" = ${ambienteQuery}`
+      )
       if (where.status) {
         dynamicWhere.push(Prisma.sql`"status" = ${where.status}`)
       }
@@ -191,7 +196,7 @@ export async function GET(request: NextRequest) {
             ), 0) AS "pagarEmAberto"
           FROM "contas_receber"
           WHERE "userId" = ${userId}
-            AND "ambiente" = ${ambiente}
+            AND ${ambienteQuery === 'total' ? Prisma.sql`"ambiente" IN ('geral', 'pessoal')` : Prisma.sql`"ambiente" = ${ambienteQuery}`}
         `),
       ])
 
@@ -328,6 +333,10 @@ export async function POST(request: NextRequest) {
       }
 
       const payload = body as Record<string, unknown>
+    const descricao = typeof payload.descricao === 'string' ? payload.descricao.trim() : ''
+    if (!descricao) {
+      return NextResponse.json({ error: 'Nome da conta e obrigatorio' }, { status: 400 })
+    }
     const valorTotal = parseMoney(payload.valorTotal)
     const valorRecebido = parseMoney(payload.valorRecebido ?? 0)
 
@@ -379,6 +388,12 @@ export async function POST(request: NextRequest) {
     if (recorrenteMensal && !dataVencimento) {
       return NextResponse.json(
         { error: 'Informe a primeira data para recorrencia mensal' },
+        { status: 400 }
+      )
+    }
+    if (recorrenteMensal && parcelas !== null && parcelas > 1) {
+      return NextResponse.json(
+        { error: 'Nao e permitido combinar mensal automatico com parcelado. Escolha apenas uma opcao.' },
         { status: 400 }
       )
     }
@@ -445,7 +460,7 @@ export async function POST(request: NextRequest) {
             funcionarioId: typeof payload.funcionarioId === 'string' ? payload.funcionarioId : null,
             ambiente,
             tipo,
-            descricao: typeof payload.descricao === 'string' ? payload.descricao : null,
+            descricao,
             valorTotal: valorParcela,
             valorRecebido: valorInicial,
             autoDebito,

@@ -12,6 +12,8 @@ import {
   X,
   FilterX,
   MoreVertical,
+  NoSymbol,
+  CheckCircle2,
 } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
@@ -67,6 +69,7 @@ interface FilterState {
   tipo: 'todos' | 'produto' | 'servico'
   status: 'todos' | 'ativos' | 'inativos'
   categoria: string
+  estoqueBaixo: boolean
 }
 
 interface PaginationMeta {
@@ -198,15 +201,17 @@ export default function ProdutosPage() {
     tipo: 'todos',
     status: 'todos',
     categoria: '',
+    estoqueBaixo: false,
   })
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({
     busca: '',
     tipo: 'todos',
     status: 'todos',
     categoria: '',
+    estoqueBaixo: false,
   })
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}`
+  const filtrosKey = `${appliedFilters.busca}|${appliedFilters.tipo}|${appliedFilters.status}|${appliedFilters.categoria}|${appliedFilters.estoqueBaixo}`
   const lastFiltrosKeyRef = useRef(filtrosKey)
 
   const fetchItems = useCallback(async (targetPage: number) => {
@@ -231,6 +236,9 @@ export default function ProdutosPage() {
       }
       if (appliedFilters.categoria.trim()) {
         params.set('categoria', appliedFilters.categoria.trim())
+      }
+      if (appliedFilters.estoqueBaixo) {
+        params.set('estoqueBaixo', 'true')
       }
 
       const res = await fetch(`/api/produtos-servicos?${params.toString()}`)
@@ -299,7 +307,8 @@ export default function ProdutosPage() {
           prev.busca === filters.busca &&
           prev.tipo === filters.tipo &&
           prev.status === filters.status &&
-          prev.categoria === filters.categoria
+          prev.categoria === filters.categoria &&
+          prev.estoqueBaixo === filters.estoqueBaixo
         ) {
           return prev
         }
@@ -639,29 +648,69 @@ export default function ProdutosPage() {
           className="inline-flex items-center gap-1 rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
         >
           <Plus className="h-4 w-4" />
-          Novo produto/servico
+          Novo produto
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <StatCard label="Total" value={stats.total} valueClass="text-gray-900 dark:text-white" />
-        <StatCard label="Ativos" value={stats.ativos} valueClass="text-emerald-600 dark:text-emerald-400" />
-        <StatCard label="Produtos" value={stats.produtos} valueClass="text-cyan-600 dark:text-cyan-400" />
-        <StatCard label="Servicos" value={stats.servicos} valueClass="text-indigo-600 dark:text-indigo-400" />
-        <StatCard label="Estoque baixo" value={stats.estoqueBaixo} valueClass="text-amber-600 dark:text-amber-400" />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <StatCard label="Total" value={stats.total} valueClass="text-gray-900 dark:text-white" compact />
+        <StatCard
+          label="Ativos"
+          value={stats.ativos}
+          valueClass="text-emerald-600 dark:text-emerald-400"
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              status: prev.status === 'ativos' ? 'todos' : 'ativos',
+              estoqueBaixo: false,
+            }))
+          }
+          isActive={appliedFilters.status === 'ativos'}
+          compact
+        />
+        <StatCard
+          label="Inativos"
+          value={stats.total - stats.ativos}
+          valueClass="text-amber-600 dark:text-amber-400"
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              status: prev.status === 'inativos' ? 'todos' : 'inativos',
+              estoqueBaixo: false,
+            }))
+          }
+          isActive={appliedFilters.status === 'inativos'}
+          compact
+        />
+        <StatCard label="Produtos" value={stats.produtos} valueClass="text-gray-900 dark:text-white" compact />
+        <StatCard label="Servicos" value={stats.servicos} valueClass="text-gray-900 dark:text-white" compact />
+        <StatCard
+          label="Estoque baixo"
+          value={stats.estoqueBaixo}
+          valueClass="text-red-600 dark:text-red-400"
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              estoqueBaixo: !prev.estoqueBaixo,
+              status: prev.estoqueBaixo ? prev.status : 'todos',
+            }))
+          }
+          isActive={appliedFilters.estoqueBaixo}
+          compact
+        />
       </div>
 
       {showForm && (
       <SideCreateDrawer
         open={showForm}
         onClose={() => resetForm(true)}
-        maxWidthClass="max-w-3xl"
+        maxWidthClass="max-w-xl"
       >
         <div className="h-full overflow-y-auto p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                {editingId ? 'Editar produto/servico' : 'Novo produto/servico'}
+                {editingId ? 'Editar produto' : 'Novo produto'}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Preencha os dados para cadastrar no catalogo
@@ -677,44 +726,67 @@ export default function ProdutosPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mx-auto w-full max-w-3xl space-y-4">
+          <form onSubmit={handleSubmit} className="mx-auto w-full space-y-4">
           <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Identificacao
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-              <div className="inline-flex items-center rounded-lg border border-dashed border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-700 xl:col-span-4 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-300">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="inline-flex items-center rounded-lg border border-dashed border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-700 sm:col-span-2 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-300">
                 {editingId
                   ? `Codigo: ${editingCode || 'Nao definido'}`
                   : loadingCodigoPreview
                     ? 'Gerando proximo codigo...'
                     : `Proximo codigo: ${codigoPreview || '-'}`}
               </div>
+              <label
+                className={`relative inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all sm:col-span-2 ${
+                  form.ativo
+                    ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-950/40'
+                    : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800'
+                } ${form.ativo ? 'text-emerald-800 dark:text-emerald-200' : 'text-gray-700 dark:text-gray-300'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.ativo}
+                  onChange={(e) => setForm((prev) => ({ ...prev, ativo: e.target.checked }))}
+                  className="sr-only"
+                />
+                <span
+                  className={`relative flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    form.ativo ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      form.ativo ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </span>
+                <span>
+                  <span className="block">Ativo</span>
+                  <span className="text-[10px] opacity-80">
+                    {form.ativo ? 'Disponível para vendas' : 'Inativo'}
+                  </span>
+                </span>
+              </label>
+
               <input
                 type="text"
                 value={form.nome}
                 onChange={(e) => setForm((prev) => ({ ...prev, nome: e.target.value }))}
                 placeholder="Nome"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-4 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
                 required
               />
               <select
                 value={form.tipo}
                 onChange={(e) => handleTypeChange(e.target.value as 'produto' | 'servico')}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-2 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               >
                 <option value="produto">Produto</option>
-                <option value="servico">Servico (como produto)</option>
+                <option value="servico">Servico</option>
               </select>
-              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 xl:col-span-2 dark:border-gray-600 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={form.ativo}
-                  onChange={(e) => setForm((prev) => ({ ...prev, ativo: e.target.checked }))}
-                  className="h-4 w-4 rounded-sm border-gray-300 text-cyan-600"
-                />
-                Ativo
-              </label>
 
               <input
                 type="text"
@@ -722,26 +794,26 @@ export default function ProdutosPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, categoria: e.target.value }))}
                 placeholder="Categoria"
                 list="produto-categorias"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-3 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
               <input
                 type="text"
                 value={form.marca}
                 onChange={(e) => setForm((prev) => ({ ...prev, marca: e.target.value }))}
                 placeholder="Marca"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-3 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
               <input
                 type="text"
                 value={form.codigoBarras}
                 onChange={(e) => setForm((prev) => ({ ...prev, codigoBarras: e.target.value }))}
                 placeholder="Codigo de barras"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-4 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm sm:col-span-2 dark:border-gray-600 dark:bg-gray-800"
               />
               <select
                 value={form.unidade}
                 onChange={(e) => setForm((prev) => ({ ...prev, unidade: e.target.value }))}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-2 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               >
                 {UNIT_OPTIONS.map((unit) => (
                   <option key={unit} value={unit}>
@@ -755,7 +827,7 @@ export default function ProdutosPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, descricao: e.target.value }))}
                 placeholder="Descricao"
                 rows={2}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-12 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm sm:col-span-2 dark:border-gray-600 dark:bg-gray-800"
               />
             </div>
           </div>
@@ -764,31 +836,29 @@ export default function ProdutosPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Comercial
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input
                 type="text"
                 value={form.custoPadrao}
                 onChange={(e) => handleCustoPadraoChange(e.target.value)}
                 placeholder="Valor comprado"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-3 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
               <input
                 type="text"
                 value={form.precoPadrao}
                 onChange={(e) => handlePrecoPadraoChange(e.target.value)}
                 placeholder="Valor a ser vendido"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-3 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
               {showLucroField && (
-                <div className="xl:col-span-2">
-                  <input
-                    type="text"
-                    value={form.margemLucroPercentual}
-                    onChange={(e) => handleMargemLucroChange(e.target.value)}
-                    placeholder="Lucro %"
-                    className={`w-full rounded-lg border bg-white px-3 py-2 text-sm dark:bg-gray-800 ${lucroInputClass}`}
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={form.margemLucroPercentual}
+                  onChange={(e) => handleMargemLucroChange(e.target.value)}
+                  placeholder="Lucro %"
+                  className={`rounded-lg border bg-white px-3 py-2 text-sm dark:bg-gray-800 ${lucroInputClass}`}
+                />
               )}
               <input
                 type="number"
@@ -797,33 +867,35 @@ export default function ProdutosPage() {
                 value={form.garantiaDias}
                 onChange={(e) => setForm((prev) => ({ ...prev, garantiaDias: e.target.value }))}
                 placeholder="Garantia (dias)"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-3 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={form.prazoEntregaDias}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, prazoEntregaDias: e.target.value }))
-                }
-                placeholder="Prazo de entrega"
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-1 dark:border-gray-600 dark:bg-gray-800"
-              />
-              <select
-                value={form.prazoEntregaUnidade}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    prazoEntregaUnidade: e.target.value as FormState['prazoEntregaUnidade'],
-                  }))
-                }
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-2 dark:border-gray-600 dark:bg-gray-800"
-              >
-                <option value="dias">Dias</option>
-                <option value="horas">Horas</option>
-                <option value="mes">Mes</option>
-              </select>
+              <div className="flex gap-2 sm:col-span-2">
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.prazoEntregaDias}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, prazoEntregaDias: e.target.value }))
+                  }
+                  placeholder="Prazo de entrega"
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                />
+                <select
+                  value={form.prazoEntregaUnidade}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      prazoEntregaUnidade: e.target.value as FormState['prazoEntregaUnidade'],
+                    }))
+                  }
+                  className="w-24 shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                >
+                  <option value="dias">Dias</option>
+                  <option value="horas">Horas</option>
+                  <option value="mes">Mes</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -831,17 +903,34 @@ export default function ProdutosPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Operacional
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {form.tipo === 'produto' && (
-                <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 xl:col-span-4 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <label
+                  className={`relative inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                    form.controlaEstoque
+                      ? 'border-cyan-400 bg-cyan-50 dark:border-cyan-500/60 dark:bg-cyan-950/40'
+                      : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800'
+                  } ${form.controlaEstoque ? 'text-cyan-800 dark:text-cyan-200' : 'text-gray-700 dark:text-gray-300'}`}
+                >
                   <input
                     type="checkbox"
                     checked={form.controlaEstoque}
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, controlaEstoque: e.target.checked }))
                     }
-                    className="h-4 w-4 rounded-sm border-gray-300 text-cyan-600"
+                    className="sr-only"
                   />
+                  <span
+                    className={`relative flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      form.controlaEstoque ? 'bg-cyan-500' : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        form.controlaEstoque ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </span>
                   Controla estoque
                 </label>
               )}
@@ -852,14 +941,14 @@ export default function ProdutosPage() {
                     value={form.estoqueAtual}
                     onChange={(e) => setForm((prev) => ({ ...prev, estoqueAtual: e.target.value }))}
                     placeholder="Estoque atual"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-4 dark:border-gray-600 dark:bg-gray-800"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
                   />
                   <input
                     type="text"
                     value={form.estoqueMinimo}
                     onChange={(e) => setForm((prev) => ({ ...prev, estoqueMinimo: e.target.value }))}
                     placeholder="Estoque minimo"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-4 dark:border-gray-600 dark:bg-gray-800"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
                   />
                 </>
               )}
@@ -873,7 +962,7 @@ export default function ProdutosPage() {
                     setForm((prev) => ({ ...prev, tempoPadraoMinutos: e.target.value }))
                   }
                   placeholder="Tempo padrao (min)"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-4 dark:border-gray-600 dark:bg-gray-800"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
                 />
               )}
               <textarea
@@ -883,7 +972,7 @@ export default function ProdutosPage() {
                 }
                 placeholder="Observacoes internas"
                 rows={2}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm xl:col-span-12 dark:border-gray-600 dark:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm sm:col-span-2 dark:border-gray-600 dark:bg-gray-800"
               />
             </div>
           </div>
@@ -959,6 +1048,7 @@ export default function ProdutosPage() {
                 tipo: 'todos',
                 status: 'todos',
                 categoria: '',
+                estoqueBaixo: false,
               })
             }
             className="inline-flex items-center justify-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 md:col-span-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -979,33 +1069,32 @@ export default function ProdutosPage() {
         )}
 
         {!loading && filteredItems.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-5">
             {filteredItems.map((item) => {
-              const margem = item.precoPadrao - (item.custoPadrao || 0)
-              const margemPerc = item.custoPadrao > 0 ? (margem / item.custoPadrao) * 100 : 0
+              const margemPerc = item.custoPadrao > 0 ? ((item.precoPadrao - (item.custoPadrao || 0)) / item.custoPadrao) * 100 : 0
 
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-3 rounded-lg border border-gray-100 p-3 dark:border-gray-700"
+                  className="flex flex-col gap-1.5 rounded-lg border border-gray-100 p-2 dark:border-gray-700"
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {item.tipo === 'produto' ? (
-                        <Box className="h-4 w-4 text-cyan-500" />
+                        <Box className="h-3.5 w-3.5 shrink-0 text-cyan-500" />
                       ) : (
-                        <Wrench className="h-4 w-4 text-indigo-500" />
+                        <Wrench className="h-3.5 w-3.5 shrink-0 text-indigo-500" />
                       )}
-                      <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
                         {item.nome}
                       </p>
                       {item.codigo && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                           {item.codigo}
                         </span>
                       )}
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                           item.ativo
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                             : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
@@ -1015,63 +1104,29 @@ export default function ProdutosPage() {
                       </span>
                     </div>
 
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {item.tipo === 'servico' ? 'Servico' : 'Produto'} | Unidade: {item.unidade}
-                      {item.categoria ? ` | Categoria: ${item.categoria}` : ''}
-                      {item.marca ? ` | Marca: ${item.marca}` : ''}
+                    <p className="truncate text-[10px] text-gray-500 dark:text-gray-400">
+                      {item.tipo === 'servico' ? 'Servico' : 'Produto'} · {item.unidade}
+                      {item.categoria ? ` · ${item.categoria}` : ''}
                     </p>
-                    {item.codigoBarras && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Codigo de barras: {item.codigoBarras}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Valor vendido: {formatCurrency(item.precoPadrao)} | Valor comprado: {formatCurrency(item.custoPadrao || 0)}
-                      {item.precoPadrao > 0 && (
-                        <>
-                          {' '}
-                          | Margem: {formatCurrency(margem)} ({margemPerc.toFixed(1)}%)
-                        </>
+                    <p className="truncate text-[10px] text-gray-500 dark:text-gray-400">
+                      {formatCurrency(item.precoPadrao)}
+                      {item.precoPadrao > 0 && item.custoPadrao > 0 && (
+                        <> · Margem {margemPerc.toFixed(0)}%</>
                       )}
                     </p>
-                    {(item.garantiaDias != null || item.prazoEntregaDias != null) && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {item.garantiaDias != null ? `Garantia: ${item.garantiaDias} dias` : ''}
-                        {item.garantiaDias != null && item.prazoEntregaDias != null ? ' | ' : ''}
-                        {item.prazoEntregaDias != null ? `Prazo: ${item.prazoEntregaDias} dias` : ''}
-                      </p>
-                    )}
-                    {item.tipo === 'produto' && item.controlaEstoque && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Estoque: {item.estoqueAtual} | Minimo: {item.estoqueMinimo}
-                      </p>
-                    )}
-                    {item.tipo === 'servico' && item.tempoPadraoMinutos != null && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Tempo padrao: {item.tempoPadraoMinutos} min
-                      </p>
-                    )}
-                    {item.descricao && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.descricao}</p>
-                    )}
-                    {item.observacoesInternas && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Obs: {item.observacoesInternas}
-                      </p>
-                    )}
                   </div>
 
-                  <div className="relative flex justify-end">
+                  <div className="relative mt-auto flex justify-end">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         setOpenMenuId(openMenuId === item.id ? null : item.id)
                       }}
-                      className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="rounded p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
                       aria-label="Acoes"
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      <MoreVertical className="h-3.5 w-3.5" />
                     </button>
                     {openMenuId === item.id && (
                       <div
@@ -1097,7 +1152,17 @@ export default function ProdutosPage() {
                           }}
                           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
                         >
-                          {item.ativo ? 'Desativar' : 'Ativar'}
+                          {item.ativo ? (
+                            <>
+                              <NoSymbol className="h-3.5 w-3.5" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Ativar
+                            </>
+                          )}
                         </button>
                         <button
                           type="button"
@@ -1153,15 +1218,37 @@ function StatCard({
   label,
   value,
   valueClass,
+  onClick,
+  isActive,
+  compact,
 }: {
   label: string
   value: number
   valueClass: string
+  onClick?: () => void
+  isActive?: boolean
+  compact?: boolean
 }) {
+  const isClickable = Boolean(onClick)
   return (
-    <div className="crm-card p-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-      <p className={`text-2xl font-bold ${valueClass}`}>{value}</p>
+    <div
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? onClick : undefined}
+      onKeyDown={
+        isClickable && onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`crm-card ${compact ? 'p-2' : 'p-4'} ${isClickable ? 'cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''} ${isActive ? 'ring-1 ring-purple-500 dark:ring-purple-400' : ''}`}
+    >
+      <p className={`text-gray-500 dark:text-gray-400 ${compact ? 'text-[10px]' : 'text-xs'}`}>{label}</p>
+      <p className={`font-bold ${valueClass} ${compact ? 'text-lg' : 'text-2xl'}`}>{value}</p>
     </div>
   )
 }

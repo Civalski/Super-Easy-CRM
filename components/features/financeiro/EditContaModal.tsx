@@ -79,7 +79,7 @@ export default function EditContaModal({ open, onClose, saving, conta, form, onF
             <label className="space-y-1.5">
               <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-slate-300">Ambiente</span>
               <select value={form.ambiente} onChange={e => set('ambiente', e.target.value as AmbienteFinanceiro)} className={INPUT_FOCUS}>
-                <option value="geral">Geral</option>
+                <option value="geral">Empresarial</option>
                 <option value="pessoal">Pessoal</option>
               </select>
             </label>

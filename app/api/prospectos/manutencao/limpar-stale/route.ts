@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
 import { descartarContatadosStale } from '@/lib/prospectos/descartarContatadosStale'
@@ -31,14 +32,14 @@ export async function POST(request: NextRequest) {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)
 
-    const where = {
+    const where: Prisma.ProspectoWhereInput = {
       userId,
       status: 'em_contato',
       OR: [
         { ultimoContato: { lt: cutoff } },
         { ultimoContato: null, updatedAt: { lt: cutoff } },
       ],
-    } as const
+    }
 
     const affected = await prisma.prospecto.count({ where })
 

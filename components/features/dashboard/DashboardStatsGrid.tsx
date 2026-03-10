@@ -7,6 +7,7 @@ import { StatCard } from '@/components/common'
 import { Users, Briefcase, Calendar, TrendingUp } from '@/lib/icons'
 import { formatCurrency } from '@/lib/format'
 import { DashboardLineChart7Dias } from './DashboardLineChart7Dias'
+import { AtividadesRecentes } from './AtividadesRecentes'
 
 interface DashboardData {
   pedidosCount: number
@@ -21,16 +22,16 @@ interface DashboardData {
   valorPerdidos: number
   vendasPorDia: Array<{ date: string; valor: number }>
   orcamentosCanceladosPorDia: Array<{ date: string; valor: number }>
-  contatosFeitosPorDia: Array<{ date: string; count: number }>
 }
 
 interface DashboardStatsGridProps {
   data: DashboardData
   showCharts?: boolean
   dateFilter?: 'day' | 'week' | 'month'
+  onRefreshRequest?: () => void
 }
 
-export function DashboardStatsGrid({ data, showCharts = true, dateFilter = 'week' }: DashboardStatsGridProps) {
+export function DashboardStatsGrid({ data, showCharts = true, dateFilter = 'week', onRefreshRequest }: DashboardStatsGridProps) {
   const valorPedidosSemPagamentoFormatado = formatCurrency(data.pedidosSemPagamentoValor || 0)
   const valorOrcamentosEmAbertoFormatado = formatCurrency(data.orcamentosEmAbertoValor || 0)
   const valorTotalFormatado = formatCurrency(data.valorTotal || 0)
@@ -86,13 +87,7 @@ export function DashboardStatsGrid({ data, showCharts = true, dateFilter = 'week
           type="valor"
           periodType={dateFilter === 'month' ? 'week' : 'day'}
         />
-        <DashboardLineChart7Dias
-          title="Contatos feitos"
-          data={data.contatosFeitosPorDia ?? []}
-          color="blue"
-          type="count"
-          periodType={dateFilter === 'month' ? 'week' : 'day'}
-        />
+        <AtividadesRecentes compact onRefreshRequest={onRefreshRequest} />
       </div>
       )}
     </div>

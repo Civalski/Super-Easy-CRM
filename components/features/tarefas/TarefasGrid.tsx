@@ -14,6 +14,7 @@ interface TarefasGridProps {
     onVoltarParaPendente: (tarefaId: string) => void
     onConcluirTarefa: (tarefaId: string) => void
     onExcluirTarefa: (tarefaId: string) => void
+    onEditTarefa: (tarefaId: string) => void
 }
 
 export function TarefasGrid({
@@ -24,6 +25,7 @@ export function TarefasGrid({
     onVoltarParaPendente,
     onConcluirTarefa,
     onExcluirTarefa,
+    onEditTarefa,
 }: TarefasGridProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -37,6 +39,7 @@ export function TarefasGrid({
                     onVoltarParaPendente={onVoltarParaPendente}
                     onConcluirTarefa={onConcluirTarefa}
                     onExcluirTarefa={onExcluirTarefa}
+                    onEditTarefa={onEditTarefa}
                 />
             ))}
         </div>

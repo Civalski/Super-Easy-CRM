@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, SideCreateDrawer } from '@/components/common'
 import {
@@ -175,7 +175,7 @@ function getProgressBg(value: number, completed: boolean) {
   return 'text-red-600 dark:text-red-400'
 }
 
-export default function MetasPage() {
+function MetasPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { confirm } = useConfirm()
@@ -1061,6 +1061,14 @@ export default function MetasPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function MetasPage() {
+  return (
+    <Suspense fallback={null}>
+      <MetasPageContent />
+    </Suspense>
   )
 }
 

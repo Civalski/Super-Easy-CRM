@@ -95,6 +95,32 @@ export interface Cliente {
   dataNascimento: string | null
   observacoes: string | null
   camposPersonalizados: CampoPersonalizado[] | null
+  // Campos B2B (leads convertidos de CSV)
+  cnpj?: string | null
+  matrizFilial?: string | null
+  razaoSocial?: string | null
+  nomeFantasia?: string | null
+  capitalSocial?: string | null
+  porte?: string | null
+  qualificacaoProfissional?: string | null
+  naturezaJuridica?: string | null
+  situacaoCadastral?: string | null
+  dataSituacaoCadastral?: string | null
+  motivoSituacaoCadastral?: string | null
+  dataAbertura?: string | null
+  tipoLogradouro?: string | null
+  logradouro?: string | null
+  numeroEndereco?: string | null
+  complemento?: string | null
+  bairro?: string | null
+  telefone2?: string | null
+  fax?: string | null
+  cnaePrincipal?: string | null
+  cnaePrincipalDesc?: string | null
+  cnaesSecundarios?: string | null
+  mei?: string | null
+  dataEntradaMei?: string | null
+  simples?: string | null
   createdAt: string
   updatedAt: string
   _count: {

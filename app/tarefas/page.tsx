@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { SideCreateDrawer } from '@/components/common'
-import { Bell, Loader2, Save, X } from '@/lib/icons'
+import { Bell, Loader2, RefreshCw, Save, X } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import {
@@ -14,6 +16,11 @@ import {
   type Tarefa,
   type TabType,
 } from '@/components/features/tarefas'
+
+const EditTarefaDrawer = dynamic(
+  () => import('@/components/features/tarefas/EditTarefaDrawer'),
+  { ssr: false }
+)
 
 interface ClienteOption {
   id: string
@@ -49,8 +56,10 @@ const getNowDateTime = () => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
-export default function TarefasPage() {
+function TarefasPageContent() {
   const { confirm } = useConfirm()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -70,6 +79,7 @@ export default function TarefasPage() {
   const [atualizandoTarefa, setAtualizandoTarefa] = useState<string | null>(null)
   const [excluindoTarefa, setExcluindoTarefa] = useState<string | null>(null)
   const [showCreateDrawer, setShowCreateDrawer] = useState(false)
+  const [editTarefaId, setEditTarefaId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [clientesOptions, setClientesOptions] = useState<ClienteOption[]>([])
   const [oportunidadesOptions, setOportunidadesOptions] = useState<OportunidadeOption[]>([])
@@ -82,9 +92,17 @@ export default function TarefasPage() {
     clienteId: '',
     oportunidadeId: '',
     notificar: false,
+    recorrente: false,
+    recorrenciaFrequencia: 'semanal' as 'diaria' | 'semanal' | 'mensal',
+    recorrenciaQuantidade: 4,
   })
   const filtrosKey = `${activeTab}|${filtroStatus}|${filtroPrioridade}`
   const lastFiltrosKeyRef = useRef(filtrosKey)
+
+  useEffect(() => {
+    const editId = searchParams.get('edit')?.trim()
+    if (editId) setEditTarefaId(editId)
+  }, [searchParams])
 
   const fetchTarefas = useCallback(async (targetPage: number) => {
     try {
@@ -205,7 +223,23 @@ export default function TarefasPage() {
       clienteId: '',
       oportunidadeId: '',
       notificar: false,
+      recorrente: false,
+      recorrenciaFrequencia: 'semanal',
+      recorrenciaQuantidade: 4,
     })
+  }
+
+  const getNextVencimento = (base: string, freq: 'diaria' | 'semanal' | 'mensal', offset: number): string => {
+    const d = new Date(base)
+    if (freq === 'diaria') d.setDate(d.getDate() + offset)
+    else if (freq === 'semanal') d.setDate(d.getDate() + offset * 7)
+    else d.setMonth(d.getMonth() + offset)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const h = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    return `${y}-${m}-${day}T${h}:${min}`
   }
 
   const openCreateDrawer = () => {
@@ -230,26 +264,51 @@ export default function TarefasPage() {
     setCreating(true)
 
     try {
-      const response = await fetch('/api/tarefas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...createForm,
-          clienteId: createForm.clienteId || null,
-          oportunidadeId: createForm.oportunidadeId || null,
-          dataVencimento: createForm.dataVencimento || null,
-        }),
-      })
+      const basePayload = {
+        titulo: createForm.titulo,
+        descricao: createForm.descricao,
+        status: createForm.status,
+        prioridade: createForm.prioridade,
+        clienteId: createForm.clienteId || null,
+        oportunidadeId: createForm.oportunidadeId || null,
+        notificar: createForm.notificar,
+      }
 
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(data?.error || 'Erro ao criar tarefa')
+      const count = createForm.recorrente
+        ? Math.min(Math.max(1, createForm.recorrenciaQuantidade), 24)
+        : 1
+
+      for (let i = 0; i < count; i++) {
+        const dataVencimento = createForm.recorrente
+          ? getNextVencimento(
+              createForm.dataVencimento || getNowDateTime(),
+              createForm.recorrenciaFrequencia,
+              i
+            )
+          : createForm.dataVencimento || null
+
+        const response = await fetch('/api/tarefas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...basePayload,
+            dataVencimento,
+          }),
+        })
+
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          throw new Error(data?.error || 'Erro ao criar tarefa')
+        }
       }
 
       setShowCreateDrawer(false)
       resetCreateForm()
       setPage(1)
       await fetchTarefas(1)
+      if (count > 1) {
+        toast.success(`${count} tarefas criadas`, { description: 'Tarefas recorrentes criadas com sucesso.' })
+      }
     } catch (error: unknown) {
       toast.error('Erro ao criar tarefa', { description: error instanceof Error ? error.message : 'Erro ao criar tarefa' })
     } finally {
@@ -406,6 +465,7 @@ export default function TarefasPage() {
           onVoltarParaPendente={voltarTarefaParaPendente}
           onConcluirTarefa={concluirTarefa}
           onExcluirTarefa={excluirTarefa}
+          onEditTarefa={(id) => setEditTarefaId(id)}
         />
       )}
 
@@ -435,13 +495,34 @@ export default function TarefasPage() {
         </div>
       )}
 
+      {editTarefaId && (
+        <EditTarefaDrawer
+          tarefaId={editTarefaId}
+          onClose={() => {
+            setEditTarefaId(null)
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('edit')
+            const next = params.toString()
+            router.replace(next ? `/tarefas?${next}` : '/tarefas')
+          }}
+          onSaved={() => {
+            setEditTarefaId(null)
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('edit')
+            const next = params.toString()
+            router.replace(next ? `/tarefas?${next}` : '/tarefas')
+            fetchTarefas(page)
+          }}
+        />
+      )}
+
       <SideCreateDrawer
         open={showCreateDrawer}
         onClose={() => {
           setShowCreateDrawer(false)
           resetCreateForm()
         }}
-        maxWidthClass="max-w-4xl"
+        maxWidthClass="max-w-2xl"
       >
         <div className="h-full overflow-y-auto">
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-5">
@@ -620,6 +701,99 @@ export default function TarefasPage() {
               </div>
             </div>
 
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setCreateForm((prev) => ({ ...prev, recorrente: !prev.recorrente }))}
+              onKeyDown={(e) => e.key === 'Enter' && setCreateForm((prev) => ({ ...prev, recorrente: !prev.recorrente }))}
+              className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all border ${
+                createForm.recorrente
+                  ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20 ring-2 ring-cyan-500/30'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-cyan-300 dark:hover:border-cyan-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`p-2 rounded-full ${
+                    createForm.recorrente
+                      ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                  }`}
+                >
+                  <RefreshCw size={20} />
+                </div>
+                <div>
+                  <p
+                    className={`font-medium ${
+                      createForm.recorrente ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Tarefa recorrente
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Criar varias tarefas com mesma data base, repetindo conforme a frequencia
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  createForm.recorrente ? 'bg-cyan-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                    createForm.recorrente ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {createForm.recorrente && (
+              <div className="space-y-3 rounded-xl border border-cyan-200 dark:border-cyan-800/50 bg-cyan-50/50 dark:bg-cyan-950/20 p-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Frequencia</label>
+                    <select
+                      value={createForm.recorrenciaFrequencia}
+                      onChange={(e) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          recorrenciaFrequencia: e.target.value as 'diaria' | 'semanal' | 'mensal',
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="diaria">Diaria</option>
+                      <option value="semanal">Semanal</option>
+                      <option value="mensal">Mensal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Quantidade</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={createForm.recorrenciaQuantidade}
+                      onChange={(e) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          recorrenciaQuantidade: Math.min(24, Math.max(1, parseInt(e.target.value, 10) || 1)),
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Serao criadas {createForm.recorrenciaQuantidade} tarefas com datas de vencimento
+                  {createForm.recorrenciaFrequencia === 'diaria' && ' em dias consecutivos'}
+                  {createForm.recorrenciaFrequencia === 'semanal' && ' em dias consecutivos (semana a semana)'}
+                  {createForm.recorrenciaFrequencia === 'mensal' && ' em meses consecutivos'}
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
               <button
                 type="button"
@@ -644,6 +818,23 @@ export default function TarefasPage() {
         </div>
       </SideCreateDrawer>
     </div>
+  )
+}
+
+export default function TarefasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={32} />
+            <p className="text-gray-600 dark:text-gray-400">Carregando tarefas...</p>
+          </div>
+        </div>
+      }
+    >
+      <TarefasPageContent />
+    </Suspense>
   )
 }
 

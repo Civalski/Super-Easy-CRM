@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import type {
   AmbienteFinanceiro,
+  AmbienteFinanceiroView,
   ContaFinanceira,
   CreateContaForm,
   EditContaForm,
@@ -20,15 +21,19 @@ const EMPTY_STATS: FinanceStats = { total: 0, receber: 0, pagar: 0, receberEmAbe
 
 export function useFinanceiro() {
   const { confirm, prompt } = useConfirm()
-  const [loading, setLoading] = useState(true)
-  const [contas, setContas] = useState<ContaFinanceira[]>([])
-  const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState<PaginationMeta>({ total: 0, page: 1, limit: CONTAS_PAGE_SIZE, pages: 1 })
+  const [loadingReceber, setLoadingReceber] = useState(true)
+  const [loadingPagar, setLoadingPagar] = useState(true)
+  const [contasReceber, setContasReceber] = useState<ContaFinanceira[]>([])
+  const [contasPagar, setContasPagar] = useState<ContaFinanceira[]>([])
+  const [pageReceber, setPageReceber] = useState(1)
+  const [pagePagar, setPagePagar] = useState(1)
+  const [metaReceber, setMetaReceber] = useState<PaginationMeta>({ total: 0, page: 1, limit: CONTAS_PAGE_SIZE, pages: 1 })
+  const [metaPagar, setMetaPagar] = useState<PaginationMeta>({ total: 0, page: 1, limit: CONTAS_PAGE_SIZE, pages: 1 })
   const [stats, setStats] = useState<FinanceStats>(EMPTY_STATS)
   const [fluxo, setFluxo] = useState<FluxoData | null>(null)
   const [saving, setSaving] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
-  const [activeAmbiente, setActiveAmbiente] = useState<AmbienteFinanceiro>('geral')
+  const [activeAmbiente, setActiveAmbiente] = useState<AmbienteFinanceiroView>('geral')
   const [activeTipo, setActiveTipo] = useState<'receber' | 'pagar'>('receber')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -46,7 +51,11 @@ export function useFinanceiro() {
     autoDebito: true, recorrenciaAtiva: true, aplicarNoGrupoRecorrente: true,
   })
 
-  const fetchContas = useCallback(async (targetPage: number, tipoFiltro: 'receber' | 'pagar', ambienteFiltro: AmbienteFinanceiro, signal?: AbortSignal) => {
+  const fetchContasTipo = useCallback(async (tipoFiltro: 'receber' | 'pagar', targetPage: number, ambienteFiltro: AmbienteFinanceiroView, signal?: AbortSignal) => {
+    const setLoading = tipoFiltro === 'receber' ? setLoadingReceber : setLoadingPagar
+    const setContas = tipoFiltro === 'receber' ? setContasReceber : setContasPagar
+    const setMeta = tipoFiltro === 'receber' ? setMetaReceber : setMetaPagar
+    const setPage = tipoFiltro === 'receber' ? setPageReceber : setPagePagar
     try {
       setLoading(true)
       const params = new URLSearchParams({ paginated: 'true', page: String(targetPage), limit: String(CONTAS_PAGE_SIZE), tipo: tipoFiltro, ambiente: ambienteFiltro })
@@ -69,11 +78,11 @@ export function useFinanceiro() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Erro ao carregar financeiro:', error)
-      setContas([]); setMeta((p) => ({ ...p, total: 0, page: targetPage, pages: 1 })); setStats(EMPTY_STATS)
+      setContas([]); setMeta((p) => ({ ...p, total: 0, page: targetPage, pages: 1 }))
     } finally { setLoading(false) }
   }, [])
 
-  const fetchFluxo = useCallback(async (ambienteFiltro: AmbienteFinanceiro, signal?: AbortSignal) => {
+  const fetchFluxo = useCallback(async (ambienteFiltro: AmbienteFinanceiroView, signal?: AbortSignal) => {
     try {
       const res = await fetch(`/api/financeiro/fluxo-caixa?months=6&ambiente=${ambienteFiltro}`, { signal })
       const data = await res.json().catch(() => null)
@@ -86,9 +95,10 @@ export function useFinanceiro() {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchContas(page, activeTipo, activeAmbiente, controller.signal)
+    fetchContasTipo('receber', pageReceber, activeAmbiente, controller.signal)
+    fetchContasTipo('pagar', pagePagar, activeAmbiente, controller.signal)
     return () => controller.abort()
-  }, [fetchContas, page, activeTipo, activeAmbiente])
+  }, [fetchContasTipo, pageReceber, pagePagar, activeAmbiente])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -96,7 +106,7 @@ export function useFinanceiro() {
     return () => controller.abort()
   }, [fetchFluxo, activeAmbiente])
 
-  const gruposContas = useMemo<GrupoContas[]>(() => {
+  const buildGrupos = useCallback((contas: ContaFinanceira[]) => {
     const grouped = new Map<string, ContaFinanceira[]>()
     for (const c of contas) { const gid = c.grupoParcelaId || c.id; const g = grouped.get(gid); if (g) g.push(c); else grouped.set(gid, [c]) }
 
@@ -105,34 +115,50 @@ export function useFinanceiro() {
       const base = sorted[0]
       const datas = sorted.map((c) => c.dataVencimento).filter((d): d is string => Boolean(d)).sort((a, b) => getSortDate(a) - getSortDate(b))
       const isRec = sorted.some((c) => c.recorrenteMensal)
+      const valorRecebidoSum = sorted.reduce((s, c) => s + c.valorRecebido, 0)
       return {
         id: groupId, contas: sorted, titulo: getContaTitulo(base), cliente: getClienteNome(base),
         isParcelado: sorted.length > 1 || (base?.totalParcelas ?? 0) > 1, isRecorrenteMensal: isRec,
         totalParcelas: base?.totalParcelas || sorted.length, parcelasPagas: sorted.filter((c) => c.status === 'pago').length,
-        valorTotal: sorted.reduce((s, c) => s + c.valorTotal, 0), valorRecebido: sorted.reduce((s, c) => s + c.valorRecebido, 0),
-        primeiraData: datas[0] ?? base?.dataVencimento ?? null, ultimaData: datas[datas.length - 1] ?? base?.dataVencimento ?? null,
+        valorTotal: isRec ? (base?.valorTotal ?? 0) : sorted.reduce((s, c) => s + c.valorTotal, 0),
+        valorRecebido: valorRecebidoSum,
+        primeiraData: datas[0] ?? base?.dataVencimento ?? null, ultimaData: isRec ? null : (datas[datas.length - 1] ?? base?.dataVencimento ?? null),
         statusResumo: getStatusResumo(sorted), autoDebitoAtivo: sorted.some((c) => c.autoDebito),
         proximaContaAberta: sorted.find((c) => c.status !== 'pago' && c.status !== 'cancelado') || null,
       }
     }).sort((a, b) => getSortDate(a.primeiraData) - getSortDate(b.primeiraData))
-  }, [contas])
+  }, [])
 
-  const refreshAll = async () => { await Promise.all([fetchContas(page, activeTipo, activeAmbiente), fetchFluxo(activeAmbiente)]) }
+  const gruposContasReceber = useMemo(() => buildGrupos(contasReceber), [buildGrupos, contasReceber])
+  const gruposContasPagar = useMemo(() => buildGrupos(contasPagar), [buildGrupos, contasPagar])
+
+  const refreshAll = async () => {
+    await Promise.all([
+      fetchContasTipo('receber', pageReceber, activeAmbiente),
+      fetchContasTipo('pagar', pagePagar, activeAmbiente),
+      fetchFluxo(activeAmbiente),
+    ])
+  }
 
   const toggleGrupoExpansao = (id: string) => setExpandedGrupos((p) => ({ ...p, [id]: !p[id] }))
 
-  const resetCreateForm = () => setCreateForm({ ambiente: activeAmbiente, tipo: 'receber', tipoVinculo: 'nenhum', entidadeId: '', descricao: '', valorTotal: '', dataVencimento: getDefaultDataVencimento(), autoDebito: false, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '', multaPorAtrasoAtiva: false, multaPorAtrasoTipo: 'percentual', multaPorAtrasoValor: '', multaPorAtrasoPeriodo: 'mes' })
+  const createFormAmbiente: AmbienteFinanceiro = activeAmbiente === 'total' ? 'geral' : activeAmbiente
+  const resetCreateForm = () => setCreateForm({ ambiente: createFormAmbiente, tipo: 'receber', tipoVinculo: 'nenhum', entidadeId: '', descricao: '', valorTotal: '', dataVencimento: getDefaultDataVencimento(), autoDebito: false, parcelado: false, recorrenteMensal: false, parcelas: '2', intervaloDias: '30', datasParcelas: '', multaPorAtrasoAtiva: false, multaPorAtrasoTipo: 'percentual', multaPorAtrasoValor: '', multaPorAtrasoPeriodo: 'mes' })
 
   const handleCreateConta = async (event: React.FormEvent) => {
     event.preventDefault()
+    const descricao = createForm.descricao?.trim()
+    if (!descricao) { toast.warning('Informe o nome da conta'); return }
     const valor = parseCurrencyInput(createForm.valorTotal)
     if (valor === null || valor <= 0) { toast.warning('Valor invalido'); return }
 
     const datasParcelas = createForm.datasParcelas.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean)
-    const payload: Record<string, unknown> = { ambiente: createForm.ambiente, tipo: createForm.tipo, descricao: createForm.descricao || null, valorTotal: valor, dataVencimento: createForm.dataVencimento || null, autoDebito: createForm.tipo === 'pagar' ? createForm.autoDebito : false }
+    const payload: Record<string, unknown> = { ambiente: createForm.ambiente, tipo: createForm.tipo, descricao, valorTotal: valor, dataVencimento: createForm.dataVencimento || null, autoDebito: createForm.tipo === 'pagar' ? createForm.autoDebito : false }
     if (createForm.multaPorAtrasoAtiva && createForm.multaPorAtrasoValor.trim()) {
-      const multaVal = Number(String(createForm.multaPorAtrasoValor).replace(',', '.'))
-      if (Number.isFinite(multaVal) && multaVal > 0) {
+      const multaVal = createForm.multaPorAtrasoTipo === 'valor'
+        ? parseCurrencyInput(createForm.multaPorAtrasoValor)
+        : Number(String(createForm.multaPorAtrasoValor).replace(',', '.'))
+      if (multaVal !== null && Number.isFinite(multaVal) && multaVal > 0) {
         if (createForm.multaPorAtrasoTipo === 'percentual') payload.multaPorAtrasoPercentual = multaVal
         else payload.multaPorAtrasoValor = multaVal
         payload.multaPorAtrasoPeriodo = createForm.multaPorAtrasoPeriodo
@@ -142,6 +168,10 @@ export function useFinanceiro() {
     else if (createForm.tipoVinculo === 'fornecedor' && createForm.entidadeId) payload.fornecedorId = createForm.entidadeId
     else if (createForm.tipoVinculo === 'funcionario' && createForm.entidadeId) payload.funcionarioId = createForm.entidadeId
 
+    if (createForm.recorrenteMensal && createForm.parcelado) {
+      toast.warning('Escolha apenas uma opcao: parcelado ou mensal automatico')
+      return
+    }
     if (createForm.recorrenteMensal) {
       if (!createForm.dataVencimento) { toast.warning('Informe o primeiro vencimento da recorrencia'); return }
       payload.recorrenteMensal = true
@@ -161,7 +191,7 @@ export function useFinanceiro() {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao criar conta')
       toast.success('Conta criada', { description: typeof data?.parcelasCriadas === 'number' ? `${data.parcelasCriadas} parcelas criadas com sucesso.` : typeof data?.lancamentosCriados === 'number' ? `${data.lancamentosCriados} lancamentos mensais criados para a recorrencia.` : undefined })
-      setShowCreateModal(false); resetCreateForm(); setPage(1); await refreshAll()
+      setShowCreateModal(false); resetCreateForm(); setPageReceber(1); setPagePagar(1); await refreshAll()
     } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao criar conta.' }) }
     finally { setSaving(false) }
   }
@@ -270,9 +300,11 @@ export function useFinanceiro() {
   }
 
   return {
-    loading, stats, fluxo, meta, page, setPage,
+    loading: loadingReceber || loadingPagar, stats, fluxo,
+    metaReceber, metaPagar, pageReceber, pagePagar, setPageReceber, setPagePagar,
+    loadingReceber, loadingPagar,
     activeAmbiente, setActiveAmbiente, activeTipo, setActiveTipo,
-    gruposContas, expandedGrupos, toggleGrupoExpansao,
+    gruposContasReceber, gruposContasPagar, expandedGrupos, toggleGrupoExpansao,
     showCreateModal, setShowCreateModal, saving, createForm, setCreateForm, handleCreateConta, resetCreateForm,
     showEditModal, setShowEditModal, editSaving, editingConta, setEditingConta, editForm, setEditForm, handleEditConta, handleOpenEditConta,
     handleRegistrarMovimento, handleAcrescentarTaxa, handleAplicarMulta, handleGerarLembrete,

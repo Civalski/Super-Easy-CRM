@@ -14,7 +14,7 @@ import {
   EntidadesListDrawer,
   useFinanceiro,
 } from '@/components/features/financeiro'
-import { AMBIENTE_LABEL } from '@/components/features/financeiro/constants'
+import { AMBIENTE_VIEW_LABEL } from '@/components/features/financeiro/constants'
 
 export default function FinanceiroPage() {
   const [showFornecedorModal, setShowFornecedorModal] = useState(false)
@@ -23,9 +23,10 @@ export default function FinanceiroPage() {
   const [cadastroDropdownOpen, setCadastroDropdownOpen] = useState(false)
 
   const {
-    loading, stats, fluxo, meta, page, setPage,
+    stats, fluxo, metaReceber, metaPagar, pageReceber, pagePagar, setPageReceber, setPagePagar,
+    loadingReceber, loadingPagar,
     activeAmbiente, setActiveAmbiente, activeTipo, setActiveTipo,
-    gruposContas, expandedGrupos, toggleGrupoExpansao,
+    gruposContasReceber, gruposContasPagar, expandedGrupos, toggleGrupoExpansao,
     showCreateModal, setShowCreateModal, saving, createForm, setCreateForm, handleCreateConta, resetCreateForm,
     showEditModal, setShowEditModal, editSaving, editingConta, setEditingConta, editForm, setEditForm, handleEditConta, handleOpenEditConta,
     handleRegistrarMovimento, handleAcrescentarTaxa, handleAplicarMulta, handleGerarLembrete, refreshAll,
@@ -51,7 +52,7 @@ export default function FinanceiroPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financeiro</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Contas a receber, contas a pagar e previsao de caixa em {AMBIENTE_LABEL[activeAmbiente].toLowerCase()}
+              Contas a receber, contas a pagar e previsao de caixa em {AMBIENTE_VIEW_LABEL[activeAmbiente].toLowerCase()}
             </p>
           </div>
         </div>
@@ -59,7 +60,7 @@ export default function FinanceiroPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => { setCreateForm((prev) => ({ ...prev, ambiente: activeAmbiente })); setShowCreateModal(true) }}
+            onClick={() => { setCreateForm((prev) => ({ ...prev, ambiente: activeAmbiente === 'total' ? 'geral' : activeAmbiente })); setShowCreateModal(true) }}
             disabled={saving}
             className="inline-flex items-center rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800 disabled:opacity-60"
           >
@@ -112,18 +113,18 @@ export default function FinanceiroPage() {
       </div>
 
       <div className="inline-flex w-fit rounded-lg border border-gray-200 p-1 dark:border-gray-700">
-        {(['geral', 'pessoal'] as const).map((amb) => (
+        {(['geral', 'pessoal', 'total'] as const).map((amb) => (
           <button
             key={amb}
             type="button"
-            onClick={() => { setActiveAmbiente(amb); setPage(1) }}
+            onClick={() => { setActiveAmbiente(amb); setPageReceber(1); setPagePagar(1) }}
             className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeAmbiente === amb
                 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
-            {AMBIENTE_LABEL[amb]}
+            {AMBIENTE_VIEW_LABEL[amb]}
           </button>
         ))}
       </div>
@@ -151,48 +152,49 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      <FluxoCaixaSection fluxo={fluxo} ambienteLabel={AMBIENTE_LABEL[activeAmbiente]} />
+      <FluxoCaixaSection fluxo={fluxo} ambienteLabel={AMBIENTE_VIEW_LABEL[activeAmbiente]} />
 
-      <div className="crm-card p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Contas - {AMBIENTE_LABEL[activeAmbiente]}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="crm-card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            Contas a receber - {AMBIENTE_VIEW_LABEL[activeAmbiente]}
           </h2>
-          <div className="inline-flex rounded-lg border border-gray-200 p-1 dark:border-gray-700">
-            {(['receber', 'pagar'] as const).map((tipo) => (
-              <button
-                key={tipo}
-                type="button"
-                onClick={() => { setActiveTipo(tipo); setPage(1) }}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTipo === tipo
-                    ? tipo === 'receber'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                      : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                }`}
-              >
-                {tipo === 'receber' ? 'Receber' : 'Pagar'}
-              </button>
-            ))}
-          </div>
+          <ContasList
+            gruposContas={gruposContasReceber}
+            meta={metaReceber}
+            page={pageReceber}
+            onPageChange={setPageReceber}
+            activeTipo="receber"
+            expandedGrupos={expandedGrupos}
+            onToggleExpand={toggleGrupoExpansao}
+            onRegistrarMovimento={handleRegistrarMovimento}
+            onEditConta={handleOpenEditConta}
+            onAcrescentarTaxa={handleAcrescentarTaxa}
+            onAplicarMulta={handleAplicarMulta}
+            onGerarLembrete={handleGerarLembrete}
+            loading={loadingReceber}
+          />
         </div>
-
-        <ContasList
-          gruposContas={gruposContas}
-          meta={meta}
-          page={page}
-          onPageChange={setPage}
-          activeTipo={activeTipo}
-          expandedGrupos={expandedGrupos}
-          onToggleExpand={toggleGrupoExpansao}
-          onRegistrarMovimento={handleRegistrarMovimento}
-          onEditConta={handleOpenEditConta}
-          onAcrescentarTaxa={handleAcrescentarTaxa}
-          onAplicarMulta={handleAplicarMulta}
-          onGerarLembrete={handleGerarLembrete}
-          loading={loading}
-        />
+        <div className="crm-card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-rose-700 dark:text-rose-400">
+            Contas a pagar - {AMBIENTE_VIEW_LABEL[activeAmbiente]}
+          </h2>
+          <ContasList
+            gruposContas={gruposContasPagar}
+            meta={metaPagar}
+            page={pagePagar}
+            onPageChange={setPagePagar}
+            activeTipo="pagar"
+            expandedGrupos={expandedGrupos}
+            onToggleExpand={toggleGrupoExpansao}
+            onRegistrarMovimento={handleRegistrarMovimento}
+            onEditConta={handleOpenEditConta}
+            onAcrescentarTaxa={handleAcrescentarTaxa}
+            onAplicarMulta={handleAplicarMulta}
+            onGerarLembrete={handleGerarLembrete}
+            loading={loadingPagar}
+          />
+        </div>
       </div>
 
       <CreateContaModal
@@ -229,11 +231,11 @@ export default function FinanceiroPage() {
       <EntidadesListDrawer
         open={showEntidadesList}
         onClose={() => setShowEntidadesList(false)}
-        onOpenCreateConta={(tipo, id, _nome, contaTipo) => {
+          onOpenCreateConta={(tipo, id, _nome, contaTipo) => {
           setShowEntidadesList(false)
           setCreateForm((prev) => ({
             ...prev,
-            ambiente: activeAmbiente,
+            ambiente: activeAmbiente === 'total' ? 'geral' : activeAmbiente,
             tipo: contaTipo,
             tipoVinculo: tipo,
             entidadeId: id,

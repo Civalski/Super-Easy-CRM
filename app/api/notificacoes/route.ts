@@ -24,8 +24,9 @@ export async function GET(request: NextRequest) {
                     not: 'concluida'
                 },
                 notificacaoExcluida: false,
+                notificar: true,
                 dataVencimento: {
-                    lte: dataLimite, // Menor ou igual a data limite (inclui passado/atrasadas)
+                    lte: dataLimite,
                     not: null
                 }
             },

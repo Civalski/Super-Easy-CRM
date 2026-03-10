@@ -5,6 +5,7 @@ export interface TaskNotification {
   prioridade?: string | null
   notificar?: boolean | null
   dataVencimento: string | Date | null
+  dataAviso?: string | Date | null
   status?: string | null
   cliente?: {
     nome: string

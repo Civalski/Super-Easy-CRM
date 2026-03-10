@@ -139,6 +139,34 @@ model Cliente {
   dataNascimento       String?
   observacoes          String?
   camposPersonalizados Json?
+
+  // Campos B2B (leads importados de CSV)
+  cnpj                 String?
+  matrizFilial         String?
+  razaoSocial          String?
+  nomeFantasia         String?
+  capitalSocial       String?
+  porte                String?
+  qualificacaoProfissional String?
+  naturezaJuridica     String?
+  situacaoCadastral    String?
+  dataSituacaoCadastral String?
+  motivoSituacaoCadastral String?
+  dataAbertura         String?
+  tipoLogradouro       String?
+  logradouro           String?
+  numeroEndereco       String?
+  complemento         String?
+  bairro               String?
+  telefone2            String?
+  fax                  String?
+  cnaePrincipal        String?
+  cnaePrincipalDesc    String?
+  cnaesSecundarios     String?
+  mei                  String?
+  dataEntradaMei       String?
+  simples              String?
+
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -309,6 +337,7 @@ model Tarefa {
   status         String    @default("pendente") // pendente, em_andamento, concluida
   prioridade     String    @default("media") // baixa, media, alta
   dataVencimento DateTime?
+  dataAviso      DateTime? // quando disparar o aviso no navegador (se null, usa dataVencimento)
   clienteId      String?
   oportunidadeId String?
 

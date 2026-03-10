@@ -24,23 +24,82 @@ const importRateLimitConfig = {
     blockDurationMs: 60 * 1000,
 };
 
+/**
+ * Colunas permitidas na importacao CSV. O restante do arquivo e ignorado.
+ * Variacoes de cabecalho (lowercase) -> chave canonica
+ */
+const COLUNAS_PERMITIDAS: Record<string, string> = {
+    cnpj: 'CNPJ',
+    'matriz/filial': 'MATRIZ/FILIAL',
+    'razao social': 'RAZAO SOCIAL / NOME EMPRESARIAL',
+    'razao social / nome empresarial': 'RAZAO SOCIAL / NOME EMPRESARIAL',
+    'nome fantasia': 'NOME FANTASIA',
+    'capital social': 'CAPITAL SOCIAL',
+    'porte da empresa': 'PORTE DA EMPRESA',
+    'qualificacao do profissional': 'QUALIFICACAO DO PROFISSIONAL',
+    'natureza juridica': 'NATUREZA JURIDICA',
+    'situação cadastral': 'SITUAÇÃO CADASTRAL',
+    'situacao cadastral': 'SITUAÇÃO CADASTRAL',
+    'data da situação cadastral': 'DATA DA SITUAÇÃO CADASTRAL',
+    'data da situacao cadastral': 'DATA DA SITUAÇÃO CADASTRAL',
+    'motivo da situação cadastral': 'MOTIVO DA SITUAÇÃO CADASTRAL',
+    'motivo da situacao cadastral': 'MOTIVO DA SITUAÇÃO CADASTRAL',
+    'data de início de atividade': 'DATA DE INÍCIO DE ATIVIDADE',
+    'data de inicio de atividade': 'DATA DE INÍCIO DE ATIVIDADE',
+    'atividade principal': 'ATIVIDADE PRINCIPAL',
+    'cod atividade principal': 'COD ATIVIDADE PRINCIPAL',
+    'cod atividades secundarias': 'COD ATIVIDADES SECUNDARIAS',
+    logradouro: 'LOGRADOURO',
+    numero: 'NUMERO',
+    complemento: 'COMPLEMENTO',
+    bairro: 'BAIRRO',
+    cep: 'CEP',
+    uf: 'UF',
+    municipio: 'MUNICIPIO',
+    'telefone 1': 'TELEFONE 1',
+    telefone: 'TELEFONE 1',
+    'telefone 2': 'TELEFONE 2',
+    'correio eletronico': 'CORREIO ELETRONICO',
+    email: 'CORREIO ELETRONICO',
+    'mei?': 'MEI?',
+    mei: 'MEI?',
+    'data entrada mei': 'DATA ENTRADA MEI',
+    'simples?': 'SIMPLES?',
+    simples: 'SIMPLES?',
+};
+
+/** Normaliza linha do CSV: so considera colunas permitidas, ignora o restante */
+function normalizarRowFromCsv(row: Record<string, unknown>): EmpresaParquet {
+    const normalized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+        const keyNorm = String(key).trim().toLowerCase().replace(/\s+/g, ' ');
+        const mapped = COLUNAS_PERMITIDAS[keyNorm];
+        if (mapped) {
+            normalized[mapped] = value;
+        }
+    }
+    return normalized as unknown as EmpresaParquet;
+}
+
 // Funcao para montar CNPJ completo
 function montarCNPJ(empresa: EmpresaParquet): string {
-    // Se ja vier com CNPJ formatado ou apenas numeros
-    if (empresa.CNPJ) {
-        return empresa.CNPJ.replace(/\D/g, '').padStart(14, '0');
+    const cnpjVal = empresa.CNPJ;
+    if (cnpjVal && String(cnpjVal).replace(/\D/g, '').length >= 14) {
+        return String(cnpjVal).replace(/\D/g, '').padStart(14, '0');
     }
 
-    const basico = empresa['CNPJ BASICO'] || '';
-    const ordem = empresa['CNPJ ORDEM'] || '';
-    const dv = empresa['CNPJ DV'] || '';
+    const basico = String(empresa['CNPJ BASICO'] ?? '').trim();
+    const ordem = String(empresa['CNPJ ORDEM'] ?? '').trim();
+    const dv = String(empresa['CNPJ DV'] ?? '').trim();
 
-    // Padronizar com zeros a esquerda
-    const basicoPad = basico.padStart(8, '0');
-    const ordemPad = ordem.padStart(4, '0');
-    const dvPad = dv.padStart(2, '0');
+    if (basico || ordem || dv) {
+        const basicoPad = basico.padStart(8, '0');
+        const ordemPad = ordem.padStart(4, '0');
+        const dvPad = dv.padStart(2, '0');
+        return `${basicoPad}${ordemPad}${dvPad}`;
+    }
 
-    return `${basicoPad}${ordemPad}${dvPad}`;
+    return '';
 }
 
 // Funcao para mapear dados do .parquet para o modelo Prospecto
@@ -115,18 +174,12 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json();
         const empresas: EmpresaParquet[] = body.empresas || [];
-        const parsedBatchSize = Number(body.batchSize);
-        const batchSize =
-            Number.isInteger(parsedBatchSize) && parsedBatchSize >= 1 && parsedBatchSize <= 100
-                ? parsedBatchSize
-                : 30;
         const fileName = body.fileName || 'Importacao';
 
         console.info('[prospectos/importar] solicitacao recebida', {
             userId,
             fileName,
             empresasCount: Array.isArray(empresas) ? empresas.length : 0,
-            batchSize,
         });
 
         if (!Array.isArray(empresas) || empresas.length === 0) {
@@ -151,10 +204,19 @@ export async function POST(request: NextRequest) {
 
         const prospectosMap = new Map<string, ReturnType<typeof mapearEmpresaParaProspecto>>();
         let duplicadosNoPayload = 0;
+        const importId = Date.now();
 
-        for (const empresa of empresas) {
+        for (let i = 0; i < empresas.length; i++) {
             try {
-                const cnpj = montarCNPJ(empresa);
+                const row = empresas[i] as unknown as Record<string, unknown>;
+                const empresa = normalizarRowFromCsv(row);
+                let cnpj = montarCNPJ(empresa);
+
+                // CSV sem coluna CNPJ: gera chave unica para nao colapsar todos em 1
+                if (!cnpj || cnpj === '00000000000000') {
+                    cnpj = `IMPORT-${importId}-${i}`;
+                    (empresa as unknown as Record<string, unknown>).CNPJ = cnpj;
+                }
 
                 if (prospectosMap.has(cnpj)) {
                     duplicadosNoPayload++;
@@ -162,37 +224,19 @@ export async function POST(request: NextRequest) {
                 }
 
                 const dadosProspecto = mapearEmpresaParaProspecto(empresa);
+                // Garante cnpj correto quando foi sintetico
+                dadosProspecto.cnpj = cnpj;
                 prospectosMap.set(cnpj, dadosProspecto);
             } catch (err) {
                 result.erros.push(`Erro ao processar empresa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
             }
         }
 
-        // Preparar lotes
-        const today = new Date();
-        const dateStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-        // Limpar extensao do arquivo para o nome do lote
-        const cleanFileName = fileName.replace(/\.[^/.]+$/, "");
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto, index) => {
-            // Calcular indice do lote (0-based)
-            const batchIndex = Math.floor(index / batchSize);
-
-            // Gerar Label: A, B, C... Z, A1, B1...
-            const letter = alphabet[batchIndex % 26];
-            const cycle = Math.floor(batchIndex / 26);
-            const suffix = cycle > 0 ? cycle.toString() : '';
-            const batchLabel = `${letter}${suffix}`;
-
-            const loteName = `${dateStr} - ${batchLabel}`;
-
-            return {
-                ...prospecto,
-                userId,
-                lote: loteName
-            };
-        });
+        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto) => ({
+            ...prospecto,
+            userId,
+            lote: null,
+        }));
 
         if (prospectosCriar.length > 0) {
             const criados = await prisma.prospecto.createMany({

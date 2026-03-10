@@ -127,7 +127,7 @@ export default function ActivityModal({
 
     const handleEdit = () => {
         onClose();
-        if (type === 'tarefa') router.push(`/tarefas/${data.id}/editar`);
+        if (type === 'tarefa') router.push(`/tarefas?edit=${data.id}`);
         else if (type === 'oportunidade') router.push(`/oportunidades/${data.id}/editar`);
         else if (type === 'cliente') router.push(`/clientes/${data.id}`);
     };

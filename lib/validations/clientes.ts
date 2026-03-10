@@ -5,6 +5,12 @@ const campoPersonalizadoSchema = z.object({
   value: z.string().trim().max(500).default(''),
 })
 
+const optString = (max: number) =>
+  z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined))
+    .optional()
+
 export const clienteCreateSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório').max(120),
   email: z
@@ -37,6 +43,32 @@ export const clienteCreateSchema = z.object({
     .max(20)
     .optional()
     .transform((arr) => (arr && arr.length > 0 ? arr : undefined)),
+  // Campos B2B
+  cnpj: optString(20),
+  matrizFilial: optString(10),
+  razaoSocial: optString(120),
+  nomeFantasia: optString(120),
+  capitalSocial: optString(50),
+  porte: optString(30),
+  qualificacaoProfissional: optString(100),
+  naturezaJuridica: optString(100),
+  situacaoCadastral: optString(50),
+  dataSituacaoCadastral: optString(20),
+  motivoSituacaoCadastral: optString(100),
+  dataAbertura: optString(20),
+  tipoLogradouro: optString(30),
+  logradouro: optString(120),
+  numeroEndereco: optString(20),
+  complemento: optString(80),
+  bairro: optString(80),
+  telefone2: optString(30),
+  fax: optString(30),
+  cnaePrincipal: optString(20),
+  cnaePrincipalDesc: optString(200),
+  cnaesSecundarios: optString(500),
+  mei: optString(10),
+  dataEntradaMei: optString(20),
+  simples: optString(10),
 })
 
 export type ClienteCreateInput = z.infer<typeof clienteCreateSchema>

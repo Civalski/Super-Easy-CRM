@@ -1,10 +1,16 @@
-import type { AmbienteFinanceiro } from './types'
+import type { AmbienteFinanceiro, AmbienteFinanceiroView } from './types'
 
 export const CONTAS_PAGE_SIZE = 12
 
 export const AMBIENTE_LABEL: Record<AmbienteFinanceiro, string> = {
-  geral: 'Fluxo total',
+  geral: 'Fluxo empresarial',
   pessoal: 'Fluxo pessoal',
+}
+
+export const AMBIENTE_VIEW_LABEL: Record<AmbienteFinanceiroView, string> = {
+  geral: 'Fluxo empresarial',
+  pessoal: 'Fluxo pessoal',
+  total: 'Fluxo total',
 }
 
 export const STATUS_CLASS_MAP: Record<string, string> = {

@@ -123,14 +123,15 @@ function GrupoActions({
 function ContasMenuDropdown({ grupoId, menuItems, onClose, triggerSelector }: {
   grupoId: string; menuItems: React.ReactNode[]; onClose: () => void; triggerSelector: string
 }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const [pos, setPos] = useState<{ bottom: number; left: number } | null>(null)
 
   useEffect(() => {
     const update = () => {
       const btn = document.querySelector(triggerSelector) as HTMLElement
       if (btn) {
         const rect = btn.getBoundingClientRect()
-        setPos({ top: rect.bottom + 4, left: Math.max(8, rect.right - 200) })
+        // Menu abre para cima (bottom) para não ser cortado no fim da página
+        setPos({ bottom: window.innerHeight - rect.top + 4, left: Math.max(8, rect.right - 200) })
       }
     }
     const handleClick = (e: MouseEvent) => {
@@ -156,7 +157,7 @@ function ContasMenuDropdown({ grupoId, menuItems, onClose, triggerSelector }: {
     <div
       id={`conta-menu-${grupoId}`}
       className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-      style={{ top: pos.top, left: pos.left }}
+      style={{ bottom: pos.bottom, left: pos.left }}
     >
       {menuItems}
     </div>
@@ -281,16 +282,19 @@ function ParcelasDetail({
   )
 }
 
-const getVencimento = (g: GrupoContas) =>
-  g.primeiraData && g.ultimaData && g.primeiraData !== g.ultimaData
-    ? `${formatDate(g.primeiraData)} a ${formatDate(g.ultimaData)}` : formatDate(g.primeiraData)
+const getVencimento = (g: GrupoContas) => {
+  if (g.isRecorrenteMensal && g.primeiraData) return `Mensal (proximo: ${formatDate(g.primeiraData)})`
+  if (g.primeiraData && g.ultimaData && g.primeiraData !== g.ultimaData)
+    return `${formatDate(g.primeiraData)} a ${formatDate(g.ultimaData)}`
+  return formatDate(g.primeiraData)
+}
 
 const getSubtitle = (g: GrupoContas) =>
   (g.isRecorrenteMensal ? 'Mensal automatica (sem data final)' : g.isParcelado ? `Parcelado em ${g.totalParcelas}x` : 'Conta unica')
   + (g.autoDebitoAtivo ? ' - debito automatico' : '')
 
 const getParcelasLabel = (g: GrupoContas) =>
-  g.isRecorrenteMensal ? `${g.parcelasPagas}/${g.contas.length}` : g.isParcelado ? `${g.parcelasPagas}/${g.totalParcelas}` : 'Unica'
+  g.isRecorrenteMensal ? 'Recorrente' : g.isParcelado ? `${g.parcelasPagas}/${g.totalParcelas}` : 'Unica'
 
 export default function ContasList({
   gruposContas, meta, page, onPageChange, activeTipo, expandedGrupos,
@@ -333,7 +337,7 @@ export default function ContasList({
                     <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300">{getVencimento(grupo)}</td>
                     <td className="px-3 py-2.5">
                       <p className="text-xs font-medium text-gray-800 dark:text-gray-100">{formatCurrency(grupo.valorRecebido)}</p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">de {formatCurrency(grupo.valorTotal)}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">{grupo.isRecorrenteMensal ? `mensal: ${formatCurrency(grupo.valorTotal)}` : `de ${formatCurrency(grupo.valorTotal)}`}</p>
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${getStatusClass(grupo.statusResumo)}`}>{grupo.statusResumo}</span>
@@ -383,7 +387,7 @@ export default function ContasList({
               <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-300">
                 <p>Venc.: {getVencimento(grupo)}</p>
                 <p>Parc.: {getParcelasLabel(grupo)}</p>
-                <p className="col-span-2">Liquidado {formatCurrency(grupo.valorRecebido)} de {formatCurrency(grupo.valorTotal)}</p>
+                <p className="col-span-2">{grupo.isRecorrenteMensal ? `Liquidado ${formatCurrency(grupo.valorRecebido)} (mensal: ${formatCurrency(grupo.valorTotal)})` : `Liquidado ${formatCurrency(grupo.valorRecebido)} de ${formatCurrency(grupo.valorTotal)}`}</p>
               </div>
               <div className="mt-2">
                 <GrupoActions grupo={grupo} isPagar={isPagar} isExpanded={isExpanded}

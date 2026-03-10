@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 const DIAS_PARA_AVISO = 7
@@ -17,14 +18,14 @@ export async function descartarContatadosStale(
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - dias)
 
-  const where = {
+  const where: Prisma.ProspectoWhereInput = {
     userId,
     status: 'em_contato',
     OR: [
       { ultimoContato: { lt: cutoff } },
       { ultimoContato: null, updatedAt: { lt: cutoff } },
     ],
-  } as const
+  }
 
   const result = await prisma.prospecto.updateMany({
     where,

@@ -54,10 +54,33 @@ function getPrevStatus(status: string): string | null {
     return TABS[idx - 1].value
 }
 
-const KANBAN_LIMIT = 25
+const KANBAN_PAGE_SIZE = 25
 
 const CARD_ID_PREFIX = 'card-'
 const COLUMN_ID_PREFIX = 'column-'
+
+const KANBAN_LABELS_STORAGE_KEY = 'arkan-crm-kanban-column-labels'
+
+function loadCustomLabels(): Record<string, string> {
+    if (typeof window === 'undefined') return {}
+    try {
+        const raw = localStorage.getItem(KANBAN_LABELS_STORAGE_KEY)
+        if (!raw) return {}
+        const parsed = JSON.parse(raw) as Record<string, string>
+        return typeof parsed === 'object' && parsed !== null ? parsed : {}
+    } catch {
+        return {}
+    }
+}
+
+function saveCustomLabels(labels: Record<string, string>) {
+    if (typeof window === 'undefined') return
+    try {
+        localStorage.setItem(KANBAN_LABELS_STORAGE_KEY, JSON.stringify(labels))
+    } catch {
+        // ignore
+    }
+}
 
 export interface FunilKanbanProps {
     onViewDetails: (item: OportunidadeKanban) => void
@@ -92,10 +115,34 @@ export function FunilKanban({
         em_potencial: [],
         aguardando_orcamento: [],
     })
+    const [pageByStatus, setPageByStatus] = useState<Record<string, number>>({
+        sem_contato: 1,
+        contatado: 1,
+        em_potencial: 1,
+        aguardando_orcamento: 1,
+    })
+    const [metaByStatus, setMetaByStatus] = useState<Record<string, { total: number; page: number; pages: number }>>({
+        sem_contato: { total: 0, page: 1, pages: 1 },
+        contatado: { total: 0, page: 1, pages: 1 },
+        em_potencial: { total: 0, page: 1, pages: 1 },
+        aguardando_orcamento: { total: 0, page: 1, pages: 1 },
+    })
     const [loading, setLoading] = useState(true)
+    const [loadingColumn, setLoadingColumn] = useState<string | null>(null)
     const [activeId, setActiveId] = useState<string | null>(null)
     const [avisoDescartarOpen, setAvisoDescartarOpen] = useState(false)
     const [avisoDescartarCount, setAvisoDescartarCount] = useState(0)
+    const [customLabels, setCustomLabels] = useState<Record<string, string>>(() => loadCustomLabels())
+
+    const handleLabelChange = useCallback((status: string, newLabel: string) => {
+        const trimmed = newLabel.trim()
+        setCustomLabels((prev) => {
+            const next = trimmed ? { ...prev, [status]: trimmed } : { ...prev }
+            if (!trimmed) delete next[status]
+            saveCustomLabels(next)
+            return next
+        })
+    }, [])
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -103,12 +150,37 @@ export function FunilKanban({
         })
     )
 
+    const fetchColumn = useCallback(async (status: string, page: number, silent = false) => {
+        if (!silent) setLoadingColumn(status)
+        try {
+            const res = await fetch(`/api/grupos?status=${status}&page=${page}&limit=${KANBAN_PAGE_SIZE}`)
+            const json = await res.json()
+            const data = json?.data ?? []
+            const meta = json?.meta ?? { total: 0, page: 1, pages: 1 }
+            setDataByStatus((prev) => ({ ...prev, [status]: data }))
+            setMetaByStatus((prev) => ({ ...prev, [status]: { total: meta.total, page: meta.page, pages: meta.pages } }))
+            setPageByStatus((prev) => ({ ...prev, [status]: page }))
+
+            if (status === 'contatado') {
+                const comAviso = data.filter((c: OportunidadeKanban) => c.avisoDescartar).length
+                if (comAviso > 0) {
+                    setAvisoDescartarCount(comAviso)
+                    setAvisoDescartarOpen(true)
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao buscar coluna do Kanban:', error)
+        } finally {
+            if (!silent) setLoadingColumn(null)
+        }
+    }, [])
+
     const fetchAll = useCallback(async (silent = false) => {
         if (!silent) setLoading(true)
         try {
             const results = await Promise.all(
                 TABS.map((tab) =>
-                    fetch(`/api/grupos?status=${tab.value}&page=1&limit=${KANBAN_LIMIT}`).then((r) => r.json())
+                    fetch(`/api/grupos?status=${tab.value}&page=1&limit=${KANBAN_PAGE_SIZE}`).then((r) => r.json())
                 )
             )
             const next: Record<string, OportunidadeKanban[]> = {
@@ -117,10 +189,20 @@ export function FunilKanban({
                 em_potencial: [],
                 aguardando_orcamento: [],
             }
+            const nextMeta: Record<string, { total: number; page: number; pages: number }> = {
+                sem_contato: { total: 0, page: 1, pages: 1 },
+                contatado: { total: 0, page: 1, pages: 1 },
+                em_potencial: { total: 0, page: 1, pages: 1 },
+                aguardando_orcamento: { total: 0, page: 1, pages: 1 },
+            }
             TABS.forEach((tab, i) => {
                 next[tab.value] = results[i]?.data ?? []
+                const m = results[i]?.meta ?? { total: 0, page: 1, pages: 1 }
+                nextMeta[tab.value] = { total: m.total, page: m.page, pages: m.pages }
             })
             setDataByStatus(next)
+            setMetaByStatus(nextMeta)
+            setPageByStatus({ sem_contato: 1, contatado: 1, em_potencial: 1, aguardando_orcamento: 1 })
 
             const contatados = next.contatado ?? []
             const comAviso = contatados.filter((c) => c.avisoDescartar).length
@@ -184,7 +266,17 @@ export function FunilKanban({
                 next[newStatus] = [...(next[newStatus] ?? []), { ...item, status: newStatus }]
                 return next
             })
+            setMetaByStatus((prev) => {
+                const oldTotal = Math.max(0, (prev[oldStatus]?.total ?? 0) - 1)
+                const newTotal = (prev[newStatus]?.total ?? 0) + 1
+                return {
+                    ...prev,
+                    [oldStatus]: { ...prev[oldStatus], total: oldTotal, pages: Math.max(1, Math.ceil(oldTotal / KANBAN_PAGE_SIZE)) },
+                    [newStatus]: { ...prev[newStatus], total: newTotal, pages: Math.max(1, Math.ceil(newTotal / KANBAN_PAGE_SIZE)) },
+                }
+            })
 
+            const prevMeta = { ...metaByStatus }
             try {
                 await onStatusChange(item, newStatus)
             } catch (error) {
@@ -196,6 +288,7 @@ export function FunilKanban({
                     next[oldStatus] = [...(next[oldStatus] ?? []), { ...item, status: oldStatus }]
                     return next
                 })
+                setMetaByStatus(prevMeta)
             }
         },
         [dataByStatus, onStatusChange, onDelete]
@@ -240,9 +333,16 @@ export function FunilKanban({
                     <KanbanColumn
                         key={tab.value}
                         status={tab.value}
-                        label={tab.label}
+                        label={customLabels[tab.value] ?? tab.label}
+                        defaultLabel={tab.label}
+                        onLabelChange={(newLabel) => handleLabelChange(tab.value, newLabel)}
                         icon={tab.icon}
                         items={dataByStatus[tab.value] ?? []}
+                        page={metaByStatus[tab.value]?.page ?? 1}
+                        total={metaByStatus[tab.value]?.total ?? 0}
+                        pages={metaByStatus[tab.value]?.pages ?? 1}
+                        onPageChange={(p) => fetchColumn(tab.value, p)}
+                        loading={loadingColumn === tab.value}
                         onViewDetails={onViewDetails}
                         onStatusChange={onStatusChange}
                         getAvailableActions={getAvailableActions}
@@ -297,11 +397,99 @@ export function FunilKanban({
     )
 }
 
+interface KanbanColumnHeaderProps {
+    status: string
+    label: string
+    defaultLabel: string
+    onLabelChange: (newLabel: string) => void
+    Icon: React.ComponentType<{ size?: number; className?: string }>
+    total: number
+    from: number
+    to: number
+    showPagination: boolean
+}
+
+function KanbanColumnHeader({
+    status,
+    label,
+    defaultLabel,
+    onLabelChange,
+    Icon,
+    total,
+    from,
+    to,
+    showPagination,
+}: KanbanColumnHeaderProps) {
+    const [isEditing, setIsEditing] = useState(false)
+    const [editValue, setEditValue] = useState(label)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (isEditing) {
+            setEditValue(label)
+            inputRef.current?.focus()
+            inputRef.current?.select()
+        }
+    }, [isEditing, label])
+
+    const handleSave = () => {
+        setIsEditing(false)
+        const trimmed = editValue.trim()
+        onLabelChange(trimmed || '')
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleSave()
+        if (e.key === 'Escape') {
+            setIsEditing(false)
+            setEditValue(label)
+        }
+    }
+
+    return (
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            {Icon && <Icon size={18} className="text-purple-600 dark:text-purple-400" />}
+            {isEditing ? (
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleSave}
+                    onKeyDown={handleKeyDown}
+                    className="flex-1 min-w-0 font-medium text-sm text-gray-900 dark:text-white bg-transparent border-b border-purple-500 focus:outline-none focus:ring-0"
+                    placeholder={defaultLabel}
+                />
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="flex-1 min-w-0 flex items-center gap-1.5 text-left group"
+                    title="Clique para editar o nome do quadro"
+                >
+                    <span className="font-medium text-sm text-gray-900 dark:text-white truncate">{label}</span>
+                    <Edit2 size={14} className="flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+            )}
+            <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full" title={total > 0 ? `${from}-${to} de ${total}` : '0'}>
+                {total > 0 ? (showPagination ? `${from}-${to}/${total}` : `${total}`) : '0'}
+            </span>
+        </div>
+    )
+}
+
 interface KanbanColumnProps {
     status: string
     label: string
+    defaultLabel: string
+    onLabelChange: (newLabel: string) => void
     icon: React.ComponentType<{ size?: number; className?: string }>
     items: OportunidadeKanban[]
+    page: number
+    total: number
+    pages: number
+    onPageChange: (page: number) => void
+    loading?: boolean
     onViewDetails: (item: OportunidadeKanban) => void
     onStatusChange: (item: OportunidadeKanban, newStatus: string) => Promise<void>
     getAvailableActions: (currentStatus: string) => { label: string; value: string }[]
@@ -318,8 +506,15 @@ interface KanbanColumnProps {
 function KanbanColumn({
     status,
     label,
+    defaultLabel,
+    onLabelChange,
     icon: Icon,
     items,
+    page,
+    total,
+    pages,
+    onPageChange,
+    loading = false,
     onViewDetails,
     onStatusChange,
     getAvailableActions,
@@ -337,6 +532,10 @@ function KanbanColumn({
         data: { status },
     })
 
+    const from = total === 0 ? 0 : (page - 1) * KANBAN_PAGE_SIZE + 1
+    const to = Math.min(page * KANBAN_PAGE_SIZE, total)
+    const showPagination = pages > 1
+
     return (
         <div
             ref={setNodeRef}
@@ -346,35 +545,70 @@ function KanbanColumn({
                     : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
             }`}
         >
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                {Icon && <Icon size={18} className="text-purple-600 dark:text-purple-400" />}
-                <span className="font-medium text-sm text-gray-900 dark:text-white">{label}</span>
-                <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                    {items.length}
-                </span>
-            </div>
+            <KanbanColumnHeader
+                status={status}
+                label={label}
+                defaultLabel={defaultLabel}
+                onLabelChange={onLabelChange}
+                Icon={Icon}
+                total={total}
+                from={from}
+                to={to}
+                showPagination={showPagination}
+            />
             <div
                 className={`flex-1 max-h-[calc(100vh-320px)] p-2 space-y-1.5 overscroll-contain ${
                     isDragging ? 'overflow-hidden' : 'overflow-y-auto'
                 }`}
             >
-                {items.map((item) => (
-                    <DraggableCard
-                        key={item.id}
-                        item={item}
-                        onViewDetails={onViewDetails}
-                        onStatusChange={onStatusChange}
-                        getAvailableActions={getAvailableActions}
-                        onStartContact={onStartContact}
-                        onSendEmail={onSendEmail}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onTransformarCliente={onTransformarCliente}
-                        onCreatePedido={onCreatePedido}
-                        updatingId={updatingId}
-                    />
-                ))}
+                {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="animate-spin text-purple-600" size={24} />
+                    </div>
+                ) : (
+                    items.map((item) => (
+                        <DraggableCard
+                            key={item.id}
+                            item={item}
+                            onViewDetails={onViewDetails}
+                            onStatusChange={onStatusChange}
+                            getAvailableActions={getAvailableActions}
+                            onStartContact={onStartContact}
+                            onSendEmail={onSendEmail}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onTransformarCliente={onTransformarCliente}
+                            onCreatePedido={onCreatePedido}
+                            updatingId={updatingId}
+                        />
+                    ))
+                )}
             </div>
+            {showPagination && !loading && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+                    <button
+                        type="button"
+                        onClick={() => onPageChange(page - 1)}
+                        disabled={page <= 1}
+                        className="p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Página anterior"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Pág. {page} de {pages}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => onPageChange(page + 1)}
+                        disabled={page >= pages}
+                        className="p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Próxima página"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            )}
         </div>
     )
 }

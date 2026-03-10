@@ -469,6 +469,34 @@ export async function createCliente(
     }
   }
 
+  const b2bFields = {
+    cnpj: data.cnpj ?? null,
+    matrizFilial: data.matrizFilial ?? null,
+    razaoSocial: data.razaoSocial ?? null,
+    nomeFantasia: data.nomeFantasia ?? null,
+    capitalSocial: data.capitalSocial ?? null,
+    porte: data.porte ?? null,
+    qualificacaoProfissional: data.qualificacaoProfissional ?? null,
+    naturezaJuridica: data.naturezaJuridica ?? null,
+    situacaoCadastral: data.situacaoCadastral ?? null,
+    dataSituacaoCadastral: data.dataSituacaoCadastral ?? null,
+    motivoSituacaoCadastral: data.motivoSituacaoCadastral ?? null,
+    dataAbertura: data.dataAbertura ?? null,
+    tipoLogradouro: data.tipoLogradouro ?? null,
+    logradouro: data.logradouro ?? null,
+    numeroEndereco: data.numeroEndereco ?? null,
+    complemento: data.complemento ?? null,
+    bairro: data.bairro ?? null,
+    telefone2: data.telefone2 ?? null,
+    fax: data.fax ?? null,
+    cnaePrincipal: data.cnaePrincipal ?? null,
+    cnaePrincipalDesc: data.cnaePrincipalDesc ?? null,
+    cnaesSecundarios: data.cnaesSecundarios ?? null,
+    mei: data.mei ?? null,
+    dataEntradaMei: data.dataEntradaMei ?? null,
+    simples: data.simples ?? null,
+  }
+
   return prisma.cliente.create({
     data: {
       userId,
@@ -488,6 +516,7 @@ export async function createCliente(
       ...(data.camposPersonalizados && {
         camposPersonalizados: data.camposPersonalizados,
       }),
+      ...b2bFields,
     },
     include: {
       _count: {

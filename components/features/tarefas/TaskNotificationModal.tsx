@@ -94,7 +94,7 @@ export default function TaskNotificationModal({
 
     const handleEdit = () => {
         onClose();
-        router.push(`/tarefas/${task.id}/editar`);
+        router.push(`/tarefas?edit=${task.id}`);
     };
 
     const dueDate = task.dataVencimento ? new Date(task.dataVencimento) : null;

@@ -8,6 +8,7 @@ export { TarefasFilters } from './TarefasFilters';
 export { TarefaCard } from './TarefaCard';
 export { TarefasGrid } from './TarefasGrid';
 export { TarefasEmptyState } from './TarefasEmptyState';
+export { default as EditTarefaDrawer } from './EditTarefaDrawer';
 export {
     statusConfig,
     prioridadeConfig,

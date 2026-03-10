@@ -371,6 +371,10 @@ export default function GruposPage() {
             if (!res.ok) throw new Error(data.error || 'Erro ao converter')
             toast.success('Lead convertido em cliente!', {
                 description: data.cliente?.numero ? `Código do cliente: ${data.cliente.numero}` : undefined,
+                action: {
+                    label: 'Ver clientes',
+                    onClick: () => router.push('/clientes'),
+                },
             })
             await fetchGrupos()
             if (viewMode === 'kanban') setKanbanRefreshTrigger((t) => t + 1)
@@ -379,7 +383,7 @@ export default function GruposPage() {
         } finally {
             setUpdatingId(null)
         }
-    }, [fetchGrupos, viewMode])
+    }, [fetchGrupos, viewMode, router])
 
     const handleCreateOrcamento = useCallback((item: Oportunidade) => {
         if (item.type !== 'prospecto') return
@@ -526,23 +530,6 @@ export default function GruposPage() {
 
             toast.dismiss(loadingToastId)
 
-            const batchSize = await prompt({
-                title: 'Dividir em Lotes',
-                label: 'Defina quantos contatos frios devem ficar em cada lote',
-                placeholder: '30',
-                defaultValue: '30',
-                confirmLabel: 'Importar',
-                cancelLabel: 'Cancelar',
-            })
-
-            if (!batchSize) return
-
-            const batchNum = Number.parseInt(batchSize, 10)
-            if (!batchNum || batchNum <= 0) {
-                toast.error('Valor invalido', { description: 'Informe um numero maior que 0' })
-                return
-            }
-
             importToastId = toast.loading(`Importando ${jsonData.length} registros...`)
 
             const response = await fetch('/api/prospectos/importar', {
@@ -550,7 +537,6 @@ export default function GruposPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     empresas: jsonData,
-                    batchSize: batchNum,
                     fileName,
                 }),
             })
@@ -1245,8 +1231,8 @@ export default function GruposPage() {
                     </div>
                 )}
 
-                {/* Pagination */}
-                {meta && meta.pages > 1 && (
+                {/* Pagination - apenas no modo lista */}
+                {viewMode === 'lista' && meta && meta.pages > 1 && (
                     <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                             Mostrando página <span className="font-medium">{meta.page}</span> de <span className="font-medium">{meta.pages}</span>

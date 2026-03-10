@@ -1,8 +1,10 @@
 /**
  * Gráfico de linha compacto para métricas dos últimos 7 dias
+ * Exibe valor de cada dia e design aprimorado
  */
 'use client'
 
+import { useState } from 'react'
 import { formatCurrencyInt } from '@/lib/format'
 
 interface SerieItem {
@@ -22,7 +24,7 @@ interface DashboardLineChart7DiasProps {
 const formatDay = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return value
-  const [, year, month, day] = match
+  const [, , month, day] = match
   return `${day}/${month}`
 }
 
@@ -37,17 +39,31 @@ const formatLabel = (value: string, periodType: 'day' | 'week') => {
   return formatDay(value)
 }
 
+const formatValueDisplay = (value: number, type: 'valor' | 'count') => {
+  if (type === 'valor') return formatCurrencyInt(value)
+  return value.toString()
+}
+
 const CHART_W = 400
-const CHART_H = 120
-const PAD_X = 12
-const PAD_Y = 12
+const CHART_H = 140
+const PAD_X = 16
+const PAD_Y = 16
 const INNER_W = CHART_W - PAD_X * 2
 const INNER_H = CHART_H - PAD_Y * 2
 
 const COLOR_MAP = {
-  green: { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.15)' },
-  red: { stroke: '#f43f5e', fill: 'rgba(244, 63, 94, 0.15)' },
-  blue: { stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.15)' },
+  green: {
+    stroke: '#059669',
+    strokeLight: '#10b981',
+  },
+  red: {
+    stroke: '#dc2626',
+    strokeLight: '#f43f5e',
+  },
+  blue: {
+    stroke: '#2563eb',
+    strokeLight: '#3b82f6',
+  },
 } as const
 
 function linePath(points: { x: number; y: number }[]): string {
@@ -77,6 +93,7 @@ export function DashboardLineChart7Dias({
   type,
   periodType = 'day',
 }: DashboardLineChart7DiasProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const safeData = Array.isArray(data) ? data : []
   const values = safeData.map(getValue)
   const maxValue = Math.max(1, ...values)
@@ -94,12 +111,17 @@ export function DashboardLineChart7Dias({
     type === 'valor' ? formatCurrencyInt(total) : total.toString()
 
   return (
-    <div className="crm-card flex flex-col p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+    <div className="crm-card group relative flex flex-col overflow-hidden border border-gray-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/50">
+      <div className="mb-4 flex items-center justify-between gap-2 border-b border-gray-100 pb-3 dark:border-slate-700/50">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+          {title}
+        </h3>
         <span
-          className="text-xs font-semibold"
-          style={{ color: colors.stroke }}
+          className="rounded-md px-2 py-0.5 text-xs font-bold tabular-nums"
+          style={{
+            color: colors.stroke,
+            backgroundColor: `${colors.stroke}15`,
+          }}
         >
           {totalLabel}
         </span>
@@ -107,75 +129,117 @@ export function DashboardLineChart7Dias({
 
       {safeData.length > 0 ? (
         <div className="flex flex-1 flex-col">
-          <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-            className="w-full flex-1"
-            style={{ minHeight: '80px' }}
-            role="img"
-            aria-label={`Gráfico de linha: ${title} nos últimos 7 dias`}
-          >
-            <defs>
-              <linearGradient id={`area-${color}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={colors.stroke} stopOpacity="0.25" />
-                <stop offset="100%" stopColor={colors.stroke} stopOpacity="0" />
-              </linearGradient>
-            </defs>
+          <div className="relative">
+            <svg
+              viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+              className="w-full"
+              style={{ minHeight: '100px' }}
+              role="img"
+              aria-label={`Gráfico de linha: ${title} nos últimos 7 dias`}
+            >
+              <defs>
+                <linearGradient id={`area-${color}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colors.strokeLight} stopOpacity="0.4" />
+                  <stop offset="100%" stopColor={colors.stroke} stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
 
-            {[0, 1, 2, 3].map((step) => {
-              const y = PAD_Y + (step / 3) * INNER_H
-              return (
-                <line
-                  key={step}
-                  x1={PAD_X}
-                  y1={y}
-                  x2={PAD_X + INNER_W}
-                  y2={y}
-                  stroke="currentColor"
-                  className="text-gray-200 dark:text-slate-700/70"
-                  strokeWidth="1"
-                  strokeDasharray={step > 0 ? '3 3' : undefined}
-                />
-              )
-            })}
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4].map((step) => {
+                const y = PAD_Y + (step / 4) * INNER_H
+                return (
+                  <line
+                    key={step}
+                    x1={PAD_X}
+                    y1={y}
+                    x2={PAD_X + INNER_W}
+                    y2={y}
+                    stroke="currentColor"
+                    className="text-gray-100 dark:text-slate-800"
+                    strokeWidth="1"
+                    strokeDasharray={step > 0 ? '4 4' : undefined}
+                  />
+                )
+              })}
 
-            <path
-              d={areaPath(points, baselineY)}
-              fill={`url(#area-${color})`}
-            />
+              <path
+                d={areaPath(points, baselineY)}
+                fill={`url(#area-${color})`}
+              />
 
-            <path
-              d={linePath(points)}
-              fill="none"
-              stroke={colors.stroke}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+              <path
+                d={linePath(points)}
+                fill="none"
+                stroke={colors.stroke}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
 
-            {points.map((point, index) => (
-              <g key={index}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="3"
-                  fill={colors.stroke}
-                  stroke="white"
-                  strokeWidth="1"
-                />
-              </g>
-            ))}
-          </svg>
+              {points.map((point, index) => {
+                const isHovered = hoveredIndex === index
+                const value = getValue(safeData[index])
+                return (
+                  <g
+                    key={index}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    className="cursor-pointer"
+                  >
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={isHovered ? 6 : 4}
+                      fill={colors.stroke}
+                      stroke="white"
+                      strokeWidth={isHovered ? 2.5 : 1.5}
+                      className="transition-all duration-150 dark:stroke-slate-900"
+                    />
+                  </g>
+                )
+              })}
+            </svg>
 
-          <div className="mt-2 flex justify-between gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+            {/* Tooltip no hover */}
+            {hoveredIndex !== null && (
+              <div
+                className="pointer-events-none absolute right-0 top-0 z-10 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium shadow-lg dark:border-slate-600 dark:bg-slate-800"
+              >
+                <div className="text-gray-500 dark:text-slate-400">
+                  {formatLabel(safeData[hoveredIndex].date, periodType)}
+                </div>
+                <div style={{ color: colors.stroke }} className="font-semibold">
+                  {type === 'valor'
+                    ? formatCurrencyInt(getValue(safeData[hoveredIndex]))
+                    : getValue(safeData[hoveredIndex]).toString()}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Eixo X: data + valor de cada dia */}
+          <div className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${safeData.length}, minmax(0, 1fr))` }}>
             {safeData.map((item) => (
-              <span key={item.date} className="flex-1 truncate text-center">
-                {formatLabel(item.date, periodType)}
-              </span>
+              <div
+                key={item.date}
+                className="flex min-w-0 flex-col items-center overflow-hidden text-center"
+              >
+                <span className="truncate text-[10px] font-medium text-gray-500 dark:text-slate-400">
+                  {formatLabel(item.date, periodType)}
+                </span>
+                <span
+                  className="mt-0.5 truncate text-[11px] font-semibold tabular-nums"
+                  style={{ color: colors.stroke }}
+                  title={type === 'valor' ? formatCurrencyInt(getValue(item)) : getValue(item).toString()}
+                >
+                  {formatValueDisplay(getValue(item), type)}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       ) : (
-        <p className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
           Sem dados nos últimos 7 dias
         </p>
       )}

@@ -114,7 +114,11 @@ function ClienteDetalhesPageContent() {
           <ConfirmDialog
             open={deleteDialogOpen}
             title="Confirmar exclusao"
-            description={`Tem certeza que deseja excluir ${cliente?.nome || 'este cliente'}? Esta acao nao podera ser desfeita e removera todos os dados relacionados.`}
+            description={`Tem certeza que deseja excluir ${cliente?.nome || 'este cliente'}? Esta acao nao podera ser desfeita e removera todos os dados relacionados.${
+              (cliente?.historicoComercial?.resumo?.orcamentosEmAberto ?? 0) > 0
+                ? ` O(s) ${cliente?.historicoComercial?.resumo?.orcamentosEmAberto ?? 0} orcamento(s) em aberto tambem sera(o) excluido(s).`
+                : ''
+            }`}
             confirmLabel="Excluir cliente"
             confirmVariant="danger"
             confirmLoading={deleting}

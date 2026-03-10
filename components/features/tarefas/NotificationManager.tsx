@@ -65,9 +65,10 @@ export function NotificationManager() {
                 if (!isNotificationTask(rawTask)) return
 
                 const tarefa = rawTask
-                if (!tarefa.notificar || !tarefa.dataVencimento || tarefa.status === 'concluida') return
+                const dataParaAviso = tarefa.dataAviso ?? tarefa.dataVencimento
+                if (!tarefa.notificar || !dataParaAviso || tarefa.status === 'concluida') return
 
-                const vencimento = new Date(tarefa.dataVencimento)
+                const vencimento = new Date(dataParaAviso)
                 const diffInMs = vencimento.getTime() - now.getTime()
                 const isDueSoonOrJustPassed = diffInMs > -5 * 60 * 1000 && diffInMs < 1.5 * 60 * 1000
 
