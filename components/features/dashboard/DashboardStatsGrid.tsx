@@ -81,7 +81,7 @@ export function DashboardStatsGrid({ data, showCharts = true, dateFilter = 'week
           periodType={dateFilter === 'month' ? 'week' : 'day'}
         />
         <DashboardLineChart7Dias
-          title="Valor em Orçamentos Cancelados"
+          title="Valor em orçamento e pedidos cancelados"
           data={data.orcamentosCanceladosPorDia ?? []}
           color="red"
           type="valor"

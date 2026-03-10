@@ -87,7 +87,7 @@ export function OportunidadesChart({ data, totalOportunidades }: OportunidadesCh
     <div className="crm-card p-6">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Funil de Orçamentos</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Funil</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">Distribuição por etapa no período selecionado</p>
         </div>
         <div className="shrink-0 rounded-xl border border-emerald-400/30 bg-emerald-500/8 px-3 py-2 text-right">

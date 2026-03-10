@@ -34,7 +34,7 @@ const composicaoConfig = [
   },
   {
     key: 'perdidos',
-    label: 'Orcamentos cancelados',
+    label: 'Valor em orçamento e pedidos cancelados',
     color: '#f43f5e',
     dotClass: 'bg-rose-400',
     textClass: 'text-rose-600 dark:text-rose-300',

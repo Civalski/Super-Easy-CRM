@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
       orcamentosEmAbertoValorAgg,
       tarefasCount,
       valorGanhosAgg,
-      valorPerdidosAgg,
+      valorOrcamentosCanceladosAgg,
+      valorPedidosCanceladosAgg,
       oportunidadesStatusGroups,
       tarefasStatusGroups,
       oportunidadesFechadasOuPerdidas,
@@ -138,7 +139,21 @@ export async function GET(request: NextRequest) {
         where: {
           userId,
           status: 'perdida',
+          pedido: { is: null },
           updatedAt: dateFilter,
+        },
+      }),
+      prisma.pedido.aggregate({
+        _sum: { totalLiquido: true },
+        where: {
+          userId,
+          oportunidade: {
+            is: {
+              userId,
+              status: 'perdida',
+              updatedAt: dateFilter,
+            },
+          },
         },
       }),
 
@@ -315,7 +330,9 @@ export async function GET(request: NextRequest) {
     }
 
     const valorGanhos = valorGanhosAgg._sum.valor || 0
-    const valorPerdidos = valorPerdidosAgg._sum.valor || 0
+    const valorOrcamentosCancelados = valorOrcamentosCanceladosAgg._sum.valor || 0
+    const valorPedidosCancelados = valorPedidosCanceladosAgg._sum.valor || 0
+    const valorPerdidos = valorOrcamentosCancelados + valorPedidosCancelados
     const pedidosSemPagamentoValor = pedidosSemPagamentoValorAgg._sum.totalLiquido || 0
     const orcamentosEmAbertoValor = orcamentosEmAbertoValorAgg._sum.valor || 0
     const valorEmAberto = Math.max(

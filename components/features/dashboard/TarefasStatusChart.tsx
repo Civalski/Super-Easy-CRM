@@ -74,64 +74,58 @@ export function TarefasStatusChart({ tarefasPorStatus, oportunidadesCount }: Tar
         Equilíbrio entre volume pendente e entregas concluídas
       </p>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
+      <div className="mt-5 grid grid-cols-5 gap-2">
         {normalizedData.map((item) => {
           const percent = totalTarefas > 0 ? (item.value / totalTarefas) * 100 : 0
           return (
             <div
               key={item.status}
-              className={`relative overflow-hidden rounded-xl border ${item.borderClass} bg-white/40 p-3.5 dark:bg-slate-900/30`}
+              className={`relative overflow-hidden rounded-lg border ${item.borderClass} bg-white/40 p-2.5 dark:bg-slate-900/30`}
             >
-              {/* Accent corner */}
               <div
-                className={`pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br ${item.bgAccent} blur-xl`}
+                className={`pointer-events-none absolute -right-3 -top-3 h-10 w-10 rounded-full bg-gradient-to-br ${item.bgAccent} blur-lg`}
               />
-
               <div className="relative">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className={`h-1.5 w-1.5 rounded-full ${item.dotClass}`} />
-                  <p className={`text-[11px] font-semibold uppercase tracking-wider ${item.textClass}`}>
+                <div className="flex items-center gap-1 mb-1">
+                  <span className={`h-1 w-1 rounded-full ${item.dotClass}`} />
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${item.textClass}`}>
                     {item.label}
                   </p>
                 </div>
-                <p className="text-3xl font-bold leading-none text-gray-900 dark:text-white">{item.value}</p>
-                <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800/70 overflow-hidden">
+                <p className="text-xl font-bold leading-none text-gray-900 dark:text-white">{item.value}</p>
+                <div className="mt-2 h-1 rounded-full bg-gray-100 dark:bg-slate-800/70 overflow-hidden">
                   <div
                     className={`h-full rounded-full bg-gradient-to-r ${item.gradient}`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
-                <p className={`mt-1.5 text-xs font-medium ${item.textClass} opacity-80`}>
+                <p className={`mt-1 text-[10px] font-medium ${item.textClass} opacity-80`}>
                   {percent.toFixed(0)}%
                 </p>
               </div>
             </div>
           )
         })}
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="relative overflow-hidden rounded-xl border border-emerald-400/25 bg-emerald-500/6 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">
+        <div className="relative overflow-hidden rounded-lg border border-emerald-400/25 bg-emerald-500/6 p-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">
             Taxa de conclusão
           </p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <p className="mt-0.5 text-lg font-bold text-emerald-600 dark:text-emerald-400">
             {taxaConclusao.toFixed(1)}%
           </p>
-          {/* Mini barra de progresso */}
-          <div className="mt-2 h-1 w-full rounded-full bg-emerald-200/40 dark:bg-emerald-900/40 overflow-hidden">
+          <div className="mt-1.5 h-1 w-full rounded-full bg-emerald-200/40 dark:bg-emerald-900/40 overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-400"
               style={{ width: `${taxaConclusao}%` }}
             />
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-xl border border-amber-400/25 bg-amber-500/6 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">
+        <div className="relative overflow-hidden rounded-lg border border-amber-400/25 bg-amber-500/6 p-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">
             Em aberto
           </p>
-          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">{pendentes}</p>
-          <p className="mt-1 text-[11px] text-amber-600/70 dark:text-amber-300/70">
+          <p className="mt-0.5 text-lg font-bold text-amber-600 dark:text-amber-400">{pendentes}</p>
+          <p className="mt-0.5 text-[10px] text-amber-600/70 dark:text-amber-300/70">
             {tarefasPorOportunidade.toFixed(1)} por orçamento
           </p>
         </div>
