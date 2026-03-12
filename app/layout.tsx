@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, Sora } from 'next/font/google'
 import Script from 'next/script'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import { Layout } from '@/components/layout'
 import { Providers } from './Providers'
@@ -82,6 +83,7 @@ export default function RootLayout({
             <AppToaster />
           </NotificationsProvider>
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   )
