@@ -58,6 +58,7 @@ export function AssinaturaStripeCard() {
 
   const selectedPlanConfig = PREMIUM_PLANS.find((plan) => plan.id === selectedPlan) ?? PREMIUM_PLANS[0]
   const isContactPlan = selectedPlanConfig.actionType === 'whatsapp'
+  const selectedTheme = selectedPlanConfig.theme
 
   const handlePrimaryAction = async () => {
     if (selectedPlanConfig.actionType === 'whatsapp') {
@@ -177,11 +178,16 @@ export function AssinaturaStripeCard() {
 
             <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-6 dark:border-slate-700 dark:bg-slate-900/70">
               <div className="mx-auto max-w-2xl text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
+                <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${selectedTheme.iconSelected}`}>
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <h2 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Escolha seu plano premium</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Todos os planos liberam recursos premium. O plano dedicado e contratado com atendimento via WhatsApp.</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Todos os planos liberam recursos premium.
+                  <span className={`ml-1 font-medium ${selectedTheme.subtleText}`}>
+                    {selectedTheme.tierLabel} selecionado: {selectedPlanConfig.name}.
+                  </span>
+                </p>
               </div>
             </div>
 
@@ -208,11 +214,7 @@ export function AssinaturaStripeCard() {
                   disabled={checkoutLoading}
                   variant="primary"
                   size="md"
-                  className={`w-full sm:w-auto ${
-                    isContactPlan
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50'
-                      : 'border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-900/50'
-                  }`}
+                  className={`w-full sm:w-auto ${selectedTheme.ctaButton}`}
                 >
                   {checkoutLoading ? (
                     <>

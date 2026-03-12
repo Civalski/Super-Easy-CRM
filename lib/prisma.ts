@@ -18,8 +18,8 @@ if (!connectionString) {
 
 function parseEnabledFlag(raw: string | undefined) {
   const value = raw?.trim().toLowerCase()
-  if (!value) return true
-  return !['0', 'false', 'off', 'no'].includes(value)
+  if (!value) return false
+  return ['1', 'true', 'on', 'yes'].includes(value)
 }
 
 function parseSlowQueryThresholdMs(raw: string | undefined) {
