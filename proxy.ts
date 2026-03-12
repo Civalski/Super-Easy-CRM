@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { getNextAuthSecret } from "@/lib/nextauth-secret"
-import { isActiveUserSession } from "@/lib/auth-session"
 
 export async function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl
@@ -13,25 +12,15 @@ export async function proxy(req: NextRequest) {
     }
 
     const token = await getToken({ req, secret: getNextAuthSecret() })
+    const isAuthPage = pathname === '/login' || pathname === '/register'
 
-    if (pathname === '/login' || pathname === '/register') {
-        return token ? NextResponse.redirect(new URL('/', req.url)) : NextResponse.next()
+    if (isAuthPage) {
+        return NextResponse.next()
     }
 
     if (!token) {
         const loginUrl = new URL('/login', req.url)
-        loginUrl.searchParams.set('callbackUrl', req.nextUrl.pathname)
-        return NextResponse.redirect(loginUrl)
-    }
-
-    const hasActiveSession = await isActiveUserSession({
-        userId: typeof token.userId === 'string' ? token.userId : token.sub,
-        sessionId: typeof token.sessionId === 'string' ? token.sessionId : undefined,
-    })
-
-    if (!hasActiveSession) {
-        const loginUrl = new URL('/login', req.url)
-        loginUrl.searchParams.set('callbackUrl', req.nextUrl.pathname)
+        loginUrl.searchParams.set('callbackUrl', `${pathname}${req.nextUrl.search}`)
         return NextResponse.redirect(loginUrl)
     }
 

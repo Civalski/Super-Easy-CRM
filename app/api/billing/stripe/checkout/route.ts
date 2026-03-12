@@ -45,18 +45,54 @@ export async function POST(request: NextRequest) {
     })
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const successUrl = `${baseUrl}/configuracoes?success=true`
-    const cancelUrl = `${baseUrl}/configuracoes?canceled=true`
+    const successUrl = `${baseUrl}/dashboard?subscription=success`
+    const cancelUrl = `${baseUrl}/dashboard?subscription=canceled`
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      client_reference_id: userId,
-      customer_email: user?.email ?? undefined,
-    })
+    try {
+      // Accounts V2 em testmode exige customer existente. Buscamos ou criamos.
+      let customerId: string
+      if (user?.email) {
+        const existing = await stripe.customers.list({
+          email: user.email,
+          limit: 1,
+        })
+        if (existing.data.length > 0) {
+          customerId = existing.data[0].id
+        } else {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            metadata: { userId },
+          })
+          customerId = customer.id
+        }
+      } else {
+        const customer = await stripe.customers.create({
+          metadata: { userId },
+        })
+        customerId = customer.id
+      }
 
-    return NextResponse.json({ url: session.url })
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        client_reference_id: userId,
+        customer: customerId,
+      })
+
+      return NextResponse.json({ url: session.url })
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Erro desconhecido ao criar sessão Stripe'
+      console.error('[checkout] Stripe error:', err)
+      return NextResponse.json(
+        {
+          error: 'Falha ao criar sessão de checkout',
+          details: message,
+        },
+        { status: 500 }
+      )
+    }
   })
 }

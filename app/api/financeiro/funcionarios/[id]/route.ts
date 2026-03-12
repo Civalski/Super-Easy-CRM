@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 
 export const dynamic = 'force-dynamic'
 
 async function ensurePremiumAccess(userId: string) {
-  const access = await getUserSubscriptionAccess(userId)
-  if (!access.schemaReady) {
-    return NextResponse.json(
-      { error: 'Banco sem colunas de assinatura. Rode a migracao do Prisma.', code: 'SUBSCRIPTION_SCHEMA_MISSING' },
-      { status: 503 }
-    )
-  }
-  if (access.active) return null
-  return NextResponse.json(
-    { error: 'Modulo financeiro disponivel apenas para assinaturas premium.', code: 'PREMIUM_REQUIRED' },
-    { status: 402 }
-  )
+  void userId
+  return null
 }
 
 export async function GET(

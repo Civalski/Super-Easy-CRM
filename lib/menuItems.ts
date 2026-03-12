@@ -104,7 +104,6 @@ export const menuItems: MenuItem[] = [
     name: 'Financeiro',
     href: '/financeiro',
     icon: Wallet,
-    requiresPremium: true,
     helpDescription:
       'O Financeiro centraliza o controle financeiro do seu negócio.\n\n' +
       'Contas a receber: registre valores que clientes devem pagar (parcelas de pedidos, serviços), acompanhe vencimentos e receba. Contas a pagar: registre despesas, fornecedores e prazos.\n\n' +

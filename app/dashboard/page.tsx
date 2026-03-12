@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   DashboardHeader,
   DashboardStatsGrid,
@@ -13,8 +14,11 @@ import {
   FluxoCaixaResumo,
 } from '@/components/features/dashboard'
 import { useDashboard, useMetas, useFluxoCaixa } from '@/lib/hooks/useDashboardData'
+import { toast } from '@/lib/toast'
 
-export default function Dashboard() {
+function DashboardPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [dateFilter, setDateFilter] = useState<'day' | 'week' | 'month'>('week')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
@@ -37,6 +41,18 @@ export default function Dashboard() {
   } = useFluxoCaixa(6)
 
   const isRefreshing = isValidating && !dashboardLoading
+
+  useEffect(() => {
+    const sub = searchParams.get('subscription')
+    if (sub === 'success') {
+      toast.success('Parabéns, sua assinatura foi confirmada!', {
+        description: 'Você agora tem acesso aos recursos premium.',
+      })
+      router.replace('/dashboard')
+    } else if (sub === 'canceled') {
+      router.replace('/dashboard')
+    }
+  }, [searchParams, router])
 
   const handleRefresh = () => {
     void mutateDashboard()
@@ -94,5 +110,13 @@ export default function Dashboard() {
         />
       </div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardPageContent />
+    </Suspense>
   )
 }

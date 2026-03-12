@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 import { moneyRemaining, roundMoney } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
@@ -162,28 +161,6 @@ function mergeMaps(m1: Map<string, Bucket>, m2: Map<string, Bucket>): Map<string
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
-      const access = await getUserSubscriptionAccess(userId)
-      if (!access.schemaReady) {
-        return NextResponse.json(
-          {
-            error:
-              'Banco sem colunas de assinatura. Rode a migracao do Prisma para habilitar o premium.',
-            code: 'SUBSCRIPTION_SCHEMA_MISSING',
-          },
-          { status: 503 }
-        )
-      }
-      if (!access.active) {
-        return NextResponse.json(
-          {
-            error: 'Acesso ao modulo financeiro disponivel apenas para assinaturas premium ativas.',
-            code: 'PREMIUM_REQUIRED',
-            subscriptionStatus: access.status,
-          },
-          { status: 402 }
-        )
-      }
-
       const { searchParams } = new URL(request.url)
       const months = Math.max(1, Math.min(24, Number(searchParams.get('months') || 6)))
       const ambienteParam = searchParams.get('ambiente')

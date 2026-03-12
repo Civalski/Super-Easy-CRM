@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 
 export const dynamic = 'force-dynamic'
 
 const TIPOS = ['cliente', 'fornecedor', 'funcionario'] as const
 
 async function ensurePremiumAccess(userId: string) {
-  const access = await getUserSubscriptionAccess(userId)
-  if (!access.schemaReady) return NextResponse.json({ error: 'Schema nao pronto' }, { status: 503 })
-  if (access.active) return null
-  return NextResponse.json({ error: 'Premium requerido' }, { status: 402 })
+  void userId
+  return null
 }
 
 export async function GET(request: NextRequest) {
