@@ -12,6 +12,16 @@ function mapStripeStatusToNormalized(status: string): string {
   return 'inactive'
 }
 
+function getSubscriptionNextBillingAt(sub: Stripe.Subscription): Date | null {
+  const periodEnds = sub.items.data
+    .map((item) => item.current_period_end)
+    .filter((value): value is number => Number.isFinite(value))
+
+  if (!periodEnds.length) return null
+
+  return new Date(Math.max(...periodEnds) * 1000)
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const headersList = await headers()
@@ -39,6 +49,7 @@ export async function POST(request: NextRequest) {
       const sub = await stripe.subscriptions.retrieve(session.subscription as string)
       const status = mapStripeStatusToNormalized(sub.status)
       const priceId = sub.items.data[0]?.price?.id ?? null
+      const nextBillingAt = getSubscriptionNextBillingAt(sub)
       await prisma.user.update({
         where: { id: userId },
         data: {
@@ -47,9 +58,7 @@ export async function POST(request: NextRequest) {
           subscriptionStatus: status,
           subscriptionPlanCode: priceId,
           subscriptionCheckoutUrl: null,
-          subscriptionNextBillingAt: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000)
-            : null,
+          subscriptionNextBillingAt: nextBillingAt,
           subscriptionLastWebhookAt: new Date(),
         },
       })
@@ -63,13 +72,12 @@ export async function POST(request: NextRequest) {
     })
     if (user) {
       const status = mapStripeStatusToNormalized(sub.status)
+      const nextBillingAt = getSubscriptionNextBillingAt(sub)
       await prisma.user.update({
         where: { id: user.id },
         data: {
           subscriptionStatus: status,
-          subscriptionNextBillingAt: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000)
-            : null,
+          subscriptionNextBillingAt: nextBillingAt,
           subscriptionLastWebhookAt: new Date(),
         },
       })
