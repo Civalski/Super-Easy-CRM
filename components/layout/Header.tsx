@@ -61,19 +61,24 @@ export default function Header({
   }, [notifications])
 
   useEffect(() => {
-    const handleClickFora = (event: MouseEvent) => {
-      if (buscaRef.current && !buscaRef.current.contains(event.target as Node)) {
+    const handleClickFora = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+
+      if (buscaRef.current && !buscaRef.current.contains(target)) {
         fecharResultados()
       }
 
-      if (notificacaoRef.current && !notificacaoRef.current.contains(event.target as Node)) {
+      if (notificacaoRef.current && !notificacaoRef.current.contains(target)) {
         setShowNotifications(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickFora)
+    document.addEventListener('touchstart', handleClickFora, { passive: true })
     return () => {
       document.removeEventListener('mousedown', handleClickFora)
+      document.removeEventListener('touchstart', handleClickFora)
     }
   }, [fecharResultados])
 
@@ -143,8 +148,8 @@ export default function Header({
         menuLayout === 'header' ? 'lg:left-0' : 'lg:left-(--sidebar-width)'
       }`}
     >
-      <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
+        <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6 lg:px-8">
           <div className="flex items-center gap-2 min-w-0">
             {menuLayout === 'header' && (
               <div className="hidden lg:block shrink-0">
@@ -153,10 +158,10 @@ export default function Header({
             )}
             <button
               onClick={onMobileMenuClick}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 lg:hidden"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 active:bg-slate-200/80 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 dark:active:bg-slate-600/70 lg:hidden"
               aria-label="Abrir menu"
             >
-              <Menu size={19} />
+              <Menu size={20} />
             </button>
           </div>
 
@@ -166,7 +171,7 @@ export default function Header({
               className="relative flex mx-auto w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
             >
               <div
-                className="flex h-11 w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400"
+                className="flex h-10 min-h-[44px] w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400 sm:h-11"
                 aria-hidden
                 onMouseDown={(e) => e.preventDefault()}
               >
@@ -178,7 +183,7 @@ export default function Header({
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}
-                className="h-11 min-w-0 flex-1 border-0 bg-transparent py-2 pl-2 pr-2 text-sm leading-[1.5rem] text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
+                className="h-10 min-h-[44px] min-w-0 flex-1 border-0 bg-transparent py-2 pl-2 pr-2 text-base text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400 sm:h-11 sm:text-sm"
               />
               {busca ? (
                 <button
@@ -191,7 +196,7 @@ export default function Header({
                 </button>
               ) : (
                 <div
-                  className="h-11 w-10 shrink-0 cursor-default"
+                  className="h-10 min-h-[44px] w-10 shrink-0 cursor-default sm:h-11"
                   aria-hidden
                   onMouseDown={(e) => e.preventDefault()}
                 />
@@ -214,7 +219,7 @@ export default function Header({
             <button
               type="button"
               onClick={toggleHelpMode}
-              className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border transition-colors lg:h-9 lg:w-9 ${
                 helpMode
                   ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500/70 dark:bg-indigo-500/20 dark:text-indigo-300'
                   : 'border-slate-300/70 text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100'
@@ -228,7 +233,7 @@ export default function Header({
             <div ref={notificacaoRef} className="relative">
               <button
                 onClick={toggleNotifications}
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+                className="relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 active:bg-slate-200/80 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 dark:active:bg-slate-600/70 lg:h-9 lg:w-9"
                 aria-label="Notificacoes"
               >
                 <Bell size={18} />
@@ -254,15 +259,15 @@ export default function Header({
             <button
               type="button"
               onClick={onOpenConfig ?? (() => router.push('/configuracoes'))}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 active:bg-slate-200/80 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 dark:active:bg-slate-600/70 lg:h-9 lg:w-9"
               aria-label="Configurações"
               title="Configurações"
             >
               <Settings size={18} />
             </button>
 
-            <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45">
+            <div className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55 sm:gap-3 sm:px-2 sm:py-1.5">
+              <div className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl bg-linear-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45 lg:h-9 lg:w-9">
                 <span>{userInitial}</span>
               </div>
               <div className="hidden text-right md:block">

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withRouteContext } from '@/lib/api/route-helpers';
 import { getAuthIdentityFromRequest } from '@/lib/auth';
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
 import { heavyRoutesDisabledResponse, isHeavyRoutesDisabled } from '@/lib/security/heavy-routes';
@@ -145,125 +146,127 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
 
 // POST /api/prospectos/importar - Importa multiplas empresas
 export async function POST(request: NextRequest) {
-    try {
-        if (isHeavyRoutesDisabled()) {
-            return heavyRoutesDisabledResponse();
-        }
-
-        const { userId } = await getAuthIdentityFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const rateLimitResponse = enforceApiRateLimit({
-            key: `api:prospectos:importar:user:${userId}`,
-            config: importRateLimitConfig,
-            error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',
-        });
-        if (rateLimitResponse) {
-            return rateLimitResponse;
-        }
-
-        const contentLength = Number(request.headers.get('content-length') ?? '0');
-        if (Number.isFinite(contentLength) && contentLength > MAX_IMPORT_BODY_BYTES) {
-            return NextResponse.json(
-                { error: 'Payload muito grande para importacao (maximo 2MB)' },
-                { status: 413 }
-            );
-        }
-
-        const body = await request.json();
-        const empresas: EmpresaParquet[] = body.empresas || [];
-        const fileName = body.fileName || 'Importacao';
-
-        console.info('[prospectos/importar] solicitacao recebida', {
-            userId,
-            fileName,
-            empresasCount: Array.isArray(empresas) ? empresas.length : 0,
-        });
-
-        if (!Array.isArray(empresas) || empresas.length === 0) {
-            return NextResponse.json(
-                { error: 'Nenhuma empresa para importar' },
-                { status: 400 }
-            );
-        }
-
-        if (empresas.length > MAX_IMPORT_EMPRESAS) {
-            return NextResponse.json(
-                { error: `Limite de ${MAX_IMPORT_EMPRESAS} empresas por importacao` },
-                { status: 400 }
-            );
-        }
-
-        const result: ImportResult = {
-            importados: 0,
-            duplicados: 0,
-            erros: []
-        };
-
-        const prospectosMap = new Map<string, ReturnType<typeof mapearEmpresaParaProspecto>>();
-        let duplicadosNoPayload = 0;
-        const importId = Date.now();
-
-        for (let i = 0; i < empresas.length; i++) {
-            try {
-                const row = empresas[i] as unknown as Record<string, unknown>;
-                const empresa = normalizarRowFromCsv(row);
-                let cnpj = montarCNPJ(empresa);
-
-                // CSV sem coluna CNPJ: gera chave unica para nao colapsar todos em 1
-                if (!cnpj || cnpj === '00000000000000') {
-                    cnpj = `IMPORT-${importId}-${i}`;
-                    (empresa as unknown as Record<string, unknown>).CNPJ = cnpj;
-                }
-
-                if (prospectosMap.has(cnpj)) {
-                    duplicadosNoPayload++;
-                    continue;
-                }
-
-                const dadosProspecto = mapearEmpresaParaProspecto(empresa);
-                // Garante cnpj correto quando foi sintetico
-                dadosProspecto.cnpj = cnpj;
-                prospectosMap.set(cnpj, dadosProspecto);
-            } catch (err) {
-                result.erros.push(`Erro ao processar empresa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    return withRouteContext(request, async () => {
+        try {
+            if (isHeavyRoutesDisabled()) {
+                return heavyRoutesDisabledResponse();
             }
-        }
 
-        const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto) => ({
-            ...prospecto,
-            userId,
-            lote: null,
-        }));
+            const { userId } = await getAuthIdentityFromRequest(request);
+            if (!userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
 
-        if (prospectosCriar.length > 0) {
-            const criados = await prisma.prospecto.createMany({
-                data: prospectosCriar,
-                skipDuplicates: true,
+            const rateLimitResponse = enforceApiRateLimit({
+                key: `api:prospectos:importar:user:${userId}`,
+                config: importRateLimitConfig,
+                error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',
             });
-            result.importados = criados.count;
-            const duplicadosNoBanco = prospectosCriar.length - criados.count;
-            result.duplicados = duplicadosNoPayload + duplicadosNoBanco;
-        } else {
-            result.duplicados = duplicadosNoPayload;
+            if (rateLimitResponse) {
+                return rateLimitResponse;
+            }
+
+            const contentLength = Number(request.headers.get('content-length') ?? '0');
+            if (Number.isFinite(contentLength) && contentLength > MAX_IMPORT_BODY_BYTES) {
+                return NextResponse.json(
+                    { error: 'Payload muito grande para importacao (maximo 2MB)' },
+                    { status: 413 }
+                );
+            }
+
+            const body = await request.json();
+            const empresas: EmpresaParquet[] = body.empresas || [];
+            const fileName = body.fileName || 'Importacao';
+
+            console.info('[prospectos/importar] solicitacao recebida', {
+                userId,
+                fileName,
+                empresasCount: Array.isArray(empresas) ? empresas.length : 0,
+            });
+
+            if (!Array.isArray(empresas) || empresas.length === 0) {
+                return NextResponse.json(
+                    { error: 'Nenhuma empresa para importar' },
+                    { status: 400 }
+                );
+            }
+
+            if (empresas.length > MAX_IMPORT_EMPRESAS) {
+                return NextResponse.json(
+                    { error: `Limite de ${MAX_IMPORT_EMPRESAS} empresas por importacao` },
+                    { status: 400 }
+                );
+            }
+
+            const result: ImportResult = {
+                importados: 0,
+                duplicados: 0,
+                erros: []
+            };
+
+            const prospectosMap = new Map<string, ReturnType<typeof mapearEmpresaParaProspecto>>();
+            let duplicadosNoPayload = 0;
+            const importId = Date.now();
+
+            for (let i = 0; i < empresas.length; i++) {
+                try {
+                    const row = empresas[i] as unknown as Record<string, unknown>;
+                    const empresa = normalizarRowFromCsv(row);
+                    let cnpj = montarCNPJ(empresa);
+
+                    // CSV sem coluna CNPJ: gera chave unica para nao colapsar todos em 1
+                    if (!cnpj || cnpj === '00000000000000') {
+                        cnpj = `IMPORT-${importId}-${i}`;
+                        (empresa as unknown as Record<string, unknown>).CNPJ = cnpj;
+                    }
+
+                    if (prospectosMap.has(cnpj)) {
+                        duplicadosNoPayload++;
+                        continue;
+                    }
+
+                    const dadosProspecto = mapearEmpresaParaProspecto(empresa);
+                    // Garante cnpj correto quando foi sintetico
+                    dadosProspecto.cnpj = cnpj;
+                    prospectosMap.set(cnpj, dadosProspecto);
+                } catch (err) {
+                    result.erros.push(`Erro ao processar empresa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+                }
+            }
+
+            const prospectosCriar = Array.from(prospectosMap.values()).map((prospecto) => ({
+                ...prospecto,
+                userId,
+                lote: null,
+            }));
+
+            if (prospectosCriar.length > 0) {
+                const criados = await prisma.prospecto.createMany({
+                    data: prospectosCriar,
+                    skipDuplicates: true,
+                });
+                result.importados = criados.count;
+                const duplicadosNoBanco = prospectosCriar.length - criados.count;
+                result.duplicados = duplicadosNoPayload + duplicadosNoBanco;
+            } else {
+                result.duplicados = duplicadosNoPayload;
+            }
+
+            return NextResponse.json({
+                success: true,
+                ...result,
+                mensagem: `${result.importados} prospecto(s) importado(s), ${result.duplicados} duplicado(s) ignorado(s)`
+            });
+
+        } catch (error) {
+            console.error('Erro ao importar prospectos:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            return NextResponse.json(
+                { error: 'Erro ao importar prospectos' },
+                { status: 500 }
+            );
         }
-
-        return NextResponse.json({
-            success: true,
-            ...result,
-            mensagem: `${result.importados} prospecto(s) importado(s), ${result.duplicados} duplicado(s) ignorado(s)`
-        });
-
-    } catch (error) {
-        console.error('Erro ao importar prospectos:', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-        });
-        return NextResponse.json(
-            { error: 'Erro ao importar prospectos' },
-            { status: 500 }
-        );
-    }
+    });
 }

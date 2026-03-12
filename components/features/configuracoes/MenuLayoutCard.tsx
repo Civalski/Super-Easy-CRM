@@ -13,7 +13,7 @@ import {
 } from '@/lib/ui/menuLayoutPreference'
 
 export function MenuLayoutCard() {
-  const [layout, setLayout] = useState<MenuLayoutType>('sidebar')
+  const [layout, setLayout] = useState<MenuLayoutType>('header')
 
   useEffect(() => {
     const sync = () => {

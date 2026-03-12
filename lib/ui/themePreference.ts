@@ -7,7 +7,7 @@ export const DEFAULT_THEME: AppTheme = 'dark'
 export type AppTheme = 'dark' | 'light'
 
 function normalizeTheme(theme: string | null | undefined): AppTheme {
-  return theme === 'light' ? 'light' : DEFAULT_THEME
+  return theme === 'dark' || theme === 'light' ? theme : DEFAULT_THEME
 }
 
 export function applyThemeToDocument(theme: AppTheme): void {

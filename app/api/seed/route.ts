@@ -3,6 +3,7 @@ import { GoalMetricType, GoalPeriodType } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthIdentityFromRequest } from '@/lib/auth'
+import { withRouteContext } from '@/lib/api/route-helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -179,7 +180,8 @@ const statusOportunidades = ['sem_contato', 'em_potencial', 'orcamento', 'fechad
 
 
 export async function POST(request: NextRequest) {
-  try {
+  return withRouteContext(request, async () => {
+    try {
     console.log('?? Iniciando seed do banco de dados...')
 
     const seedPermission = canRunSeed(request)
@@ -1310,15 +1312,16 @@ export async function POST(request: NextRequest) {
       message: 'Dados de demonstracao completos criados com sucesso!',
       resumo,
     })
-  } catch (error) {
-    console.error('? Erro ao executar seed:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Erro ao criar dados de demonstracao',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
-      },
-      { status: 500 }
-    )
-  }
+    } catch (error) {
+      console.error('? Erro ao executar seed:', error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Erro ao criar dados de demonstracao',
+          details: error instanceof Error ? error.message : 'Erro desconhecido',
+        },
+        { status: 500 }
+      )
+    }
+  })
 }

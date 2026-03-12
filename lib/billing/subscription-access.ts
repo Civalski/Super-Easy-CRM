@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/prisma'
-import { isMercadoPagoStatusActive, normalizeMercadoPagoStatus } from '@/lib/billing/mercado-pago'
+import {
+  isSubscriptionStatusActive,
+  normalizeSubscriptionStatus,
+} from '@/lib/billing/subscription'
 import { isSubscriptionSchemaMissingError } from '@/lib/billing/subscription-schema'
 import { isBillingSubscriptionDisabledServer } from '@/lib/billing/feature-toggle'
 
@@ -31,14 +34,14 @@ export async function getUserSubscriptionAccess(userId: string) {
       }
     }
 
-    const status = normalizeMercadoPagoStatus(user.subscriptionStatus)
+    const status = normalizeSubscriptionStatus(user.subscriptionStatus)
 
     return {
       exists: true,
       schemaReady: true,
       provider: user.subscriptionProvider,
       status,
-      active: isMercadoPagoStatusActive(status),
+      active: isSubscriptionStatusActive(status),
     }
   } catch (error) {
     if (isSubscriptionSchemaMissingError(error)) {

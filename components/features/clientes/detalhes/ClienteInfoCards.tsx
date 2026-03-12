@@ -2,6 +2,7 @@
 
 import type { ChangeEvent } from 'react'
 import { Building2, FileText, Mail, MapPin, Phone, Plus, Trash2 } from '@/lib/icons'
+import { useTipoPublico } from '@/lib/hooks/useTipoPublico'
 import { formatDate } from '@/lib/format'
 import type { Cliente, CampoPersonalizado, ClienteFormData } from './types'
 import { EditField, INPUT_CLASS, TEXTAREA_CLASS, ViewGridItem, ViewInfoBlock } from './InfoFieldBlocks'
@@ -25,6 +26,7 @@ export function ClienteInfoCards({
   onAddCustomField,
   onRemoveCustomField,
 }: ClienteInfoCardsProps) {
+  const { tipoPublico } = useTipoPublico()
   const isEditing = editMode && Boolean(formData) && Boolean(onChange)
   const inputChangeHandler = onChange as ((event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void) | undefined
   const source = formData ?? {
@@ -135,6 +137,7 @@ export function ClienteInfoCards({
               Mais informacoes
             </h3>
             {(() => {
+              if (tipoPublico === 'B2C') return null
               const hasB2B =
                 cliente.cnpj || cliente.razaoSocial || cliente.nomeFantasia || cliente.capitalSocial ||
                 cliente.porte || cliente.naturezaJuridica || cliente.situacaoCadastral || cliente.dataAbertura ||

@@ -167,16 +167,19 @@ export default function AsyncSelect({
         }
     }, [query, fetchUrl, isOpen, minQueryLength, options.length, preloadOnOpen])
 
-    // Close when clicking outside
+    // Close when clicking/touching outside
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        function handleClickOutside(event: MouseEvent | TouchEvent) {
+            const target = event.target as Node | null
+            if (target && wrapperRef.current && !wrapperRef.current.contains(target)) {
                 setIsOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('touchstart', handleClickOutside, { passive: true })
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('touchstart', handleClickOutside)
         }
     }, [])
 
@@ -213,7 +216,7 @@ export default function AsyncSelect({
         `}
                 onClick={() => !disabled && setIsOpen(true)}
             >
-                <div className="flex min-w-0 items-center px-4 py-2 min-h-[42px]">
+                <div className="flex min-w-0 items-center px-4 py-2 min-h-[44px]">
                     {/* Search Icon */}
                     <Search size={16} className="text-gray-400 mr-2 shrink-0" />
 
@@ -266,7 +269,7 @@ export default function AsyncSelect({
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 crm-card shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 crm-card shadow-lg max-h-[min(15rem,70vh)] overflow-y-auto overscroll-contain" data-dropdown>
                     {loading && (
                         <div className="flex items-center justify-center p-4 text-gray-500 dark:text-gray-400">
                             <Loader2 size={20} className="animate-spin mr-2" />
@@ -291,7 +294,7 @@ export default function AsyncSelect({
                             {options.map((option) => (
                                 <li
                                     key={`${option.tipo}-${option.id}`}
-                                    className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                                    className="min-h-[44px] px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 cursor-pointer transition-colors flex items-center"
                                     onClick={(e) => {
                                         e.stopPropagation()
                                         handleSelect(option)

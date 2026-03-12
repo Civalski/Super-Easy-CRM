@@ -24,7 +24,10 @@ export function SearchResultsDropdown({
     onPedidoClick,
 }: SearchResultsDropdownProps) {
     return (
-        <div className="absolute top-full left-0 right-0 mt-2 crm-card min-w-full max-h-96 overflow-y-auto z-50 shadow-xl">
+        <div
+            className="absolute top-full left-0 right-0 mt-2 crm-card min-w-full max-h-[min(24rem,70vh)] overflow-y-auto z-50 shadow-xl overscroll-contain"
+            data-dropdown
+        >
             {carregando ? (
                 <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     Buscando...
@@ -47,7 +50,7 @@ export function SearchResultsDropdown({
                                 <button
                                     key={cliente.id}
                                     onClick={() => onClienteClick(cliente.id)}
-                                    className="w-full px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
+                                    className="w-full min-h-[44px] px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 active:bg-slate-200/65 dark:active:bg-slate-700/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center shrink-0">
@@ -81,7 +84,7 @@ export function SearchResultsDropdown({
                                 <button
                                     key={oportunidade.id}
                                     onClick={() => onOportunidadeClick(oportunidade.id)}
-                                    className="w-full px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
+                                    className="w-full min-h-[44px] px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 active:bg-slate-200/65 dark:active:bg-slate-700/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
@@ -113,7 +116,7 @@ export function SearchResultsDropdown({
                                 <button
                                     key={pedido.id}
                                     onClick={() => onPedidoClick(pedido.id)}
-                                    className="w-full px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
+                                    className="w-full min-h-[44px] px-4 py-3 text-left hover:bg-slate-100/65 dark:hover:bg-slate-800/72 active:bg-slate-200/65 dark:active:bg-slate-700/72 transition-colors border-b border-slate-200/70 dark:border-slate-700/70 last:border-b-0"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center shrink-0">

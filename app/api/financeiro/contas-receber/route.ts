@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { addMonthsWithDay, deriveFinanceStatus, processFinanceAutomation } from '@/lib/financeiro/automation'
+import { addMonthsWithDay, deriveFinanceStatus } from '@/lib/financeiro/automation'
 import { roundMoney } from '@/lib/money'
 import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
 import { Prisma } from '@prisma/client'
@@ -101,8 +101,6 @@ export async function GET(request: NextRequest) {
     try {
       const premiumDenied = await ensurePremiumAccess(userId)
       if (premiumDenied) return premiumDenied
-
-      await processFinanceAutomation(userId, RECURRING_MONTHS_AHEAD)
 
       const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')

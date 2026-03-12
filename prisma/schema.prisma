@@ -44,10 +44,12 @@ model User {
   subscriptionCheckoutUrl  String?
   subscriptionNextBillingAt DateTime?
   subscriptionLastWebhookAt DateTime?
+  onboardingCompletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   usedRegistrationCodes RegistrationCode[]
+  empresaConfig         EmpresaConfig?
   goals                 Goal[]
   motivosPerda          MotivoPerda[]
   clientes              Cliente[]
@@ -245,6 +247,7 @@ model Contato {
 
   @@index([userId])
   @@index([userId, clienteId])
+  @@index([userId, createdAt])
   @@map("contatos")
 }
 
@@ -281,7 +284,9 @@ model Oportunidade {
   @@unique([id, userId])
   @@index([userId])
   @@index([userId, clienteId])
+  @@index([userId, createdAt])
   @@index([userId, status, createdAt])
+  @@index([userId, status, updatedAt])
   @@map("oportunidades")
 }
 
@@ -312,6 +317,7 @@ model Pedido {
   @@index([userId, statusEntrega])
   @@index([userId, dataEntrega])
   @@index([userId, createdAt])
+  @@index([userId, pagamentoConfirmado])
   @@map("pedidos")
 }
 
@@ -352,6 +358,7 @@ model Tarefa {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@index([userId, clienteId])
   @@index([userId, oportunidadeId])
   @@index([userId, status, prioridade, createdAt])
@@ -440,6 +447,19 @@ model ProspectoEnvioAgendado {
   @@index([userId, dataEnvio, status])
   @@index([userId, lote, status])
   @@map("prospecto_envio_agendado")
+}
+
+model EmpresaConfig {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  areaAtuacao   String?
+  tipoPublico   String?  // B2B | B2C | ambos
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("empresa_config")
 }
 
 model PdfConfig {
@@ -623,6 +643,7 @@ model ContaReceber {
   movimentos   MovimentoFinanceiro[]
 
   @@unique([id, userId])
+  @@unique([userId, grupoParcelaId, dataVencimento])
   @@index([userId, oportunidadeId])
   @@index([userId, ambiente, tipo, status, dataVencimento])
   @@index([userId, recorrenteMensal, recorrenciaAtiva])

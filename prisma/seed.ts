@@ -1,7 +1,10 @@
 import 'dotenv/config'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { readCsvToObjects } from '@/lib/csv'
 
 const connectionString = process.env.DATABASE_URL
 
@@ -12,6 +15,50 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({ adapter })
 
+const DEFAULT_PASSWORD = 'admin1234'
+
+type UsuarioRow = {
+  username: string
+  name: string
+  email: string
+  role: string
+  telefone: string
+  areaAtuacao: string
+  tipoPublico: string
+}
+
+function getCol(row: Record<string, string | number | null>, ...names: string[]): string {
+  const keys = Object.keys(row).map((k) => k.toLowerCase())
+  for (const name of names) {
+    const key = keys.find((k) => k === name.toLowerCase())
+    if (key) {
+      const val = row[Object.keys(row).find((k) => k.toLowerCase() === key)!]
+      return val != null ? String(val).trim() : ''
+    }
+  }
+  return ''
+}
+
+function loadUsuariosFromCsv(): UsuarioRow[] {
+  const csvPath = join(process.cwd(), 'data', 'usuarios.csv')
+  const content = readFileSync(csvPath, 'utf-8')
+  const lines = content.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'))
+  const csvContent = lines.join('\n')
+  const rows = readCsvToObjects(csvContent) as Record<string, string | number | null>[]
+  const first = rows[0]
+  if (!first || !Object.keys(first).some((k) => k.toLowerCase() === 'username')) {
+    throw new Error('Coluna "username" não encontrada em data/usuarios.csv')
+  }
+  return rows.map((r) => ({
+    username: getCol(r, 'username') || '',
+    name: getCol(r, 'name') || '',
+    email: getCol(r, 'email') || '',
+    role: getCol(r, 'role') || 'user',
+    telefone: getCol(r, 'telefone') || '',
+    areaAtuacao: getCol(r, 'areaAtuacao', 'areaatuacao') || '',
+    tipoPublico: getCol(r, 'tipoPublico', 'tipopublico') || '',
+  }))
+}
 
 // Dados fake para clientes
 const clientesData = [
@@ -136,19 +183,76 @@ const prioridadesTarefas = ['baixa', 'media', 'alta']
 async function main() {
   console.log('?? Iniciando seed do banco de dados...')
 
-  const existingUser = await prisma.user.findFirst()
-  const seedUser =
-    existingUser ??
-    (await prisma.user.create({
-      data: {
-        name: 'Admin',
-        email: 'admin@local.test',
-        username: 'admin',
-        passwordHash: await bcrypt.hash('admin1234', 12),
-        role: 'admin',
-      },
-    }))
-
+  // Sincronizar usuários a partir de data/usuarios.csv
+  console.log('?? Sincronizando usuários de data/usuarios.csv...')
+  const usuariosRows = loadUsuariosFromCsv()
+  let seedUser = await prisma.user.findFirst()
+  for (const row of usuariosRows) {
+    if (!row.username?.trim()) continue
+    const { username, name, email, role, telefone, areaAtuacao, tipoPublico } = row
+    const existing = await prisma.user.findUnique({ where: { username: username.trim() } })
+    if (existing) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { name: name || null, email: email || null, role: role || 'user' },
+      })
+      await prisma.empresaConfig.upsert({
+        where: { userId: existing.id },
+        create: {
+          userId: existing.id,
+          areaAtuacao: areaAtuacao || null,
+          tipoPublico: tipoPublico || null,
+        },
+        update: {
+          areaAtuacao: areaAtuacao || null,
+          tipoPublico: tipoPublico || null,
+        },
+      })
+      await prisma.pdfConfig.upsert({
+        where: { userId: existing.id },
+        create: {
+          userId: existing.id,
+          telefone: telefone || null,
+        },
+        update: {
+          telefone: telefone || null,
+        },
+      })
+      if (!seedUser) seedUser = existing
+      console.log(`  ? Usuário atualizado: ${username}`)
+    } else {
+      const created = await prisma.user.create({
+        data: {
+          username: username.trim(),
+          name: name || null,
+          email: email || null,
+          role: role || 'user',
+          passwordHash: await bcrypt.hash(DEFAULT_PASSWORD, 12),
+          onboardingCompletedAt: new Date(),
+        },
+      })
+      if (areaAtuacao || tipoPublico) {
+        await prisma.empresaConfig.create({
+          data: {
+            userId: created.id,
+            areaAtuacao: areaAtuacao || null,
+            tipoPublico: tipoPublico || null,
+          },
+        })
+      }
+      if (telefone) {
+        await prisma.pdfConfig.create({
+          data: {
+            userId: created.id,
+            telefone: telefone || null,
+          },
+        })
+      }
+      if (!seedUser) seedUser = created
+      console.log(`  ? Usuário criado: ${username} (senha: ${DEFAULT_PASSWORD})`)
+    }
+  }
+  if (!seedUser) throw new Error('Nenhum usuário em data/usuarios.csv. Adicione ao menos um.')
   const userId = seedUser.id
 
 

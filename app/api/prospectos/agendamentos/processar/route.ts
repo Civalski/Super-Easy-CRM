@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withRouteContext } from '@/lib/api/route-helpers';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
 import { heavyRoutesDisabledResponse, isHeavyRoutesDisabled } from '@/lib/security/heavy-routes';
@@ -150,9 +151,9 @@ async function processar(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return processar(request);
+    return withRouteContext(request, () => processar(request));
 }
 
 export async function GET(request: NextRequest) {
-    return processar(request);
+    return withRouteContext(request, () => processar(request));
 }

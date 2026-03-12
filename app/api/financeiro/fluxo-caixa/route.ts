@@ -2,11 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
 import { getUserSubscriptionAccess } from '@/lib/billing/subscription-access'
-import { processFinanceAutomation } from '@/lib/financeiro/automation'
 import { moneyRemaining, roundMoney } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
 const ALLOWED_AMBIENTES = new Set(['geral', 'pessoal', 'total'])
+const FLUXO_CACHE_TTL_MS = 20_000
+const FLUXO_CACHE_MAX_ENTRIES = 500
+
+type FluxoCacheEntry = {
+  expiresAt: number
+  payload: unknown
+}
+
+const fluxoCache = new Map<string, FluxoCacheEntry>()
+
+function pruneFluxoCache(now: number) {
+  fluxoCache.forEach((entry, key) => {
+    if (entry.expiresAt <= now) fluxoCache.delete(key)
+  })
+
+  if (fluxoCache.size <= FLUXO_CACHE_MAX_ENTRIES) return
+
+  const overflow = fluxoCache.size - FLUXO_CACHE_MAX_ENTRIES
+  let removed = 0
+
+  for (const key of Array.from(fluxoCache.keys())) {
+    fluxoCache.delete(key)
+    removed += 1
+    if (removed >= overflow) break
+  }
+}
 
 function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -163,7 +188,17 @@ export async function GET(request: NextRequest) {
       const months = Math.max(1, Math.min(24, Number(searchParams.get('months') || 6)))
       const ambienteParam = searchParams.get('ambiente')
       const ambiente = ambienteParam && ALLOWED_AMBIENTES.has(ambienteParam) ? ambienteParam : 'geral'
-      await processFinanceAutomation(userId, months)
+
+      const nowMs = Date.now()
+      const cacheKey = `${userId}:${ambiente}:${months}`
+      const cachedEntry = fluxoCache.get(cacheKey)
+      if (cachedEntry && cachedEntry.expiresAt > nowMs) {
+        return NextResponse.json(cachedEntry.payload)
+      }
+
+      if (fluxoCache.size > FLUXO_CACHE_MAX_ENTRIES) {
+        pruneFluxoCache(nowMs)
+      }
 
       const now = new Date()
       const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
@@ -219,7 +254,7 @@ export async function GET(request: NextRequest) {
         }
       )
 
-      return NextResponse.json({
+      const payload = {
         period: {
           from: from.toISOString(),
           to: to.toISOString(),
@@ -228,7 +263,14 @@ export async function GET(request: NextRequest) {
         },
         totals,
         series,
+      }
+
+      fluxoCache.set(cacheKey, {
+        payload,
+        expiresAt: nowMs + FLUXO_CACHE_TTL_MS,
       })
+
+      return NextResponse.json(payload)
     } catch (error) {
       console.error('Erro ao gerar fluxo de caixa:', error)
       return NextResponse.json({ error: 'Erro ao gerar fluxo de caixa' }, { status: 500 })

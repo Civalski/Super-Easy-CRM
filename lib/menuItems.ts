@@ -8,7 +8,6 @@ import {
   Layers,
   Package,
   Trophy,
-  UserCheck,
   Users,
   Wallet,
 } from '@/lib/icons'
@@ -43,15 +42,6 @@ export const menuItems: MenuItem[] = [
     helpDescription:
       'Relatórios e análises detalhadas para acompanhar o desempenho do negócio.\n\n' +
       'Exporte dados, visualize tendências e tome decisões baseadas em números.',
-  },
-  {
-    name: 'Usuários',
-    href: '/usuarios',
-    icon: UserCheck,
-    requiresAdmin: true,
-    helpDescription:
-      'Gerencie quem pode acessar o sistema.\n\n' +
-      'Adicione novos usuários, edite dados e defina permissões de acesso. Apenas administradores têm acesso a esta área.',
   },
   {
     name: 'Clientes',

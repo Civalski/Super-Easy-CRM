@@ -1,1 +1,1 @@
-export { withAuth, zodErrorResponse } from './route-helpers'
+export { withAuth, withRouteContext, zodErrorResponse } from './route-helpers'

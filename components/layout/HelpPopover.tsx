@@ -56,7 +56,7 @@ export function HelpPopover() {
         <button
           type="button"
           onClick={clearHelpSelection}
-          className="absolute right-2 top-2 rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          className="absolute right-2 top-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 active:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:active:bg-slate-600"
           aria-label="Fechar"
         >
           <X size={18} />

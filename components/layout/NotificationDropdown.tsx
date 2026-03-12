@@ -123,7 +123,7 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
                     }
                 }}
             >
-                <div className="w-full px-4 py-3 text-left">
+                <div className="w-full min-h-[44px] px-4 py-3 text-left">
                     <div className="flex gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${overdue ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'}`}>
                             {overdue ? <AlertCircle size={16} /> : <Calendar size={16} />}
@@ -162,9 +162,10 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
                     e.stopPropagation();
                     onDismiss(notification.id);
                 }}
-                className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-red-500"
+                className="md:hidden absolute right-1 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1 text-gray-400 hover:text-red-500 active:text-red-600 touch-manipulation"
+                aria-label="Dispensar"
             >
-                <X size={16} />
+                <X size={18} />
             </button>
         </div>
     );
@@ -172,7 +173,10 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
 
 export function NotificationDropdown({ notifications, isLoading, onClose, onSelect, onClearAll, onDismiss }: NotificationProps) {
     return (
-        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 crm-card max-h-96 overflow-hidden z-50 flex flex-col">
+        <div
+            className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] crm-card max-h-[min(24rem,70vh)] overflow-hidden z-50 flex flex-col sm:w-96"
+            data-dropdown
+        >
             <div className="p-3 crm-table-head flex justify-between items-center sticky top-0 z-10">
                 <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>

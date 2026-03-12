@@ -2,7 +2,7 @@
 
 CRM completo construído com **Next.js 16 (App Router)**, **React 19**, **Prisma 7**, **Tailwind CSS 4** e **TypeScript 5**.
 Banco de dados PostgreSQL hospedado no Supabase. Autenticação via NextAuth (Credentials + JWT).
-Assinatura via Mercado Pago. Deploy na Vercel.
+Assinatura via Stripe (em preparação). Deploy na Vercel.
 
 ---
 
@@ -88,7 +88,7 @@ Cada `route.ts` exporta handlers HTTP (`GET`, `POST`, `PATCH`, `DELETE`). Todas 
 | `configuracoes/pdf/` | Configuração de layout do PDF de orçamentos. |
 | `grupos/` | Gestão de workspaces. |
 | `relatorios/` | Relatórios: `funil/`, `performance/`, `perdas/`. Compartilham `_shared.ts`. |
-| `billing/mercado-pago/` | `subscription/` (criar/consultar assinatura), `webhook/` (receber eventos). |
+| `billing/subscription/` | Consulta de status da assinatura (Stripe em preparação). |
 | `seed/` | Seed de dados para desenvolvimento. `clear/` limpa dados do usuário. |
 
 ---
@@ -168,7 +168,7 @@ Componentes estruturais da interface.
 | `format.ts` | Funções centralizadas de formatação: `formatCurrency`, `formatDate`, `formatMonthLabel`, etc. |
 | `money.ts` | Aritmética monetária segura: `roundMoney`, `moneyRemaining`, `sumMoney`. |
 | `security/` | Rate limiting (`rate-limit.ts`, `api-rate-limit.ts`), Turnstile (`turnstile.ts`), IP extraction (`client-ip.ts`), heavy routes guard (`heavy-routes.ts`). |
-| `billing/` | Integração com Mercado Pago: `mercado-pago.ts` (API, webhook HMAC), `subscription-access.ts` (verificação de acesso premium), `subscription-schema.ts` (detecção de schema). |
+| `billing/` | `subscription.ts` (normalização de status), `subscription-access.ts` (verificação de acesso premium), `subscription-schema.ts` (detecção de schema). Stripe em preparação. |
 | `domain/` | Lógica de domínio: `probabilidade.ts` (níveis e badges), `status.ts` (mapeamento de status de oportunidades). |
 | `hooks/` | Hooks globais: `useDashboardData.ts` (SWR), `useGlobalSearch.ts` (busca com debounce e cache), `useMotivosPerda.ts`. |
 | `ui/` | Preferências de UI persistidas em localStorage: tema, sidebar, formato de data, densidade, confirmação de exclusão. |

@@ -38,7 +38,7 @@ export function TarefasFilters({
                         <select
                             value={filtroStatus}
                             onChange={(e) => onFiltroStatusChange(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                            className="min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">Todos os status</option>
                             <option value="pendente">Pendente</option>
@@ -51,7 +51,7 @@ export function TarefasFilters({
                     <select
                         value={filtroPrioridade}
                         onChange={(e) => onFiltroPrioridadeChange(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        className="min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">Todas as prioridades</option>
                         <option value="baixa">Baixa</option>
@@ -63,7 +63,7 @@ export function TarefasFilters({
                 {temFiltrosAtivos && (
                     <button
                         onClick={onLimparFiltros}
-                        className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        className="flex min-h-[44px] items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white active:bg-gray-100 dark:active:bg-gray-700 rounded-lg transition-colors"
                     >
                         <X size={16} />
                         Limpar filtros

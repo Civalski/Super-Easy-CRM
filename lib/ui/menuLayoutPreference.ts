@@ -4,10 +4,10 @@ export const MENU_LAYOUT_EVENT = 'arker:ui:menu-layout-change'
 export type MenuLayoutType = 'sidebar' | 'header'
 
 export function getMenuLayout(): MenuLayoutType {
-  if (typeof window === 'undefined') return 'sidebar'
+  if (typeof window === 'undefined') return 'header'
 
   const stored = window.localStorage.getItem(MENU_LAYOUT_STORAGE_KEY)
-  return stored === 'header' ? 'header' : 'sidebar'
+  return stored === 'sidebar' ? 'sidebar' : 'header'
 }
 
 export function setMenuLayout(layout: MenuLayoutType): void {

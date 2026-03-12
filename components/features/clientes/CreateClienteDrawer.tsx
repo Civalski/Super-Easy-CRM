@@ -1,8 +1,10 @@
 'use client'
 
 import type { ChangeEvent, FormEvent } from 'react'
+import { useEffect } from 'react'
 import { Loader2, Plus, Save, Trash2, X } from '@/lib/icons'
 import { SideCreateDrawer } from '@/components/common'
+import { useTipoPublico } from '@/lib/hooks/useTipoPublico'
 import type { CampoPersonalizado, CreateClienteForm } from './types'
 
 interface CreateClienteDrawerProps {
@@ -53,8 +55,21 @@ export function CreateClienteDrawer({
   onCustomFieldChange,
   onRemoveCustomField,
 }: CreateClienteDrawerProps) {
+  const { tipoPublico } = useTipoPublico()
   const isB2B = form.perfil === 'b2b'
   const isEditMode = mode === 'edit'
+
+  // Fixa o perfil quando o usuário vende apenas B2B ou apenas B2C
+  useEffect(() => {
+    if (!open) return
+    if (tipoPublico === 'B2B' && form.perfil !== 'b2b') {
+      onInputChange({ target: { name: 'perfil', value: 'b2b' } } as ChangeEvent<HTMLInputElement>)
+    } else if (tipoPublico === 'B2C' && form.perfil !== 'b2c') {
+      onInputChange({ target: { name: 'perfil', value: 'b2c' } } as ChangeEvent<HTMLInputElement>)
+    }
+  }, [open, tipoPublico, form.perfil, onInputChange])
+
+  const showPerfilChoice = tipoPublico === 'ambos'
 
   return (
     <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-4xl">
@@ -81,46 +96,52 @@ export function CreateClienteDrawer({
         <form onSubmit={onSubmit} className="space-y-6 p-6">
           <div>
             <label className={LABEL_CLASS}>Tipo de cliente</label>
-            <div
-              role="radiogroup"
-              aria-label="Tipo de cliente"
-              className="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-600 dark:bg-gray-800"
-            >
-              <label
-                className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                  form.perfil === 'b2c'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
+            {showPerfilChoice ? (
+              <div
+                role="radiogroup"
+                aria-label="Tipo de cliente"
+                className="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-600 dark:bg-gray-800"
               >
-                <input
-                  type="radio"
-                  name="perfil"
-                  value="b2c"
-                  checked={form.perfil === 'b2c'}
-                  onChange={onInputChange}
-                  className="sr-only"
-                />
-                Cliente final (B2C)
-              </label>
-              <label
-                className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                  form.perfil === 'b2b'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="perfil"
-                  value="b2b"
-                  checked={form.perfil === 'b2b'}
-                  onChange={onInputChange}
-                  className="sr-only"
-                />
-                Cliente empresarial (B2B)
-              </label>
-            </div>
+                <label
+                  className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    form.perfil === 'b2c'
+                      ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="perfil"
+                    value="b2c"
+                    checked={form.perfil === 'b2c'}
+                    onChange={onInputChange}
+                    className="sr-only"
+                  />
+                  Cliente final (B2C)
+                </label>
+                <label
+                  className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    form.perfil === 'b2b'
+                      ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="perfil"
+                    value="b2b"
+                    checked={form.perfil === 'b2b'}
+                    onChange={onInputChange}
+                    className="sr-only"
+                  />
+                  Cliente empresarial (B2B)
+                </label>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {tipoPublico === 'B2B' ? 'Cliente empresarial (B2B)' : 'Cliente final (B2C)'}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

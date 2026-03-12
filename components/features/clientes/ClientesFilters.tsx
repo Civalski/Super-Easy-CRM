@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { RotateCcw, Trophy } from '@/lib/icons'
+import { useTipoPublico } from '@/lib/hooks/useTipoPublico'
 import {
   CLIENTES_COMMERCIAL_STATUS_OPTIONS,
   CLIENTES_LAST_CONTACT_OPTIONS,
@@ -60,6 +61,8 @@ export function ClientesFilters({
   onTopCustomersOnlyChange,
   onClearFilters,
 }: ClientesFiltersProps) {
+  const { tipoPublico } = useTipoPublico()
+
   const filterOptions = useMemo(
     () =>
       [
@@ -101,12 +104,12 @@ export function ClientesFilters({
   return (
     <div className={`relative ${hasVisibleAdvancedFilters ? 'mb-4 space-y-2' : 'mb-0'}`}>
       {open ? (
-        <div className="absolute right-0 top-0 z-20 min-w-[240px] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+        <div className="absolute right-0 top-0 z-20 min-w-[240px] max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:max-w-none">
           <div className="space-y-1">
             {filterOptions.map((option) => (
               <label
                 key={option.key}
-                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
               >
                 <input
                   type="checkbox"
@@ -121,7 +124,7 @@ export function ClientesFilters({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="min-h-[44px] min-w-[44px] rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
             >
               Fechar
             </button>
@@ -129,7 +132,7 @@ export function ClientesFilters({
               <button
                 type="button"
                 onClick={onClearFilters}
-                className="inline-flex items-center rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="inline-flex min-h-[44px] items-center rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
               >
                 <RotateCcw size={12} className="mr-1" />
                 Limpar
@@ -147,8 +150,12 @@ export function ClientesFilters({
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
           >
             <option value="">Perfil: Todos</option>
-            <option value="b2b">Perfil B2B</option>
-            <option value="b2c">Perfil B2C</option>
+            {(tipoPublico === 'ambos' || tipoPublico === 'B2B') && (
+              <option value="b2b">Perfil B2B</option>
+            )}
+            {(tipoPublico === 'ambos' || tipoPublico === 'B2C') && (
+              <option value="b2c">Perfil B2C</option>
+            )}
           </select>
         ) : null}
         {isFilterEnabled('topCustomers') ? (

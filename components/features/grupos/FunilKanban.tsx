@@ -799,15 +799,16 @@ function KanbanCard({
                                     setMenuOpen((o) => !o)
                                 }}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700"
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                 title="Ações"
+                                aria-label="Ações"
                             >
                                 <MoreVertical size={16} />
                             </button>
                             {menuOpen && typeof document !== 'undefined' && createPortal(
                                 <div
                                     ref={menuRef}
-                                    className="fixed z-[9999] w-52 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
+                                    className="fixed z-[9999] w-52 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
                                     style={{ top: menuPos.top, left: menuPos.left }}
                                     onClick={(e) => e.stopPropagation()}
                                 >
@@ -818,7 +819,7 @@ function KanbanCard({
                                                 onDelete(item)
                                                 setMenuOpen(false)
                                             }}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/40"
                                         >
                                             <Trash2 size={12} />
                                             Excluir
@@ -831,7 +832,7 @@ function KanbanCard({
                                                 onEdit(item)
                                                 setMenuOpen(false)
                                             }}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                         >
                                             <Edit2 size={12} />
                                             Editar
@@ -845,7 +846,7 @@ function KanbanCard({
                                                 setMenuOpen(false)
                                             }}
                                             disabled={updatingId === item.id}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50"
                                         >
                                             <UserPlus size={12} />
                                             Transformar em cliente
@@ -859,7 +860,7 @@ function KanbanCard({
                                                 setMenuOpen(false)
                                             }}
                                             disabled={updatingId === item.id}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50"
                                         >
                                             <ShoppingCart size={12} />
                                             Criar pedido
@@ -873,7 +874,7 @@ function KanbanCard({
                                                 setMenuOpen(false)
                                             }}
                                             disabled={updatingId === item.id}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50"
                                         >
                                             <ChevronLeft size={12} />
                                             Voltar etapa
@@ -887,7 +888,7 @@ function KanbanCard({
                                                 setMenuOpen(false)
                                             }}
                                             disabled={updatingId === item.id}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50"
                                         >
                                             <ChevronRight size={12} />
                                             Avançar etapa
@@ -899,7 +900,7 @@ function KanbanCard({
                                             onViewDetails(item)
                                             setMenuOpen(false)
                                         }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                     >
                                         <Eye size={12} />
                                         Ver detalhes

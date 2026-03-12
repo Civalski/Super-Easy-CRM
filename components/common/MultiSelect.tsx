@@ -40,15 +40,20 @@ export function MultiSelect({
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Fechar dropdown ao clicar fora
+    // Fechar dropdown ao clicar/tocar fora
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        function handleClickOutside(event: MouseEvent | TouchEvent) {
+            const target = event.target as Node | null;
+            if (target && dropdownRef.current && !dropdownRef.current.contains(target)) {
                 setIsOpen(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside, { passive: true });
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, []);
 
     // Filtrar opções
@@ -113,7 +118,7 @@ export function MultiSelect({
                 </button>
 
                 {isOpen && !disabled && (
-                    <div className="absolute z-50 w-full mt-2 crm-card overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute z-50 w-full mt-2 crm-card overflow-hidden animate-in fade-in zoom-in-95 duration-100" data-dropdown>
                         {/* Campo de Busca */}
                         <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                             <div className="relative">
@@ -130,7 +135,7 @@ export function MultiSelect({
                         </div>
 
                         {/* Lista de Opções */}
-                        <div className={`overflow-y-auto ${maxHeight}`}>
+                        <div className={`overflow-y-auto overscroll-contain max-h-[min(24rem,70vh)] ${maxHeight}`}>
                             {filteredOptions.length > 0 ? (
                                 filteredOptions.map((option, index) => {
                                     const isSelected = value.includes(option.value);
@@ -146,7 +151,7 @@ export function MultiSelect({
                                             <button
                                                 type="button"
                                                 onClick={() => toggleOption(option.value)}
-                                                className={`w-full px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 flex items-start gap-3
+                                                className={`w-full min-h-[44px] px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 active:bg-purple-100 dark:active:bg-purple-900/30 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 flex items-start gap-3
                                                     ${isSelected ? 'bg-purple-50 dark:bg-purple-900/10' : ''}
                                                 `}
                                             >

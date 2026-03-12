@@ -17,6 +17,7 @@ import { formatCurrency } from '@/lib/format'
 import { getEmailComposeUrl } from '@/lib/emailCompose'
 import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
 import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
+import { useTipoPublico } from '@/lib/hooks/useTipoPublico'
 
 let lastMetaBatidaAt = 0
 const META_BATIDA_DEBOUNCE_MS = 10000
@@ -288,6 +289,7 @@ export default function GruposPage() {
     const [showCreatePedido, setShowCreatePedido] = useState(false)
     const [createPedidoInitialPerson, setCreatePedidoInitialPerson] = useState<AsyncSelectOption | null>(null)
     const [showComprarLead, setShowComprarLead] = useState(false)
+    const { tipoPublico } = useTipoPublico()
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Detail modal state
@@ -950,14 +952,16 @@ export default function GruposPage() {
                         <Plus size={16} />
                         Cadastrar lead
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setShowComprarLead(true)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800"
-                    >
-                        <ShoppingCart size={16} />
-                        Comprar lead
-                    </button>
+                    {tipoPublico !== 'B2C' && (
+                        <button
+                            type="button"
+                            onClick={() => setShowComprarLead(true)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800"
+                        >
+                            <ShoppingCart size={16} />
+                            Comprar lead
+                        </button>
+                    )}
                     <input
                         ref={fileInputRef}
                         type="file"

@@ -93,6 +93,7 @@ export const Search = createIcon('MagnifyingGlassIcon');
 export const Send = createIcon('PaperAirplaneIcon');
 export const Settings = createIcon('Cog6ToothIcon');
 export const ShieldAlert = createIcon('ShieldExclamationIcon');
+export const ShieldCheck = createIcon('ShieldCheckIcon');
 export const ShoppingCart = createIcon('ShoppingCartIcon');
 export const Sparkles = createIcon('SparklesIcon');
 export const Square = createIcon('StopIcon');

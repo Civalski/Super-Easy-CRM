@@ -32,6 +32,10 @@ NEXTAUTH_SECRET=<gerar_com_openssl_rand_base64_32>
 # Turnstile (Cloudflare)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=<chave_do_site_turnstile>
 TURNSTILE_SECRET_KEY=<chave_secreta_turnstile>
+
+# Scheduler de automacoes financeiras
+FINANCE_SCHEDULER_SECRET=<segredo_forte_para_cron>
+CRON_SECRET=<opcional_no_vercel_cron>
 ```
 
 ---
@@ -41,6 +45,25 @@ TURNSTILE_SECRET_KEY=<chave_secreta_turnstile>
 ```bash
 npx prisma migrate deploy
 ```
+
+---
+
+## Cron recomendado (financeiro)
+
+Chame periodicamente a rota abaixo (ex.: a cada 10-30 minutos):
+
+```bash
+POST /api/financeiro/automacoes/processar
+Header: x-scheduler-secret: <FINANCE_SCHEDULER_SECRET>
+```
+
+Obs.: se usar Vercel Cron com `CRON_SECRET`, a rota tambem aceita
+`Authorization: Bearer <CRON_SECRET>`.
+
+Query params opcionais:
+- `monthsAhead` (1..24, padrao `6`)
+- `limit` (1..500, padrao `200`)
+- `userId` (processa somente um usuario)
 
 ---
 

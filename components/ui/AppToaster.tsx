@@ -9,7 +9,7 @@ import {
 } from '@/lib/ui/themePreference'
 
 export function AppToaster() {
-  const [theme, setTheme] = useState<AppTheme>('dark')
+  const [theme, setTheme] = useState<AppTheme>('light')
 
   useEffect(() => {
     const syncTheme = () => {

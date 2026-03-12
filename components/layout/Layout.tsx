@@ -8,7 +8,10 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import { HelpModeProvider, useHelpMode } from './HelpModeProvider'
 import { HelpPopover } from './HelpPopover'
+import { GuideTourModal } from './GuideTourModal'
+import { GuideTourProvider, useGuideTour } from './GuideTourProvider'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
+import { OnboardingGate } from './OnboardingGate'
 import { ConfiguracoesContent } from '@/components/features/configuracoes'
 import {
   SIDEBAR_OPEN_MODE_EVENT,
@@ -28,12 +31,13 @@ const SIDEBAR_COLLAPSE_DELAY_MS = 120
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { helpMode, toggleHelpMode } = useHelpMode()
+  const { guideActive } = useGuideTour()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [isSidebarOpenedByButton, setIsSidebarOpenedByButton] = useState(false)
   const [sidebarOpenMode, setSidebarOpenMode] = useState<SidebarOpenMode>('auto')
-  const [menuLayout, setMenuLayout] = useState<MenuLayoutType>('sidebar')
+  const [menuLayout, setMenuLayout] = useState<MenuLayoutType>('header')
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -41,12 +45,18 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [pathname])
 
   useEffect(() => {
-    if (helpMode) {
+    const handleOnboardingReset = () => setConfigDrawerOpen(false)
+    window.addEventListener('arker:onboarding-reset', handleOnboardingReset)
+    return () => window.removeEventListener('arker:onboarding-reset', handleOnboardingReset)
+  }, [])
+
+  useEffect(() => {
+    if (helpMode || guideActive) {
       setMobileSidebarOpen(true)
       setIsSidebarHovered(true)
       setIsSidebarOpenedByButton(true)
     }
-  }, [helpMode])
+  }, [helpMode, guideActive])
 
   useEffect(() => {
     const syncSidebarMode = () => {
@@ -89,11 +99,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!helpMode) {
+    if (!helpMode && !guideActive) {
       setIsSidebarHovered(false)
       setIsSidebarOpenedByButton(false)
     }
-  }, [sidebarOpenMode, helpMode])
+  }, [sidebarOpenMode, helpMode, guideActive])
 
   useEffect(() => {
     return () => {
@@ -103,7 +113,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  if (pathname === '/login' || pathname === '/register') {
+  if (pathname === '/login' || pathname === '/register' || pathname === '/onboarding') {
     return <>{children}</>
   }
 
@@ -209,8 +219,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             onOpenConfig={() => setConfigDrawerOpen(true)}
             menuLayout={menuLayout}
           />
-          <main className="flex-1 overflow-auto px-4 pb-6 pt-[calc(var(--top-bar-height)+1rem)] md:px-6 md:pb-8 lg:px-8">
-            {children}
+          <main className="flex-1 overflow-auto px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[calc(var(--top-bar-height)+0.5rem)] md:px-6 md:pb-8 md:pt-[calc(var(--top-bar-height)+1rem)] lg:px-8">
+            <OnboardingGate>{children}</OnboardingGate>
           </main>
         </div>
       </div>
@@ -244,14 +254,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (pathname === '/login' || pathname === '/register') {
+  if (pathname === '/login' || pathname === '/register' || pathname === '/onboarding') {
     return <>{children}</>
   }
 
   return (
     <HelpModeProvider>
-      <LayoutContent>{children}</LayoutContent>
-      <HelpPopover />
+      <GuideTourProvider>
+        <LayoutContent>{children}</LayoutContent>
+        <HelpPopover />
+        <GuideTourModal />
+      </GuideTourProvider>
     </HelpModeProvider>
   )
 }

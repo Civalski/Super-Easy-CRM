@@ -81,12 +81,12 @@ export function ClientesHeader({
             {backupOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setBackupOpen(false)} aria-hidden />
-                <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
+                <div className="absolute right-0 top-full z-50 mt-1 w-48 min-w-[140px] max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
                   {onExportCsvClick && (
                     <button
                       type="button"
                       onClick={handleExport}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex w-full min-h-[44px] items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                     >
                       <Download size={18} />
                       Exportar
@@ -96,7 +96,7 @@ export function ClientesHeader({
                     <button
                       type="button"
                       onClick={handleImport}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex w-full min-h-[44px] items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                     >
                       <Upload size={18} />
                       Importar

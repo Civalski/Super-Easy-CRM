@@ -274,19 +274,20 @@ export function ProspectosList({
                                             <div className="relative">
                                                 <button
                                                     onClick={() => onMenuToggle(openMenuId === prospecto.id ? null : prospecto.id)}
-                                                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
+                                                    aria-label="Abrir menu"
                                                 >
                                                     <MoreVertical className="w-4 h-4 text-gray-500" />
                                                 </button>
 
                                                 {openMenuId === prospecto.id && (
-                                                    <div className="absolute right-0 mt-1 w-48 crm-card-soft z-10">
+                                                    <div className="absolute right-0 mt-1 w-48 min-w-[140px] max-w-[calc(100vw-2rem)] crm-card-soft z-10">
                                                         <button
                                                             onClick={() => {
                                                                 onEditObservacao(prospecto.id, prospecto.observacoes || '');
                                                                 onMenuToggle(null);
                                                             }}
-                                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                            className="w-full flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                                         >
                                                             <MessageSquare className="w-4 h-4" />
                                                             Adicionar Observa??o
@@ -298,7 +299,7 @@ export function ProspectosList({
                                                                     onConverter(prospecto.id);
                                                                     onMenuToggle(null);
                                                                 }}
-                                                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                                className="w-full flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                                             >
                                                                 <UserCheck className="w-4 h-4" />
                                                                 Converter em Cliente
@@ -310,7 +311,7 @@ export function ProspectosList({
                                                                 onDelete(prospecto.id);
                                                                 onMenuToggle(null);
                                                             }}
-                                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                            className="w-full flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                             Excluir

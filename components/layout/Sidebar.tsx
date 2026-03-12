@@ -16,6 +16,7 @@ import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle
 import { menuItems } from '@/lib/menuItems'
 import type { MenuItem } from '@/lib/menuItems'
 import { useHelpMode } from './HelpModeProvider'
+import { useGuideTour } from './GuideTourProvider'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -47,6 +48,7 @@ export default function Sidebar({
   const { data: session } = useSession()
   const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
   const { helpMode, showHelpFor } = useHelpMode()
+  const { guideActive, currentItem } = useGuideTour()
 
   const username = (session?.user?.username ?? '').trim().toLowerCase()
   const role = session?.user?.role ?? ''
@@ -77,7 +79,7 @@ export default function Sidebar({
 
     async function loadPremiumAccess() {
       try {
-        const response = await fetch('/api/billing/mercado-pago/subscription', {
+        const response = await fetch('/api/billing/subscription', {
           cache: 'no-store',
         })
         if (!response.ok) throw new Error('Falha ao consultar assinatura')
@@ -213,19 +215,22 @@ export default function Sidebar({
                 }
               }
 
+              const isGuideHighlight = guideActive && currentItem?.href === item.href
+
               return (
                 <li key={item.href}>
                   <Link
                     href={href}
                     title={title}
+                    data-guide-href={item.href}
                     onClick={handleItemClick}
-                    className={`group flex h-11 items-center rounded-xl px-0 transition-colors duration-200 ${
+                    className={`group flex min-h-[44px] h-11 items-center rounded-xl px-0 transition-colors duration-200 ${
                       isActive
                         ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                         : isLocked
                           ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                           : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                    } ${helpMode && item.helpDescription ? 'cursor-help' : ''}`}
+                    } ${helpMode && item.helpDescription ? 'cursor-help' : ''} ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
                   >
                     <span className="inline-flex h-full w-12 shrink-0 items-center justify-center">
                       <ItemIcon

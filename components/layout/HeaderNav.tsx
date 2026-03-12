@@ -7,12 +7,14 @@ import { useSession } from 'next-auth/react'
 import { menuItems } from '@/lib/menuItems'
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 import { useHelpMode } from './HelpModeProvider'
+import { useGuideTour } from './GuideTourProvider'
 
 export function HeaderNav() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
   const { helpMode, showHelpFor } = useHelpMode()
+  const { guideActive, currentItem } = useGuideTour()
 
   const username = (session?.user?.username ?? '').trim().toLowerCase()
   const visibleMenuItems = menuItems.filter((item) => {
@@ -32,7 +34,7 @@ export function HeaderNav() {
 
     async function loadPremiumAccess() {
       try {
-        const response = await fetch('/api/billing/mercado-pago/subscription', {
+        const response = await fetch('/api/billing/subscription', {
           cache: 'no-store',
         })
         if (!response.ok) throw new Error('Falha ao consultar assinatura')
@@ -85,11 +87,14 @@ export function HeaderNav() {
         const href = getResolvedHref(item)
         const title = getResolvedTitle(item)
 
+        const isGuideHighlight = guideActive && currentItem?.href === item.href
+
         return (
           <Link
             key={item.href}
             href={href}
             title={title}
+            data-guide-href={item.href}
             onClick={(e) => handleItemClick(e, item)}
             className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
               isActive
@@ -97,7 +102,7 @@ export function HeaderNav() {
                 : isLocked
                   ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                   : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-            } ${helpMode && item.helpDescription ? 'cursor-help' : ''}`}
+            } ${helpMode && item.helpDescription ? 'cursor-help' : ''} ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
           >
             <ItemIcon
               size={16}

@@ -56,13 +56,23 @@ async function processAutoDebits(userId: string) {
     if (restante <= 0) continue
 
     await prisma.$transaction(async (tx) => {
-      await tx.contaReceber.update({
-        where: { id: conta.id },
+      const claimed = await tx.contaReceber.updateMany({
+        where: {
+          id: conta.id,
+          userId,
+          tipo: 'pagar',
+          autoDebito: true,
+          status: { in: ['pendente', 'parcial', 'atrasado'] },
+        },
         data: {
           valorRecebido: roundMoney(conta.valorTotal),
           status: 'pago',
         },
       })
+
+      if (claimed.count === 0) {
+        return
+      }
 
       await tx.movimentoFinanceiro.create({
         data: {
@@ -203,6 +213,7 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
     if (createData.length > 0) {
       await prisma.contaReceber.createMany({
         data: createData,
+        skipDuplicates: true,
       })
     }
   }

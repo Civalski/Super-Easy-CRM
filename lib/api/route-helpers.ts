@@ -1,20 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserIdFromRequest } from '@/lib/auth'
 import { ZodError } from 'zod'
+import { getUserIdFromRequest } from '@/lib/auth'
+import {
+  runWithPrismaQueryContext,
+  setPrismaQueryContextUserId,
+} from '@/lib/observability/prisma-query-context'
+
+type RouteContextOptions = {
+  userId?: string
+}
+
+function getPathnameFromRequest(request: Request) {
+  try {
+    return new URL(request.url).pathname
+  } catch {
+    return 'unknown'
+  }
+}
 
 /**
- * Executa o handler apenas se o usuário estiver autenticado.
- * Retorna 401 automaticamente se não houver userId.
+ * Envolve o handler com contexto de request para correlacionar queries com rota e metodo.
+ */
+export function withRouteContext<T>(
+  request: Request,
+  handler: () => Promise<T>,
+  options?: RouteContextOptions
+): Promise<T> {
+  return runWithPrismaQueryContext(
+    {
+      method: request.method,
+      route: getPathnameFromRequest(request),
+      userId: options?.userId,
+    },
+    handler
+  )
+}
+
+/**
+ * Executa o handler apenas se o usuario estiver autenticado.
+ * Retorna 401 automaticamente se nao houver userId.
  */
 export async function withAuth(
   request: NextRequest,
   handler: (userId: string) => Promise<NextResponse>
 ): Promise<NextResponse> {
-  const userId = await getUserIdFromRequest(request)
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  return handler(userId)
+  return withRouteContext(request, async () => {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    setPrismaQueryContextUserId(userId)
+    return handler(userId)
+  })
 }
 
 /**
@@ -24,9 +62,8 @@ export function zodErrorResponse(error: ZodError): NextResponse {
   const flattened = error.flatten()
   const firstFieldError = Object.values(flattened.fieldErrors).flat()[0]
   const message =
-    typeof firstFieldError === 'string'
-      ? firstFieldError
-      : 'Dados inválidos'
+    typeof firstFieldError === 'string' ? firstFieldError : 'Dados invalidos'
+
   return NextResponse.json(
     { error: message, details: flattened.fieldErrors },
     { status: 400 }

@@ -69,7 +69,7 @@ export function OrcamentosFilters({
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full z-20 mt-1 min-w-[220px] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="absolute right-0 top-full z-20 mt-1 min-w-[220px] max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:max-w-none"
     >
       <div className="space-y-3">
         <div>

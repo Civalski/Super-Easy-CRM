@@ -1,0 +1,924 @@
+/* ───────────────────────────────────────────────────── */
+/*  Onboarding Wizard – Modal overlay with glassmorphism */
+/* ───────────────────────────────────────────────────── */
+
+/* ─── Overlay backdrop ─── */
+.onb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0);
+  backdrop-filter: blur(0px);
+  transition: background 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              backdrop-filter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1rem;
+}
+
+.onb-overlay--visible {
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(12px);
+}
+
+/* Step 4: CRM nítido ao fundo para preview de tema e menu (sem desfoco) */
+.onb-overlay--preview-step.onb-overlay--visible,
+.light .onb-overlay--preview-step.onb-overlay--visible {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.onb-overlay--preview-step .onb-modal {
+  width: 100%;
+  max-width: 560px;
+}
+
+.onb-overlay--closing {
+  background: rgba(2, 6, 23, 0);
+  backdrop-filter: blur(0px);
+  pointer-events: none;
+}
+
+/* ─── Modal container ─── */
+.onb-modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow:
+    0 25px 80px -20px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(99, 102, 241, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(1.4);
+  opacity: 0;
+  transform: scale(0.92) translateY(24px);
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onb-modal--visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.onb-modal--closing {
+  opacity: 0;
+  transform: scale(0.95) translateY(16px);
+}
+
+.light .onb-modal {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(148, 163, 184, 0.3);
+  box-shadow:
+    0 25px 80px -20px rgba(15, 23, 42, 0.25),
+    0 0 0 1px rgba(99, 102, 241, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.light .onb-overlay--visible {
+  background: rgba(226, 232, 240, 0.45);
+}
+
+/* Scrollbar inside modal */
+.onb-modal::-webkit-scrollbar {
+  width: 6px;
+}
+.onb-modal::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 100px;
+}
+
+/* ─── Modal Header ─── */
+.onb-modal-header {
+  padding: 1.75rem 1.75rem 0;
+}
+
+.onb-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.onb-brand--centered {
+  flex-direction: column;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+.onb-brand-icon {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #818cf8;
+}
+
+.light .onb-brand-icon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+}
+
+.onb-brand-title {
+  font-family: var(--font-heading), var(--font-body), sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.light .onb-brand-title {
+  color: #0f172a;
+}
+
+.onb-brand-subtitle {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin-top: 0.125rem;
+  line-height: 1.4;
+}
+
+.light .onb-brand-subtitle {
+  color: #64748b;
+}
+
+/* ─── Modal Body ─── */
+.onb-modal-body {
+  padding: 1.25rem 1.75rem 1.75rem;
+}
+
+/* ─── Wizard container ─── */
+.onb-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ─── Progress Header ─── */
+.onb-progress-header {
+  padding: 0 0 0.25rem;
+}
+
+.onb-steps-row {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+.onb-step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  background: none;
+  border: none;
+  cursor: default;
+  padding: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.onb-step-dot.done {
+  cursor: pointer;
+}
+
+.onb-dot-circle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 2px solid rgba(100, 116, 139, 0.3);
+  background: rgba(30, 41, 59, 0.6);
+  color: #64748b;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.light .onb-dot-circle {
+  background: rgba(241, 245, 249, 0.8);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #94a3b8;
+}
+
+.onb-step-dot.active .onb-dot-circle {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+}
+
+.onb-step-dot.done .onb-dot-circle {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.light .onb-step-dot.done .onb-dot-circle {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.onb-dot-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.onb-dot-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+  transition: color 0.25s ease;
+}
+
+.onb-step-dot.active .onb-dot-label {
+  color: #c7d2fe;
+}
+
+.light .onb-step-dot.active .onb-dot-label {
+  color: #4f46e5;
+}
+
+.onb-step-dot.done .onb-dot-label {
+  color: #86efac;
+}
+
+.light .onb-step-dot.done .onb-dot-label {
+  color: #16a34a;
+}
+
+/* Progress bar */
+.onb-progress-track {
+  height: 3px;
+  border-radius: 100px;
+  background: rgba(100, 116, 139, 0.15);
+  overflow: hidden;
+}
+
+.light .onb-progress-track {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.onb-progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  transition: width 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+/* ─── Error ─── */
+.onb-error {
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+}
+
+.light .onb-error {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(254, 242, 242, 0.8);
+  color: #dc2626;
+}
+
+/* ─── Step content animation ─── */
+.onb-step-content {
+  min-height: 180px;
+}
+
+.onb-step-content.slide-in {
+  animation: onb-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.onb-step-content.slide-out-left {
+  animation: onb-slide-out-left 0.2s ease-in both;
+}
+
+.onb-step-content.slide-out-right {
+  animation: onb-slide-out-right 0.2s ease-in both;
+}
+
+@keyframes onb-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes onb-slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes onb-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* ─── Step inner layout ─── */
+.onb-step-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.onb-step-header {
+  text-align: center;
+}
+
+.onb-step-emoji,
+.onb-step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  color: #818cf8;
+  filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.2));
+}
+
+.light .onb-step-icon {
+  color: #6366f1;
+}
+
+.onb-step-title {
+  font-family: var(--font-heading), var(--font-body), sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+
+.light .onb-step-title {
+  color: #0f172a;
+}
+
+.onb-step-desc {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  line-height: 1.45;
+}
+
+.light .onb-step-desc {
+  color: #64748b;
+}
+
+/* ─── Step 1: Area chips ─── */
+.onb-area-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.onb-area-chip {
+  padding: 0.5rem 0.875rem;
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(30, 41, 59, 0.5);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.light .onb-area-chip {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(241, 245, 249, 0.6);
+  color: #334155;
+}
+
+.onb-area-chip:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.08);
+  color: #c7d2fe;
+}
+
+.light .onb-area-chip:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.06);
+  color: #4338ca;
+}
+
+.onb-area-chip.selected {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.12));
+  color: #a5b4fc;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.15);
+}
+
+.light .onb-area-chip.selected {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08));
+  color: #4338ca;
+}
+
+/* ─── Custom input field ─── */
+.onb-custom-field {
+  margin-top: 0.25rem;
+}
+
+/* ─── Step 2: Publico cards ─── */
+.onb-publico-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .onb-publico-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onb-publico-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(30, 41, 59, 0.45);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.light .onb-publico-card {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(248, 250, 252, 0.6);
+}
+
+.onb-publico-card:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.06);
+  transform: translateY(-2px);
+}
+
+.onb-publico-card.selected {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08));
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.12);
+}
+
+.light .onb-publico-card.selected {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
+}
+
+.onb-publico-icon {
+  font-size: 1.75rem;
+}
+
+.onb-publico-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.light .onb-publico-label {
+  color: #1e293b;
+}
+
+.onb-publico-desc {
+  font-size: 0.6875rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.onb-publico-check {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Step 3: PDF fields ─── */
+.onb-pdf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .onb-pdf-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.onb-field-full {
+  grid-column: 1 / -1;
+}
+
+.onb-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.light .onb-label {
+  color: #334155;
+}
+
+.onb-label-opt {
+  font-weight: 400;
+  color: #64748b;
+}
+
+/* ─── Shared Input ─── */
+.onb-input {
+  width: 100%;
+  padding: 0.5625rem 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  font-family: inherit;
+}
+
+.light .onb-input {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.7);
+  color: #0f172a;
+}
+
+.onb-input::placeholder {
+  color: #475569;
+}
+
+.light .onb-input::placeholder {
+  color: #94a3b8;
+}
+
+.onb-input:focus {
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.light .onb-input:focus {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: white;
+}
+
+.onb-textarea {
+  resize: none;
+}
+
+/* ─── Logo upload ─── */
+.onb-logo-field {
+  grid-column: span 1;
+}
+
+.onb-logo-upload {
+  border: 1px dashed rgba(100, 116, 139, 0.4);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.onb-logo-upload--compact .onb-logo-preview {
+  padding: 0.375rem 0.5rem;
+  min-height: 44px;
+}
+
+.onb-logo-upload--compact .onb-logo-img {
+  max-height: 36px;
+  max-width: 100px;
+}
+
+.onb-logo-upload--compact .onb-logo-dropzone {
+  flex-direction: row;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.onb-logo-upload--compact .onb-logo-remove {
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.light .onb-logo-upload {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.onb-logo-preview {
+  position: relative;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+
+.onb-logo-img {
+  max-height: 64px;
+  max-width: 180px;
+  object-fit: contain;
+}
+
+.onb-logo-remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.onb-logo-remove:hover {
+  background: rgba(239, 68, 68, 0.35);
+}
+
+.onb-logo-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.onb-logo-dropzone:hover {
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.light .onb-logo-dropzone {
+  color: #64748b;
+}
+
+.light .onb-logo-dropzone:hover {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.onb-logo-error {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  margin-top: 0.25rem;
+}
+
+.light .onb-logo-error {
+  color: #dc2626;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── Step 4: Preferências ─── */
+.onb-prefs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .onb-prefs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onb-prefs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.onb-prefs-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.onb-prefs-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(30, 41, 59, 0.45);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.light .onb-prefs-btn {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(248, 250, 252, 0.6);
+  color: #334155;
+}
+
+.onb-prefs-btn:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.onb-prefs-btn.selected {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.12));
+  color: #a5b4fc;
+}
+
+.light .onb-prefs-btn.selected {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08));
+  color: #4338ca;
+}
+
+/* ─── Footer buttons ─── */
+.onb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid rgba(100, 116, 139, 0.12);
+}
+
+.light .onb-footer {
+  border-top-color: rgba(148, 163, 184, 0.15);
+}
+
+.onb-footer-left,
+.onb-footer-right {
+  display: flex;
+  align-items: center;
+}
+
+.onb-btn-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.onb-btn-back {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.onb-btn-back:hover {
+  color: #e2e8f0;
+}
+
+.light .onb-btn-back:hover {
+  color: #1e293b;
+}
+
+.onb-btn-skip {
+  padding: 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+}
+
+.onb-btn-skip:hover {
+  color: #94a3b8;
+  text-decoration-color: currentColor;
+}
+
+.light .onb-btn-skip:hover {
+  color: #475569;
+}
+
+.onb-btn-skip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.onb-btn-next,
+.onb-btn-finish {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5625rem 1.125rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.onb-btn-next {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+.onb-btn-next:hover {
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.onb-btn-finish {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+}
+
+.onb-btn-finish:hover {
+  box-shadow: 0 6px 24px rgba(34, 197, 94, 0.45);
+  transform: translateY(-1px);
+}
+
+.onb-btn-finish:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

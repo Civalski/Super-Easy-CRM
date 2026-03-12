@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
+import { withRouteContext } from "@/lib/api/route-helpers"
 import { extractClientIpFromHeaders } from "@/lib/security/client-ip"
 import {
     consumeRateLimit,
@@ -145,11 +146,17 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ nextauth?: string[] }> }
 ) {
-  return handler(req, context)
+  return withRouteContext(req, async () => {
+    const response = await handler(req, context)
+    return response as Response
+  })
 }
 export async function POST(
   req: Request,
   context: { params: Promise<{ nextauth?: string[] }> }
 ) {
-  return handler(req, context)
+  return withRouteContext(req, async () => {
+    const response = await handler(req, context)
+    return response as Response
+  })
 }

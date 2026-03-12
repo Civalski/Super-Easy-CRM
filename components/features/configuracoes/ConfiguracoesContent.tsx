@@ -4,25 +4,41 @@
 'use client'
 
 import {
-  AssinaturaMercadoPagoCard,
+  AssinaturaStripeCard,
   MenuLayoutCard,
   SidebarBehaviorCard,
   ThemePreferenceCard,
+  RefazerOnboardingCard,
   ConfirmBeforeDeleteCard,
   DateFormatCard,
   ExcluirDadosCard,
+  ExportarDadosCard,
+  ImportarDadosCard,
   OrcamentoPdfConfigCard,
   PageHeaderPreferenceCard,
   PlataformaEmailCard,
   SuporteCard,
+  PrivacidadeCard,
 } from '@/components/features/configuracoes'
-import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 
 export function ConfiguracoesContent() {
-  const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+  const billingEnabled =
+    process.env.NEXT_PUBLIC_BILLING_SUBSCRIPTION_ENABLED === 'true' ||
+    process.env.NEXT_PUBLIC_BILLING_SUBSCRIPTION_ENABLED === '1'
 
   return (
     <div className="space-y-4">
+      {billingEnabled && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+            Assinatura
+          </h2>
+          <div className="space-y-2">
+            <AssinaturaStripeCard />
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
           Aparência
@@ -31,6 +47,15 @@ export function ConfiguracoesContent() {
           <ThemePreferenceCard />
           <MenuLayoutCard />
           <SidebarBehaviorCard />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          Configuração inicial
+        </h2>
+        <div className="space-y-2">
+          <RefazerOnboardingCard />
         </div>
       </section>
 
@@ -63,23 +88,31 @@ export function ConfiguracoesContent() {
         </div>
       </section>
 
-      {billingSubscriptionEnabled ? (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-            Dados da conta
-          </h2>
-          <div className="space-y-2">
-            <AssinaturaMercadoPagoCard />
-          </div>
-        </section>
-      ) : null}
-
       <section>
         <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
           Suporte
         </h2>
         <div className="space-y-2">
           <SuporteCard />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          Backup e exportação
+        </h2>
+        <div className="space-y-2">
+          <ExportarDadosCard />
+          <ImportarDadosCard />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          Privacidade
+        </h2>
+        <div className="space-y-2">
+          <PrivacidadeCard />
         </div>
       </section>
 
