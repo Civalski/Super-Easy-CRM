@@ -20,7 +20,6 @@ export function useGoogleSignIn(
     try {
       const { createSupabaseBrowserClient } = await import('@/lib/supabase/client')
       const supabase = createSupabaseBrowserClient()
-      await supabase.auth.signOut().catch(() => undefined)
       const redirectTo =
         typeof window !== 'undefined'
           ? (() => {
@@ -37,7 +36,12 @@ export function useGoogleSignIn(
           : undefined
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: redirectTo ? { redirectTo } : undefined,
+        options: {
+          ...(redirectTo ? { redirectTo } : {}),
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
       })
       if (oauthError) {
         resolvedOnError?.(oauthError.message || 'Falha ao iniciar login com Google.')
