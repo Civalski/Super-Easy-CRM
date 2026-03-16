@@ -20,6 +20,7 @@ export function useGoogleSignIn(
     try {
       const { createSupabaseBrowserClient } = await import('@/lib/supabase/client')
       const supabase = createSupabaseBrowserClient()
+      await supabase.auth.signOut().catch(() => undefined)
       const redirectTo =
         typeof window !== 'undefined'
           ? (() => {

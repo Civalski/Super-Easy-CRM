@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import {
+  createSupabaseBrowserClient,
+  getSupabaseBrowserAccessToken,
+} from '@/lib/supabase/client'
 import type { PasswordFormValues } from '../types'
 import { validatePasswordForm } from '../utils'
 
@@ -46,15 +49,11 @@ export function useRecoveryPasswordReset({
     }
 
     try {
-      const supabase = createSupabaseBrowserClient()
-
       if (code) {
-        const { data, error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code)
-
-        if (exchangeError) throw exchangeError
-        setAccessToken(data.session?.access_token ?? null)
+        const { accessToken } = await getSupabaseBrowserAccessToken()
+        setAccessToken(accessToken)
       } else if (tokenHash && type === 'recovery') {
+        const supabase = createSupabaseBrowserClient()
         const { data, error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: 'recovery',

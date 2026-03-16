@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserAccessToken } from '@/lib/supabase/client'
 
 function getOAuthCodeStorageKey(code: string) {
   return `auth:google-oauth-code:${code}`
@@ -49,20 +49,7 @@ function AuthCallbackInner() {
           window.sessionStorage.setItem(storageKey, 'processing')
         }
 
-        const supabase = createSupabaseBrowserClient()
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-        if (error) {
-          console.error('Erro ao trocar codigo por sessao:', error)
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem(storageKey)
-          }
-          setStatus('error')
-          redirectToLogin('oauth_exchange_failed')
-          return
-        }
-
-        const accessToken = data.session?.access_token
+        const { accessToken, supabase } = await getSupabaseBrowserAccessToken()
         if (!accessToken) {
           if (typeof window !== 'undefined') {
             window.sessionStorage.removeItem(storageKey)
@@ -94,6 +81,8 @@ function AuthCallbackInner() {
         if (typeof window !== 'undefined') {
           window.sessionStorage.setItem(storageKey, 'done')
         }
+
+        await supabase.auth.signOut().catch(() => undefined)
 
         const params = new URLSearchParams()
         params.set('register_token', json.registerToken)

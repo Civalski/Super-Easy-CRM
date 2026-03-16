@@ -9,9 +9,8 @@ const supabaseAnonKey = (
 )?.trim()
 
 /**
- * Cliente Supabase para uso no browser. Usa @supabase/ssr para armazenar
- * o code verifier do PKCE em cookies, permitindo que o OAuth (Google) funcione
- * apos o redirect.
+ * Cliente Supabase para uso no browser. O @supabase/ssr ja configura PKCE,
+ * cookies e deteccao do callback OAuth automaticamente no navegador.
  */
 export function createSupabaseBrowserClient() {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -20,11 +19,21 @@ export function createSupabaseBrowserClient() {
     )
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-    },
-  })
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+}
+
+export async function getSupabaseBrowserAccessToken() {
+  const supabase = createSupabaseBrowserClient()
+  const { data, error } = await supabase.auth.getSession()
+
+  if (error) {
+    throw error
+  }
+
+  return {
+    accessToken: data.session?.access_token ?? null,
+    supabase,
+  }
 }
 
 export function isSupabaseGoogleAuthEnabled() {
