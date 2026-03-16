@@ -18,12 +18,13 @@ function LoginPageInner() {
     handleSubmit,
     loading,
     password,
-    renderTurnstile,
     setPassword,
     setUsername,
     setWebsite,
     resetSuccess,
+    showTurnstilePrompt,
     showGoogleSignIn,
+    hideTurnstilePrompt,
     turnstileContainerRef,
     turnstileReady,
     turnstileSiteKey,
@@ -40,13 +41,10 @@ function LoginPageInner() {
           <Script
             src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
             strategy="afterInteractive"
-            onReady={() => {
-              renderTurnstile()
-            }}
           />
         )}
 
-        <LoginHero appearance={appearance} />
+        <LoginHero appearance={appearance} theme={theme} />
 
         <section
           className={`relative flex items-center justify-center px-3 py-8 sm:px-8 lg:px-12 ${appearance.formSection}`}
@@ -67,10 +65,13 @@ function LoginPageInner() {
             setPassword={setPassword}
             setUsername={setUsername}
             setWebsite={setWebsite}
+            showTurnstilePrompt={showTurnstilePrompt}
             showGoogleSignIn={showGoogleSignIn}
+            onHideTurnstilePrompt={hideTurnstilePrompt}
             turnstileContainerRef={turnstileContainerRef}
             turnstileReady={turnstileReady}
             turnstileSiteKey={turnstileSiteKey}
+            theme={theme}
             username={username}
             website={website}
           />

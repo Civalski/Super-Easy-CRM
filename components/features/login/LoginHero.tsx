@@ -3,9 +3,11 @@ import { LOGIN_HIGHLIGHT_CHIPS } from './constants'
 import { LoginTypewriterHeadline } from './LoginTypewriterHeadline'
 import { ParticlesJsBackground } from './ParticlesJsBackground'
 import type { LoginThemeAppearance } from './types'
+import type { AppTheme } from '@/lib/ui/themePreference'
 
 type LoginHeroProps = {
   appearance: LoginThemeAppearance
+  theme: AppTheme
 }
 
 export function LoginHero({ appearance }: LoginHeroProps) {
@@ -21,7 +23,7 @@ export function LoginHero({ appearance }: LoginHeroProps) {
       <div className="relative z-10">
         <Image
           src="/arkerlogo1.png"
-          alt="ArkerSoft"
+          alt="Arkersoft"
           width={210}
           height={58}
           className="h-9 w-auto object-contain"

@@ -40,7 +40,7 @@ export default function EmailConfirmacaoCliente({
           <Section style={content}>
             <Text style={eyebrow}>Confirmacao de cadastro</Text>
 
-            <Text style={title}>Oi, {nome}! 👋</Text>
+            <Text style={title}>Oi, {nome}</Text>
 
             <Text style={paragraph}>
               Que bom ter voce por aqui! Voce esta a um clique de ativar sua
@@ -73,7 +73,9 @@ export default function EmailConfirmacaoCliente({
             <Text style={signature}>
               Ate ja,
               <br />
-              Time Arkersoft 💙
+              atenciosamente
+              <br />
+              Alisson Civalski
             </Text>
 
             <Text style={footer}>

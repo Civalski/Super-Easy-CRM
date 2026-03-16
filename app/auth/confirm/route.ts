@@ -34,7 +34,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
-  const tokenHash = request.nextUrl.searchParams.get('token_hash')
+  const tokenHash =
+    request.nextUrl.searchParams.get('token_hash') ??
+    request.nextUrl.searchParams.get('token')
   const otpType = normalizeOtpType(request.nextUrl.searchParams.get('type'))
 
   try {

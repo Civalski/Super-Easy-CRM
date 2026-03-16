@@ -65,6 +65,21 @@ export const registerRateLimitConfig: RateLimitConfig = {
   blockDurationMs: parsePositiveInt(process.env.AUTH_REGISTER_BLOCK_SECONDS, 30 * 60) * 1000,
 }
 
+export const forgotPasswordRateLimitConfig: RateLimitConfig = {
+  windowMs: parsePositiveInt(process.env.AUTH_FORGOT_PASSWORD_WINDOW_SECONDS, 30 * 60) * 1000,
+  maxAttempts: parsePositiveInt(process.env.AUTH_FORGOT_PASSWORD_MAX_ATTEMPTS, 3),
+  blockDurationMs:
+    parsePositiveInt(process.env.AUTH_FORGOT_PASSWORD_BLOCK_SECONDS, 30 * 60) * 1000,
+}
+
+export const resendConfirmationRateLimitConfig: RateLimitConfig = {
+  windowMs:
+    parsePositiveInt(process.env.AUTH_RESEND_CONFIRMATION_WINDOW_SECONDS, 30 * 60) * 1000,
+  maxAttempts: parsePositiveInt(process.env.AUTH_RESEND_CONFIRMATION_MAX_ATTEMPTS, 3),
+  blockDurationMs:
+    parsePositiveInt(process.env.AUTH_RESEND_CONFIRMATION_BLOCK_SECONDS, 30 * 60) * 1000,
+}
+
 export function consumeRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
   const now = Date.now()
   cleanupStore(now)

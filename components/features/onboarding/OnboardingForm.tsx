@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useRef, useEffect } from 'react'
 import { ArrowRight, ArrowLeft, Check, Loader2, Building, Target, FileText, Upload, X, Moon, Sun, PanelLeft, Menu, Settings } from '@/lib/icons'
 import { setThemePreference } from '@/lib/ui/themePreference'
@@ -342,7 +343,14 @@ function Step3DadosPdf({
           <div className="onb-logo-upload onb-logo-upload--compact">
             {form.logoBase64 ? (
               <div className="onb-logo-preview">
-                <img src={form.logoBase64} alt="Logo" className="onb-logo-img" />
+                <Image
+                  src={form.logoBase64}
+                  alt="Logo"
+                  width={160}
+                  height={64}
+                  unoptimized
+                  className="onb-logo-img"
+                />
                 <button
                   type="button"
                   onClick={removeLogo}

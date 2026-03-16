@@ -13,9 +13,9 @@ import {
 } from '@/lib/security/rate-limit'
 import { verifyTurnstileToken } from '@/lib/security/turnstile'
 import { sendConfirmationEmail } from '@/lib/auth/send-confirmation-email'
+import { buildEmailConfirmationLink } from '@/lib/auth/email-confirmation-link'
 import {
   createSupabaseAdminClient,
-  createSupabaseServerClient,
   getRequestOrigin,
   getSupabaseEmailRedirectTo,
 } from '@/lib/supabase/server'
@@ -157,6 +157,7 @@ async function executeRegister(request: Request): Promise<NextResponse> {
       }
 
       const turnstileResult = await verifyTurnstileToken({
+        expectedAction: 'register',
         token: turnstileToken,
         remoteIp: clientIp,
       })
@@ -264,135 +265,47 @@ async function executeRegister(request: Request): Promise<NextResponse> {
         )
       }
 
-      const supabase = createSupabaseServerClient()
       const supabaseAdmin = createSupabaseAdminClient()
       const origin = getRequestOrigin(request) ?? new URL(request.url).origin
       const emailRedirectTo = getSupabaseEmailRedirectTo(origin)
-      const useResend =
-        Boolean(process.env.RESEND_API_KEY?.trim()) &&
-        Boolean(supabaseAdmin)
+      const resendApiKey = process.env.RESEND_API_KEY?.trim()
       let supabaseAuthUserId =
         recoverableUser?.subscriptionProvider === 'supabase'
           ? recoverableUser.subscriptionExternalId
           : null
 
-      if (useResend && supabaseAdmin) {
-        const { data: linkData, error: linkError } =
-          await supabaseAdmin.auth.admin.generateLink({
-            type: 'signup',
-            email,
-            password,
-            options: {
-              redirectTo: emailRedirectTo,
-              data: {
-                planId,
-                source: 'arker-crm',
-                username,
-              },
-            },
-          })
-
-        if (linkError) {
-          const msg = linkError.message ?? String(linkError)
-          if (
-            msg.includes('already') ||
-            msg.includes('registered') ||
-            msg.includes('already been registered')
-          ) {
-            return NextResponse.json(
-              {
-                error:
-                  'Este email ja esta cadastrado. Faca login com Google ou use "Esqueci minha senha" na tela de login para redefinir sua senha.',
-              },
-              { status: 409 }
-            )
-          }
-          console.error('Erro ao gerar link de confirmacao no Supabase:', linkError)
-          return NextResponse.json(
-            {
-              error:
-                'Nao foi possivel enviar o email de confirmacao agora. Verifique a configuracao e tente novamente.',
-              detail: msg,
-            },
-            { status: 502 }
-          )
-        }
-
-        const actionLink = linkData?.properties?.action_link ?? null
-        if (!actionLink) {
-          console.error('Supabase generateLink sem action_link')
-          return NextResponse.json(
-            {
-              error:
-                'Nao foi possivel gerar o link de confirmacao. Tente novamente.',
-            },
-            { status: 502 }
-          )
-        }
-        supabaseAuthUserId = linkData?.user?.id ?? null
-
-        const sendResult = await sendConfirmationEmail({
-          to: email,
-          actionLink,
-        })
-        if (!sendResult.ok) {
-          console.error('Erro ao enviar email via Resend:', sendResult.error)
-          return NextResponse.json(
-            {
-              error:
-                'Nao foi possivel enviar o email de confirmacao agora. Tente novamente em instantes.',
-            },
-            { status: 502 }
-          )
-        }
-      } else if (recoverableUser?.subscriptionProvider === 'supabase') {
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email,
-          options: {
-            emailRedirectTo,
+      if (!supabaseAdmin || !resendApiKey) {
+        return NextResponse.json(
+          {
+            error:
+              'Nao foi possivel enviar o email de confirmacao agora. Verifique a configuracao do Resend e do Supabase Admin.',
           },
-        })
+          { status: 503 }
+        )
+      }
 
-        if (resendError) {
-          console.error('Erro ao reenviar confirmacao de email no Supabase:', resendError)
-          return NextResponse.json(
-            {
-              error:
-                'Nao foi possivel reenviar o email de confirmacao agora. Tente novamente em instantes.',
-            },
-            { status: 502 }
-          )
-        }
-      } else {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const { data: linkData, error: linkError } =
+        await supabaseAdmin.auth.admin.generateLink({
+          type: 'signup',
           email,
           password,
           options: {
+            redirectTo: emailRedirectTo,
             data: {
               planId,
               source: 'arker-crm',
               username,
             },
-            emailRedirectTo,
           },
         })
 
-        if (signUpError) {
-          console.error('Erro ao criar usuario de confirmacao no Supabase:', signUpError)
-          const detail = signUpError.message ?? String(signUpError)
-          return NextResponse.json(
-            {
-              error:
-                'Nao foi possivel enviar o email de confirmacao agora. Verifique a configuracao do Supabase e tente novamente.',
-              detail,
-            },
-            { status: 502 }
-          )
-        }
-
-        const identities = signUpData.user?.identities ?? []
-        if (identities.length === 0) {
+      if (linkError) {
+        const msg = linkError.message ?? String(linkError)
+        if (
+          msg.includes('already') ||
+          msg.includes('registered') ||
+          msg.includes('already been registered')
+        ) {
           return NextResponse.json(
             {
               error:
@@ -402,7 +315,49 @@ async function executeRegister(request: Request): Promise<NextResponse> {
           )
         }
 
-        supabaseAuthUserId = signUpData.user?.id ?? null
+        console.error('Erro ao gerar link de confirmacao no Supabase:', linkError)
+        return NextResponse.json(
+          {
+            error:
+              'Nao foi possivel enviar o email de confirmacao agora. Verifique a configuracao e tente novamente.',
+            detail: msg,
+          },
+          { status: 502 }
+        )
+      }
+
+      const generatedTokenHash = linkData?.properties?.hashed_token ?? null
+      const generatedType = linkData?.properties?.verification_type ?? null
+      if (!generatedTokenHash || !generatedType) {
+        console.error('Supabase generateLink sem hashed_token/verification_type')
+        return NextResponse.json(
+          {
+            error:
+              'Nao foi possivel gerar o link de confirmacao. Tente novamente.',
+          },
+          { status: 502 }
+        )
+      }
+      supabaseAuthUserId = linkData?.user?.id ?? null
+
+      const sendResult = await sendConfirmationEmail({
+        to: email,
+        nome: name,
+        actionLink: buildEmailConfirmationLink({
+          redirectTo: emailRedirectTo,
+          tokenHash: generatedTokenHash,
+          type: generatedType,
+        }),
+      })
+      if (!sendResult.ok) {
+        console.error('Erro ao enviar email via Resend:', sendResult.error)
+        return NextResponse.json(
+          {
+            error:
+              'Nao foi possivel enviar o email de confirmacao agora. Tente novamente em instantes.',
+          },
+          { status: 502 }
+        )
       }
 
       const passwordHash = await bcrypt.hash(password, 12)

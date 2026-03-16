@@ -9,9 +9,9 @@ const HEADLINES = [
   'Mantenha o controle da sua empresa a qualquer hora, de qualquer lugar.',
 ]
 
-const TYPING_SPEED_MS = 24
-const DELETING_SPEED_MS = 18
-const PAUSE_AFTER_TYPING_MS = 2000
+const TYPING_SPEED_MS = 14
+const DELETING_SPEED_MS = 10
+const PAUSE_AFTER_TYPING_MS = 3000
 const PAUSE_AFTER_DELETING_MS = 220
 
 type LoginTypewriterHeadlineProps = {

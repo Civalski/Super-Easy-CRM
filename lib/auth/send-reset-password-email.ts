@@ -10,6 +10,7 @@ export type SendResetPasswordResult =
 export async function sendResetPasswordEmail(params: {
   to: string
   actionLink: string
+  nome?: string
 }): Promise<SendResetPasswordResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim()
   if (!apiKey) {
@@ -21,12 +22,15 @@ export async function sendResetPasswordEmail(params: {
     from: FROM_EMAIL,
     to: params.to,
     subject: 'Redefina sua senha - Arker CRM',
-    html: await buildResetPasswordEmailHtml({ resetLink: params.actionLink }),
+    html: await buildResetPasswordEmailHtml({
+      resetLink: params.actionLink,
+      nome: params.nome,
+    }),
   })
 
   if (error) {
     console.error('[send-reset-password-email] Erro Resend:', error)
-    return { ok: false, error: String(error) }
+    return { ok: false, error: error.message ?? JSON.stringify(error) }
   }
 
   return { ok: true }

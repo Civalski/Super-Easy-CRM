@@ -28,6 +28,7 @@ import {
 const SIDEBAR_COLLAPSED_WIDTH = '4.5rem'
 const SIDEBAR_EXPANDED_WIDTH = '16rem'
 const SIDEBAR_COLLAPSE_DELAY_MS = 120
+const PUBLIC_LAYOUT_PATHS = ['/login', '/register', '/onboarding', '/auth/reset-password']
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -114,7 +115,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  if (pathname === '/login' || pathname === '/register' || pathname === '/onboarding') {
+  if (PUBLIC_LAYOUT_PATHS.includes(pathname)) {
     return <>{children}</>
   }
 
@@ -259,7 +260,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (pathname === '/login' || pathname === '/register' || pathname === '/onboarding') {
+  if (PUBLIC_LAYOUT_PATHS.includes(pathname)) {
     return <>{children}</>
   }
 

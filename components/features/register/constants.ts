@@ -102,8 +102,8 @@ export const REGISTER_COPY = {
   passwordComplexity:
     'A senha deve ter maiuscula, minuscula, numero e caractere especial (!@#$%^&* etc.)',
   passwordMismatch: 'As senhas nao conferem',
-  submitLabelIndividual: 'Criar conta gratis',
-  submitLabelTeam: 'Criar conta gratis',
+  submitLabelIndividual: 'Criar conta',
+  submitLabelTeam: 'Criar conta',
   hintIndividual: 'Informe seus dados para criar sua conta e liberar 7 dias gratis apos confirmar o email.',
   hintTeam: 'Informe os dados da equipe para liberar 7 dias gratis apos confirmar o email do responsavel.',
   accessHintIndividual: 'Nao pedimos cartao agora. O acesso e liberado assim que voce confirmar o email.',

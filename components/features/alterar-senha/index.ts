@@ -1,0 +1,6 @@
+export { PasswordChangeForm } from './PasswordChangeForm'
+export { PasswordPageShell } from './PasswordPageShell'
+export { PasswordResetRequestForm } from './PasswordResetRequestForm'
+export { useAuthenticatedPasswordChange } from './hooks/useAuthenticatedPasswordChange'
+export { useRecoveryPasswordReset } from './hooks/useRecoveryPasswordReset'
+export { useResetPasswordRequest } from './hooks/useResetPasswordRequest'

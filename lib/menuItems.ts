@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Layers,
   Package,
+  ShieldCheck,
   Trophy,
   Users,
   Wallet,
@@ -127,5 +128,13 @@ export const menuItems: MenuItem[] = [
       'Controle de entradas, saidas e previsao de caixa.\n\n' +
       'Registre contas a receber, contas a pagar e acompanhe vencimentos sem perder prazos.\n\n' +
       'Use esta aba para decidir com seguranca onde investir e onde cortar custos.',
+  },
+  {
+    name: 'Alterar senha',
+    href: '/alterar-senha',
+    icon: ShieldCheck,
+    helpDescription:
+      'Atualize sua senha diretamente no CRM.\n\n' +
+      'Informe a senha atual, defina a nova senha e confirme para salvar com seguranca.',
   },
 ]

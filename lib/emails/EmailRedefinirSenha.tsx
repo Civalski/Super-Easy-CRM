@@ -21,49 +21,44 @@ export type EmailRedefinirSenhaProps = {
 }
 
 export default function EmailRedefinirSenha({
-  nome = 'Cliente',
+  nome,
   resetLink,
   logoUrl = 'https://i.ibb.co/fdSkTf3n/arkerlogo1.png',
   siteUrl = 'https://arkersoft.com.br',
 }: EmailRedefinirSenhaProps) {
+  const saudacao = nome?.trim() ? `Ola, ${nome.trim()}.` : 'Ola!'
+
   return (
     <Html lang="pt-BR">
       <Head />
-      <Preview>
-        Redefina sua senha clicando no link abaixo.
-      </Preview>
+      <Preview>Redefina sua senha clicando no link abaixo.</Preview>
 
       <Body style={main}>
         <Container style={container}>
           <Section style={logoWrapper}>
-            <Img
-              src={logoUrl}
-              alt="Arkersoft"
-              width="180"
-              style={logo}
-            />
+            <Img src={logoUrl} alt="Arkersoft" width="180" style={logo} />
           </Section>
 
           <Section style={content}>
-            <Text style={eyebrow}>Redefinição de senha</Text>
+            <Text style={eyebrow}>Redefinicao de senha</Text>
 
-            <Text style={title}>Olá, {nome}.</Text>
+            <Text style={title}>{saudacao}</Text>
 
             <Text style={paragraph}>
-              Recebemos uma solicitação para redefinir a senha da sua conta.
-              Clique no botão abaixo para criar uma nova senha.
+              Recebemos uma solicitacao para redefinir a senha da sua conta.
+              Clique no botao abaixo para criar uma nova senha.
             </Text>
 
             <Text style={paragraph}>
-              Se você não solicitou essa alteração, pode ignorar este email. Sua
-              senha atual permanecerá inalterada.
+              Se voce nao solicitou essa alteracao, pode ignorar este email. Sua
+              senha atual permanecera inalterada.
             </Text>
 
             <Section style={infoBox}>
-              <Text style={infoBoxTitle}>Dica de segurança</Text>
-              <Text style={infoItem}>• O link expira em 1 hora</Text>
-              <Text style={infoItem}>• Não compartilhe este email com ninguém</Text>
-              <Text style={infoItem}>• Use uma senha forte e única</Text>
+              <Text style={infoBoxTitle}>Dica de seguranca</Text>
+              <Text style={infoItem}>- O link expira em 1 hora</Text>
+              <Text style={infoItem}>- Nao compartilhe este email com ninguem</Text>
+              <Text style={infoItem}>- Use uma senha forte e unica</Text>
             </Section>
 
             <Section style={buttonWrapper}>
@@ -75,9 +70,10 @@ export default function EmailRedefinirSenha({
             <Hr style={hr} />
 
             <Text style={footer}>
-              Se tiver qualquer dúvida, visite nosso site{' '}
-              <Link href={siteUrl} style={footerLink}>
-                arkersoft.com.br
+              Se tiver qualquer duvida, responda este email ou entre em contato
+              pelo WhatsApp{' '}
+              <Link href="https://wa.me/5519998205608" style={footerLink}>
+                19 99820-5608
               </Link>
               .
             </Text>

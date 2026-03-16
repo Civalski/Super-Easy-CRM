@@ -4,6 +4,10 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
+function getOAuthCodeStorageKey(code: string) {
+  return `auth:google-oauth-code:${code}`
+}
+
 function AuthCallbackInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -34,12 +38,25 @@ function AuthCallbackInner() {
     }
 
     const run = async () => {
+      const storageKey = getOAuthCodeStorageKey(code)
+
       try {
+        if (typeof window !== 'undefined') {
+          const handledCode = window.sessionStorage.getItem(storageKey)
+          if (handledCode === 'processing' || handledCode === 'done') {
+            return
+          }
+          window.sessionStorage.setItem(storageKey, 'processing')
+        }
+
         const supabase = createSupabaseBrowserClient()
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (error) {
           console.error('Erro ao trocar codigo por sessao:', error)
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(storageKey)
+          }
           setStatus('error')
           redirectToLogin('oauth_exchange_failed')
           return
@@ -47,8 +64,11 @@ function AuthCallbackInner() {
 
         const accessToken = data.session?.access_token
         if (!accessToken) {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(storageKey)
+          }
           setStatus('error')
-          redirectToLogin('oauth_no_email')
+          redirectToLogin('oauth_missing_session')
           return
         }
 
@@ -58,12 +78,21 @@ function AuthCallbackInner() {
           body: JSON.stringify({ accessToken }),
         })
 
-        const json = await res.json()
+        const json = (await res.json().catch(() => null)) as
+          | { error?: string; registerToken?: string }
+          | null
 
-        if (!res.ok || !json.registerToken) {
+        if (!res.ok || !json?.registerToken) {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(storageKey)
+          }
           setStatus('error')
-          redirectToLogin(json.error || 'oauth_user_failed')
+          redirectToLogin(json?.error || 'oauth_user_failed')
           return
+        }
+
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem(storageKey, 'done')
         }
 
         const params = new URLSearchParams()
@@ -72,6 +101,9 @@ function AuthCallbackInner() {
         router.replace(`/login?${params.toString()}`)
       } catch (err) {
         console.error('Erro no callback OAuth:', err)
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(storageKey)
+        }
         setStatus('error')
         redirectToLogin('oauth_error')
       }

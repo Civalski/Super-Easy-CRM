@@ -175,6 +175,7 @@ const handler = NextAuth({
                 }
 
                 const turnstileResult = await verifyTurnstileToken({
+                    expectedAction: "login",
                     token: turnstileToken,
                     remoteIp: clientIp,
                 })
@@ -215,7 +216,9 @@ const handler = NextAuth({
                         identifier,
                         userId: user.id,
                     })
-                    return null
+                    throw new Error(
+                        `email_not_confirmed:${(user.email ?? identifier).trim().toLowerCase()}`
+                    )
                 }
 
                 const sessionId = randomUUID()

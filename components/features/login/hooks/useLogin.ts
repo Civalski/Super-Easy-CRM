@@ -1,92 +1,119 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getSession, signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTurnstileWidget } from '@/components/common/turnstile/useTurnstileWidget'
 import type { AppTheme } from '@/lib/ui/themePreference'
 import { useGoogleSignIn } from './useGoogleSignIn'
-import { TURNSTILE_RETRY_INTERVAL_MS, TURNSTILE_RETRY_MAX_ATTEMPTS } from '../constants'
 import { getTurnstileTheme, resolveLoginCallbackUrl } from '../utils'
+
+function extractUnconfirmedEmail(errorValue: string | undefined) {
+  if (!errorValue) return null
+
+  const normalizedValue = decodeURIComponent(errorValue)
+  if (!normalizedValue.startsWith('email_not_confirmed:')) {
+    return null
+  }
+
+  const email = normalizedValue.slice('email_not_confirmed:'.length).trim().toLowerCase()
+  return email || null
+}
 
 export function useLogin(theme: AppTheme) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? ''
-  const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
-  const turnstileWidgetIdRef = useRef<string | null>(null)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [website, setWebsite] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState('')
-  const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey)
+  const [pendingLogin, setPendingLogin] = useState(false)
+  const [showTurnstilePrompt, setShowTurnstilePrompt] = useState(false)
   const urlError = searchParams.get('error')
+  const unconfirmedEmailFromQuery = extractUnconfirmedEmail(urlError ?? undefined)
   const resetSuccess = searchParams.get('reset') === 'success'
   const [error, setError] = useState(() => {
     const msg = urlError
+    if (unconfirmedEmailFromQuery) {
+      return 'Seu email ainda nao foi confirmado. Reenviamos voce para a tela de confirmacao.'
+    }
     if (msg === 'oauth_failed') return 'Login com Google cancelado ou falhou.'
     if (msg === 'oauth_missing_code') return 'Codigo de autorizacao ausente. Tente novamente.'
     if (msg === 'oauth_exchange_failed') return 'Falha ao validar login com Google.'
+    if (msg === 'oauth_missing_session') return 'Nao foi possivel concluir a sessao do Google. Tente novamente.'
     if (msg === 'oauth_no_email') return 'Google nao retornou seu email. Verifique as permissoes.'
+    if (msg === 'oauth_invalid_token') return 'A sessao retornada pelo Google expirou antes da validacao. Tente novamente.'
     if (msg === 'oauth_user_failed') return 'Nao foi possivel criar ou encontrar sua conta.'
     if (msg === 'oauth_error') return 'Ocorreu um erro ao entrar com Google.'
     return ''
   })
   const [loading, setLoading] = useState(false)
   const callbackUrl = resolveLoginCallbackUrl(searchParams.get('callbackUrl'))
-  const turnstileTheme = getTurnstileTheme(theme)
+  const {
+    resetTurnstile,
+    turnstileContainerRef,
+    turnstileReady,
+    turnstileSiteKey,
+    turnstileToken,
+  } = useTurnstileWidget({
+    action: 'login',
+    enabled: showTurnstilePrompt,
+    errorMessage: 'Nao foi possivel carregar a verificacao anti-bot. Recarregue a pagina.',
+    onError: setError,
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '',
+    size: 'flexible',
+    theme: getTurnstileTheme(theme),
+  })
 
-  const resetTurnstile = useCallback(() => {
-    window.turnstile?.reset(turnstileWidgetIdRef.current ?? undefined)
-    setTurnstileToken('')
-  }, [])
+  const hideTurnstilePrompt = useCallback(() => {
+    setPendingLogin(false)
+    setShowTurnstilePrompt(false)
+    resetTurnstile()
+  }, [resetTurnstile])
 
-  const renderTurnstile = useCallback(() => {
-    if (!turnstileSiteKey || !window.turnstile || !turnstileContainerRef.current) {
-      return false
-    }
+  const executeLogin = useCallback(async (resolvedTurnstileToken: string) => {
+    try {
+      const result = await signIn('credentials', {
+        callbackUrl,
+        password,
+        redirect: false,
+        turnstileToken: resolvedTurnstileToken,
+        username,
+        website,
+      })
 
-    if (turnstileWidgetIdRef.current && window.turnstile.remove) {
-      window.turnstile.remove(turnstileWidgetIdRef.current)
-      turnstileWidgetIdRef.current = null
-    }
-
-    turnstileContainerRef.current.innerHTML = ''
-    setTurnstileReady(false)
-
-    const widgetId = window.turnstile.render(turnstileContainerRef.current, {
-      sitekey: turnstileSiteKey,
-      theme: turnstileTheme,
-      size: 'normal',
-      callback: (token: string) => {
-        setTurnstileToken(token)
-      },
-      'expired-callback': () => {
-        setTurnstileToken('')
-      },
-      'error-callback': () => {
-        setTurnstileToken('')
-        setError('Nao foi possivel carregar a verificacao anti-bot. Recarregue a pagina.')
-      },
-    })
-
-    turnstileWidgetIdRef.current = String(widgetId)
-    setTurnstileReady(true)
-    return true
-  }, [turnstileSiteKey, turnstileTheme])
-
-  useEffect(() => {
-    if (!turnstileSiteKey) return
-
-    let attempts = 0
-    const interval = window.setInterval(() => {
-      attempts += 1
-      if (renderTurnstile() || attempts >= TURNSTILE_RETRY_MAX_ATTEMPTS) {
-        window.clearInterval(interval)
+      const unconfirmedEmail = extractUnconfirmedEmail(result?.error ?? undefined)
+      if (unconfirmedEmail) {
+        router.replace(`/register/check-email?email=${encodeURIComponent(unconfirmedEmail)}&status=error`)
+        router.refresh()
+        return
       }
-    }, TURNSTILE_RETRY_INTERVAL_MS)
 
-    return () => window.clearInterval(interval)
-  }, [renderTurnstile, turnstileSiteKey])
+      if (!result?.ok || result.error) {
+        setError('Falha na autenticacao. Verifique os dados e tente novamente.')
+        hideTurnstilePrompt()
+        setLoading(false)
+        return
+      }
+
+      const session = await getSession()
+      if (!session?.user) {
+        setError(
+          'Login validado, mas a sessao nao foi criada. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET no deploy.'
+        )
+        hideTurnstilePrompt()
+        setLoading(false)
+        return
+      }
+
+      hideTurnstilePrompt()
+      router.replace(callbackUrl)
+      router.refresh()
+    } catch (_error) {
+      setError('Ocorreu um erro ao tentar fazer login')
+      hideTurnstilePrompt()
+      setLoading(false)
+    }
+  }, [callbackUrl, hideTurnstilePrompt, password, router, username, website])
 
   const { handleGoogleSignIn: baseGoogleSignIn, showGoogleSignIn } = useGoogleSignIn(
     callbackUrl,
@@ -103,60 +130,31 @@ export function useLogin(theme: AppTheme) {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setLoading(true)
     setError('')
 
-    const resolvedTurnstileToken =
-      turnstileToken ||
-      (turnstileSiteKey
-        ? (
-            document.querySelector('input[name="cf-turnstile-response"]') as
-              | HTMLInputElement
-              | null
-          )
-            ?.value?.trim() ?? ''
-        : '')
-
-    if (turnstileSiteKey && !resolvedTurnstileToken) {
-      setError('Confirme a verificacao anti-bot para continuar')
-      setLoading(false)
+    if (turnstileSiteKey && !turnstileToken) {
+      setPendingLogin(true)
+      setShowTurnstilePrompt(true)
+      setError(
+        turnstileReady
+          ? 'Confirme a verificacao anti-bot para continuar.'
+          : 'A verificacao anti-bot esta sendo preparada. Aguarde um instante.'
+      )
       return
     }
 
-    try {
-      const result = await signIn('credentials', {
-        callbackUrl,
-        password,
-        redirect: false,
-        turnstileToken: resolvedTurnstileToken,
-        username,
-        website,
-      })
-
-      if (!result?.ok || result.error) {
-        setError('Falha na autenticacao. Verifique os dados e tente novamente.')
-        resetTurnstile()
-        setLoading(false)
-        return
-      }
-
-      const session = await getSession()
-      if (!session?.user) {
-        setError(
-          'Login validado, mas a sessao nao foi criada. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET no deploy.'
-        )
-        setLoading(false)
-        return
-      }
-
-      router.replace(callbackUrl)
-      router.refresh()
-    } catch (_error) {
-      setError('Ocorreu um erro ao tentar fazer login')
-      resetTurnstile()
-      setLoading(false)
-    }
+    setLoading(true)
+    await executeLogin(turnstileToken)
   }
+
+  useEffect(() => {
+    if (!pendingLogin || !turnstileToken) return
+
+    setPendingLogin(false)
+    setLoading(true)
+    setError('')
+    void executeLogin(turnstileToken)
+  }, [executeLogin, pendingLogin, turnstileToken])
 
   const registerToken = searchParams.get('register_token')
   const urlCallbackUrl = searchParams.get('callbackUrl')
@@ -201,11 +199,12 @@ export function useLogin(theme: AppTheme) {
     handleSubmit,
     loading,
     password,
-    renderTurnstile,
     setPassword,
     setUsername,
     setWebsite,
+    showTurnstilePrompt,
     showGoogleSignIn,
+    hideTurnstilePrompt,
     turnstileContainerRef,
     turnstileReady,
     turnstileSiteKey,

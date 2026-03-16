@@ -1,13 +1,17 @@
 import 'server-only'
+import { randomUUID } from 'crypto'
 
 export type TurnstileVerificationResult = {
+  action?: string
   errorCodes: string[]
+  hostname?: string
   success: boolean
 }
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
 type VerifyTurnstileInput = {
+  expectedAction?: string
   remoteIp?: string
   token: string
 }
@@ -36,8 +40,11 @@ export async function verifyTurnstileToken(
   if (input.remoteIp && input.remoteIp !== 'unknown') {
     body.set('remoteip', input.remoteIp)
   }
+  body.set('idempotency_key', randomUUID())
 
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
     const response = await fetch(TURNSTILE_VERIFY_URL, {
       method: 'POST',
       headers: {
@@ -45,7 +52,8 @@ export async function verifyTurnstileToken(
       },
       body: body.toString(),
       cache: 'no-store',
-    })
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout))
 
     if (!response.ok) {
       return {
@@ -55,13 +63,29 @@ export async function verifyTurnstileToken(
     }
 
     const data = (await response.json()) as {
+      action?: string
       success?: boolean
       'error-codes'?: string[]
+      hostname?: string
+    }
+    const action = typeof data.action === 'string' ? data.action : undefined
+    const hostname = typeof data.hostname === 'string' ? data.hostname : undefined
+    const errorCodes = Array.isArray(data['error-codes']) ? data['error-codes'] : []
+
+    if (data.success && input.expectedAction && action !== input.expectedAction) {
+      return {
+        success: false,
+        action,
+        errorCodes: ['turnstile-action-mismatch'],
+        hostname,
+      }
     }
 
     return {
       success: Boolean(data.success),
-      errorCodes: Array.isArray(data['error-codes']) ? data['error-codes'] : [],
+      action,
+      errorCodes,
+      hostname,
     }
   } catch (_error) {
     return {

@@ -10,6 +10,7 @@ export type SendConfirmationResult =
 export async function sendConfirmationEmail(params: {
   to: string
   actionLink: string
+  nome?: string
 }): Promise<SendConfirmationResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim()
   if (!apiKey) {
@@ -21,7 +22,10 @@ export async function sendConfirmationEmail(params: {
     from: FROM_EMAIL,
     to: params.to,
     subject: 'Confirme seu email - Arker CRM',
-    html: await buildConfirmationEmailHtml({ confirmationLink: params.actionLink }),
+    html: await buildConfirmationEmailHtml({
+      confirmationLink: params.actionLink,
+      nome: params.nome,
+    }),
   })
 
   if (error) {
