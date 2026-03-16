@@ -6,7 +6,6 @@ import {
   computeGoalProgress,
   parseDateInput,
   parseWeekDays,
-  recordGoalSnapshot,
 } from '../helpers'
 
 export const dynamic = 'force-dynamic'
@@ -43,16 +42,6 @@ export async function GET(
         userId,
       })
       const progress = goal.target > 0 ? Math.round((progressResult.current / goal.target) * 100) : 0
-
-      await recordGoalSnapshot({
-        goalId: goal.id,
-        target: goal.target,
-        current: progressResult.current,
-        progress: Math.min(progress, 100),
-        periodStart: progressResult.periodStart,
-        periodEnd: progressResult.periodEnd,
-        active: progressResult.active,
-      })
 
       return NextResponse.json({
         ...goal,

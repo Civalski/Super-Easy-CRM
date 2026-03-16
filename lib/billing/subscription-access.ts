@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import {
-  isSubscriptionStatusActive,
-  normalizeSubscriptionStatus,
+  resolveSubscriptionState,
 } from '@/lib/billing/subscription'
 import { isSubscriptionSchemaMissingError } from '@/lib/billing/subscription-schema'
 import { isBillingSubscriptionDisabledServer } from '@/lib/billing/feature-toggle'
@@ -20,8 +19,10 @@ export async function getUserSubscriptionAccess(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        subscriptionNextBillingAt: true,
         subscriptionStatus: true,
         subscriptionProvider: true,
+        demoModeActive: true,
       },
     })
 
@@ -29,25 +30,33 @@ export async function getUserSubscriptionAccess(userId: string) {
       return {
         exists: false,
         schemaReady: true,
+        demoModeActive: false,
         status: 'inactive',
         active: false,
       }
     }
 
-    const status = normalizeSubscriptionStatus(user.subscriptionStatus)
+    const state = resolveSubscriptionState({
+      nextBillingAt: user.subscriptionNextBillingAt,
+      provider: user.subscriptionProvider,
+      status: user.subscriptionStatus,
+    })
 
     return {
       exists: true,
       schemaReady: true,
       provider: user.subscriptionProvider,
-      status,
-      active: isSubscriptionStatusActive(status),
+      demoModeActive: user.demoModeActive,
+      expired: state.expired,
+      status: state.status,
+      active: state.active,
     }
   } catch (error) {
     if (isSubscriptionSchemaMissingError(error)) {
       return {
         exists: true,
         schemaReady: false,
+        demoModeActive: false,
         status: 'inactive',
         active: false,
       }

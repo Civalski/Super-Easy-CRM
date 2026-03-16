@@ -3,8 +3,19 @@
 import { useRef, useEffect } from 'react'
 import { RotateCcw } from '@/lib/icons'
 import { FORMA_PAGAMENTO_OPTIONS } from '@/components/features/oportunidades/constants'
+import { formatDateToLocalISO } from '@/lib/date'
 import { STATUS_ENTREGA_LABEL } from './constants'
 import type { PedidoTab } from './types'
+
+function getMonthFromDateInput(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date().getMonth() + 1
+  return Number(value.slice(5, 7))
+}
+
+function getYearFromDateInput(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date().getFullYear()
+  return Number(value.slice(0, 4))
+}
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Qualquer' },
@@ -134,22 +145,16 @@ export function PedidosFilters({
             </label>
             <div className="flex gap-2">
               <select
-                value={
-                  values.dataInicio
-                    ? String(new Date(values.dataInicio).getMonth() + 1)
-                    : String(new Date().getMonth() + 1)
-                }
+                value={String(getMonthFromDateInput(values.dataInicio))}
                 onChange={(e) => {
                   const mes = parseInt(e.target.value, 10)
-                  const ano = values.dataInicio
-                    ? new Date(values.dataInicio).getFullYear()
-                    : new Date().getFullYear()
+                  const ano = getYearFromDateInput(values.dataInicio)
                   const firstDay = new Date(ano, mes - 1, 1)
                   const lastDay = new Date(ano, mes, 0)
                   onChange({
                     ...values,
-                    dataInicio: firstDay.toISOString().split('T')[0],
-                    dataFim: lastDay.toISOString().split('T')[0],
+                    dataInicio: formatDateToLocalISO(firstDay),
+                    dataFim: formatDateToLocalISO(lastDay),
                   })
                 }}
                 className="flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
@@ -161,22 +166,16 @@ export function PedidosFilters({
                 ))}
               </select>
               <select
-                value={
-                  values.dataInicio
-                    ? String(new Date(values.dataInicio).getFullYear())
-                    : String(new Date().getFullYear())
-                }
+                value={String(getYearFromDateInput(values.dataInicio))}
                 onChange={(e) => {
                   const ano = parseInt(e.target.value, 10)
-                  const mes = values.dataInicio
-                    ? new Date(values.dataInicio).getMonth() + 1
-                    : new Date().getMonth() + 1
+                  const mes = getMonthFromDateInput(values.dataInicio)
                   const firstDay = new Date(ano, mes - 1, 1)
                   const lastDay = new Date(ano, mes, 0)
                   onChange({
                     ...values,
-                    dataInicio: firstDay.toISOString().split('T')[0],
-                    dataFim: lastDay.toISOString().split('T')[0],
+                    dataInicio: formatDateToLocalISO(firstDay),
+                    dataFim: formatDateToLocalISO(lastDay),
                   })
                 }}
                 className="w-20 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"

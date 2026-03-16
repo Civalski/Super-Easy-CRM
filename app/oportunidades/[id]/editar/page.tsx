@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/common'
 import { useMotivosPerda } from '@/lib/hooks/useMotivosPerda'
 import { ArrowLeft, Loader2, Save } from '@/lib/icons'
+import { formatDateToLocalISO } from '@/lib/date'
 import { toast } from '@/lib/toast'
 import {
   getProbabilityLevel,
@@ -19,13 +20,7 @@ interface Cliente {
 }
 
 const formatDateInput = (value?: string | null) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return formatDateToLocalISO(value)
 }
 
 export default function EditarOportunidadePage() {

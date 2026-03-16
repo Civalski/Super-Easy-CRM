@@ -1,6 +1,7 @@
 /**
  * Exporta todos os usuários cadastrados para data/usuarios.csv.
- * Inclui: username, name, email, role, telefone (empresa), areaAtuacao (ramo), tipoPublico.
+ * Inclui: username, name, email, role, telefone (empresa), areaAtuacao (ramo),
+ * tipoPublico e assinatura vigente.
  *
  * Uso: npx tsx scripts/export-usuarios-csv.ts
  */
@@ -9,6 +10,7 @@ import { writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
+import { normalizeSubscriptionStatus } from '@/lib/billing/subscription'
 
 const connectionString = process.env.DATABASE_URL
 if (!connectionString) {
@@ -27,6 +29,33 @@ function escapeCsv(value: string | null | undefined): string {
   return str
 }
 
+function getAssinaturaVigente(user: {
+  subscriptionStatus: string | null
+  subscriptionNextBillingAt: Date | null
+  subscriptionLastWebhookAt: Date | null
+}): 'trial' | 'premium' | 'expirado' {
+  const normalizedStatus = normalizeSubscriptionStatus(user.subscriptionStatus)
+
+  if (normalizedStatus !== 'authorized') {
+    return 'expirado'
+  }
+
+  const { subscriptionNextBillingAt, subscriptionLastWebhookAt } = user
+  if (subscriptionNextBillingAt && subscriptionLastWebhookAt) {
+    const diffMs =
+      subscriptionNextBillingAt.getTime() - subscriptionLastWebhookAt.getTime()
+    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+
+    // Quando a próxima cobrança está muito próxima da criação/último sync,
+    // tratamos como janela de trial do checkout Stripe.
+    if (diffDays > 0 && diffDays <= 10) {
+      return 'trial'
+    }
+  }
+
+  return 'premium'
+}
+
 async function main() {
   const users = await prisma.user.findMany({
     orderBy: { username: 'asc' },
@@ -36,11 +65,13 @@ async function main() {
     },
   })
 
-  const header = 'username,name,email,role,telefone,areaAtuacao,tipoPublico'
+  const header =
+    'username,name,email,role,telefone,areaAtuacao,tipoPublico,assinaturaVigente'
   const rows = users.map((u) => {
     const telefone = u.pdfConfig?.telefone ?? ''
     const areaAtuacao = u.empresaConfig?.areaAtuacao ?? ''
     const tipoPublico = u.empresaConfig?.tipoPublico ?? ''
+    const assinaturaVigente = getAssinaturaVigente(u)
     return [
       escapeCsv(u.username),
       escapeCsv(u.name),
@@ -49,6 +80,7 @@ async function main() {
       escapeCsv(telefone),
       escapeCsv(areaAtuacao),
       escapeCsv(tipoPublico),
+      escapeCsv(assinaturaVigente),
     ].join(',')
   })
 

@@ -1,0 +1,70 @@
+import { NextResponse } from 'next/server'
+import { createRegisterCompletionToken } from '@/lib/auth/register-completion-token'
+import { findOrCreateUserFromGoogleOAuth } from '@/lib/auth/supabase-google-oauth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const accessToken =
+      typeof body?.accessToken === 'string' ? body.accessToken.trim() : ''
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'oauth_missing_token' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createSupabaseServerClient()
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+
+    if (error || !user) {
+      console.error('OAuth complete: token invalido', error)
+      return NextResponse.json(
+        { error: 'oauth_invalid_token' },
+        { status: 401 }
+      )
+    }
+
+    const email = user.email?.trim().toLowerCase()
+    const supabaseUserId = user.id
+
+    if (!email || !supabaseUserId) {
+      return NextResponse.json(
+        { error: 'oauth_no_email' },
+        { status: 400 }
+      )
+    }
+
+    const name =
+      user.user_metadata?.full_name ??
+      user.user_metadata?.name ??
+      (typeof user.user_metadata?.email === 'string' ? user.user_metadata.email : null)
+
+    const userId = await findOrCreateUserFromGoogleOAuth({
+      email,
+      name: typeof name === 'string' ? name : null,
+      supabaseUserId,
+    })
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'oauth_user_failed' },
+        { status: 500 }
+      )
+    }
+
+    const registerToken = createRegisterCompletionToken(userId)
+
+    return NextResponse.json({ registerToken })
+  } catch (err) {
+    console.error('Erro em oauth-complete:', err)
+    return NextResponse.json(
+      { error: 'oauth_error' },
+      { status: 500 }
+    )
+  }
+}

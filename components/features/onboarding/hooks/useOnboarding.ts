@@ -69,8 +69,10 @@ export function useOnboarding() {
         setMenuLayout(data.menuLayout)
         setStatus((prev) => prev ? { ...prev, completed: true } : prev)
         window.dispatchEvent(new CustomEvent('arker:empresa-config-updated'))
+        return true
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao salvar')
+        return false
       } finally {
         setSaving(false)
       }
@@ -103,8 +105,10 @@ export function useOnboarding() {
       }
       setSkipped(true)
       setStatus((prev) => prev ? { ...prev, completed: true } : prev)
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao pular')
+      return false
     } finally {
       setSaving(false)
     }

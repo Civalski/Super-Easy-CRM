@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/route-helpers'
 import {
-  isSubscriptionStatusActive,
-  normalizeSubscriptionStatus,
+  resolveSubscriptionState,
 } from '@/lib/billing/subscription'
 import { isSubscriptionSchemaMissingError } from '@/lib/billing/subscription-schema'
 import {
@@ -33,10 +32,17 @@ function toClientSubscriptionPayload(user: {
   subscriptionNextBillingAt: Date | null
   subscriptionLastWebhookAt: Date | null
 }) {
+  const state = resolveSubscriptionState({
+    nextBillingAt: user.subscriptionNextBillingAt,
+    provider: user.subscriptionProvider,
+    status: user.subscriptionStatus,
+  })
+
   return {
     provider: user.subscriptionProvider,
-    status: normalizeSubscriptionStatus(user.subscriptionStatus),
-    active: isSubscriptionStatusActive(user.subscriptionStatus),
+    status: state.status,
+    active: state.active,
+    expired: state.expired,
     subscriptionId: user.subscriptionExternalId,
     planCode: user.subscriptionPlanCode,
     checkoutUrl: user.subscriptionCheckoutUrl,

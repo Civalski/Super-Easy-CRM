@@ -6,6 +6,7 @@ import { toast } from '@/lib/toast'
 import { AsyncSelect, Button, SideCreateDrawer } from '@/components/common'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { getProbabilityValueFromLevel, type ProbabilityLevel } from '@/lib/domain/probabilidade'
+import { getTodayLocalISO } from '@/lib/date'
 import { formatDate } from '@/lib/format'
 import { useOrcamentoCarrinho } from '@/components/features/oportunidades/hooks/useOrcamentoCarrinho'
 import CarrinhoDrawer from '@/components/features/oportunidades/CarrinhoDrawer'
@@ -14,7 +15,7 @@ import { getProximaAcaoDate, parseCurrencyInput, formatCurrencyInput, currency }
 import { PROBABILITY_LEVELS } from './constants'
 
 const PROBABILITY_LABELS: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta' }
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => getTodayLocalISO()
 
 interface CreatePedidoDiretoModalProps {
   initialPerson?: AsyncSelectOption | null

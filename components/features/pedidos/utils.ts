@@ -1,5 +1,6 @@
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import type { ItemForm, Pedido, PedidoSituacao, ProdutoServico } from './types'
+import { formatDateToLocalISO } from '@/lib/date'
 
 export const buildItemForm = (): ItemForm => ({
   produtoServicoId: '',
@@ -20,12 +21,7 @@ export const dateBr = (value?: string | null) => {
 }
 
 export const dateInput = (value?: string | null) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate()
-  ).padStart(2, '0')}`
+  return formatDateToLocalISO(value)
 }
 
 export function getProximaAcaoDate(num: number, unit: 'dias' | 'semanas' | 'meses'): string {
@@ -33,7 +29,7 @@ export function getProximaAcaoDate(num: number, unit: 'dias' | 'semanas' | 'mese
   if (unit === 'dias') d.setDate(d.getDate() + num)
   else if (unit === 'semanas') d.setDate(d.getDate() + num * 7)
   else d.setMonth(d.getMonth() + num)
-  return d.toISOString().split('T')[0]
+  return formatDateToLocalISO(d)
 }
 
 export const isVendaConfirmada = (pedido: Pedido) =>

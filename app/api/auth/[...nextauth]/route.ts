@@ -11,6 +11,8 @@ import {
     resetRateLimit,
 } from "@/lib/security/rate-limit"
 import { verifyTurnstileToken } from "@/lib/security/turnstile"
+import { verifyRegisterCompletionToken } from "@/lib/auth/register-completion-token"
+import { syncUserSubscriptionFromCheckoutSession } from "@/lib/billing/stripe-subscription-sync"
 import { getNextAuthSecret } from "@/lib/nextauth-secret"
 
 export const dynamic = 'force-dynamic'
@@ -24,10 +26,20 @@ const handler = NextAuth({
                 password: { label: "Senha", type: "password" },
                 turnstileToken: { label: "Turnstile Token", type: "text" },
                 website: { label: "Website", type: "text" },
+                registerToken: { label: "Register Token", type: "text" },
+                stripeSessionId: { label: "Stripe Session ID", type: "text" },
             },
             async authorize(credentials, req) {
                 const identifier = credentials?.username?.trim().toLowerCase()
                 const password = credentials?.password
+                const registerToken =
+                    typeof credentials?.registerToken === "string"
+                        ? credentials.registerToken.trim()
+                        : ""
+                const stripeSessionId =
+                    typeof credentials?.stripeSessionId === "string"
+                        ? credentials.stripeSessionId.trim()
+                        : ""
                 const turnstileToken =
                     typeof credentials?.turnstileToken === "string"
                         ? credentials.turnstileToken.trim()
@@ -48,6 +60,108 @@ const handler = NextAuth({
                 if (!byIpLimit.allowed || !byIdentifierLimit.allowed) {
                     console.warn("Login bloqueado por rate limit", { clientIp, identifier })
                     return null
+                }
+
+                if (registerToken && stripeSessionId) {
+                    const payload = verifyRegisterCompletionToken(registerToken)
+                    if (!payload) {
+                        console.warn("Auto login do checkout rejeitado por token invalido", { clientIp })
+                        return null
+                    }
+
+                    try {
+                        const { stripe } = await import("@/lib/billing/stripe")
+                        const checkoutSession = await stripe.checkout.sessions.retrieve(
+                            stripeSessionId,
+                            { expand: ["subscription"] }
+                        )
+
+                        if (
+                            checkoutSession.status !== "complete" ||
+                            checkoutSession.client_reference_id !== payload.userId
+                        ) {
+                            console.warn("Auto login do checkout rejeitado por sessao inconsistente", {
+                                clientIp,
+                                stripeSessionId,
+                                payloadUserId: payload.userId,
+                                sessionUserId: checkoutSession.client_reference_id,
+                                sessionStatus: checkoutSession.status,
+                            })
+                            return null
+                        }
+
+                        await syncUserSubscriptionFromCheckoutSession(checkoutSession)
+
+                        const user = await prisma.user.findUnique({
+                            where: { id: payload.userId },
+                        })
+
+                        if (!user) {
+                            return null
+                        }
+
+                        const sessionId = randomUUID()
+
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { activeSessionId: sessionId },
+                        })
+
+                        resetRateLimit(byIpKey)
+                        resetRateLimit(byIdentifierKey)
+
+                        return {
+                            id: user.id,
+                            name: user.name ?? user.username,
+                            email: user.email,
+                            role: user.role,
+                            username: user.username,
+                            sessionId,
+                        }
+                    } catch (error) {
+                        console.error("Falha ao autenticar retorno do checkout Stripe:", error)
+                        return null
+                    }
+                }
+
+                if (registerToken && !stripeSessionId) {
+                    const payload = verifyRegisterCompletionToken(registerToken)
+                    if (!payload) {
+                        console.warn("Auto login do registro rejeitado por token invalido", { clientIp })
+                        return null
+                    }
+
+                    try {
+                        const user = await prisma.user.findUnique({
+                            where: { id: payload.userId },
+                        })
+
+                        if (!user) {
+                            return null
+                        }
+
+                        const sessionId = randomUUID()
+
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { activeSessionId: sessionId },
+                        })
+
+                        resetRateLimit(byIpKey)
+                        resetRateLimit(byIdentifierKey)
+
+                        return {
+                            id: user.id,
+                            name: user.name ?? user.username,
+                            email: user.email,
+                            role: user.role,
+                            username: user.username,
+                            sessionId,
+                        }
+                    } catch (error) {
+                        console.error("Falha ao autenticar conclusao do registro:", error)
+                        return null
+                    }
                 }
 
                 if (honeypot.length > 0) {
@@ -89,6 +203,18 @@ const handler = NextAuth({
                 const valid = await bcrypt.compare(password, user.passwordHash)
 
                 if (!valid) {
+                    return null
+                }
+
+                if (
+                    user.subscriptionProvider === "supabase" &&
+                    user.subscriptionStatus === "pending"
+                ) {
+                    console.warn("Login bloqueado ate confirmacao do email", {
+                        clientIp,
+                        identifier,
+                        userId: user.id,
+                    })
                     return null
                 }
 

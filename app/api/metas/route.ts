@@ -6,7 +6,6 @@ import {
   computeGoalProgress,
   parseDateInput,
   parseWeekDays,
-  recordGoalSnapshot,
 } from './helpers'
 
 export const dynamic = 'force-dynamic'
@@ -44,20 +43,6 @@ export async function GET(req: NextRequest) {
             progress: Math.min(progress, 100),
           }
         })
-      )
-
-      await Promise.all(
-        progressResults.map(({ goal, progressResult, progress }) =>
-          recordGoalSnapshot({
-            goalId: goal.id,
-            target: goal.target,
-            current: progressResult.current,
-            progress,
-            periodStart: progressResult.periodStart,
-            periodEnd: progressResult.periodEnd,
-            active: progressResult.active,
-          })
-        )
       )
 
       const goalsWithProgress = progressResults.map(({ goal, normalizedMetricType, progressResult, progress }) => ({

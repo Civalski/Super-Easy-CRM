@@ -1,4 +1,4 @@
-﻿# Guia de Banco de Dados - Arker CRM
+# Guia de Banco de Dados - Arker CRM
 
 ## Configuracao Atual
 
@@ -87,6 +87,19 @@ npm run db:seed       # Seed inicial
 ```bash
 npx prisma migrate deploy
 ```
+
+---
+
+## Seguranca (Supabase Auth)
+
+**Protecao contra senhas vazadas (recomendado):**
+
+O Supabase pode bloquear senhas comprometidas (HaveIBeenPwned.org). Ative em:
+
+1. Painel Supabase > **Authentication** > **Settings** > **Password Protection**
+2. Habilite **Leaked password protection**
+
+[Documentacao](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
 
 ---
 

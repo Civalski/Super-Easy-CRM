@@ -269,6 +269,11 @@ html.theme-loaded {
 }
 
 @layer utilities {
+  /* Remove fundo slate-950 para evitar corte brusco com background da página (login/register) */
+  .bg-slate-950 {
+    background-color: transparent;
+  }
+
   /* Custom Scrollbar - Premium Look */
   * {
     scrollbar-color: rgba(71, 85, 105, 0.9) rgba(2, 6, 23, 0.6);

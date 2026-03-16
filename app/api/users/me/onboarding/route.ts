@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
+import { clearDemoDataForUser, ensureDemoDataForUser } from '@/lib/demo-data'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-const LOGO_SIZE_LIMIT = 600 * 1024 // 600KB base64
+const LOGO_SIZE_LIMIT = 600 * 1024
 
-/**
- * GET: Retorna status do onboarding e dados já salvos (se houver).
- */
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
@@ -21,10 +19,8 @@ export async function GET(request: NextRequest) {
         prisma.pdfConfig.findUnique({ where: { userId } }),
       ])
 
-      const completed = Boolean(user?.onboardingCompletedAt)
-
       return NextResponse.json({
-        completed,
+        completed: Boolean(user?.onboardingCompletedAt),
         empresaConfig: empresaConfig ?? null,
         pdfConfig: pdfConfig ?? null,
       })
@@ -35,34 +31,13 @@ export async function GET(request: NextRequest) {
   })
 }
 
-/**
- * POST: Salva dados do onboarding e marca como concluído.
- */
 export async function POST(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
       const body = await request.json()
 
-      const {
-        areaAtuacao,
-        tipoPublico,
-        nomeEmpresa,
-        nomeVendedor,
-        telefone,
-        email,
-        site,
-        rodape,
-        corPrimaria,
-        validadeDias,
-        logoBase64,
-        logoPosicao,
-      } = body
-
-      if (logoBase64 && logoBase64.length > LOGO_SIZE_LIMIT) {
-        return NextResponse.json(
-          { error: 'Logo muito grande. Limite: 450KB.' },
-          { status: 400 }
-        )
+      if (body.logoBase64 && body.logoBase64.length > LOGO_SIZE_LIMIT) {
+        return NextResponse.json({ error: 'Logo muito grande. Limite: 450KB.' }, { status: 400 })
       }
 
       await prisma.$transaction(async (tx) => {
@@ -70,12 +45,12 @@ export async function POST(request: NextRequest) {
           where: { userId },
           create: {
             userId,
-            areaAtuacao: areaAtuacao ?? null,
-            tipoPublico: tipoPublico ?? null,
+            areaAtuacao: body.areaAtuacao ?? null,
+            tipoPublico: body.tipoPublico ?? null,
           },
           update: {
-            areaAtuacao: areaAtuacao ?? null,
-            tipoPublico: tipoPublico ?? null,
+            areaAtuacao: body.areaAtuacao ?? null,
+            tipoPublico: body.tipoPublico ?? null,
           },
         })
 
@@ -83,37 +58,38 @@ export async function POST(request: NextRequest) {
           where: { userId },
           create: {
             userId,
-            nomeEmpresa: nomeEmpresa ?? null,
-            nomeVendedor: nomeVendedor ?? null,
-            telefone: telefone ?? null,
-            email: email ?? null,
-            site: site ?? null,
-            rodape: rodape ?? null,
-            corPrimaria: corPrimaria ?? null,
-            validadeDias: validadeDias ?? null,
-            logoBase64: logoBase64 ?? null,
-            logoPosicao: logoPosicao ?? 'topo',
+            nomeEmpresa: body.nomeEmpresa ?? null,
+            nomeVendedor: body.nomeVendedor ?? null,
+            telefone: body.telefone ?? null,
+            email: body.email ?? null,
+            site: body.site ?? null,
+            rodape: body.rodape ?? null,
+            corPrimaria: body.corPrimaria ?? null,
+            validadeDias: body.validadeDias ?? null,
+            logoBase64: body.logoBase64 ?? null,
+            logoPosicao: body.logoPosicao ?? 'topo',
           },
           update: {
-            nomeEmpresa: nomeEmpresa ?? null,
-            nomeVendedor: nomeVendedor ?? null,
-            telefone: telefone ?? null,
-            email: email ?? null,
-            site: site ?? null,
-            rodape: rodape ?? null,
-            corPrimaria: corPrimaria ?? null,
-            validadeDias: validadeDias ?? null,
-            logoBase64: logoBase64 ?? null,
-            logoPosicao: logoPosicao ?? 'topo',
+            nomeEmpresa: body.nomeEmpresa ?? null,
+            nomeVendedor: body.nomeVendedor ?? null,
+            telefone: body.telefone ?? null,
+            email: body.email ?? null,
+            site: body.site ?? null,
+            rodape: body.rodape ?? null,
+            corPrimaria: body.corPrimaria ?? null,
+            validadeDias: body.validadeDias ?? null,
+            logoBase64: body.logoBase64 ?? null,
+            logoPosicao: body.logoPosicao ?? 'topo',
           },
         })
 
-        await tx.user.update({
-          where: { id: userId },
-          data: { onboardingCompletedAt: new Date() },
-        })
       })
 
+      await ensureDemoDataForUser(userId)
+      await prisma.user.update({
+        where: { id: userId },
+        data: { onboardingCompletedAt: new Date() },
+      })
       return NextResponse.json({ success: true })
     } catch (error) {
       console.error('Erro ao salvar onboarding:', error)
@@ -122,9 +98,6 @@ export async function POST(request: NextRequest) {
   })
 }
 
-/**
- * DELETE: Reseta o onboarding (apaga dados antigos e permite refazer a configuração inicial).
- */
 export async function DELETE(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
@@ -136,6 +109,8 @@ export async function DELETE(request: NextRequest) {
           data: { onboardingCompletedAt: null },
         })
       })
+
+      await clearDemoDataForUser(userId)
       return NextResponse.json({ success: true })
     } catch (error) {
       console.error('Erro ao resetar onboarding:', error)

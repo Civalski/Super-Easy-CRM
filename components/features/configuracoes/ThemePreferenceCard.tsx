@@ -3,43 +3,14 @@
  */
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Moon, Sun } from '@/lib/icons'
-import {
-  THEME_EVENT,
-  getThemePreference,
-  setThemePreference,
-  type AppTheme,
-} from '@/lib/ui/themePreference'
+import { useThemePreference } from '@/lib/hooks/useThemePreference'
 
 export function ThemePreferenceCard() {
-  const [theme, setTheme] = useState<AppTheme>('dark')
-
-  useEffect(() => {
-    const syncTheme = () => {
-      setTheme(getThemePreference())
-    }
-
-    const handleThemeChange = (event: Event) => {
-      const customEvent = event as CustomEvent<AppTheme>
-      setTheme(customEvent.detail)
-    }
-
-    syncTheme()
-    window.addEventListener('storage', syncTheme)
-    window.addEventListener(THEME_EVENT, handleThemeChange as EventListener)
-
-    return () => {
-      window.removeEventListener('storage', syncTheme)
-      window.removeEventListener(THEME_EVENT, handleThemeChange as EventListener)
-    }
-  }, [])
-
-  const isLightTheme = theme === 'light'
+  const { isLightTheme, updateTheme } = useThemePreference()
 
   const handleToggle = () => {
-    const nextTheme: AppTheme = isLightTheme ? 'dark' : 'light'
-    setThemePreference(nextTheme)
+    updateTheme(isLightTheme ? 'dark' : 'light')
   }
 
   return (

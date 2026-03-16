@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/format'
 import { CancelarOrcamentoModal, OrcamentosList, useOrcamentos } from '@/components/features/oportunidades'
 import { OrcamentosFilters, type OrcamentosFiltersValues } from '@/components/features/oportunidades/OrcamentosFilters'
 import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
+import { formatDateToLocalISO } from '@/lib/date'
 
 const CreateOrcamentoDrawer = dynamic(
   () => import('@/components/features/oportunidades/CreateOrcamentoDrawer'),
@@ -53,8 +54,8 @@ function OrcamentosPageContent() {
       const dataInicio = new Date()
       dataInicio.setDate(dataInicio.getDate() - days)
       dataInicio.setHours(0, 0, 0, 0)
-      filtersQueryParts.push(`dataInicio=${dataInicio.toISOString().split('T')[0]}`)
-      filtersQueryParts.push(`dataFim=${dataFim.toISOString().split('T')[0]}`)
+      filtersQueryParts.push(`dataInicio=${formatDateToLocalISO(dataInicio)}`)
+      filtersQueryParts.push(`dataFim=${formatDateToLocalISO(dataFim)}`)
     }
   }
   const filtersQuery = filtersQueryParts.length > 0 ? `&${filtersQueryParts.join('&')}` : ''

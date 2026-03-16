@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
+    },
+    "resend": {
+      "command": "npx",
+      "args": ["-y", "resend-mcp"],
+      "envFile": "${workspaceFolder}/.env.local"
+    }
+  }
+}

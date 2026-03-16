@@ -76,6 +76,84 @@ function normalizeDates(values: string[]) {
   return parsed.sort((a, b) => a.getTime() - b.getTime())
 }
 
+function normalizeRelationId(value: unknown) {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+type ContaReceberRelationIds = {
+  pedidoId: string | null
+  oportunidadeId: string | null
+  clienteId: string | null
+  fornecedorId: string | null
+  funcionarioId: string | null
+}
+
+async function validateContaReceberRelations(
+  db: Prisma.TransactionClient | typeof prisma,
+  userId: string,
+  relations: ContaReceberRelationIds
+) {
+  let pedidoOportunidadeId: string | null = null
+
+  if (relations.pedidoId) {
+    const pedido = await db.pedido.findFirst({
+      where: { id: relations.pedidoId, userId },
+      select: { id: true, oportunidadeId: true },
+    })
+
+    if (!pedido) return 'Pedido informado nao pertence ao usuario'
+    pedidoOportunidadeId = pedido.oportunidadeId
+  }
+
+  if (relations.oportunidadeId) {
+    const oportunidade = await db.oportunidade.findFirst({
+      where: { id: relations.oportunidadeId, userId },
+      select: { id: true },
+    })
+
+    if (!oportunidade) return 'Oportunidade informada nao pertence ao usuario'
+  }
+
+  if (
+    pedidoOportunidadeId &&
+    relations.oportunidadeId &&
+    pedidoOportunidadeId !== relations.oportunidadeId
+  ) {
+    return 'Pedido informado nao pertence a oportunidade selecionada'
+  }
+
+  if (relations.clienteId) {
+    const cliente = await db.cliente.findFirst({
+      where: { id: relations.clienteId, userId },
+      select: { id: true },
+    })
+
+    if (!cliente) return 'Cliente informado nao pertence ao usuario'
+  }
+
+  if (relations.fornecedorId) {
+    const fornecedor = await db.fornecedor.findFirst({
+      where: { id: relations.fornecedorId, userId },
+      select: { id: true },
+    })
+
+    if (!fornecedor) return 'Fornecedor informado nao pertence ao usuario'
+  }
+
+  if (relations.funcionarioId) {
+    const funcionario = await db.funcionario.findFirst({
+      where: { id: relations.funcionarioId, userId },
+      select: { id: true },
+    })
+
+    if (!funcionario) return 'Funcionario informado nao pertence ao usuario'
+  }
+
+  return null
+}
+
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
@@ -199,6 +277,7 @@ export async function GET(request: NextRequest) {
         contaIds.length > 0
           ? await prisma.contaReceber.findMany({
               where: {
+                userId,
                 id: { in: contaIds },
               },
               include: {
@@ -401,12 +480,28 @@ export async function POST(request: NextRequest) {
     }
 
     const totalParcelas = Math.max(1, scheduleDates.length || 1)
+    const pedidoId = normalizeRelationId(payload.pedidoId)
+    const oportunidadeId = normalizeRelationId(payload.oportunidadeId)
+    const clienteId = normalizeRelationId(payload.clienteId)
+    const fornecedorId = normalizeRelationId(payload.fornecedorId)
+    const funcionarioId = normalizeRelationId(payload.funcionarioId)
 
-    if ((totalParcelas > 1 || recorrenteMensal) && typeof payload.pedidoId === 'string') {
+    if ((totalParcelas > 1 || recorrenteMensal) && pedidoId) {
       return NextResponse.json(
         { error: 'Nao e permitido vincular pedido em lancamento parcelado ou recorrente' },
         { status: 400 }
       )
+    }
+
+    const relationError = await validateContaReceberRelations(prisma, userId, {
+      pedidoId,
+      oportunidadeId,
+      clienteId,
+      fornecedorId,
+      funcionarioId,
+    })
+    if (relationError) {
+      return NextResponse.json({ error: relationError }, { status: 400 })
     }
 
     const valores = recorrenteMensal
@@ -431,11 +526,11 @@ export async function POST(request: NextRequest) {
         const conta = await tx.contaReceber.create({
           data: {
             userId,
-            pedidoId: typeof payload.pedidoId === 'string' ? payload.pedidoId : null,
-            oportunidadeId: typeof payload.oportunidadeId === 'string' ? payload.oportunidadeId : null,
-            clienteId: typeof payload.clienteId === 'string' ? payload.clienteId : null,
-            fornecedorId: typeof payload.fornecedorId === 'string' ? payload.fornecedorId : null,
-            funcionarioId: typeof payload.funcionarioId === 'string' ? payload.funcionarioId : null,
+            pedidoId,
+            oportunidadeId,
+            clienteId,
+            fornecedorId,
+            funcionarioId,
             ambiente,
             tipo,
             descricao,
@@ -598,6 +693,24 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Valor de movimento invalido' }, { status: 400 })
     }
 
+    const clienteId =
+      payload.clienteId !== undefined ? normalizeRelationId(payload.clienteId) : existing.clienteId
+    const fornecedorId =
+      payload.fornecedorId !== undefined ? normalizeRelationId(payload.fornecedorId) : existing.fornecedorId
+    const funcionarioId =
+      payload.funcionarioId !== undefined ? normalizeRelationId(payload.funcionarioId) : existing.funcionarioId
+
+    const relationError = await validateContaReceberRelations(prisma, userId, {
+      pedidoId: existing.pedidoId,
+      oportunidadeId: existing.oportunidadeId,
+      clienteId,
+      fornecedorId,
+      funcionarioId,
+    })
+    if (relationError) {
+      return NextResponse.json({ error: relationError }, { status: 400 })
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       if (aplicarNoGrupoRecorrente) {
         await tx.contaReceber.updateMany({
@@ -648,9 +761,9 @@ export async function PATCH(request: NextRequest) {
           status,
           recorrenciaAtiva: recorrenciaAtivaInput,
           recorrenciaDiaVencimento: recorrenciaDiaInput,
-          clienteId: payload.clienteId !== undefined ? (typeof payload.clienteId === 'string' ? payload.clienteId : null) : existing.clienteId,
-          fornecedorId: payload.fornecedorId !== undefined ? (typeof payload.fornecedorId === 'string' ? payload.fornecedorId : null) : existing.fornecedorId,
-          funcionarioId: payload.funcionarioId !== undefined ? (typeof payload.funcionarioId === 'string' ? payload.funcionarioId : null) : existing.funcionarioId,
+          clienteId,
+          fornecedorId,
+          funcionarioId,
         },
       })
 

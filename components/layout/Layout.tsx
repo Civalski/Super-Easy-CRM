@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { X } from '@/lib/icons'
 import Sidebar from './Sidebar'
@@ -12,6 +12,7 @@ import { GuideTourModal } from './GuideTourModal'
 import { GuideTourProvider, useGuideTour } from './GuideTourProvider'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
 import { OnboardingGate } from './OnboardingGate'
+import { SubscriptionGate } from './SubscriptionGate'
 import { ConfiguracoesContent } from '@/components/features/configuracoes'
 import {
   SIDEBAR_OPEN_MODE_EVENT,
@@ -220,7 +221,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             menuLayout={menuLayout}
           />
           <main className="flex-1 overflow-auto px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[calc(var(--top-bar-height)+0.5rem)] md:px-6 md:pb-8 md:pt-[calc(var(--top-bar-height)+1rem)] lg:px-8">
-            <OnboardingGate>{children}</OnboardingGate>
+            <Suspense fallback={<OnboardingGate>{children}</OnboardingGate>}>
+              <SubscriptionGate>
+                <OnboardingGate>{children}</OnboardingGate>
+              </SubscriptionGate>
+            </Suspense>
           </main>
         </div>
       </div>

@@ -34,6 +34,9 @@ export function GuideTourProvider({ children }: { children: React.ReactNode }) {
     setGuideActive(false)
     setItems([])
     setCurrentStep(0)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('arker:guide-finished'))
+    }
   }, [])
 
   const setStep = useCallback((step: number) => {

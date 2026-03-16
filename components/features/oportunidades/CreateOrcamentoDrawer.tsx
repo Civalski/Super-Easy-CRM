@@ -6,6 +6,7 @@ import { toast } from '@/lib/toast'
 import { Button, SideCreateDrawer, AsyncSelect } from '@/components/common'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { getProbabilityValueFromLevel, type ProbabilityLevel } from '@/lib/domain/probabilidade'
+import { getTodayLocalISO } from '@/lib/date'
 import { formatDate } from '@/lib/format'
 import type { OrcamentoFormData } from './types'
 import { FIELD_CLASS, LABEL_CLASS, CANAL_OPTIONS, FORMA_PAGAMENTO_OPTIONS } from './constants'
@@ -21,7 +22,7 @@ interface CreateOrcamentoDrawerProps {
 
 const PROBABILITY_LEVELS: ProbabilityLevel[] = ['baixa', 'media', 'alta']
 const PROBABILITY_LABELS: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta' }
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => getTodayLocalISO()
 
 export default function CreateOrcamentoDrawer({ onClose, onCreated, initialPerson }: CreateOrcamentoDrawerProps) {
   const carrinho = useOrcamentoCarrinho()

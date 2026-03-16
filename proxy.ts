@@ -3,6 +3,16 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { getNextAuthSecret } from "@/lib/nextauth-secret"
 
+function isPublicAuthPath(pathname: string) {
+    return (
+        pathname === '/login' ||
+        pathname === '/register' ||
+        pathname.startsWith('/register/') ||
+        pathname === '/auth' ||
+        pathname.startsWith('/auth/')
+    )
+}
+
 export async function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl
 
@@ -12,7 +22,7 @@ export async function proxy(req: NextRequest) {
     }
 
     const token = await getToken({ req, secret: getNextAuthSecret() })
-    const isAuthPage = pathname === '/login' || pathname === '/register'
+    const isAuthPage = isPublicAuthPath(pathname)
 
     if (isAuthPage) {
         return NextResponse.next()

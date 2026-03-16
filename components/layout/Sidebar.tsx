@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -12,9 +11,9 @@ import {
   LogOut,
   X,
 } from '@/lib/icons'
-import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 import { menuItems } from '@/lib/menuItems'
 import type { MenuItem } from '@/lib/menuItems'
+import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 import { useHelpMode } from './HelpModeProvider'
 import { useGuideTour } from './GuideTourProvider'
 
@@ -45,8 +44,15 @@ export default function Sidebar({
   helpModeActive = false,
 }: SidebarProps) {
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+  const { data: session, status } = useSession()
+  const {
+    billingEnabled: billingSubscriptionEnabled,
+    active: hasActiveSubscription,
+    error: subscriptionError,
+    isLoading: subscriptionLoading,
+  } = useSubscriptionStatus({
+    enabled: status === 'authenticated',
+  })
   const { helpMode, showHelpFor } = useHelpMode()
   const { guideActive, currentItem } = useGuideTour()
 
@@ -54,12 +60,10 @@ export default function Sidebar({
   const role = session?.user?.role ?? ''
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.requiresAdmin && role !== 'admin') return false
+    if (item.requiresManager && role !== 'manager') return false
     if (!item.visibleForUsernames) return true
     return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
   })
-  const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>(
-    billingSubscriptionEnabled ? 'loading' : 'active'
-  )
 
   const isCompact = collapsed && !isMobile
   const sidebarWidthClass = isCompact ? 'w-18' : isMobile ? 'w-72 max-w-[85vw]' : 'w-64'
@@ -72,45 +76,30 @@ export default function Sidebar({
 
   const isItemActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
-  useEffect(() => {
-    if (!billingSubscriptionEnabled) return
-
-    let cancelled = false
-
-    async function loadPremiumAccess() {
-      try {
-        const response = await fetch('/api/billing/subscription', {
-          cache: 'no-store',
-        })
-        if (!response.ok) throw new Error('Falha ao consultar assinatura')
-
-        const payload = (await response.json()) as { active?: boolean }
-        if (!cancelled) {
-          setPremiumAccess(payload.active ? 'active' : 'inactive')
-        }
-      } catch {
-        if (!cancelled) {
-          setPremiumAccess('error')
-        }
-      }
-    }
-
-    void loadPremiumAccess()
-
-    return () => {
-      cancelled = true
-    }
-  }, [billingSubscriptionEnabled])
+  const resolvedPremiumAccess: 'loading' | 'active' | 'inactive' | 'error' =
+    !billingSubscriptionEnabled
+      ? 'active'
+      : status === 'loading'
+        ? 'loading'
+        : status !== 'authenticated'
+          ? 'active'
+          : subscriptionLoading
+        ? 'loading'
+        : subscriptionError
+          ? 'error'
+          : hasActiveSubscription
+            ? 'active'
+            : 'inactive'
 
   const getResolvedHref = (item: MenuItem) => {
-    if (item.requiresPremium && premiumAccess === 'inactive') {
+    if (item.requiresPremium && resolvedPremiumAccess === 'inactive') {
       return '/configuracoes'
     }
     return item.href
   }
 
   const getResolvedTitle = (item: MenuItem) => {
-    if (item.requiresPremium && premiumAccess === 'inactive') {
+    if (item.requiresPremium && resolvedPremiumAccess === 'inactive') {
       return `${item.name} (Premium - assine para liberar)`
     }
     return item.name
@@ -202,7 +191,7 @@ export default function Sidebar({
             {visibleMenuItems.map((item) => {
               const ItemIcon = item.icon
               const isActive = isItemActive(item.href)
-              const isLocked = item.requiresPremium && premiumAccess === 'inactive'
+              const isLocked = item.requiresPremium && resolvedPremiumAccess === 'inactive'
               const href = getResolvedHref(item)
               const title = getResolvedTitle(item)
 

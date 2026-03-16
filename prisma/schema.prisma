@@ -33,6 +33,7 @@ model User {
   id           String   @id @default(cuid())
   name         String?
   email        String?  @unique
+  phone        String?
   username     String   @unique
   passwordHash String
   role         String   @default("user")
@@ -44,6 +45,8 @@ model User {
   subscriptionCheckoutUrl  String?
   subscriptionNextBillingAt DateTime?
   subscriptionLastWebhookAt DateTime?
+  demoModeActive         Boolean  @default(false)
+  demoDataSeededAt       DateTime?
   onboardingCompletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -71,6 +74,7 @@ model User {
   pdfConfig             PdfConfig?
   fornecedores          Fornecedor[]
   funcionarios          Funcionario[]
+  demoDataRecords       DemoDataRecord[]
 
   @@map("users")
 }
@@ -84,7 +88,22 @@ model RegistrationCode {
 
   usedBy User? @relation(fields: [usedById], references: [id], onDelete: SetNull)
 
+  @@index([usedById])
   @@map("registration_codes")
+}
+
+model DemoDataRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  model     String
+  recordId  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, model, recordId])
+  @@index([userId, model])
+  @@map("demo_data_records")
 }
 
 model Goal {
@@ -103,6 +122,7 @@ model Goal {
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots GoalSnapshot[]
 
+  @@index([userId])
   @@map("goals")
 }
 
@@ -205,6 +225,7 @@ model Fornecedor {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   contasReceber ContaReceber[]
 
+  @@unique([id, userId])
   @@index([userId])
   @@index([userId, nome])
   @@map("fornecedores")
@@ -226,6 +247,7 @@ model Funcionario {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   contasReceber ContaReceber[]
 
+  @@unique([id, userId])
   @@index([userId])
   @@index([userId, nome])
   @@map("funcionarios")
@@ -247,6 +269,7 @@ model Contato {
 
   @@index([userId])
   @@index([userId, clienteId])
+  @@index([clienteId, userId])
   @@index([userId, createdAt])
   @@map("contatos")
 }
@@ -284,6 +307,7 @@ model Oportunidade {
   @@unique([id, userId])
   @@index([userId])
   @@index([userId, clienteId])
+  @@index([clienteId, userId])
   @@index([userId, createdAt])
   @@index([userId, status, createdAt])
   @@index([userId, status, updatedAt])
@@ -360,7 +384,9 @@ model Tarefa {
   @@index([userId])
   @@index([userId, createdAt])
   @@index([userId, clienteId])
+  @@index([clienteId, userId])
   @@index([userId, oportunidadeId])
+  @@index([oportunidadeId, userId])
   @@index([userId, status, prioridade, createdAt])
   @@map("tarefas")
 }
@@ -544,6 +570,8 @@ model FollowUpAttempt {
   nota         Nota?        @relation(fields: [notaId], references: [id], onDelete: SetNull)
 
   @@index([userId, oportunidadeId, createdAt])
+  @@index([oportunidadeId, userId])
+  @@index([notaId])
   @@map("followup_attempts")
 }
 
@@ -603,6 +631,8 @@ model PedidoItem {
 
   @@index([userId, pedidoId])
   @@index([pedidoId])
+  @@index([pedidoId, userId])
+  @@index([produtoServicoId])
   @@map("pedido_itens")
 }
 
@@ -635,16 +665,24 @@ model ContaReceber {
   updatedAt                DateTime  @updatedAt
 
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pedido       Pedido?               @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
-  oportunidade Oportunidade?         @relation(fields: [oportunidadeId], references: [id], onDelete: SetNull)
+  pedido       Pedido?               @relation(fields: [pedidoId, userId], references: [id, userId], onDelete: SetNull)
+  oportunidade Oportunidade?         @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: SetNull)
   cliente      Cliente?             @relation(fields: [clienteId, userId], references: [id, userId], onDelete: SetNull)
-  fornecedor   Fornecedor?          @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
-  funcionario  Funcionario?         @relation(fields: [funcionarioId], references: [id], onDelete: SetNull)
+  fornecedor   Fornecedor?          @relation(fields: [fornecedorId, userId], references: [id, userId], onDelete: SetNull)
+  funcionario  Funcionario?         @relation(fields: [funcionarioId, userId], references: [id, userId], onDelete: SetNull)
   movimentos   MovimentoFinanceiro[]
 
   @@unique([id, userId])
+  @@unique([pedidoId, userId])
   @@unique([userId, grupoParcelaId, dataVencimento])
   @@index([userId, oportunidadeId])
+  @@index([oportunidadeId, userId])
+  @@index([userId, fornecedorId])
+  @@index([fornecedorId, userId])
+  @@index([userId, funcionarioId])
+  @@index([funcionarioId, userId])
+  @@index([userId, clienteId])
+  @@index([clienteId, userId])
   @@index([userId, ambiente, tipo, status, dataVencimento])
   @@index([userId, recorrenteMensal, recorrenciaAtiva])
   @@index([userId, createdAt])
@@ -668,6 +706,7 @@ model MovimentoFinanceiro {
 
   @@index([userId, dataMovimento])
   @@index([contaReceberId])
+  @@index([contaReceberId, userId])
   @@index([contaReceberId, createdAt])
   @@map("movimentos_financeiros")
 }

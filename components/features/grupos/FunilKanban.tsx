@@ -61,6 +61,18 @@ const COLUMN_ID_PREFIX = 'column-'
 
 const KANBAN_LABELS_STORAGE_KEY = 'arkan-crm-kanban-column-labels'
 
+function cloneKanbanData(data: Record<string, OportunidadeKanban[]>) {
+    return Object.fromEntries(
+        Object.entries(data).map(([status, items]) => [status, [...items]])
+    ) as Record<string, OportunidadeKanban[]>
+}
+
+function cloneKanbanMeta(meta: Record<string, { total: number; page: number; pages: number }>) {
+    return Object.fromEntries(
+        Object.entries(meta).map(([status, value]) => [status, { ...value }])
+    ) as Record<string, { total: number; page: number; pages: number }>
+}
+
 function loadCustomLabels(): Record<string, string> {
     if (typeof window === 'undefined') return {}
     try {
@@ -133,6 +145,16 @@ export function FunilKanban({
     const [avisoDescartarOpen, setAvisoDescartarOpen] = useState(false)
     const [avisoDescartarCount, setAvisoDescartarCount] = useState(0)
     const [customLabels, setCustomLabels] = useState<Record<string, string>>(() => loadCustomLabels())
+    const dataByStatusRef = useRef(dataByStatus)
+    const metaByStatusRef = useRef(metaByStatus)
+
+    useEffect(() => {
+        dataByStatusRef.current = dataByStatus
+    }, [dataByStatus])
+
+    useEffect(() => {
+        metaByStatusRef.current = metaByStatus
+    }, [metaByStatus])
 
     const handleLabelChange = useCallback((status: string, newLabel: string) => {
         const trimmed = newLabel.trim()
@@ -237,7 +259,8 @@ export function FunilKanban({
             if (!activeStr.startsWith(CARD_ID_PREFIX)) return
 
             const itemId = activeStr.slice(CARD_ID_PREFIX.length)
-            const item = Object.values(dataByStatus)
+            const currentData = dataByStatusRef.current
+            const item = Object.values(currentData)
                 .flat()
                 .find((i) => i.id === itemId)
             if (!item) return
@@ -258,40 +281,50 @@ export function FunilKanban({
             if (item.status === newStatus) return
 
             const oldStatus = item.status
+            const prevData = cloneKanbanData(dataByStatusRef.current)
+            const prevMeta = cloneKanbanMeta(metaByStatusRef.current)
 
             // Atualização otimista: move o card imediatamente na UI
-            setDataByStatus((prev) => {
-                const next = { ...prev }
+            setDataByStatus(() => {
+                const next = cloneKanbanData(prevData)
                 next[oldStatus] = (next[oldStatus] ?? []).filter((i) => i.id !== itemId)
                 next[newStatus] = [...(next[newStatus] ?? []), { ...item, status: newStatus }]
+                dataByStatusRef.current = next
                 return next
             })
-            setMetaByStatus((prev) => {
-                const oldTotal = Math.max(0, (prev[oldStatus]?.total ?? 0) - 1)
-                const newTotal = (prev[newStatus]?.total ?? 0) + 1
-                return {
-                    ...prev,
-                    [oldStatus]: { ...prev[oldStatus], total: oldTotal, pages: Math.max(1, Math.ceil(oldTotal / KANBAN_PAGE_SIZE)) },
-                    [newStatus]: { ...prev[newStatus], total: newTotal, pages: Math.max(1, Math.ceil(newTotal / KANBAN_PAGE_SIZE)) },
+            setMetaByStatus(() => {
+                const next = cloneKanbanMeta(prevMeta)
+                const oldTotal = Math.max(0, (next[oldStatus]?.total ?? 0) - 1)
+                const newTotal = (next[newStatus]?.total ?? 0) + 1
+                next[oldStatus] = {
+                    ...next[oldStatus],
+                    total: oldTotal,
+                    pages: Math.max(1, Math.ceil(oldTotal / KANBAN_PAGE_SIZE)),
                 }
+                next[newStatus] = {
+                    ...next[newStatus],
+                    total: newTotal,
+                    pages: Math.max(1, Math.ceil(newTotal / KANBAN_PAGE_SIZE)),
+                }
+                metaByStatusRef.current = next
+                return next
             })
-
-            const prevMeta = { ...metaByStatus }
             try {
                 await onStatusChange(item, newStatus)
             } catch (error) {
                 console.error('Erro ao mover card:', error)
                 // Reverte em caso de erro
-                setDataByStatus((prev) => {
-                    const next = { ...prev }
-                    next[newStatus] = (next[newStatus] ?? []).filter((i) => i.id !== itemId)
-                    next[oldStatus] = [...(next[oldStatus] ?? []), { ...item, status: oldStatus }]
-                    return next
+                setDataByStatus(() => {
+                    dataByStatusRef.current = prevData
+                    return prevData
                 })
-                setMetaByStatus(prevMeta)
+                setMetaByStatus(() => {
+                    metaByStatusRef.current = prevMeta
+                    return prevMeta
+                })
             }
         },
-        [dataByStatus, onStatusChange, onDelete]
+        [onStatusChange, onDelete]
     )
 
     const activeItem = activeId?.startsWith(CARD_ID_PREFIX)

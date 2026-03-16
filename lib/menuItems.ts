@@ -17,10 +17,12 @@ export interface MenuItem {
   href: string
   icon: LucideIcon
   requiresPremium?: boolean
-  /** Quando definido, o item só aparece para usuários cujo username está na lista (ex: admin) */
+  /** Quando definido, o item so aparece para usuarios cujo username esta na lista */
   visibleForUsernames?: string[]
-  /** Quando true, o item só aparece para usuários com role admin */
+  /** Quando true, o item so aparece para usuarios com role admin */
   requiresAdmin?: boolean
+  /** Quando true, o item so aparece para usuarios com role manager (gerente de equipe) */
+  requiresManager?: boolean
   /** Texto explicativo exibido no modo de ajuda ao clicar no item */
   helpDescription?: string
 }
@@ -31,8 +33,9 @@ export const menuItems: MenuItem[] = [
     href: '/dashboard',
     icon: LayoutDashboard,
     helpDescription:
-      'Visão geral do seu negócio em um só lugar.\n\n' +
-      'Acompanhe indicadores principais: vendas do período, oportunidades em aberto, tarefas pendentes e resumo financeiro. Use para ter uma leitura rápida de como está o desempenho e o que precisa de atenção.',
+      'Visao geral do seu negocio em um so painel.\n\n' +
+      'Aqui voce acompanha os numeros mais importantes do dia: vendas, tarefas, oportunidades e resumo financeiro.\n\n' +
+      'Use esta aba para decidir prioridades antes de entrar nos detalhes.',
   },
   {
     name: 'Relatorios',
@@ -40,74 +43,89 @@ export const menuItems: MenuItem[] = [
     icon: BarChart3,
     visibleForUsernames: ['alisson355'],
     helpDescription:
-      'Relatórios e análises detalhadas para acompanhar o desempenho do negócio.\n\n' +
-      'Exporte dados, visualize tendências e tome decisões baseadas em números.',
+      'Analises detalhadas para entender desempenho e tendencias.\n\n' +
+      'Filtre periodos, compare resultados e exporte dados quando precisar compartilhar com o time.\n\n' +
+      'Ideal para revisar estrategia com base em numeros concretos.',
   },
   {
     name: 'Clientes',
     href: '/clientes',
     icon: Users,
     helpDescription:
-      'Cadastro de pessoas e empresas com quem você se relaciona.\n\n' +
-      'A diferença: Clientes são quem já comprou ou fez um orçamento. Leads são contatos frios que ainda não compraram e não fizeram orçamentos — os leads ficam na aba Funil.\n\n' +
-      'Aqui você mantém dados de contato, histórico de interações, orçamentos e pedidos de cada um.',
+      'Cadastro completo de pessoas e empresas atendidas.\n\n' +
+      'Clientes sao contatos que ja compraram ou receberam orcamento. Leads frios ficam no Funil ate avancarem.\n\n' +
+      'Centralize historico, dados de contato e proximas acoes em um unico lugar.',
   },
   {
     name: 'Orçamentos',
     href: '/oportunidades',
     icon: FileText,
     helpDescription:
-      'Crie e gerencie orçamentos e propostas comerciais.\n\n' +
-      'Cadastre itens, defina preços e condições de pagamento. Acompanhe o status de cada oportunidade (em análise, aprovado, recusado) até a conversão em pedido.',
+      'Crie propostas e acompanhe cada negociacao.\n\n' +
+      'Defina itens, valores e condicoes de pagamento com clareza.\n\n' +
+      'Monitore o status ate aprovar, perder ou converter em pedido.',
   },
   {
     name: 'Pedidos',
     href: '/pedidos',
     icon: ClipboardList,
     helpDescription:
-      'Pedidos de venda confirmados.\n\n' +
-      'Acompanhe pedidos em andamento, parcelas, datas de vencimento e entregas. Gere cobranças a partir dos pedidos e mantenha o histórico organizado.',
+      'Controle dos pedidos confirmados.\n\n' +
+      'Acompanhe entrega, parcelas, vencimentos e status de cobranca.\n\n' +
+      'Mantenha o processo de pos-venda organizado do inicio ao fim.',
   },
   {
     name: 'Funil',
     href: '/grupos',
     icon: Layers,
     helpDescription:
-      'O Funil é onde você organiza seus leads e oportunidades em estágios visuais (como um quadro Kanban). Cada coluna representa uma fase: Sem contato, Contatado, Em potencial e Aguardando orçamento.\n\n' +
-      'Arraste os cards entre as colunas conforme o lead avança. Leads que chegam em Aguardando orçamento são automaticamente transformados em clientes.\n\n' +
-      'Use para não perder nenhum lead e ter visão clara do pipeline de vendas.',
+      'Pipeline visual para organizar leads por etapa.\n\n' +
+      'Mova os cards conforme o contato avanca: sem contato, em conversa, potencial e aguardando orcamento.\n\n' +
+      'Use o Funil para nao perder oportunidades e manter ritmo comercial.',
+  },
+  {
+    name: 'Equipe',
+    href: '/equipe',
+    icon: Users,
+    requiresManager: true,
+    helpDescription:
+      'Visao da equipe para gerentes acompanharem desempenho e atividades.\n\n' +
+      'Acompanhe os membros do seu time e monitore resultados em um so lugar.',
   },
   {
     name: 'Metas',
     href: '/metas',
     icon: Trophy,
     helpDescription:
-      'Defina metas de vendas e acompanhe o progresso.\n\n' +
-      'Estipule objetivos por período (mensal, trimestral) e veja quanto já foi batido. Use para motivar a equipe e acompanhar se está no caminho certo.',
+      'Defina objetivos e acompanhe evolucao da equipe.\n\n' +
+      'Configure metas por periodo e veja o progresso em tempo real.\n\n' +
+      'Use os resultados para ajustar foco e acelerar performance.',
   },
   {
     name: 'Tarefas',
     href: '/tarefas',
     icon: Calendar,
     helpDescription:
-      'As Tarefas são lembretes e atividades que você precisa executar no dia a dia. Crie tarefas para: ligar para um cliente, enviar um follow-up, agendar reunião ou qualquer outra ação.\n\nVocê pode vincular cada tarefa a um cliente ou a uma oportunidade específica. O sistema envia notificações quando uma tarefa está próxima do vencimento.\n\nUse as abas Pendentes e Concluídas para organizar o que falta fazer e o que já foi feito. Filtre por status e prioridade para focar no que realmente importa.',
+      'Organizacao das atividades do dia a dia.\n\n' +
+      'Crie lembretes, vincule clientes ou oportunidades e acompanhe prazos.\n\n' +
+      'Separe entre pendentes e concluidas para manter execucao previsivel.',
   },
   {
     name: 'Produtos',
     href: '/produtos',
     icon: Package,
     helpDescription:
-      'Cadastro de produtos e serviços que você vende.\n\n' +
-      'Defina nomes, descrições, preços e controle de estoque quando necessário. Esses itens ficam disponíveis para incluir em orçamentos e pedidos.',
+      'Catalogo de produtos e servicos vendidos.\n\n' +
+      'Cadastre descricao, preco e estoque quando aplicavel.\n\n' +
+      'Esses itens alimentam orcamentos e pedidos com mais agilidade.',
   },
   {
     name: 'Financeiro',
     href: '/financeiro',
     icon: Wallet,
     helpDescription:
-      'O Financeiro centraliza o controle financeiro do seu negócio.\n\n' +
-      'Contas a receber: registre valores que clientes devem pagar (parcelas de pedidos, serviços), acompanhe vencimentos e receba. Contas a pagar: registre despesas, fornecedores e prazos.\n\n' +
-      'O fluxo de caixa mostra a previsão de entradas e saídas em períodos futuros. A separação de ambiente é por empresarial, pessoal e total.\n\n' +
-      'Ações disponíveis: registrar pagamento, aplicar multa ou juros, gerar lembrete de cobrança. Cadastre fornecedores e funcionários para organizar melhor as contas.',
+      'Controle de entradas, saidas e previsao de caixa.\n\n' +
+      'Registre contas a receber, contas a pagar e acompanhe vencimentos sem perder prazos.\n\n' +
+      'Use esta aba para decidir com seguranca onde investir e onde cortar custos.',
   },
 ]

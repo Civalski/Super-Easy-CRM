@@ -1,61 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { menuItems } from '@/lib/menuItems'
-import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
+import { LogOut } from '@/lib/icons'
+import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 import { useHelpMode } from './HelpModeProvider'
 import { useGuideTour } from './GuideTourProvider'
 
 export function HeaderNav() {
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const billingSubscriptionEnabled = isBillingSubscriptionEnabledClient()
+  const { data: session, status } = useSession()
+  const {
+    billingEnabled: billingSubscriptionEnabled,
+    active: hasActiveSubscription,
+    error: subscriptionError,
+    isLoading: subscriptionLoading,
+  } = useSubscriptionStatus({
+    enabled: status === 'authenticated',
+  })
   const { helpMode, showHelpFor } = useHelpMode()
   const { guideActive, currentItem } = useGuideTour()
 
   const username = (session?.user?.username ?? '').trim().toLowerCase()
+  const role = session?.user?.role ?? ''
   const visibleMenuItems = menuItems.filter((item) => {
+    if (item.requiresAdmin && role !== 'admin') return false
+    if (item.requiresManager && role !== 'manager') return false
     if (!item.visibleForUsernames) return true
     return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
   })
-  const [premiumAccess, setPremiumAccess] = useState<'loading' | 'active' | 'inactive' | 'error'>(
-    billingSubscriptionEnabled ? 'loading' : 'active'
-  )
+  const premiumAccess: 'loading' | 'active' | 'inactive' | 'error' =
+    !billingSubscriptionEnabled
+      ? 'active'
+      : status === 'loading'
+        ? 'loading'
+        : status !== 'authenticated'
+          ? 'active'
+          : subscriptionLoading
+        ? 'loading'
+        : subscriptionError
+          ? 'error'
+          : hasActiveSubscription
+            ? 'active'
+            : 'inactive'
 
   const isItemActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
-
-  useEffect(() => {
-    if (!billingSubscriptionEnabled) return
-
-    let cancelled = false
-
-    async function loadPremiumAccess() {
-      try {
-        const response = await fetch('/api/billing/subscription', {
-          cache: 'no-store',
-        })
-        if (!response.ok) throw new Error('Falha ao consultar assinatura')
-
-        const payload = (await response.json()) as { active?: boolean }
-        if (!cancelled) {
-          setPremiumAccess(payload.active ? 'active' : 'inactive')
-        }
-      } catch {
-        if (!cancelled) {
-          setPremiumAccess('error')
-        }
-      }
-    }
-
-    void loadPremiumAccess()
-
-    return () => {
-      cancelled = true
-    }
-  }, [billingSubscriptionEnabled])
 
   const getResolvedHref = (item: (typeof visibleMenuItems)[0]) => {
     if (item.requiresPremium && premiumAccess === 'inactive') {
@@ -121,6 +112,15 @@ export function HeaderNav() {
           </Link>
         )
       })}
+      <button
+        type="button"
+        onClick={() => signOut()}
+        title="Sair"
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap shrink-0 text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-slate-300 dark:hover:bg-red-500/14 dark:hover:text-red-100"
+      >
+        <LogOut size={16} className="shrink-0 text-slate-500 dark:text-slate-400" />
+        <span>Sair</span>
+      </button>
     </nav>
   )
 }

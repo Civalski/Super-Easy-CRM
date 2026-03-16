@@ -39,6 +39,7 @@ const CancelarPedidoModal = dynamic(
   { ssr: false }
 )
 import { formatCurrency } from '@/lib/format'
+import { formatDateToLocalISO } from '@/lib/date'
 import { getDownloadFileNameFromHeader } from '@/components/features/pedidos/utils'
 import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 import type { Pedido, PedidoTab, QuickApproveChoice } from '@/components/features/pedidos/types'
@@ -79,8 +80,8 @@ function PedidosPageContent() {
       const now = new Date()
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      di = di || firstDay.toISOString().split('T')[0]
-      df = df || lastDay.toISOString().split('T')[0]
+      di = di || formatDateToLocalISO(firstDay)
+      df = df || formatDateToLocalISO(lastDay)
     }
     queryFilterParts.push(`dataInicio=${di}`)
     queryFilterParts.push(`dataFim=${df}`)
@@ -91,8 +92,8 @@ function PedidosPageContent() {
       const dataInicio = new Date()
       dataInicio.setDate(dataInicio.getDate() - days)
       dataInicio.setHours(0, 0, 0, 0)
-      queryFilterParts.push(`dataInicio=${dataInicio.toISOString().split('T')[0]}`)
-      queryFilterParts.push(`dataFim=${dataFim.toISOString().split('T')[0]}`)
+      queryFilterParts.push(`dataInicio=${formatDateToLocalISO(dataInicio)}`)
+      queryFilterParts.push(`dataFim=${formatDateToLocalISO(dataFim)}`)
     }
   }
   const queryFilter = queryFilterParts.join('&')
@@ -151,8 +152,8 @@ function PedidosPageContent() {
           const now = new Date()
           const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
           const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-          params.set('dataInicio', firstDay.toISOString().split('T')[0])
-          params.set('dataFim', lastDay.toISOString().split('T')[0])
+          params.set('dataInicio', formatDateToLocalISO(firstDay))
+          params.set('dataFim', formatDateToLocalISO(lastDay))
         }
       }
       const nextQuery = params.toString()
@@ -168,8 +169,8 @@ function PedidosPageContent() {
       const now = new Date()
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      params.set('dataInicio', firstDay.toISOString().split('T')[0])
-      params.set('dataFim', lastDay.toISOString().split('T')[0])
+      params.set('dataInicio', formatDateToLocalISO(firstDay))
+      params.set('dataFim', formatDateToLocalISO(lastDay))
       router.replace(`/pedidos?${params.toString()}`)
       return
     }
@@ -328,8 +329,8 @@ function PedidosPageContent() {
       const now = new Date()
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      params.set('dataInicio', firstDay.toISOString().split('T')[0])
-      params.set('dataFim', lastDay.toISOString().split('T')[0])
+      params.set('dataInicio', formatDateToLocalISO(firstDay))
+      params.set('dataFim', formatDateToLocalISO(lastDay))
     } else {
       params.delete('dataInicio')
       params.delete('dataFim')

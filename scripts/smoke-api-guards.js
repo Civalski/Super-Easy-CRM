@@ -51,7 +51,9 @@ const routeSeed = readFile('app/api/seed/route.ts')
 const routePedidosId = readFile('app/api/pedidos/[id]/route.ts')
 const routeOportunidadesId = readFile('app/api/oportunidades/[id]/route.ts')
 const routeProspectos = readFile('app/api/prospectos/route.ts')
+const routeFinanceiroContasReceber = readFile('app/api/financeiro/contas-receber/route.ts')
 const routeHelpers = readFile('lib/api/route-helpers.ts')
+const prismaSchema = readFile('prisma/schema.prisma')
 
 const criticalRoutes = [
   'app/api/seed/clear/route.ts',
@@ -107,6 +109,24 @@ const tests = [
   ),
   check('DELETE de oportunidade preserva escopo por userId', () =>
     routeOportunidadesId.includes('deleteMany({') && hasScopedIdWhere(routeOportunidadesId)
+  ),
+  check('Contas a receber validam posse de relacoes por userId', () =>
+    includesAll(routeFinanceiroContasReceber, [
+      'validateContaReceberRelations',
+      'Pedido informado nao pertence ao usuario',
+      'Oportunidade informada nao pertence ao usuario',
+      'Fornecedor informado nao pertence ao usuario',
+      'Funcionario informado nao pertence ao usuario',
+    ])
+  ),
+  check('ContaReceber usa relacoes compostas com tenant no schema', () =>
+    includesAll(prismaSchema, [
+      'fields: [pedidoId, userId], references: [id, userId]',
+      'fields: [oportunidadeId, userId], references: [id, userId]',
+      'fields: [fornecedorId, userId], references: [id, userId]',
+      'fields: [funcionarioId, userId], references: [id, userId]',
+      '@@unique([id, userId])',
+    ])
   ),
   check('Artefatos locais nao estao rastreados (pyc/venv/env/acidental)', () => {
     const trackedArtifacts = [

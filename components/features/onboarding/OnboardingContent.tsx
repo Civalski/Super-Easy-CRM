@@ -45,14 +45,23 @@ export function OnboardingContent() {
   }, [shouldShow])
 
   const handleSubmit = async (data: OnboardingFormData) => {
-    await submit(data)
+    const completed = await submit(data)
+    if (!completed) return
+
+    window.dispatchEvent(new CustomEvent('arker:onboarding-completed'))
     if (!isRefazer) {
       window.dispatchEvent(new CustomEvent('arker:show-guide'))
     }
   }
 
   const handleSkip = async () => {
-    await skip()
+    const completed = await skip()
+    if (!completed) return
+
+    window.dispatchEvent(new CustomEvent('arker:onboarding-completed'))
+    if (!isRefazer) {
+      window.dispatchEvent(new CustomEvent('arker:show-guide'))
+    }
   }
 
   // When shouldShow transitions from true to false (success), animate close

@@ -4,7 +4,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CreditCard, Loader2, CheckCircle2, X, Sparkles, MessageCircle } from '@/lib/icons'
+import { signOut } from 'next-auth/react'
+import { CreditCard, Loader2, CheckCircle2, X, Sparkles, MessageCircle, LogOut } from '@/lib/icons'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/common'
 import { PREMIUM_PLANS, type PlanId } from './assinatura/constants'
@@ -209,30 +210,41 @@ export function AssinaturaStripeCard() {
                     ? 'Abriremos o WhatsApp com uma mensagem pronta para o time comercial.'
                     : 'Voce sera redirecionado para o checkout seguro para concluir a assinatura.'}
                 </p>
-                <Button
-                  onClick={handlePrimaryAction}
-                  disabled={checkoutLoading}
-                  variant="primary"
-                  size="md"
-                  className={`w-full sm:w-auto ${selectedTheme.ctaButton}`}
-                >
-                  {checkoutLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Redirecionando...
-                    </>
-                  ) : isContactPlan ? (
-                    <>
-                      <MessageCircle className="h-4 w-4" />
-                      {selectedPlanConfig.ctaLabel}
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4" />
-                      Continuar para pagamento
-                    </>
-                  )}
-                </Button>
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <Button
+                    onClick={() => signOut({ callbackUrl: '/login' })}
+                    variant="secondary"
+                    size="md"
+                    className="w-full sm:w-auto"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair da conta
+                  </Button>
+                  <Button
+                    onClick={handlePrimaryAction}
+                    disabled={checkoutLoading}
+                    variant="primary"
+                    size="md"
+                    className={`w-full sm:w-auto ${selectedTheme.ctaButton}`}
+                  >
+                    {checkoutLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Redirecionando...
+                      </>
+                    ) : isContactPlan ? (
+                      <>
+                        <MessageCircle className="h-4 w-4" />
+                        {selectedPlanConfig.ctaLabel}
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        Continuar para pagamento
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

@@ -1,13 +1,20 @@
 import Image from 'next/image'
 import { ParticlesJsBackground } from '@/components/features/register/ParticlesJsBackground'
+import type { LoginThemeAppearance } from '@/components/features/login/types'
 
-export function RegisterHero() {
+type RegisterHeroProps = {
+  appearance: LoginThemeAppearance
+}
+
+export function RegisterHero({ appearance }: RegisterHeroProps) {
   return (
-    <section className="relative flex min-h-[40vh] flex-col justify-between overflow-hidden border-b border-slate-800/70 bg-linear-to-br from-purple-950 via-slate-950 to-black px-6 py-8 sm:px-10 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
+    <section
+      className={`relative flex min-h-[40vh] flex-col justify-between overflow-hidden px-6 py-8 sm:px-10 lg:min-h-screen lg:px-14 lg:py-12 ${appearance.heroSection}`}
+    >
       <ParticlesJsBackground />
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(167,139,250,0.22),transparent_52%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_76%_75%,rgba(124,58,237,0.14),transparent_46%)]" />
+      <div className={`pointer-events-none absolute inset-0 ${appearance.heroPrimaryGlow}`} />
+      <div className={`pointer-events-none absolute inset-0 ${appearance.heroSecondaryGlow}`} />
 
       <div className="relative z-10">
         <Image
@@ -20,18 +27,18 @@ export function RegisterHero() {
       </div>
 
       <div className="relative z-10 max-w-xl space-y-4">
-        <h1 className="crm-display text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
+        <h1 className={`crm-display text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl ${appearance.heroTitle}`}>
           Crie sua conta e padronize seu processo comercial.
         </h1>
-        <p className="max-w-lg text-sm text-slate-200/85 sm:text-base">
-          Ative o CRM com codigo de registro e mantenha clientes, oportunidades, pedidos e tarefas no mesmo fluxo.
+        <p className={`max-w-lg text-sm sm:text-base ${appearance.heroDescription}`}>
+          Cadastre-se em minutos, adicione seu cartao no checkout seguro. Na licenca individual, use 7 dias gratis para validar o processo completo.
         </p>
       </div>
 
-      <div className="relative z-10 hidden gap-4 text-xs text-slate-200/80 sm:flex">
-        <span className="rounded-full border border-slate-200/20 bg-slate-900/40 px-3 py-1">Cadastro seguro</span>
-        <span className="rounded-full border border-slate-200/20 bg-slate-900/40 px-3 py-1">Turnstile ativo</span>
-        <span className="rounded-full border border-slate-200/20 bg-slate-900/40 px-3 py-1">Acesso por convite</span>
+      <div className="relative z-10 hidden gap-4 text-xs sm:flex">
+        <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>Cadastro seguro</span>
+        <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>Criptografia moderna</span>
+        <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>7 dias gratis (licenca individual)</span>
       </div>
     </section>
   )

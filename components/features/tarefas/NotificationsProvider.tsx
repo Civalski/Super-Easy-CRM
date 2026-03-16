@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import type { TaskNotification } from '@/types/notifications'
+import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 
 interface NotificationsContextValue {
   notifications: TaskNotification[]
@@ -17,13 +18,24 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { status } = useSession()
+  const {
+    billingEnabled: billingSubscriptionEnabled,
+    active: hasActiveSubscription,
+    isLoading: subscriptionLoading,
+  } = useSubscriptionStatus({
+    enabled: status === 'authenticated',
+  })
   const [notifications, setNotifications] = useState<TaskNotification[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isIdle, setIsIdle] = useState(false)
   const idleTimeoutRef = useRef<number | null>(null)
+  const canLoadNotifications =
+    status === 'authenticated' &&
+    !subscriptionLoading &&
+    (!billingSubscriptionEnabled || hasActiveSubscription)
 
   const fetchNotifications = useCallback(async (force = false) => {
-    if (status !== 'authenticated' || (!force && isIdle)) return
+    if (!canLoadNotifications || (!force && isIdle)) return
 
     try {
       setIsLoading(true)
@@ -37,7 +49,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [status, isIdle])
+  }, [canLoadNotifications, isIdle])
+
+  useEffect(() => {
+    if (!canLoadNotifications) {
+      setNotifications([])
+      setIsLoading(false)
+    }
+  }, [canLoadNotifications])
 
   const resetIdleTimer = useCallback(() => {
     setIsIdle(false)
@@ -91,7 +110,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [status, resetIdleTimer])
 
   useEffect(() => {
-    if (status !== 'authenticated' || isIdle) return
+    if (!canLoadNotifications || isIdle) return
 
     void fetchNotifications()
     const intervalId = window.setInterval(() => {
@@ -101,7 +120,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [status, isIdle, fetchNotifications])
+  }, [canLoadNotifications, isIdle, fetchNotifications])
 
   return (
     <NotificationsContext.Provider

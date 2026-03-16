@@ -4,6 +4,7 @@ import {
   expandOpportunityStatuses,
   OpportunityStatus,
 } from '@/lib/domain/status'
+import { formatDateToLocalISO } from '@/lib/date'
 
 const metricStatusMap: Partial<Record<GoalMetricType, OpportunityStatus[]>> = {
   PROPOSTAS: ['orcamento'],
@@ -21,12 +22,7 @@ const metricsRequiringStatus = new Set<GoalMetricType>([
 
 // Helper to get the date string YYYY-MM-DD in Brazil timezone
 function getBrazilDateString(date: Date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
+  return formatDateToLocalISO(date)
 }
 
 function startOfDay(date: Date) {
@@ -296,43 +292,3 @@ export async function computeGoalProgress(goal: {
   return { current: 0, periodStart, periodEnd, active }
 }
 
-export async function recordGoalSnapshot(params: {
-  goalId: string
-  target: number
-  current: number
-  progress: number
-  periodStart: Date
-  periodEnd: Date
-  active: boolean
-}) {
-  const { goalId, target, current, progress, periodStart, periodEnd, active } = params
-
-  if (!active) return
-
-  try {
-    await prisma.goalSnapshot.upsert({
-      where: {
-        goalId_periodStart_periodEnd: {
-          goalId,
-          periodStart,
-          periodEnd,
-        },
-      },
-      update: {
-        current,
-        target,
-        progress,
-      },
-      create: {
-        goalId,
-        periodStart,
-        periodEnd,
-        current,
-        target,
-        progress,
-      },
-    })
-  } catch (error) {
-    console.warn('Nao foi possivel registrar snapshot da meta:', error)
-  }
-}
