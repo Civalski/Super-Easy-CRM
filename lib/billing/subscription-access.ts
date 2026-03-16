@@ -22,7 +22,6 @@ export async function getUserSubscriptionAccess(userId: string) {
         subscriptionNextBillingAt: true,
         subscriptionStatus: true,
         subscriptionProvider: true,
-        demoModeActive: true,
       },
     })
 
@@ -30,7 +29,6 @@ export async function getUserSubscriptionAccess(userId: string) {
       return {
         exists: false,
         schemaReady: true,
-        demoModeActive: false,
         status: 'inactive',
         active: false,
       }
@@ -46,7 +44,6 @@ export async function getUserSubscriptionAccess(userId: string) {
       exists: true,
       schemaReady: true,
       provider: user.subscriptionProvider,
-      demoModeActive: user.demoModeActive,
       expired: state.expired,
       status: state.status,
       active: state.active,
@@ -56,7 +53,6 @@ export async function getUserSubscriptionAccess(userId: string) {
       return {
         exists: true,
         schemaReady: false,
-        demoModeActive: false,
         status: 'inactive',
         active: false,
       }

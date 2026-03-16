@@ -67,3 +67,26 @@ export async function isActiveUserSession(identity: TokenIdentity): Promise<bool
 
   return !!user?.activeSessionId && user.activeSessionId === sessionId
 }
+
+export function syncActiveUserSessionCache(identity: TokenIdentity) {
+  const userId = identity.userId?.trim()
+  const sessionId = identity.sessionId?.trim()
+
+  if (!userId) {
+    return
+  }
+
+  activeSessionCache.set(userId, {
+    activeSessionId: sessionId || null,
+    expiresAt: Date.now() + ACTIVE_SESSION_CACHE_TTL_MS,
+  })
+}
+
+export function clearActiveUserSessionCache(userId: string | undefined) {
+  const normalizedUserId = userId?.trim()
+  if (!normalizedUserId) {
+    return
+  }
+
+  activeSessionCache.delete(normalizedUserId)
+}

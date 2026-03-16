@@ -46,8 +46,6 @@ function hasScopedIdWhere(content) {
   )
 }
 
-const routeSeedClear = readFile('app/api/seed/clear/route.ts')
-const routeSeed = readFile('app/api/seed/route.ts')
 const routePedidosId = readFile('app/api/pedidos/[id]/route.ts')
 const routeOportunidadesId = readFile('app/api/oportunidades/[id]/route.ts')
 const routeProspectos = readFile('app/api/prospectos/route.ts')
@@ -56,8 +54,6 @@ const routeHelpers = readFile('lib/api/route-helpers.ts')
 const prismaSchema = readFile('prisma/schema.prisma')
 
 const criticalRoutes = [
-  'app/api/seed/clear/route.ts',
-  'app/api/seed/route.ts',
   'app/api/oportunidades/[id]/route.ts',
   'app/api/oportunidades/route.ts',
   'app/api/grupos/route.ts',
@@ -80,18 +76,6 @@ const unauthorizedChecks = criticalRoutes.map((routeFile) =>
 )
 
 const tests = [
-  check('Seed clear bloqueado em producao', () =>
-    includesAll(routeSeedClear, ["NODE_ENV === 'production'", 'status: 403'])
-  ),
-  check('Seed clear exige token quando configurado', () =>
-    includesAll(routeSeedClear, ['SEED_ADMIN_TOKEN', "x-seed-token"])
-  ),
-  check('Seed de dados bloqueado em producao', () =>
-    includesAll(routeSeed, ["NODE_ENV === 'production'", 'status: 403'])
-  ),
-  check('Seed de dados exige token quando configurado', () =>
-    includesAll(routeSeed, ['SEED_ADMIN_TOKEN', "x-seed-token"])
-  ),
   check('PATCH de pedidos usa transacao', () =>
     routePedidosId.includes('prisma.$transaction')
   ),

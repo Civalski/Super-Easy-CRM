@@ -14,6 +14,7 @@ import { verifyTurnstileToken } from "@/lib/security/turnstile"
 import { verifyRegisterCompletionToken } from "@/lib/auth/register-completion-token"
 import { syncUserSubscriptionFromCheckoutSession } from "@/lib/billing/stripe-subscription-sync"
 import { getNextAuthSecret } from "@/lib/nextauth-secret"
+import { syncActiveUserSessionCache } from "@/lib/auth-session"
 
 export const dynamic = 'force-dynamic'
 
@@ -106,6 +107,7 @@ const handler = NextAuth({
                             where: { id: user.id },
                             data: { activeSessionId: sessionId },
                         })
+                        syncActiveUserSessionCache({ userId: user.id, sessionId })
 
                         resetRateLimit(byIpKey)
                         resetRateLimit(byIdentifierKey)
@@ -146,6 +148,7 @@ const handler = NextAuth({
                             where: { id: user.id },
                             data: { activeSessionId: sessionId },
                         })
+                        syncActiveUserSessionCache({ userId: user.id, sessionId })
 
                         resetRateLimit(byIpKey)
                         resetRateLimit(byIdentifierKey)
@@ -227,6 +230,7 @@ const handler = NextAuth({
                     where: { id: user.id },
                     data: { activeSessionId: sessionId },
                 })
+                syncActiveUserSessionCache({ userId: user.id, sessionId })
 
                 resetRateLimit(byIpKey)
                 resetRateLimit(byIdentifierKey)

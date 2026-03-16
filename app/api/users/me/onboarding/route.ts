@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/route-helpers'
-import { clearDemoDataForUser, ensureDemoDataForUser } from '@/lib/demo-data'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -85,7 +84,6 @@ export async function POST(request: NextRequest) {
 
       })
 
-      await ensureDemoDataForUser(userId)
       await prisma.user.update({
         where: { id: userId },
         data: { onboardingCompletedAt: new Date() },
@@ -110,7 +108,6 @@ export async function DELETE(request: NextRequest) {
         })
       })
 
-      await clearDemoDataForUser(userId)
       return NextResponse.json({ success: true })
     } catch (error) {
       console.error('Erro ao resetar onboarding:', error)

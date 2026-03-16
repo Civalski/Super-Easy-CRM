@@ -45,8 +45,6 @@ model User {
   subscriptionCheckoutUrl  String?
   subscriptionNextBillingAt DateTime?
   subscriptionLastWebhookAt DateTime?
-  demoModeActive         Boolean  @default(false)
-  demoDataSeededAt       DateTime?
   onboardingCompletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -74,7 +72,6 @@ model User {
   pdfConfig             PdfConfig?
   fornecedores          Fornecedor[]
   funcionarios          Funcionario[]
-  demoDataRecords       DemoDataRecord[]
 
   @@map("users")
 }
@@ -90,20 +87,6 @@ model RegistrationCode {
 
   @@index([usedById])
   @@map("registration_codes")
-}
-
-model DemoDataRecord {
-  id        String   @id @default(cuid())
-  userId    String
-  model     String
-  recordId  String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, model, recordId])
-  @@index([userId, model])
-  @@map("demo_data_records")
 }
 
 model Goal {

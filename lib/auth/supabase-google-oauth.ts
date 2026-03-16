@@ -27,19 +27,44 @@ export async function findOrCreateUserFromGoogleOAuth(params: {
 
   const existingByEmail = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    select: { id: true, subscriptionProvider: true, subscriptionStatus: true },
+    select: { id: true },
   })
 
   const existingBySupabaseId = await prisma.user.findFirst({
     where: { subscriptionExternalId: params.supabaseUserId },
-    select: { id: true },
+    select: { id: true, email: true },
   })
 
-  const existingUser = existingByEmail ?? existingBySupabaseId
-  if (existingUser) {
+  if (existingBySupabaseId) {
+    const now = new Date()
+    const hasConflictingEmailUser =
+      !!existingByEmail && existingByEmail.id !== existingBySupabaseId.id
+    const canUpdateEmail =
+      !hasConflictingEmailUser &&
+      (
+        !existingBySupabaseId.email ||
+        existingBySupabaseId.email.trim().toLowerCase() === normalizedEmail
+      )
+
+    await prisma.user.update({
+      where: { id: existingBySupabaseId.id },
+      data: {
+        ...(canUpdateEmail ? { email: normalizedEmail } : {}),
+        subscriptionExternalId: params.supabaseUserId,
+        subscriptionProvider: EMAIL_CONFIRMATION_PROVIDER,
+        subscriptionStatus: 'active',
+        subscriptionLastWebhookAt: now,
+        subscriptionNextBillingAt: getEmailConfirmationTrialEndsAt(now),
+        name: params.name ?? undefined,
+      },
+    })
+    return existingBySupabaseId.id
+  }
+
+  if (existingByEmail) {
     const now = new Date()
     await prisma.user.update({
-      where: { id: existingUser.id },
+      where: { id: existingByEmail.id },
       data: {
         subscriptionExternalId: params.supabaseUserId,
         subscriptionProvider: EMAIL_CONFIRMATION_PROVIDER,
@@ -49,7 +74,7 @@ export async function findOrCreateUserFromGoogleOAuth(params: {
         name: params.name ?? undefined,
       },
     })
-    return existingUser.id
+    return existingByEmail.id
   }
 
   let username = deriveUsernameFromEmail(normalizedEmail)

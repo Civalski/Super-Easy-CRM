@@ -87,6 +87,10 @@ function AuthCallbackInner() {
         const params = new URLSearchParams()
         params.set('register_token', json.registerToken)
         if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
+        if (typeof window !== 'undefined') {
+          window.location.replace(`/login?${params.toString()}`)
+          return
+        }
         router.replace(`/login?${params.toString()}`)
       } catch (err) {
         console.error('Erro no callback OAuth:', err)

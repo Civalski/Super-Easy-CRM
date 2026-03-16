@@ -13,14 +13,10 @@ interface AtividadesRecentesProps {
   compact?: boolean
 }
 
-const sanitizeMockText = (value?: string | null) =>
-  (value || '')
-    .replace(/\bmock\b/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/^[\s\-:|*]+|[\s\-:|*]+$/g, '')
-    .trim()
-
-export function AtividadesRecentes({ onRefreshRequest, compact = false }: AtividadesRecentesProps) {
+export function AtividadesRecentes({
+  onRefreshRequest,
+  compact = false,
+}: AtividadesRecentesProps) {
   const { activities, isLoading, mutate } = useAtividadesRecentes()
   const [showAll, setShowAll] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<DashboardActivity | null>(null)
@@ -84,7 +80,11 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
           <div className={`flex-1 ${compact ? 'space-y-3' : 'space-y-4'}`}>
             {(compact ? [1, 2, 3] : [1, 2, 3, 4]).map((item) => (
               <div key={item} className={`flex animate-pulse ${compact ? 'gap-3' : 'gap-4'}`}>
-                <div className={`rounded-full bg-gray-200 dark:bg-gray-700 ${compact ? 'w-8 h-8' : 'w-10 h-10'}`} />
+                <div
+                  className={`rounded-full bg-gray-200 dark:bg-gray-700 ${
+                    compact ? 'w-8 h-8' : 'w-10 h-10'
+                  }`}
+                />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-sm w-3/4" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-sm w-1/2" />
@@ -100,13 +100,15 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
           <div className="flex-1 flex flex-col">
             <div className={compact ? 'space-y-3' : 'space-y-4'}>
               {visibleActivities.map((activity) => {
-                const sanitizedTitle = sanitizeMockText(activity.title) || 'Atividade'
-                const sanitizedDescription = sanitizeMockText(activity.description)
+                const activityTitle = activity.title?.trim() || 'Atividade'
+                const activityDescription = activity.description?.trim()
 
                 return (
                   <button
                     key={`${activity.type}-${activity.id}`}
-                    className={`w-full flex text-left p-2 -mx-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group ${compact ? 'gap-3' : 'gap-4'}`}
+                    className={`w-full flex text-left p-2 -mx-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group ${
+                      compact ? 'gap-3' : 'gap-4'
+                    }`}
                     onClick={() => setSelectedActivity(activity)}
                   >
                     <div
@@ -117,12 +119,16 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
                       {getIcon(activity.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-gray-900 dark:text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>
-                        {sanitizedTitle}
+                      <p
+                        className={`font-medium text-gray-900 dark:text-white truncate ${
+                          compact ? 'text-xs' : 'text-sm'
+                        }`}
+                      >
+                        {activityTitle}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                         {getActionText(activity.type)}
-                        {sanitizedDescription ? ` | ${sanitizedDescription}` : ''}
+                        {activityDescription ? ` | ${activityDescription}` : ''}
                       </p>
                     </div>
                     <div className="text-xs text-gray-400 whitespace-nowrap self-start mt-1">
@@ -137,7 +143,11 @@ export function AtividadesRecentes({ onRefreshRequest, compact = false }: Ativid
             </div>
 
             {hasMore && (
-              <div className={`border-t border-gray-100 dark:border-gray-700 text-center ${compact ? 'mt-3 pt-3' : 'mt-4 pt-4'}`}>
+              <div
+                className={`border-t border-gray-100 dark:border-gray-700 text-center ${
+                  compact ? 'mt-3 pt-3' : 'mt-4 pt-4'
+                }`}
+              >
                 <button
                   onClick={() => setShowAll(!showAll)}
                   className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 inline-flex items-center gap-1 transition-colors"

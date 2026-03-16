@@ -20,6 +20,25 @@ function extractUnconfirmedEmail(errorValue: string | undefined) {
   return email || null
 }
 
+function getRegisterTokenStorageKey(registerToken: string) {
+  return `auth:register-token:${registerToken}`
+}
+
+async function waitForSessionUser(maxAttempts = 5, delayMs = 150) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const session = await getSession()
+    if (session?.user) {
+      return session
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs))
+    }
+  }
+
+  return null
+}
+
 export function useLogin(theme: AppTheme) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -95,7 +114,7 @@ export function useLogin(theme: AppTheme) {
         return
       }
 
-      const session = await getSession()
+      const session = await waitForSessionUser()
       if (!session?.user) {
         setError(
           'Login validado, mas a sessao nao foi criada. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET no deploy.'
@@ -106,6 +125,10 @@ export function useLogin(theme: AppTheme) {
       }
 
       hideTurnstilePrompt()
+      if (typeof window !== 'undefined') {
+        window.location.replace(callbackUrl)
+        return
+      }
       router.replace(callbackUrl)
       router.refresh()
     } catch (_error) {
@@ -164,7 +187,17 @@ export function useLogin(theme: AppTheme) {
 
     let cancelled = false
     const doAutoSignIn = async () => {
+      const storageKey = getRegisterTokenStorageKey(registerToken)
+
       try {
+        if (typeof window !== 'undefined') {
+          const handledState = window.sessionStorage.getItem(storageKey)
+          if (handledState === 'processing' || handledState === 'done') {
+            return
+          }
+          window.sessionStorage.setItem(storageKey, 'processing')
+        }
+
         const result = await signIn('credentials', {
           callbackUrl: urlCallbackUrl || callbackUrl,
           redirect: false,
@@ -174,15 +207,26 @@ export function useLogin(theme: AppTheme) {
         })
         if (cancelled) return
         if (result?.ok && !result.error) {
-          const session = await getSession()
+          const session = await waitForSessionUser()
           if (session?.user) {
+            if (typeof window !== 'undefined') {
+              window.sessionStorage.setItem(storageKey, 'done')
+              window.location.replace(urlCallbackUrl || callbackUrl)
+              return
+            }
             router.replace(urlCallbackUrl || callbackUrl)
             router.refresh()
             return
           }
         }
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(storageKey)
+        }
         setError('Token de login expirado ou invalido. Tente novamente.')
       } catch {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(storageKey)
+        }
         if (!cancelled) setError('Ocorreu um erro ao concluir o login.')
       }
     }

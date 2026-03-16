@@ -57,7 +57,7 @@ const metricIcons: Record<GoalMetricType, React.ElementType> = {
 
 const metricLabels: Record<GoalMetricType, string> = {
   CLIENTES_CONTATADOS: 'Contatos',
-  PROPOSTAS: 'Orçamentos',
+  PROPOSTAS: 'Orcamentos',
   CLIENTES_CADASTRADOS: 'Cadastros',
   VENDAS: 'Vendas',
   QUALIFICACAO: 'Em potencial',
@@ -66,7 +66,7 @@ const metricLabels: Record<GoalMetricType, string> = {
 }
 
 const periodLabels: Record<GoalPeriodType, string> = {
-  DAILY: 'Diária',
+  DAILY: 'Diaria',
   WEEKLY: 'Semanal',
   MONTHLY: 'Mensal',
   CUSTOM: 'Personalizada',
@@ -78,13 +78,6 @@ const formatGoalValue = (metricType: GoalMetricType, value: number) => {
   }
   return new Intl.NumberFormat('pt-BR').format(value)
 }
-
-const sanitizeMockText = (value?: string | null) =>
-  (value || '')
-    .replace(/\bmock\b/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/^[\s\-:|•]+|[\s\-:|•]+$/g, '')
-    .trim()
 
 export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   const activeGoals = goals.filter((goal) => goal.active !== false)
@@ -107,7 +100,7 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
   }
 
   if (displayedGoals.length === 0) {
-    return null // Ocultar se não houver metas para economizar espaço
+    return null
   }
 
   return (
@@ -134,27 +127,23 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
         {displayedGoals.map((goal) => {
           const progressValue = typeof goal.progress === 'number' ? goal.progress : 0
           const currentValue = goal.current ?? 0
+          const goalTitle = goal.title?.trim() || metricLabels[goal.metricType]
           const Icon = metricIcons[goal.metricType] || Target
 
-          // Determine color based on progress
           let colorClass = 'bg-blue-600'
           let bgClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
 
           if (progressValue >= 100) {
             colorClass = 'bg-green-500'
             bgClass = 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-          } else if (progressValue < 30) {
-            // Low progress warning color could be added here if desired
           }
-
-          const sanitizedTitle = sanitizeMockText(goal.title) || metricLabels[goal.metricType]
 
           return (
             <Link
               key={goal.id}
               href="/metas"
               className="group relative flex flex-col justify-between border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
-              aria-label={`Abrir meta ${sanitizedTitle}`}
+              aria-label={`Abrir meta ${goalTitle}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className={`p-2 rounded-lg ${bgClass}`}>
@@ -173,13 +162,22 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
                       / {formatGoalValue(goal.metricType, goal.target)}
                     </span>
                   </span>
-                  <span className={`text-xs font-bold ${progressValue >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                  <span
+                    className={`text-xs font-bold ${
+                      progressValue >= 100
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
                     {progressValue}%
                   </span>
                 </div>
 
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 truncate" title={sanitizedTitle}>
-                  {sanitizedTitle}
+                <h3
+                  className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 truncate"
+                  title={goalTitle}
+                >
+                  {goalTitle}
                 </h3>
 
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
@@ -196,4 +194,3 @@ export function DashboardGoals({ goals, loading }: DashboardGoalsProps) {
     </div>
   )
 }
-

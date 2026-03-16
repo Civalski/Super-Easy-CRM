@@ -22,16 +22,34 @@ export function createSupabaseBrowserClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
-export async function getSupabaseBrowserAccessToken() {
+export async function getSupabaseBrowserAccessToken(
+  maxAttempts = 6,
+  delayMs = 250
+) {
   const supabase = createSupabaseBrowserClient()
-  const { data, error } = await supabase.auth.getSession()
 
-  if (error) {
-    throw error
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const { data, error } = await supabase.auth.getSession()
+
+    if (error) {
+      throw error
+    }
+
+    const accessToken = data.session?.access_token ?? null
+    if (accessToken) {
+      return {
+        accessToken,
+        supabase,
+      }
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs))
+    }
   }
 
   return {
-    accessToken: data.session?.access_token ?? null,
+    accessToken: null,
     supabase,
   }
 }

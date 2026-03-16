@@ -97,9 +97,14 @@ export default function Header({
     limparBusca()
   }
 
-  const userInitial = session?.user?.name?.[0]?.toUpperCase() || 'U'
-  const userName = session?.user?.name || 'Usuario'
   const userEmail = session?.user?.email
+  const fallbackNameFromEmail = userEmail?.split('@')[0]?.trim() || ''
+  const userName =
+    session?.user?.name?.trim() ||
+    session?.user?.username?.trim() ||
+    fallbackNameFromEmail ||
+    'Usuario'
+  const userInitial = userName[0]?.toUpperCase() || 'U'
 
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications)

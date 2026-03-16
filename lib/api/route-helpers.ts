@@ -74,9 +74,7 @@ export async function withAuth(
         )
       }
 
-      const allowDemoReadAccess = access.demoModeActive === true && request.method === 'GET'
-
-      if (!access.active && !allowDemoReadAccess) {
+      if (!access.active) {
         return NextResponse.json(
           {
             error:

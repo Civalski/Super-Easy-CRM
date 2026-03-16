@@ -1,5 +1,4 @@
 import type Stripe from 'stripe'
-import { clearDemoDataForUser } from '@/lib/demo-data'
 import { prisma } from '@/lib/prisma'
 
 export function mapStripeStatusToNormalized(status: string): string {
@@ -40,14 +39,6 @@ export async function syncUserSubscriptionFromStripeSubscription(params: {
       subscriptionLastWebhookAt: new Date(),
     },
   })
-
-  if (status === 'active') {
-    try {
-      await clearDemoDataForUser(userId)
-    } catch (error) {
-      console.error('Falha ao limpar demo data apos ativar assinatura:', error)
-    }
-  }
 }
 
 export async function syncUserSubscriptionFromCheckoutSession(
