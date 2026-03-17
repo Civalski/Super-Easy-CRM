@@ -90,7 +90,8 @@ function AuthCallbackInner() {
       }
 
       if (flow?.nonce === nonce && flow?.status === 'processing') {
-        return
+        // Evita lock de fluxo quando uma tentativa anterior travou no cliente.
+        clearAuthFlowCookie()
       }
 
       try {
@@ -106,7 +107,12 @@ function AuthCallbackInner() {
         // O createBrowserClient do @supabase/ssr detecta callbacks PKCE
         // automaticamente no navegador. Chamar exchangeCodeForSession()
         // aqui novamente pode consumir o code verifier duas vezes.
-        const sessionData = await getSupabaseBrowserAccessToken(10, 250)
+        const sessionData = (await Promise.race([
+          getSupabaseBrowserAccessToken(10, 250),
+          new Promise<never>((_, reject) =>
+            window.setTimeout(() => reject(new Error('oauth_timeout')), 12000)
+          ),
+        ])) as Awaited<ReturnType<typeof getSupabaseBrowserAccessToken>>
 
         const {
           accessToken,
@@ -170,6 +176,10 @@ function AuthCallbackInner() {
         console.error('Erro no callback OAuth:', err)
         clearAuthFlowCookie()
         setStatus('error')
+        if (err instanceof Error && err.message === 'oauth_timeout') {
+          redirectToLogin('oauth_timeout')
+          return
+        }
         redirectToLogin('oauth_error')
       }
     }

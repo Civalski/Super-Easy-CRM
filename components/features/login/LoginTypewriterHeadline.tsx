@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import type { LoginThemeAppearance } from './types'
 
 const HEADLINES = [
-  'Simples, rápido e muito eficiente',
   'Pipeline moderno de prospecção e retenção de clientes',
   'Mantenha o controle da sua empresa a qualquer hora, de qualquer lugar.',
 ]

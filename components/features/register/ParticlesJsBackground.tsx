@@ -24,7 +24,7 @@ function initParticles() {
       },
     },
     particles: {
-      color: { value: ['#4C1D95', '#5B21B6', '#6D28D9'] },
+      color: { value: '#5B21B6' },
       line_linked: {
         color: '#312E81',
         distance: 250,
@@ -37,8 +37,8 @@ function initParticles() {
         direction: 'none',
         enable: true,
         out_mode: 'out',
-        random: true,
-        speed: 0.5,
+        random: false,
+        speed: 0.2,
         straight: false,
       },
       number: {
@@ -47,12 +47,12 @@ function initParticles() {
       },
       opacity: {
         anim: {
-          enable: true,
+          enable: false,
           opacity_min: 0.1,
           speed: 0.8,
           sync: false,
         },
-        random: true,
+        random: false,
         value: 0.5,
       },
       shape: {

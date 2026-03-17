@@ -35,11 +35,10 @@ export const metadata: Metadata = {
   description: 'Sistema de CRM completo',
   icons: {
     icon: [
-      { url: '/favicon.ico', type: 'image/x-icon' },
-      { url: '/icon.ico', type: 'image/x-icon' },
+      { url: '/arkercrmlogoa.png', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
+    shortcut: '/arkercrmlogoa.png',
+    apple: '/arkercrmlogoa.png',
   },
 }
 

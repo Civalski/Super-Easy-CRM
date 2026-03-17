@@ -63,6 +63,7 @@ export function useLogin(theme: AppTheme) {
     if (msg === 'oauth_missing_code') return 'Codigo de autorizacao ausente. Tente novamente.'
     if (msg === 'oauth_exchange_failed') return 'Falha ao validar login com Google.'
     if (msg === 'oauth_missing_session') return 'Nao foi possivel concluir a sessao do Google. Tente novamente.'
+    if (msg === 'oauth_timeout') return 'A confirmacao do Google demorou mais do que o esperado. Verifique bloqueadores/DNS e tente novamente.'
     if (msg === 'oauth_no_email') return 'Google nao retornou seu email. Verifique as permissoes.'
     if (msg === 'oauth_invalid_token') return 'A sessao retornada pelo Google expirou antes da validacao. Tente novamente.'
     if (msg === 'oauth_user_failed') return 'Nao foi possivel criar ou encontrar sua conta.'
