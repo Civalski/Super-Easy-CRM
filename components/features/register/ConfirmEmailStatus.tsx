@@ -34,10 +34,10 @@ export function ConfirmEmailStatus() {
   const title = hasError ? 'Nao conseguimos confirmar seu email' : 'Confirme seu email'
   const description = useMemo(() => {
     if (hasError) {
-      return 'O link pode ter expirado ou ja ter sido usado. Reenvie a confirmacao abaixo para liberar os 7 dias gratis.'
+      return 'O link pode ter expirado ou ja ter sido usado. Reenvie a confirmacao abaixo para liberar seu acesso.'
     }
 
-    return 'Enviamos um link de confirmacao para liberar seus 7 dias gratis sem cartao.'
+    return 'Enviamos um link de confirmacao para liberar seu acesso com seguranca.'
   }, [hasError])
 
   const hideTurnstilePrompt = useCallback(() => {
@@ -103,8 +103,12 @@ export function ConfirmEmailStatus() {
   }, [pendingSubmit, submitResendRequest, turnstileToken])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-10 text-slate-100">
-      <div className="relative w-full max-w-xl rounded-3xl border border-slate-700/70 bg-slate-900/85 p-8 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-6 py-10 text-slate-100">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-sky-500/20 via-cyan-500/10 to-transparent blur-3xl"
+      />
+      <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-700/70 bg-slate-900/90 p-8 shadow-2xl">
         {turnstileSiteKey ? (
           <Script
             src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
@@ -112,11 +116,51 @@ export function ConfirmEmailStatus() {
           />
         ) : null}
 
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">
-          Trial sem cartao
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">{title}</h1>
+        <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            />
+            <path
+              d="m5.5 7 6.5 5 6.5-5M9.2 15.2l1.5 1.5 4-4"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Confirmacao de email
+        </div>
+        <h1 className="mt-4 text-3xl font-semibold text-white">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
+
+        <div className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3">
+          <svg
+            className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3 5.5 5.5v6.7c0 4 2.6 7.6 6.5 8.8 3.9-1.2 6.5-4.8 6.5-8.8V5.5L12 3Z"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+            <path
+              d="m9.3 12.1 2 2 3.5-3.8"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <p className="text-xs leading-5 text-cyan-100">
+            Confirmar seu email garante a seguranca da conta e libera o acesso completo ao CRM.
+          </p>
+        </div>
 
         {email ? (
           <div className="mt-6 rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3">
@@ -187,7 +231,7 @@ export function ConfirmEmailStatus() {
             type="button"
             onClick={() => void handleResend()}
             disabled={!email || loading}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-sky-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-sky-400 to-cyan-400 px-5 text-sm font-semibold text-slate-950 transition hover:from-sky-300 hover:to-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Reenviando...' : 'Reenviar email'}
           </button>

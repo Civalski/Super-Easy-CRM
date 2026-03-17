@@ -5,9 +5,11 @@
 
 import {
   AcessoContaCard,
+  ApresentacaoGuiadaCard,
   AssinaturaStripeCard,
   ConfirmBeforeDeleteCard,
   DateFormatCard,
+  ExcluirContaCard,
   ExcluirDadosCard,
   ExportarDadosCard,
   ImportarDadosCard,
@@ -56,6 +58,7 @@ export function ConfiguracoesContent() {
           Configuracao inicial
         </h2>
         <div className="space-y-2">
+          <ApresentacaoGuiadaCard />
           <RefazerOnboardingCard />
         </div>
       </section>
@@ -132,6 +135,15 @@ export function ConfiguracoesContent() {
         </h2>
         <div className="space-y-2">
           <ExcluirDadosCard />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Excluir conta
+        </h2>
+        <div className="space-y-2">
+          <ExcluirContaCard />
         </div>
       </section>
     </div>

@@ -22,8 +22,10 @@ export interface PromptOptions {
   label?: string
   placeholder?: string
   defaultValue?: string
+  inputType?: 'password' | 'text'
   confirmLabel?: string
   cancelLabel?: string
+  confirmVariant?: 'primary' | 'secondary' | 'outline-solid' | 'danger'
 }
 
 interface ConfirmContextValue {
@@ -51,6 +53,7 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
     label?: string
     placeholder?: string
     defaultValue?: string
+    inputType?: 'password' | 'text'
     confirmLabel?: string
     cancelLabel?: string
     confirmVariant?: 'primary' | 'secondary' | 'outline-solid' | 'danger'
@@ -82,9 +85,10 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
         label: opts.label,
         placeholder: opts.placeholder,
         defaultValue: opts.defaultValue ?? '',
+        inputType: opts.inputType ?? 'text',
         confirmLabel: opts.confirmLabel ?? 'Confirmar',
         cancelLabel: opts.cancelLabel ?? 'Cancelar',
-        confirmVariant: 'primary',
+        confirmVariant: opts.confirmVariant ?? 'primary',
         resolve: (v) => resolve(typeof v === 'string' ? v : null),
       })
       setPromptValue(opts.defaultValue ?? '')
@@ -133,10 +137,12 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
           title={dialog.title}
           label={dialog.label}
           placeholder={dialog.placeholder}
+          inputType={dialog.inputType}
           value={promptValue}
           onChange={setPromptValue}
           confirmLabel={dialog.confirmLabel}
           cancelLabel={dialog.cancelLabel}
+          confirmVariant={dialog.confirmVariant}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
         />
@@ -150,10 +156,12 @@ interface PromptDialogProps {
   title: string
   label?: string
   placeholder?: string
+  inputType?: 'password' | 'text'
   value: string
   onChange: (v: string) => void
   confirmLabel?: string
   cancelLabel?: string
+  confirmVariant?: 'primary' | 'secondary' | 'outline-solid' | 'danger'
   onConfirm: () => void
   onCancel: () => void
 }
@@ -163,10 +171,12 @@ function PromptDialog({
   title,
   label,
   placeholder,
+  inputType = 'text',
   value,
   onChange,
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
+  confirmVariant = 'primary',
   onConfirm,
   onCancel,
 }: PromptDialogProps) {
@@ -182,7 +192,7 @@ function PromptDialog({
           </label>
         )}
         <input
-          type="text"
+          type={inputType}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -204,7 +214,11 @@ function PromptDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-lg border border-purple-600 bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            className={
+              confirmVariant === 'danger'
+                ? 'rounded-lg border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700'
+                : 'rounded-lg border border-purple-600 bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700'
+            }
           >
             {confirmLabel}
           </button>

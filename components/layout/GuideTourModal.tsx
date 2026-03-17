@@ -9,6 +9,59 @@ import { useGuideTour } from './GuideTourProvider'
 import { readUxFlagsCookie } from '@/lib/cookies'
 
 const GUIDE_ITEMS = menuItems.filter((item) => item.helpDescription || item.guideSteps?.length)
+const GUIDE_COLOR_THEMES = [
+  {
+    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+    bullet: 'bg-amber-500 dark:bg-amber-300',
+    container:
+      'border-amber-200/80 ring-amber-300/35 dark:border-amber-400/25 dark:ring-amber-300/15',
+    header:
+      'from-amber-50 via-white to-orange-50 dark:from-amber-500/10 dark:via-slate-900 dark:to-orange-500/10',
+    icon: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+    listBox: 'border-amber-200/70 bg-amber-50/70 dark:border-amber-400/25 dark:bg-amber-500/10',
+    nextButton:
+      'bg-amber-500 text-slate-950 hover:bg-amber-400 dark:bg-amber-300 dark:hover:bg-amber-200',
+    progress: 'bg-amber-500 dark:bg-amber-300',
+  },
+  {
+    badge: 'bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-200',
+    bullet: 'bg-sky-500 dark:bg-sky-300',
+    container: 'border-sky-200/80 ring-sky-300/35 dark:border-sky-400/25 dark:ring-sky-300/15',
+    header:
+      'from-sky-50 via-white to-cyan-50 dark:from-sky-500/10 dark:via-slate-900 dark:to-cyan-500/10',
+    icon: 'bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-200',
+    listBox: 'border-sky-200/70 bg-sky-50/70 dark:border-sky-400/25 dark:bg-sky-500/10',
+    nextButton:
+      'bg-sky-500 text-white hover:bg-sky-400 dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200',
+    progress: 'bg-sky-500 dark:bg-sky-300',
+  },
+  {
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+    bullet: 'bg-emerald-500 dark:bg-emerald-300',
+    container:
+      'border-emerald-200/80 ring-emerald-300/35 dark:border-emerald-400/25 dark:ring-emerald-300/15',
+    header:
+      'from-emerald-50 via-white to-teal-50 dark:from-emerald-500/10 dark:via-slate-900 dark:to-teal-500/10',
+    icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+    listBox:
+      'border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-400/25 dark:bg-emerald-500/10',
+    nextButton:
+      'bg-emerald-500 text-white hover:bg-emerald-400 dark:bg-emerald-300 dark:text-slate-950 dark:hover:bg-emerald-200',
+    progress: 'bg-emerald-500 dark:bg-emerald-300',
+  },
+  {
+    badge: 'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200',
+    bullet: 'bg-rose-500 dark:bg-rose-300',
+    container: 'border-rose-200/80 ring-rose-300/35 dark:border-rose-400/25 dark:ring-rose-300/15',
+    header:
+      'from-rose-50 via-white to-pink-50 dark:from-rose-500/10 dark:via-slate-900 dark:to-pink-500/10',
+    icon: 'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200',
+    listBox: 'border-rose-200/70 bg-rose-50/70 dark:border-rose-400/25 dark:bg-rose-500/10',
+    nextButton:
+      'bg-rose-500 text-white hover:bg-rose-400 dark:bg-rose-300 dark:text-slate-950 dark:hover:bg-rose-200',
+    progress: 'bg-rose-500 dark:bg-rose-300',
+  },
+]
 
 function getVisibleItems(
   session: { user?: { username?: string | null; role?: string | null } } | null
@@ -28,7 +81,17 @@ export function GuideTourModal() {
   const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { guideActive, currentGuideStep, currentItem, steps, openGuide, closeGuide, goNext, goPrev } =
+  const {
+    guideActive,
+    currentStep,
+    currentGuideStep,
+    currentItem,
+    steps,
+    openGuide,
+    closeGuide,
+    goNext,
+    goPrev,
+  } =
     useGuideTour()
 
   useEffect(() => {
@@ -47,11 +110,10 @@ export function GuideTourModal() {
     router.push(currentGuideStep.href)
   }, [currentGuideStep, guideActive, pathname, router])
 
-  const currentIndex = currentGuideStep
-    ? steps.findIndex((step) => step.id === currentGuideStep.id)
-    : -1
+  const currentIndex = Math.max(0, Math.min(currentStep, Math.max(steps.length - 1, 0)))
+  const colorTheme = GUIDE_COLOR_THEMES[currentIndex % GUIDE_COLOR_THEMES.length]
 
-  if (!guideActive || steps.length === 0 || !currentItem || !currentGuideStep || currentIndex < 0) {
+  if (!guideActive || steps.length === 0 || !currentItem || !currentGuideStep) {
     return null
   }
 
@@ -81,21 +143,24 @@ export function GuideTourModal() {
     })
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-[60] flex justify-center px-4 sm:bottom-5 sm:justify-end">
-      <div className="w-full max-w-xl overflow-hidden rounded-[32px] border border-amber-200/80 bg-white/96 shadow-[0_28px_90px_-28px_rgba(15,23,42,0.55)] ring-4 ring-amber-300/35 backdrop-blur dark:border-amber-400/25 dark:bg-slate-900/96 dark:ring-amber-300/15">
-        <div className="bg-linear-to-r from-amber-50 via-white to-indigo-50 px-6 py-4 dark:from-amber-500/10 dark:via-slate-900 dark:to-indigo-500/10">
+    <div className="fixed inset-x-0 bottom-4 z-[10020] flex justify-center px-4 sm:bottom-5 sm:justify-end">
+      <div
+        className={`w-full max-w-xl overflow-hidden rounded-[32px] border bg-white/96 shadow-[0_28px_90px_-28px_rgba(15,23,42,0.55)] ring-4 backdrop-blur dark:bg-slate-900/96 ${colorTheme.container}`}
+      >
+        <div className={`bg-linear-to-r px-6 py-4 ${colorTheme.header}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-sm dark:bg-amber-400/15 dark:text-amber-200">
+              <span
+                className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${colorTheme.icon}`}
+              >
                 <currentItem.icon size={20} />
               </span>
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:bg-amber-400/15 dark:text-amber-200">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${colorTheme.badge}`}
+                  >
                     Apresentação guiada
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-white dark:text-slate-900">
-                    Foco nesta caixa
                   </span>
                 </div>
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -125,11 +190,11 @@ export function GuideTourModal() {
                 {block.type === 'paragraph' ? (
                   <p>{block.text}</p>
                 ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+                  <div className={`rounded-2xl border p-4 ${colorTheme.listBox}`}>
                     <ul className="space-y-2">
                       {block.items.map((item) => (
                         <li key={item} className="flex items-start gap-2">
-                          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-300" />
+                          <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${colorTheme.bullet}`} />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -148,7 +213,7 @@ export function GuideTourModal() {
                 key={step.id}
                 className={`h-2 rounded-full transition-all ${
                   step.id === currentGuideStep.id
-                    ? 'w-10 bg-amber-500 dark:bg-amber-300'
+                    ? `w-10 ${colorTheme.progress}`
                     : 'w-2 bg-slate-300 dark:bg-slate-600'
                 }`}
                 aria-hidden="true"
@@ -170,7 +235,7 @@ export function GuideTourModal() {
             <button
               type="button"
               onClick={goNext}
-              className="inline-flex items-center gap-1 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400 dark:bg-amber-300 dark:hover:bg-amber-200"
+              className={`inline-flex items-center gap-1 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors ${colorTheme.nextButton}`}
             >
               {currentIndex < steps.length - 1 ? (
                 <>

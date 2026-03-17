@@ -22,7 +22,8 @@ function getPathnameFromRequest(request: Request) {
 function shouldBypassSubscriptionGuard(pathname: string) {
   return (
     pathname.startsWith('/api/billing/') ||
-    pathname.startsWith('/api/users/me/onboarding')
+    pathname.startsWith('/api/users/me/onboarding') ||
+    pathname.startsWith('/api/users/me/account')
   )
 }
 

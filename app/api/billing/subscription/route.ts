@@ -12,6 +12,10 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+function isAdminRole(role: string | null | undefined) {
+  return (role ?? '').trim().toLowerCase() === 'admin'
+}
+
 function subscriptionSchemaMissingResponse() {
   return NextResponse.json(
     {
@@ -24,6 +28,7 @@ function subscriptionSchemaMissingResponse() {
 }
 
 function toClientSubscriptionPayload(user: {
+  role: string | null
   subscriptionProvider: string | null
   subscriptionStatus: string
   subscriptionExternalId: string | null
@@ -32,6 +37,20 @@ function toClientSubscriptionPayload(user: {
   subscriptionNextBillingAt: Date | null
   subscriptionLastWebhookAt: Date | null
 }) {
+  if (isAdminRole(user.role)) {
+    return {
+      provider: user.subscriptionProvider,
+      status: 'authorized',
+      active: true,
+      expired: false,
+      subscriptionId: user.subscriptionExternalId,
+      planCode: user.subscriptionPlanCode,
+      checkoutUrl: user.subscriptionCheckoutUrl,
+      nextBillingAt: user.subscriptionNextBillingAt?.toISOString() ?? null,
+      lastWebhookAt: user.subscriptionLastWebhookAt?.toISOString() ?? null,
+    }
+  }
+
   const state = resolveSubscriptionState({
     nextBillingAt: user.subscriptionNextBillingAt,
     provider: user.subscriptionProvider,
@@ -61,6 +80,7 @@ export async function GET(request: NextRequest) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
+          role: true,
           subscriptionProvider: true,
           subscriptionStatus: true,
           subscriptionExternalId: true,

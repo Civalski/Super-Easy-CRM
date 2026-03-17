@@ -5,6 +5,10 @@ import {
 import { isSubscriptionSchemaMissingError } from '@/lib/billing/subscription-schema'
 import { isBillingSubscriptionDisabledServer } from '@/lib/billing/feature-toggle'
 
+function isAdminRole(role: string | null | undefined) {
+  return (role ?? '').trim().toLowerCase() === 'admin'
+}
+
 export async function getUserSubscriptionAccess(userId: string) {
   if (isBillingSubscriptionDisabledServer()) {
     return {
@@ -19,6 +23,7 @@ export async function getUserSubscriptionAccess(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        role: true,
         subscriptionNextBillingAt: true,
         subscriptionStatus: true,
         subscriptionProvider: true,
@@ -31,6 +36,17 @@ export async function getUserSubscriptionAccess(userId: string) {
         schemaReady: true,
         status: 'inactive',
         active: false,
+      }
+    }
+
+    if (isAdminRole(user.role)) {
+      return {
+        exists: true,
+        schemaReady: true,
+        provider: user.subscriptionProvider,
+        expired: false,
+        status: 'authorized',
+        active: true,
       }
     }
 
