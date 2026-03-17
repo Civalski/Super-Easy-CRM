@@ -229,14 +229,23 @@ export default function Sidebar({
                     href={href}
                     title={title}
                     data-guide-href={item.href}
-                    onClick={() => onClose?.()}
+                    onClick={(event) => {
+                      if (guideActive) {
+                        event.preventDefault()
+                        return
+                      }
+                      onClose?.()
+                    }}
                     className={`group flex h-11 min-h-[44px] items-center rounded-xl px-0 transition-colors duration-200 ${
                       isActive
                         ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                         : isLocked
                           ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                           : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-                    } ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
+                    } ${isGuideHighlight ? 'ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+                      guideActive ? 'cursor-not-allowed' : ''
+                    }`}
+                    aria-disabled={guideActive}
                   >
                     <span className="inline-flex h-full w-12 shrink-0 items-center justify-center">
                       <ItemIcon

@@ -6,8 +6,17 @@ import { createPortal } from 'react-dom'
 import { readCsvToObjects } from '@/lib/csv'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, Target, MessageCircle, Plus, PhoneCall, LayoutList, ShoppingCart, MoreVertical, Edit2, Trash2, UserPlus } from '@/lib/icons'
-import { FunilKanban, CadastrarLeadDrawer, EditarLeadDrawer, ComprarLeadDrawer } from '@/components/features/grupos'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, MessageCircle, Plus, PhoneCall, LayoutList, ShoppingCart, MoreVertical, Edit2, Trash2, UserPlus } from '@/lib/icons'
+import {
+    FunilKanban,
+    CadastrarLeadDrawer,
+    EditarLeadDrawer,
+    ComprarLeadDrawer,
+    FUNIL_GUIDE_LOCK_MESSAGE,
+    FUNIL_TABS,
+    useFunilGuide,
+    type FunilTabValue,
+} from '@/components/features/grupos'
 import CreateOrcamentoDrawer from '@/components/features/oportunidades/CreateOrcamentoDrawer'
 import { CreatePedidoDiretoModal } from '@/components/features/pedidos/CreatePedidoDiretoModal'
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
@@ -62,23 +71,16 @@ interface Meta {
     pages: number
 }
 
-const TABS = [
-    { label: 'Sem contato', value: 'sem_contato', icon: Target },
-    { label: 'Contatado', value: 'contatado', icon: MessageCircle },
-    { label: 'Em potencial', value: 'em_potencial', icon: Layers },
-    { label: 'Aguardando orçamento', value: 'aguardando_orcamento', icon: FileText },
-]
-
 function getNextStatus(status: string): string | null {
-    const idx = TABS.findIndex((t) => t.value === status)
-    if (idx < 0 || idx >= TABS.length - 1) return null
-    return TABS[idx + 1].value
+    const idx = FUNIL_TABS.findIndex((t) => t.value === status)
+    if (idx < 0 || idx >= FUNIL_TABS.length - 1) return null
+    return FUNIL_TABS[idx + 1].value
 }
 
 function getPrevStatus(status: string): string | null {
-    const idx = TABS.findIndex((t) => t.value === status)
+    const idx = FUNIL_TABS.findIndex((t) => t.value === status)
     if (idx <= 0) return null
-    return TABS[idx - 1].value
+    return FUNIL_TABS[idx - 1].value
 }
 
 const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
@@ -269,7 +271,7 @@ export default function GruposPage() {
     const router = useRouter()
     const minimal = usePageHeaderMinimal()
     const { prompt, confirm } = useConfirm()
-    const [activeTab, setActiveTab] = useState('sem_contato')
+    const [activeTab, setActiveTab] = useState<FunilTabValue>('sem_contato')
     const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista')
     const [kanbanRefreshTrigger, setKanbanRefreshTrigger] = useState(0)
     const [page, setPage] = useState(1)
@@ -301,6 +303,28 @@ export default function GruposPage() {
     const [contatosIniciadosHoje, setContatosIniciadosHoje] = useState<number | null>(null)
     const [metaContatosHoje, setMetaContatosHoje] = useState<number | null>(null)
     const [showMetaBatidaModal, setShowMetaBatidaModal] = useState(false)
+
+    const notifyGuideLock = useCallback(() => {
+        toast.info('Apresentação em andamento', {
+            description: FUNIL_GUIDE_LOCK_MESSAGE,
+        })
+    }, [])
+
+    const {
+        currentFunilGuideTab,
+        isFunilGuideActive,
+        tabsLocked,
+        viewModeLocked,
+        handleTabChange: handleFunilGuideTabChange,
+        handleViewModeChange,
+    } = useFunilGuide({
+        activeTab,
+        setActiveTab,
+        setPage,
+        viewMode,
+        setViewMode,
+        onLockedInteraction: notifyGuideLock,
+    })
 
     const onMetaBatida = useCallback(() => setShowMetaBatidaModal(true), [])
 
@@ -503,9 +527,8 @@ export default function GruposPage() {
         }
     }, [])
 
-    const handleTabChange = (value: string) => {
-        setActiveTab(value)
-        setPage(1) // Reset page on tab change
+    const handleTabChange = (value: FunilTabValue) => {
+        handleFunilGuideTabChange(value)
     }
 
     const handleImport = async (file: File) => {
@@ -855,7 +878,7 @@ export default function GruposPage() {
     }
 
     const getAvailableActions = (currentStatus: string) => {
-        const tabActions = TABS.filter((tab) => tab.value !== currentStatus).map((tab) => ({
+        const tabActions = FUNIL_TABS.filter((tab) => tab.value !== currentStatus).map((tab) => ({
             label: tab.label,
             value: tab.value,
         }))
@@ -1089,17 +1112,25 @@ export default function GruposPage() {
             {/* Tabs (só na lista) + View Toggle */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 dark:border-gray-700 pb-2">
                 {viewMode === 'lista' ? (
+                    <div className="min-w-0">
+                        {isFunilGuideActive && currentFunilGuideTab && (
+                            <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+                                <span className="font-semibold">Apresentação guiada:</span> acompanhe esta etapa e avance pelos botões da caixa de onboarding.
+                            </div>
+                        )}
                     <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
-                        {TABS.map((tab) => (
+                        {FUNIL_TABS.map((tab) => (
                             <button
                                 key={tab.value}
                                 onClick={() => handleTabChange(tab.value)}
+                                disabled={tabsLocked && currentFunilGuideTab !== tab.value}
                                 className={`
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
                 ${activeTab === tab.value
                                     ? 'border-purple-600 text-purple-600 dark:text-purple-400'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                                 }
+                ${tabsLocked && currentFunilGuideTab !== tab.value ? 'cursor-not-allowed opacity-45' : ''}
               `}
                             >
                                 <div className="flex items-center gap-2">
@@ -1109,6 +1140,7 @@ export default function GruposPage() {
                             </button>
                         ))}
                     </nav>
+                    </div>
                 ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
                         Arraste os cards entre as colunas para alterar a etapa do lead no funil.
@@ -1117,7 +1149,7 @@ export default function GruposPage() {
                 <div className={`flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/50 ${viewMode === 'kanban' ? 'ml-auto' : ''}`}>
                     <button
                         type="button"
-                        onClick={() => setViewMode('lista')}
+                        onClick={() => handleViewModeChange('lista')}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                             viewMode === 'lista'
                                 ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm'
@@ -1130,12 +1162,13 @@ export default function GruposPage() {
                     </button>
                     <button
                         type="button"
-                        onClick={() => setViewMode('kanban')}
+                        onClick={() => handleViewModeChange('kanban')}
+                        disabled={viewModeLocked}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                             viewMode === 'kanban'
                                 ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                        }`}
+                        } ${viewModeLocked ? 'cursor-not-allowed opacity-50' : ''}`}
                         title="Visualização em Kanban"
                     >
                         <Layers size={16} />

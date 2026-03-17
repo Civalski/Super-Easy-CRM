@@ -114,13 +114,21 @@ export function HeaderNav() {
             href={href}
             title={title}
             data-guide-href={item.href}
+            onClick={(event) => {
+              if (guideActive) {
+                event.preventDefault()
+              }
+            }}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
               isActive
                 ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                 : isLocked
                   ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                   : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-            } ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
+            } ${isGuideHighlight ? 'ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+              guideActive ? 'cursor-not-allowed' : ''
+            }`}
+            aria-disabled={guideActive}
           >
             <ItemIcon
               size={16}

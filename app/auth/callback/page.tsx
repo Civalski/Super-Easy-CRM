@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   createSupabaseBrowserClient,
-  extractOAuthProviderSessionData,
   getSupabaseBrowserAccessToken,
 } from '@/lib/supabase/client'
 import {
@@ -104,30 +103,10 @@ function AuthCallbackInner() {
           status: 'processing',
         })
 
-        const { data: exchangeData, error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code)
-
-        if (exchangeError) {
-          console.error('Falha ao concluir OAuth com Google', {
-            message: exchangeError.message,
-            name: exchangeError.name,
-            status: 'status' in exchangeError ? exchangeError.status : undefined,
-          })
-          clearAuthFlowCookie()
-          setStatus('error')
-          redirectToLogin(resolveOAuthErrorCode(null, null, exchangeError.message))
-          return
-        }
-
-        const exchangedSession = exchangeData.session
-        const exchangedProviderData = extractOAuthProviderSessionData(exchangedSession)
-        const sessionData = exchangedSession?.access_token
-          ? {
-              accessToken: exchangedSession.access_token,
-              supabase,
-              ...exchangedProviderData,
-            }
-          : await getSupabaseBrowserAccessToken()
+        // O createBrowserClient do @supabase/ssr detecta callbacks PKCE
+        // automaticamente no navegador. Chamar exchangeCodeForSession()
+        // aqui novamente pode consumir o code verifier duas vezes.
+        const sessionData = await getSupabaseBrowserAccessToken(10, 250)
 
         const {
           accessToken,
