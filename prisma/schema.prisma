@@ -74,8 +74,29 @@ model User {
   funcionarios          Funcionario[]
   contratos             Contrato[]
   iaGeracoesContrato    IaGeracaoContrato[]
+  googleOAuthToken      GoogleOAuthToken?
 
   @@map("users")
+}
+
+model GoogleOAuthToken {
+  id              String   @id @default(cuid())
+  userId           String   @unique
+  supabaseUserId   String?
+  accessToken      String?
+  refreshToken     String?
+  tokenType        String?
+  scope            String?
+  expiresAt        DateTime?
+  connectedAt      DateTime @default(now())
+  lastRefreshedAt  DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([supabaseUserId])
+  @@map("google_oauth_tokens")
 }
 
 model IaGeracaoContrato {

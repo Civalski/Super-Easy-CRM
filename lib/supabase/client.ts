@@ -22,6 +22,46 @@ export function createSupabaseBrowserClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
+function readOptionalString(value: unknown) {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function readOptionalNumber(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  return value
+}
+
+function extractOAuthProviderSessionData(session: unknown) {
+  if (!session || typeof session !== 'object') {
+    return {
+      providerAccessToken: null,
+      providerRefreshToken: null,
+      providerTokenType: null,
+      providerScope: null,
+      providerTokenExpiresAt: null,
+    }
+  }
+
+  const source = session as Record<string, unknown>
+  const providerAccessToken = readOptionalString(source.provider_token)
+  const providerRefreshToken = readOptionalString(source.provider_refresh_token)
+  const providerTokenType = readOptionalString(source.token_type)
+  const providerScope = readOptionalString(source.scope)
+  const expiresAtUnix = readOptionalNumber(source.expires_at)
+
+  return {
+    providerAccessToken,
+    providerRefreshToken,
+    providerTokenType,
+    providerScope,
+    providerTokenExpiresAt: expiresAtUnix
+      ? new Date(expiresAtUnix * 1000).toISOString()
+      : null,
+  }
+}
+
 export async function getSupabaseBrowserAccessToken(
   maxAttempts = 6,
   delayMs = 250
@@ -35,11 +75,15 @@ export async function getSupabaseBrowserAccessToken(
       throw error
     }
 
-    const accessToken = data.session?.access_token ?? null
+    const session = data.session
+    const accessToken = session?.access_token ?? null
+    const oauthProviderData = extractOAuthProviderSessionData(session)
+
     if (accessToken) {
       return {
         accessToken,
         supabase,
+        ...oauthProviderData,
       }
     }
 
@@ -51,6 +95,11 @@ export async function getSupabaseBrowserAccessToken(
   return {
     accessToken: null,
     supabase,
+    providerAccessToken: null,
+    providerRefreshToken: null,
+    providerTokenType: null,
+    providerScope: null,
+    providerTokenExpiresAt: null,
   }
 }
 

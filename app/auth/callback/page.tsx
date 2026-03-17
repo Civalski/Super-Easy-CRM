@@ -63,7 +63,15 @@ function AuthCallbackInner() {
           status: 'processing',
         })
 
-        const { accessToken, supabase } = await getSupabaseBrowserAccessToken()
+        const {
+          accessToken,
+          supabase,
+          providerAccessToken,
+          providerRefreshToken,
+          providerTokenType,
+          providerScope,
+          providerTokenExpiresAt,
+        } = await getSupabaseBrowserAccessToken()
         if (!accessToken) {
           clearAuthFlowCookie()
           setStatus('error')
@@ -74,7 +82,14 @@ function AuthCallbackInner() {
         const res = await fetch('/api/auth/oauth-complete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accessToken }),
+          body: JSON.stringify({
+            accessToken,
+            providerAccessToken,
+            providerRefreshToken,
+            providerTokenType,
+            providerScope,
+            providerTokenExpiresAt,
+          }),
         })
 
         const json = (await res.json().catch(() => null)) as

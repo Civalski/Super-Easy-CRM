@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createRegisterCompletionToken } from '@/lib/auth/register-completion-token'
 import { findOrCreateUserFromGoogleOAuth } from '@/lib/auth/supabase-google-oauth'
+import { upsertGoogleOAuthTokensForUser } from '@/lib/google-drive/service'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+function readOptionalBodyString(value: unknown) {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const accessToken =
-      typeof body?.accessToken === 'string' ? body.accessToken.trim() : ''
+    const accessToken = readOptionalBodyString((body as { accessToken?: unknown })?.accessToken) ?? ''
 
     if (!accessToken) {
       return NextResponse.json(
@@ -58,6 +64,38 @@ export async function POST(request: Request) {
     }
 
     const registerToken = createRegisterCompletionToken(userId)
+
+    const providerAccessToken = readOptionalBodyString(
+      (body as { providerAccessToken?: unknown })?.providerAccessToken
+    )
+    const providerRefreshToken = readOptionalBodyString(
+      (body as { providerRefreshToken?: unknown })?.providerRefreshToken
+    )
+    const providerTokenType = readOptionalBodyString(
+      (body as { providerTokenType?: unknown })?.providerTokenType
+    )
+    const providerScope = readOptionalBodyString(
+      (body as { providerScope?: unknown })?.providerScope
+    )
+    const providerTokenExpiresAt = readOptionalBodyString(
+      (body as { providerTokenExpiresAt?: unknown })?.providerTokenExpiresAt
+    )
+
+    if (providerAccessToken || providerRefreshToken) {
+      try {
+        await upsertGoogleOAuthTokensForUser({
+          userId,
+          supabaseUserId,
+          accessToken: providerAccessToken,
+          refreshToken: providerRefreshToken,
+          tokenType: providerTokenType,
+          scope: providerScope,
+          expiresAtIso: providerTokenExpiresAt,
+        })
+      } catch (tokenError) {
+        console.error('OAuth complete: falha ao persistir token do Google Drive', tokenError)
+      }
+    }
 
     return NextResponse.json({ registerToken })
   } catch (err) {

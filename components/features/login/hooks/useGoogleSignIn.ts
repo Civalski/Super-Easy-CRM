@@ -3,6 +3,13 @@
 import { useCallback } from 'react'
 import { isSupabaseGoogleAuthEnabled } from '@/lib/supabase/client'
 
+const GOOGLE_OAUTH_SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/drive.file',
+].join(' ')
+
 export function useGoogleSignIn(
   callbackUrlOrOnError?: string | ((message: string) => void),
   onError?: (message: string) => void
@@ -38,8 +45,10 @@ export function useGoogleSignIn(
         provider: 'google',
         options: {
           ...(redirectTo ? { redirectTo } : {}),
+          scopes: GOOGLE_OAUTH_SCOPES,
           queryParams: {
-            prompt: 'select_account',
+            access_type: 'offline',
+            prompt: 'consent',
           },
         },
       })
