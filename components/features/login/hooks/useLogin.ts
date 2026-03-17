@@ -58,6 +58,8 @@ export function useLogin(theme: AppTheme) {
       return 'Seu email ainda nao foi confirmado. Reenviamos voce para a tela de confirmacao.'
     }
     if (msg === 'oauth_failed') return 'Login com Google cancelado ou falhou.'
+    if (msg === 'oauth_redirect_not_allowed') return 'A URL de retorno deste ambiente nao esta autorizada no Supabase para login com Google.'
+    if (msg === 'oauth_state_mismatch') return 'O login com Google perdeu o estado da sessao entre dominios ou expirou. Tente novamente no mesmo endereco.'
     if (msg === 'oauth_missing_code') return 'Codigo de autorizacao ausente. Tente novamente.'
     if (msg === 'oauth_exchange_failed') return 'Falha ao validar login com Google.'
     if (msg === 'oauth_missing_session') return 'Nao foi possivel concluir a sessao do Google. Tente novamente.'

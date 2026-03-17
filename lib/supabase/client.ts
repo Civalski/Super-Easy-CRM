@@ -33,7 +33,7 @@ function readOptionalNumber(value: unknown) {
   return value
 }
 
-function extractOAuthProviderSessionData(session: unknown) {
+export function extractOAuthProviderSessionData(session: unknown) {
   if (!session || typeof session !== 'object') {
     return {
       providerAccessToken: null,

@@ -2,13 +2,45 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getSupabaseBrowserAccessToken } from '@/lib/supabase/client'
+import {
+  createSupabaseBrowserClient,
+  extractOAuthProviderSessionData,
+  getSupabaseBrowserAccessToken,
+} from '@/lib/supabase/client'
 import {
   readAuthFlowCookie,
   writeAuthFlowCookie,
   clearAuthFlowCookie,
   createFlowNonce,
 } from '@/lib/cookies'
+
+function resolveOAuthErrorCode(
+  errorParam?: string | null,
+  errorCode?: string | null,
+  errorDescription?: string | null
+) {
+  const combined = [errorParam, errorCode, errorDescription]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  if (
+    combined.includes('redirect') &&
+    (combined.includes('allow') || combined.includes('not allowed'))
+  ) {
+    return 'oauth_redirect_not_allowed'
+  }
+
+  if (
+    combined.includes('pkce') ||
+    combined.includes('state') ||
+    combined.includes('code verifier')
+  ) {
+    return 'oauth_state_mismatch'
+  }
+
+  return 'oauth_failed'
+}
 
 function AuthCallbackInner() {
   const router = useRouter()
@@ -18,6 +50,8 @@ function AuthCallbackInner() {
   useEffect(() => {
     const code = searchParams.get('code')
     const errorParam = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
     const nextPath = searchParams.get('next') ?? '/'
 
     const redirectToLogin = (error?: string) => {
@@ -28,8 +62,13 @@ function AuthCallbackInner() {
     }
 
     if (errorParam) {
+      console.error('OAuth callback retornou erro antes da troca de sessao', {
+        errorParam,
+        errorCode,
+        errorDescription,
+      })
       setStatus('error')
-      redirectToLogin('oauth_failed')
+      redirectToLogin(resolveOAuthErrorCode(errorParam, errorCode, errorDescription))
       return
     }
 
@@ -56,6 +95,8 @@ function AuthCallbackInner() {
       }
 
       try {
+        const supabase = createSupabaseBrowserClient()
+
         writeAuthFlowCookie({
           source: 'oauth',
           callbackUrl: nextPath !== '/' ? nextPath : undefined,
@@ -63,15 +104,40 @@ function AuthCallbackInner() {
           status: 'processing',
         })
 
+        const { data: exchangeData, error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(code)
+
+        if (exchangeError) {
+          console.error('Falha ao concluir OAuth com Google', {
+            message: exchangeError.message,
+            name: exchangeError.name,
+            status: 'status' in exchangeError ? exchangeError.status : undefined,
+          })
+          clearAuthFlowCookie()
+          setStatus('error')
+          redirectToLogin(resolveOAuthErrorCode(null, null, exchangeError.message))
+          return
+        }
+
+        const exchangedSession = exchangeData.session
+        const exchangedProviderData = extractOAuthProviderSessionData(exchangedSession)
+        const sessionData = exchangedSession?.access_token
+          ? {
+              accessToken: exchangedSession.access_token,
+              supabase,
+              ...exchangedProviderData,
+            }
+          : await getSupabaseBrowserAccessToken()
+
         const {
           accessToken,
-          supabase,
           providerAccessToken,
           providerRefreshToken,
           providerTokenType,
           providerScope,
           providerTokenExpiresAt,
-        } = await getSupabaseBrowserAccessToken()
+        } = sessionData
+
         if (!accessToken) {
           clearAuthFlowCookie()
           setStatus('error')
