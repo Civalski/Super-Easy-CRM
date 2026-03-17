@@ -1,24 +1,25 @@
 /**
- * Conteúdo das configurações (seções e cards). Reutilizado na página e no drawer.
+ * Conteudo das configuracoes (secoes e cards). Reutilizado na pagina e no drawer.
  */
 'use client'
 
 import {
+  AcessoContaCard,
   AssinaturaStripeCard,
-  MenuLayoutCard,
-  SidebarBehaviorCard,
-  ThemePreferenceCard,
-  RefazerOnboardingCard,
   ConfirmBeforeDeleteCard,
   DateFormatCard,
   ExcluirDadosCard,
   ExportarDadosCard,
   ImportarDadosCard,
+  MenuLayoutCard,
   OrcamentoPdfConfigCard,
   PageHeaderPreferenceCard,
   PlataformaEmailCard,
-  SuporteCard,
   PrivacidadeCard,
+  RefazerOnboardingCard,
+  SidebarBehaviorCard,
+  SuporteCard,
+  ThemePreferenceCard,
 } from '@/components/features/configuracoes'
 
 export function ConfiguracoesContent() {
@@ -30,7 +31,7 @@ export function ConfiguracoesContent() {
     <div className="space-y-4">
       {billingEnabled && (
         <section>
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Assinatura
           </h2>
           <div className="space-y-2">
@@ -40,8 +41,8 @@ export function ConfiguracoesContent() {
       )}
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-          Aparência
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Aparencia
         </h2>
         <div className="space-y-2">
           <ThemePreferenceCard />
@@ -51,8 +52,8 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-          Configuração inicial
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Configuracao inicial
         </h2>
         <div className="space-y-2">
           <RefazerOnboardingCard />
@@ -60,7 +61,7 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Interface
         </h2>
         <div className="space-y-2">
@@ -71,7 +72,7 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Contato
         </h2>
         <div className="space-y-2">
@@ -80,8 +81,8 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-          Orçamentos
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Orcamentos
         </h2>
         <div className="space-y-2">
           <OrcamentoPdfConfigCard />
@@ -89,7 +90,7 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Suporte
         </h2>
         <div className="space-y-2">
@@ -98,8 +99,8 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-          Backup e exportação
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Backup e exportacao
         </h2>
         <div className="space-y-2">
           <ExportarDadosCard />
@@ -108,7 +109,7 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Privacidade
         </h2>
         <div className="space-y-2">
@@ -117,7 +118,16 @@ export function ConfiguracoesContent() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Alterar senha
+        </h2>
+        <div className="space-y-2">
+          <AcessoContaCard />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Excluir dados da conta
         </h2>
         <div className="space-y-2">

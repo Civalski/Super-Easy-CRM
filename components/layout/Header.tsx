@@ -1,16 +1,8 @@
-/**
- * Header component
- *
- * Uses:
- * - useGlobalSearch hook
- * - SearchResultsDropdown
- * - NotificationDropdown
- */
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, Menu, X, Settings, QuestionMarkCircle } from '@/lib/icons'
+import { Search, Bell, Menu, X, Settings } from '@/lib/icons'
 import { useGlobalSearch } from '@/lib/hooks/useGlobalSearch'
 import { SearchResultsDropdown } from './SearchResultsDropdown'
 import { NotificationDropdown } from './NotificationDropdown'
@@ -18,15 +10,14 @@ import TaskNotificationModal from '@/components/features/tarefas/TaskNotificatio
 import { useSession } from 'next-auth/react'
 import type { TaskNotification } from '@/types/notifications'
 import { useNotifications } from '@/components/features/tarefas/NotificationsProvider'
+import { HeaderNav } from './HeaderNav'
+import { UserModulesMenu } from './UserModulesMenu'
 
 interface HeaderProps {
   onMobileMenuClick: () => void
   onOpenConfig?: () => void
   menuLayout?: 'sidebar' | 'header'
 }
-
-import { HeaderNav } from './HeaderNav'
-import { useHelpMode } from './HelpModeProvider'
 
 export default function Header({
   onMobileMenuClick,
@@ -38,7 +29,6 @@ export default function Header({
   const notificacaoRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
   const { notifications, isLoading, refresh } = useNotifications()
-  const { helpMode, toggleHelpMode } = useHelpMode()
 
   const [localNotifications, setLocalNotifications] = useState<TaskNotification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
@@ -153,11 +143,11 @@ export default function Header({
         menuLayout === 'header' ? 'lg:left-0' : 'lg:left-(--sidebar-width)'
       }`}
     >
-        <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
+      <div className="min-h-(--top-bar-height) border-b border-(--shell-border) bg-(--shell-tint) backdrop-blur-xs pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
         <div className="flex items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6 lg:px-8">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
             {menuLayout === 'header' && (
-              <div className="hidden lg:block shrink-0">
+              <div className="hidden shrink-0 lg:block">
                 <HeaderNav />
               </div>
             )}
@@ -173,7 +163,7 @@ export default function Header({
           <div className="flex-1 px-1 sm:px-3">
             <div
               ref={buscaRef}
-              className="relative flex mx-auto w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
+              className="relative mx-auto flex w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
             >
               <div
                 className="flex h-10 min-h-[44px] w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400 sm:h-11"
@@ -221,20 +211,6 @@ export default function Header({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={toggleHelpMode}
-              className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border transition-colors lg:h-9 lg:w-9 ${
-                helpMode
-                  ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500/70 dark:bg-indigo-500/20 dark:text-indigo-300'
-                  : 'border-slate-300/70 text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100'
-              }`}
-              aria-label="Modo ajuda"
-              title={helpMode ? 'Clique nas abas do menu para ver explicações' : 'Ativar modo ajuda'}
-            >
-              <QuestionMarkCircle size={20} />
-            </button>
-
             <div ref={notificacaoRef} className="relative">
               <button
                 onClick={toggleNotifications}
@@ -265,23 +241,20 @@ export default function Header({
               type="button"
               onClick={onOpenConfig ?? (() => router.push('/configuracoes'))}
               className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-300/70 text-slate-700 transition-colors hover:bg-slate-100/80 hover:text-slate-900 active:bg-slate-200/80 dark:border-slate-600/65 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 dark:active:bg-slate-600/70 lg:h-9 lg:w-9"
-              aria-label="Configurações"
-              title="Configurações"
+              aria-label="Configuracoes"
+              title="Configuracoes"
             >
               <Settings size={18} />
             </button>
 
-            <div className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/55 sm:gap-3 sm:px-2 sm:py-1.5">
-              <div className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl bg-linear-to-br from-slate-600 to-indigo-500 text-sm font-semibold text-white shadow-md shadow-slate-950/45 lg:h-9 lg:w-9">
-                <span>{userInitial}</span>
-              </div>
-              <div className="hidden text-right md:block">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{userName}</p>
-                {userEmail && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{userEmail}</p>
-                )}
-              </div>
-            </div>
+            <UserModulesMenu
+              userId={session?.user?.id}
+              role={session?.user?.role}
+              username={session?.user?.username}
+              userName={userName}
+              userEmail={userEmail}
+              userInitial={userInitial}
+            />
           </div>
         </div>
       </div>

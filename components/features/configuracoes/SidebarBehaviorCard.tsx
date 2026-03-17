@@ -34,12 +34,6 @@ export function SidebarBehaviorCard() {
     }
   }, [])
 
-  const handleToggle = () => {
-    const nextOpenByButton = !openByButton
-    setOpenByButton(nextOpenByButton)
-    setSidebarOpenMode(nextOpenByButton ? 'button' : 'auto')
-  }
-
   return (
     <div className="crm-card p-3">
       <div className="flex items-center justify-between gap-4">
@@ -50,13 +44,32 @@ export function SidebarBehaviorCard() {
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Abrir por botão (não ao passar o mouse)</p>
           </div>
         </div>
-        <input
-          type="checkbox"
-          checked={openByButton}
-          onChange={handleToggle}
-          className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          aria-label="Abrir menu lateral por botão"
-        />
+        <div className="flex shrink-0 gap-1 rounded-lg border border-slate-300/80 p-0.5 dark:border-slate-600/50">
+          <button
+            type="button"
+            onClick={() => setSidebarOpenMode('auto')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !openByButton
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Abrir menu ao passar o mouse"
+          >
+            Automático
+          </button>
+          <button
+            type="button"
+            onClick={() => setSidebarOpenMode('button')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              openByButton
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Abrir menu por botão"
+          >
+            Botão
+          </button>
+        </div>
       </div>
     </div>
   )

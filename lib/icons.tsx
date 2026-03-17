@@ -44,6 +44,7 @@ export const Compass = createIcon('CompassIcon');
 export const CreditCard = createIcon('CreditCardIcon');
 export const Database = createIcon('CircleStackIcon');
 export const DocumentDuplicate = createIcon('DocumentDuplicateIcon');
+export const DocumentCheck = createIcon('DocumentCheckIcon');
 export const DollarSign = createIcon('CurrencyDollarIcon');
 export const Download = createIcon('ArrowDownTrayIcon');
 export const Edit2 = createIcon('PencilSquareIcon');

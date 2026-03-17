@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useState } from 'react'
 import type { MenuItem } from '@/lib/menuItems'
+import { writeUxFlagsCookie } from '@/lib/cookies'
 
 interface GuideTourContextValue {
   guideActive: boolean
@@ -34,6 +35,7 @@ export function GuideTourProvider({ children }: { children: React.ReactNode }) {
     setGuideActive(false)
     setItems([])
     setCurrentStep(0)
+    writeUxFlagsCookie({ guideSeen: true })
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('arker:guide-finished'))
     }

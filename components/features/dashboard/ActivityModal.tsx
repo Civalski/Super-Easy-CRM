@@ -13,6 +13,7 @@ import {
   Building2,
   Mail,
   Phone,
+  Target,
 } from '@/lib/icons'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -25,7 +26,7 @@ import { getProbabilityBadgeClass, getProbabilityLabel } from '@/lib/domain/prob
 interface ActivityModalProps {
   isOpen: boolean
   activity: DashboardActivity | null
-  type: 'tarefa' | 'oportunidade' | 'cliente'
+  type: 'tarefa' | 'oportunidade' | 'cliente' | 'meta'
   onClose: () => void
   onUpdate: () => void
 }
@@ -78,7 +79,7 @@ export default function ActivityModal({
 
   const handleDelete = async () => {
     const itemTypeLabel =
-      type === 'tarefa' ? 'tarefa' : type === 'oportunidade' ? 'orcamento' : 'cliente'
+      type === 'tarefa' ? 'tarefa' : type === 'oportunidade' ? 'orcamento' : type === 'meta' ? 'meta' : 'cliente'
 
     const ok = await confirm({
       title: `Excluir ${itemTypeLabel}?`,
@@ -96,6 +97,7 @@ export default function ActivityModal({
       if (type === 'tarefa') endpoint = `/api/tarefas/${data.id}`
       else if (type === 'oportunidade') endpoint = `/api/oportunidades/${data.id}`
       else if (type === 'cliente') endpoint = `/api/clientes/${data.id}`
+      else if (type === 'meta') endpoint = `/api/metas/${data.id}`
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
@@ -119,6 +121,7 @@ export default function ActivityModal({
     if (type === 'tarefa') router.push(`/tarefas?edit=${data.id}`)
     else if (type === 'oportunidade') router.push(`/oportunidades/${data.id}/editar`)
     else if (type === 'cliente') router.push(`/clientes/${data.id}`)
+    else if (type === 'meta') router.push(`/metas`)
   }
 
   const renderTaskContent = () => {
@@ -245,6 +248,62 @@ export default function ActivityModal({
     </div>
   )
 
+  const metricLabels: Record<string, string> = {
+    CLIENTES_CONTATADOS: 'Clientes contatados',
+    PROPOSTAS: 'Orçamentos',
+    CLIENTES_CADASTRADOS: 'Clientes cadastrados',
+    VENDAS: 'Vendas',
+    QUALIFICACAO: 'Em potencial',
+    NEGOCIACAO: 'Negociação',
+    PROSPECCAO: 'Prospecção',
+    FATURAMENTO: 'Faturamento',
+  }
+  const periodLabels: Record<string, string> = {
+    DAILY: 'Diária',
+    WEEKLY: 'Semanal',
+    MONTHLY: 'Mensal',
+    CUSTOM: 'Personalizada',
+  }
+
+  const renderMetaContent = () => {
+    const metricType = (activity?.details as { metricType?: string })?.metricType
+    const periodType = (activity?.details as { periodType?: string })?.periodType
+    const target = (activity?.details as { target?: number })?.target
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+            Meta
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              <Target size={12} /> Tipo
+            </span>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {metricType ? metricLabels[metricType] || metricType : '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              <Calendar size={12} /> Período
+            </span>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {periodType ? periodLabels[periodType] || periodType : '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              <DollarSign size={12} /> Meta
+            </span>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{target ?? '-'}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderClientContent = () => (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
@@ -295,7 +354,7 @@ export default function ActivityModal({
             <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
               {headerTitle}
             </h2>
-            {(data.cliente || data.empresa) && type !== 'cliente' && (
+            {(data.cliente || data.empresa) && type !== 'cliente' && type !== 'meta' && (
               <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                 <User size={14} className="mr-1.5" />
                 {clientLabel}
@@ -314,6 +373,7 @@ export default function ActivityModal({
           {type === 'tarefa' && renderTaskContent()}
           {type === 'oportunidade' && renderOpportunityContent()}
           {type === 'cliente' && renderClientContent()}
+          {type === 'meta' && renderMetaContent()}
         </div>
 
         <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end border-t border-gray-100 dark:border-gray-700">

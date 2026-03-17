@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckSquare, DollarSign, User, Plus, ChevronDown, ChevronUp } from '@/lib/icons'
+import { CheckSquare, DollarSign, User, Plus, Target, ChevronDown, ChevronUp } from '@/lib/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import ActivityModal from './ActivityModal'
@@ -40,6 +40,8 @@ export function AtividadesRecentes({
         return <DollarSign className="text-green-500" size={iconSize} />
       case 'cliente':
         return <User className="text-purple-500" size={iconSize} />
+      case 'meta':
+        return <Target className="text-amber-500" size={iconSize} />
       default:
         return <Plus className="text-gray-500" size={iconSize} />
     }
@@ -53,6 +55,8 @@ export function AtividadesRecentes({
         return 'Novo orcamento'
       case 'cliente':
         return 'Novo cliente cadastrado'
+      case 'meta':
+        return 'Nova meta criada'
       default:
         return 'Nova atividade'
     }

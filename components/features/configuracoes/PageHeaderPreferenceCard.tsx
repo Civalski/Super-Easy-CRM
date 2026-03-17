@@ -41,13 +41,32 @@ export function PageHeaderPreferenceCard() {
             </p>
           </div>
         </div>
-        <input
-          type="checkbox"
-          checked={hide}
-          onChange={() => setHidePageHeaderDecorations(!hide)}
-          className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          aria-label="Ocultar ícones e descrições nas páginas"
-        />
+        <div className="flex shrink-0 gap-1 rounded-lg border border-slate-300/80 p-0.5 dark:border-slate-600/50">
+          <button
+            type="button"
+            onClick={() => setHidePageHeaderDecorations(false)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !hide
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Mostrar ícones e descrições nas páginas"
+          >
+            Mostrar
+          </button>
+          <button
+            type="button"
+            onClick={() => setHidePageHeaderDecorations(true)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              hide
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Ocultar ícones e descrições nas páginas"
+          >
+            Ocultar
+          </button>
+        </div>
       </div>
     </div>
   )

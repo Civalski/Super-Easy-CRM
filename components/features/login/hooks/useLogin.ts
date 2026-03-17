@@ -7,6 +7,12 @@ import { useTurnstileWidget } from '@/components/common/turnstile/useTurnstileWi
 import type { AppTheme } from '@/lib/ui/themePreference'
 import { useGoogleSignIn } from './useGoogleSignIn'
 import { getTurnstileTheme, resolveLoginCallbackUrl } from '../utils'
+import {
+  readAuthFlowCookie,
+  writeAuthFlowCookie,
+  clearAuthFlowCookie,
+  createFlowNonce,
+} from '@/lib/cookies'
 
 function extractUnconfirmedEmail(errorValue: string | undefined) {
   if (!errorValue) return null
@@ -18,10 +24,6 @@ function extractUnconfirmedEmail(errorValue: string | undefined) {
 
   const email = normalizedValue.slice('email_not_confirmed:'.length).trim().toLowerCase()
   return email || null
-}
-
-function getRegisterTokenStorageKey(registerToken: string) {
-  return `auth:register-token:${registerToken}`
 }
 
 async function waitForSessionUser(maxAttempts = 5, delayMs = 150) {
@@ -187,16 +189,20 @@ export function useLogin(theme: AppTheme) {
 
     let cancelled = false
     const doAutoSignIn = async () => {
-      const storageKey = getRegisterTokenStorageKey(registerToken)
+      const nonce = createFlowNonce(registerToken)
+      const flow = readAuthFlowCookie()
+
+      if (flow?.nonce === nonce && (flow?.status === 'processing' || flow?.status === 'done')) {
+        return
+      }
 
       try {
-        if (typeof window !== 'undefined') {
-          const handledState = window.sessionStorage.getItem(storageKey)
-          if (handledState === 'processing' || handledState === 'done') {
-            return
-          }
-          window.sessionStorage.setItem(storageKey, 'processing')
-        }
+        writeAuthFlowCookie({
+          source: 'register',
+          callbackUrl: urlCallbackUrl || callbackUrl,
+          nonce,
+          status: 'processing',
+        })
 
         const result = await signIn('credentials', {
           callbackUrl: urlCallbackUrl || callbackUrl,
@@ -209,8 +215,8 @@ export function useLogin(theme: AppTheme) {
         if (result?.ok && !result.error) {
           const session = await waitForSessionUser()
           if (session?.user) {
+            clearAuthFlowCookie()
             if (typeof window !== 'undefined') {
-              window.sessionStorage.setItem(storageKey, 'done')
               window.location.replace(urlCallbackUrl || callbackUrl)
               return
             }
@@ -219,14 +225,10 @@ export function useLogin(theme: AppTheme) {
             return
           }
         }
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.removeItem(storageKey)
-        }
+        clearAuthFlowCookie()
         setError('Token de login expirado ou invalido. Tente novamente.')
       } catch {
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.removeItem(storageKey)
-        }
+        clearAuthFlowCookie()
         if (!cancelled) setError('Ocorreu um erro ao concluir o login.')
       }
     }

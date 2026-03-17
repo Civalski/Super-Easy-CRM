@@ -7,7 +7,8 @@ import { Layout } from '@/components/layout'
 import { Providers } from './Providers'
 import { NotificationManager } from '@/components/features/tarefas/NotificationManager'
 import { NotificationsProvider } from '@/components/features/tarefas/NotificationsProvider'
-import { THEME_STORAGE_KEY, DEFAULT_THEME } from '@/lib/ui/themePreference'
+import { readUiPrefsCookie } from '@/lib/cookies/server'
+import { DEFAULT_THEME } from '@/lib/cookies'
 import { AppToaster } from '@/components/ui/AppToaster'
 
 const bodyFont = Plus_Jakarta_Sans({
@@ -45,29 +46,37 @@ export const metadata: Metadata = {
 const themeInitScript = `
   (function () {
     var root = document.documentElement;
+    var theme = '${DEFAULT_THEME}';
     try {
-      var storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}');
-      var theme = storedTheme === 'light' ? 'light' : '${DEFAULT_THEME}';
-      root.classList.remove('dark', 'light');
-      root.classList.add(theme);
-    } catch (_error) {
-      root.classList.remove('light');
-      root.classList.add('${DEFAULT_THEME}');
-    }
+      var m = document.cookie.match(/arker_ui_prefs=([^;]*)/);
+      if (m) {
+        var p = JSON.parse(decodeURIComponent(m[1]));
+        if (p && p.ui && (p.ui.theme === 'light' || p.ui.theme === 'dark')) theme = p.ui.theme;
+      }
+      if (theme === '${DEFAULT_THEME}') {
+        var stored = localStorage.getItem('arker:ui:theme');
+        if (stored === 'light' || stored === 'dark') theme = stored;
+      }
+    } catch (_) {}
+    root.classList.remove('dark', 'light');
+    root.classList.add(theme);
     root.classList.add('theme-loaded');
   })();
 `
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const uiPrefs = await readUiPrefsCookie()
+  const initialTheme = uiPrefs?.theme ?? DEFAULT_THEME
+
   return (
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${bodyFont.variable} ${headingFont.variable}`}
+      className={`${bodyFont.variable} ${headingFont.variable} ${initialTheme}`}
     >
       <body className="antialiased">
         <noscript>

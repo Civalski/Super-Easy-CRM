@@ -5,15 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   DashboardHeader,
   DashboardStatsGrid,
-  DashboardGoals,
   OportunidadesChart,
   ValorPipelineChart,
   FaturamentoPerdaLineChart,
-  TarefasStatusChart,
   DashboardLoading,
   FluxoCaixaResumo,
 } from '@/components/features/dashboard'
-import { useDashboard, useMetas, useFluxoCaixa } from '@/lib/hooks/useDashboardData'
+import { useDashboard, useFluxoCaixa } from '@/lib/hooks/useDashboardData'
 import { toast } from '@/lib/toast'
 
 function DashboardPageContent() {
@@ -28,12 +26,6 @@ function DashboardPageContent() {
     isValidating,
     mutate: mutateDashboard,
   } = useDashboard(dateFilter, selectedDate)
-
-  const {
-    goals,
-    isLoading: goalsLoading,
-    mutate: mutateMetas,
-  } = useMetas()
 
   const {
     fluxo,
@@ -56,7 +48,6 @@ function DashboardPageContent() {
 
   const handleRefresh = () => {
     void mutateDashboard()
-    void mutateMetas()
     void mutateFluxo()
   }
 
@@ -86,10 +77,6 @@ function DashboardPageContent() {
         <FluxoCaixaResumo fluxo={fluxo} />
       </div>
 
-      <div className="mb-6">
-        <DashboardGoals goals={goals} loading={goalsLoading} />
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
         <OportunidadesChart
           data={data.oportunidadesPorStatus}
@@ -103,12 +90,6 @@ function DashboardPageContent() {
         <FaturamentoPerdaLineChart data={data.faturamentoPerdaSerie} />
       </div>
 
-      <div className="mb-6">
-        <TarefasStatusChart
-          tarefasPorStatus={data.tarefasPorStatus}
-          oportunidadesCount={data.oportunidadesCount}
-        />
-      </div>
     </div>
   )
 }

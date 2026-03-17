@@ -5,7 +5,7 @@ import { CLIENTES_PAGE_SIZE, initialPaginationMeta } from '../constants'
 import type { Cliente, ClientePerfil, PaginationMeta } from '../types'
 import { useClientesCrud } from './useClientesCrud'
 
-const FETCH_THROTTLE_MS = 2000
+const FOCUS_FETCH_THROTTLE_MS = 2000
 
 type UseClientesPageOptions = {
   queryFilter?: string
@@ -18,17 +18,14 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
   const [profile, setProfile] = useState<ClientePerfil | ''>('')
   const [meta, setMeta] = useState<PaginationMeta>(initialPaginationMeta)
   const lastQueryFilterRef = useRef(queryFilter)
-  const lastFetchAtRef = useRef(0)
+  const lastFocusFetchAtRef = useRef(0)
   const fetchingRef = useRef(false)
 
   const fetchClientes = useCallback(
     async (targetPage: number, targetProfile: ClientePerfil | '', signal?: AbortSignal) => {
-      const now = Date.now()
       if (fetchingRef.current) return
-      if (lastFetchAtRef.current > 0 && now - lastFetchAtRef.current < FETCH_THROTTLE_MS) return
 
       fetchingRef.current = true
-      lastFetchAtRef.current = now
       try {
         setLoading(true)
         const query = queryFilter ? `&${queryFilter}` : ''
@@ -87,6 +84,9 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
     fetchClientes(page, profile, controller.signal)
 
     const handleFocus = () => {
+      const now = Date.now()
+      if (now - lastFocusFetchAtRef.current < FOCUS_FETCH_THROTTLE_MS) return
+      lastFocusFetchAtRef.current = now
       void fetchClientes(page, profile)
     }
 

@@ -1,4 +1,4 @@
-export type DashboardActivityType = 'tarefa' | 'oportunidade' | 'cliente'
+export type DashboardActivityType = 'tarefa' | 'oportunidade' | 'cliente' | 'meta'
 
 export interface DashboardData {
   clientesCount: number

@@ -1,13 +1,18 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { menuItems } from '@/lib/menuItems'
+import { menuItems, getMenuItemsForUser } from '@/lib/menuItems'
 import { LogOut } from '@/lib/icons'
 import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
-import { useHelpMode } from './HelpModeProvider'
 import { useGuideTour } from './GuideTourProvider'
+import {
+  MENU_MODULES_HIDDEN_EVENT,
+  getHiddenMenuModules,
+  resolveVisibleMenuModuleHrefs,
+} from '@/lib/ui/menuModulesPreference'
 
 export function HeaderNav() {
   const pathname = usePathname()
@@ -20,17 +25,48 @@ export function HeaderNav() {
   } = useSubscriptionStatus({
     enabled: status === 'authenticated',
   })
-  const { helpMode, showHelpFor } = useHelpMode()
   const { guideActive, currentItem } = useGuideTour()
 
-  const username = (session?.user?.username ?? '').trim().toLowerCase()
-  const role = session?.user?.role ?? ''
-  const visibleMenuItems = menuItems.filter((item) => {
-    if (item.requiresAdmin && role !== 'admin') return false
-    if (item.requiresManager && role !== 'manager') return false
-    if (!item.visibleForUsernames) return true
-    return item.visibleForUsernames.some((u) => u.trim().toLowerCase() === username)
-  })
+  const username = session?.user?.username
+  const role = session?.user?.role
+  const userStorageKey = session?.user?.id ?? session?.user?.email ?? username ?? null
+  const [hiddenModules, setHiddenModules] = useState<string[]>([])
+
+  useEffect(() => {
+    const sync = () => {
+      setHiddenModules(getHiddenMenuModules(userStorageKey))
+    }
+
+    const handleModulesChange = (event: Event) => {
+      const customEvent = event as CustomEvent<string[]>
+      setHiddenModules(Array.isArray(customEvent.detail) ? customEvent.detail : [])
+    }
+
+    sync()
+    window.addEventListener('storage', sync)
+    window.addEventListener(MENU_MODULES_HIDDEN_EVENT, handleModulesChange as EventListener)
+
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener(MENU_MODULES_HIDDEN_EVENT, handleModulesChange as EventListener)
+    }
+  }, [userStorageKey])
+
+  const allowedMenuItems = useMemo(
+    () => getMenuItemsForUser(menuItems, { role, username }),
+    [role, username]
+  )
+
+  const visibleMenuItems = useMemo(() => {
+    const visibleHrefs = new Set(
+      resolveVisibleMenuModuleHrefs(
+        allowedMenuItems.map((item) => item.href),
+        hiddenModules
+      )
+    )
+
+    return allowedMenuItems.filter((item) => visibleHrefs.has(item.href))
+  }, [allowedMenuItems, hiddenModules])
   const premiumAccess: 'loading' | 'active' | 'inactive' | 'error' =
     !billingSubscriptionEnabled
       ? 'active'
@@ -39,12 +75,12 @@ export function HeaderNav() {
         : status !== 'authenticated'
           ? 'active'
           : subscriptionLoading
-        ? 'loading'
-        : subscriptionError
-          ? 'error'
-          : hasActiveSubscription
-            ? 'active'
-            : 'inactive'
+            ? 'loading'
+            : subscriptionError
+              ? 'error'
+              : hasActiveSubscription
+                ? 'active'
+                : 'inactive'
 
   const isItemActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -62,22 +98,14 @@ export function HeaderNav() {
     return item.name
   }
 
-  const handleItemClick = (e: React.MouseEvent, item: (typeof visibleMenuItems)[0]) => {
-    if (helpMode && item.helpDescription) {
-      e.preventDefault()
-      showHelpFor(item, e.currentTarget as HTMLElement)
-    }
-  }
-
   return (
-    <nav className="hidden lg:flex items-center gap-0.5 overflow-x-auto scrollbar-thin">
+    <nav className="hidden items-center gap-0.5 overflow-x-auto scrollbar-thin lg:flex">
       {visibleMenuItems.map((item) => {
         const ItemIcon = item.icon
         const isActive = isItemActive(item.href)
         const isLocked = item.requiresPremium && premiumAccess === 'inactive'
         const href = getResolvedHref(item)
         const title = getResolvedTitle(item)
-
         const isGuideHighlight = guideActive && currentItem?.href === item.href
 
         return (
@@ -86,14 +114,13 @@ export function HeaderNav() {
             href={href}
             title={title}
             data-guide-href={item.href}
-            onClick={(e) => handleItemClick(e, item)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
               isActive
                 ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                 : isLocked
                   ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                   : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-            } ${helpMode && item.helpDescription ? 'cursor-help' : ''} ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
+            } ${isGuideHighlight ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
           >
             <ItemIcon
               size={16}
@@ -116,7 +143,7 @@ export function HeaderNav() {
         type="button"
         onClick={() => signOut()}
         title="Sair"
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap shrink-0 text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-slate-300 dark:hover:bg-red-500/14 dark:hover:text-red-100"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-slate-300 dark:hover:bg-red-500/14 dark:hover:text-red-100"
       >
         <LogOut size={16} className="shrink-0 text-slate-500 dark:text-slate-400" />
         <span>Sair</span>

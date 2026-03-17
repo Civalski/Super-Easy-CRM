@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
+import Link from 'next/link'
 import Script from 'next/script'
 import { useThemePreference } from '@/lib/hooks/useThemePreference'
 import { LOGIN_THEME_STYLES } from './constants'
@@ -75,6 +76,26 @@ function LoginPageInner() {
             username={username}
             website={website}
           />
+
+          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 text-[11px] text-slate-400">
+            <Link
+              href="https://www.arkersoft.com.br/termos-de-uso"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-slate-200"
+            >
+              Termos de Uso
+            </Link>
+            <span aria-hidden="true">|</span>
+            <Link
+              href="https://www.arkersoft.com.br/seusdados"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-slate-200"
+            >
+              Politica de Privacidade
+            </Link>
+          </div>
         </section>
       </div>
     </div>

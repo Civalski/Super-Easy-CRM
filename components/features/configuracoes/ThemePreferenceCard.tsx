@@ -9,10 +9,6 @@ import { useThemePreference } from '@/lib/hooks/useThemePreference'
 export function ThemePreferenceCard() {
   const { isLightTheme, updateTheme } = useThemePreference()
 
-  const handleToggle = () => {
-    updateTheme(isLightTheme ? 'dark' : 'light')
-  }
-
   return (
     <div className="crm-card p-3">
       <div className="flex items-center justify-between gap-4">
@@ -27,16 +23,30 @@ export function ThemePreferenceCard() {
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Tema claro ou escuro</p>
           </div>
         </div>
-        <label className="flex shrink-0 cursor-pointer items-center gap-2">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Claro</span>
-          <input
-            type="checkbox"
-            checked={isLightTheme}
-            onChange={handleToggle}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            aria-label="Ativar tema claro"
-          />
-        </label>
+        <div className="flex shrink-0 gap-1 rounded-lg border border-slate-300/80 p-0.5 dark:border-slate-600/50">
+          <button
+            type="button"
+            onClick={() => updateTheme('light')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              isLightTheme
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            Claro
+          </button>
+          <button
+            type="button"
+            onClick={() => updateTheme('dark')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !isLightTheme
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            Escuro
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
       // Buscar dados mais recentes de cada tipo com mais detalhes
-        const [tarefas, oportunidades, clientes] = await Promise.all([
+        const [tarefas, oportunidades, clientes, metas] = await Promise.all([
             prisma.tarefa.findMany({
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
@@ -33,8 +33,30 @@ export async function GET(request: NextRequest) {
                 include: {
                     contatos: { take: 1 }
                 }
+            }),
+            prisma.goal.findMany({
+                where: { userId },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
             })
         ])
+
+        const metricLabels: Record<string, string> = {
+            CLIENTES_CONTATADOS: 'Clientes contatados',
+            PROPOSTAS: 'Orçamentos',
+            CLIENTES_CADASTRADOS: 'Clientes cadastrados',
+            VENDAS: 'Vendas',
+            QUALIFICACAO: 'Em potencial',
+            NEGOCIACAO: 'Negociação',
+            PROSPECCAO: 'Prospecção',
+            FATURAMENTO: 'Faturamento',
+        }
+        const periodLabels: Record<string, string> = {
+            DAILY: 'Diária',
+            WEEKLY: 'Semanal',
+            MONTHLY: 'Mensal',
+            CUSTOM: 'Personalizada',
+        }
 
         // Normalizar dados mantendo objeto original para detalhes
         const activities = [
@@ -61,6 +83,14 @@ export async function GET(request: NextRequest) {
                 description: c.empresa || undefined,
                 date: c.createdAt,
                 details: c,
+            })),
+            ...metas.map(g => ({
+                id: g.id,
+                type: 'meta',
+                title: g.title || metricLabels[g.metricType] || 'Meta',
+                description: `${periodLabels[g.periodType] || g.periodType} | Meta: ${g.target}`,
+                date: g.createdAt,
+                details: g,
             }))
         ]
 

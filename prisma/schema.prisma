@@ -72,8 +72,57 @@ model User {
   pdfConfig             PdfConfig?
   fornecedores          Fornecedor[]
   funcionarios          Funcionario[]
+  contratos             Contrato[]
+  iaGeracoesContrato    IaGeracaoContrato[]
 
   @@map("users")
+}
+
+model IaGeracaoContrato {
+  id        String   @id @default(cuid())
+  userId    String
+  model     String   // gpt-5-nano | gpt-5-mini | gpt-5.4
+  data      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, model, data])
+  @@map("ia_geracoes_contrato")
+}
+
+model Contrato {
+  id              String   @id @default(cuid())
+  numero          Int      @unique @default(autoincrement())
+  userId          String
+  titulo          String
+  status          String   @default("em_andamento") // em_andamento | aprovado_assinado | rejeitado
+  tipo            String   @default("geral") // geral | prestacao_servicos | compra_venda | locacao | etc
+  descricao       String?
+  preambulo       String?  // Texto introdutório antes das cláusulas
+  clausulas       Json     @default("[]") // Array de { titulo, conteudo }
+  dadosPartes     Json     @default("{}") // Dados das partes (contratante, contratado, etc)
+  dataInicio      DateTime?
+  dataFim         DateTime?
+  dataAssinatura  DateTime?
+  localAssinatura String?
+  observacoes     String?
+  clienteId       String?
+  oportunidadeId  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cliente      Cliente?     @relation(fields: [clienteId, userId], references: [id, userId], onDelete: SetNull)
+  oportunidade Oportunidade? @relation(fields: [oportunidadeId, userId], references: [id, userId], onDelete: SetNull)
+
+  @@unique([id, userId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([clienteId])
+  @@index([oportunidadeId])
+  @@map("contratos")
 }
 
 model RegistrationCode {
@@ -180,6 +229,7 @@ model Cliente {
   tarefas        Tarefa[]
   prospecto      Prospecto?
   contasReceber  ContaReceber[]
+  contratos      Contrato[]
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([id, userId])
@@ -285,6 +335,7 @@ model Oportunidade {
   pedido           Pedido?
   contasReceber    ContaReceber[]
   followUpAttempts FollowUpAttempt[]
+  contratos        Contrato[]
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([id, userId])

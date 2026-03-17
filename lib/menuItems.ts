@@ -3,11 +3,11 @@ import {
   BarChart3,
   Calendar,
   ClipboardList,
+  DocumentCheck,
   FileText,
   LayoutDashboard,
   Layers,
   Package,
-  ShieldCheck,
   Trophy,
   Users,
   Wallet,
@@ -26,6 +26,11 @@ export interface MenuItem {
   requiresManager?: boolean
   /** Texto explicativo exibido no modo de ajuda ao clicar no item */
   helpDescription?: string
+}
+
+interface MenuItemVisibilityOptions {
+  role?: string | null
+  username?: string | null
 }
 
 export const menuItems: MenuItem[] = [
@@ -74,6 +79,15 @@ export const menuItems: MenuItem[] = [
       'Controle dos pedidos confirmados.\n\n' +
       'Acompanhe entrega, parcelas, vencimentos e status de cobranca.\n\n' +
       'Mantenha o processo de pos-venda organizado do inicio ao fim.',
+  },
+  {
+    name: 'Contratos',
+    href: '/contratos',
+    icon: DocumentCheck,
+    helpDescription:
+      'Crie e gerencie contratos formais.\n\n' +
+      'Preencha clausulas, dados das partes, datas e assinaturas.\n\n' +
+      'Gere PDFs profissionais com design formal para impressao ou envio.',
   },
   {
     name: 'Funil',
@@ -129,12 +143,22 @@ export const menuItems: MenuItem[] = [
       'Registre contas a receber, contas a pagar e acompanhe vencimentos sem perder prazos.\n\n' +
       'Use esta aba para decidir com seguranca onde investir e onde cortar custos.',
   },
-  {
-    name: 'Alterar senha',
-    href: '/alterar-senha',
-    icon: ShieldCheck,
-    helpDescription:
-      'Atualize sua senha diretamente no CRM.\n\n' +
-      'Informe a senha atual, defina a nova senha e confirme para salvar com seguranca.',
-  },
 ]
+
+export function getMenuItemsForUser(
+  items: MenuItem[],
+  { role, username }: MenuItemVisibilityOptions
+): MenuItem[] {
+  const normalizedUsername = (username ?? '').trim().toLowerCase()
+  const normalizedRole = (role ?? '').trim().toLowerCase()
+
+  return items.filter((item) => {
+    if (item.requiresAdmin && normalizedRole !== 'admin') return false
+    if (item.requiresManager && normalizedRole !== 'manager') return false
+    if (!item.visibleForUsernames) return true
+
+    return item.visibleForUsernames.some(
+      (value) => value.trim().toLowerCase() === normalizedUsername
+    )
+  })
+}

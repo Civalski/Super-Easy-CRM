@@ -12,9 +12,9 @@ import {
   type DateFormatLocale,
 } from '@/lib/ui/dateFormatPreference'
 
-const OPTIONS: { value: DateFormatLocale; label: string; example: string }[] = [
-  { value: 'pt-BR', label: 'Brasileiro (dd/mm/aaaa)', example: '31/12/2025' },
-  { value: 'en-US', label: 'Americano (mm/dd/aaaa)', example: '12/31/2025' },
+const OPTIONS: { value: DateFormatLocale; label: string; shortLabel: string }[] = [
+  { value: 'pt-BR', label: 'Brasileiro (dd/mm/aaaa)', shortLabel: 'dd/mm' },
+  { value: 'en-US', label: 'Americano (mm/dd/aaaa)', shortLabel: 'mm/dd' },
 ]
 
 export function DateFormatCard() {
@@ -45,23 +45,21 @@ export function DateFormatCard() {
             <p className="text-xs text-gray-500 dark:text-gray-400">dd/mm/aaaa ou mm/dd/aaaa</p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-4">
+        <div className="flex shrink-0 gap-1 rounded-lg border border-slate-300/80 p-0.5 dark:border-slate-600/50">
           {OPTIONS.map((opt) => (
-            <label
+            <button
               key={opt.value}
-              className="flex cursor-pointer items-center gap-2"
+              type="button"
+              onClick={() => setDateFormatPreference(opt.value)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                locale === opt.value
+                  ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+              }`}
+              aria-label={opt.label}
             >
-              <input
-                type="radio"
-                name="date-format"
-                value={opt.value}
-                checked={locale === opt.value}
-                onChange={() => setDateFormatPreference(opt.value)}
-                className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
-                aria-label={opt.label}
-              />
-              <span className="text-sm text-gray-900 dark:text-white">{opt.label}</span>
-            </label>
+              {opt.shortLabel}
+            </button>
           ))}
         </div>
       </div>

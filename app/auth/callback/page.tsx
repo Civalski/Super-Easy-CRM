@@ -3,10 +3,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowserAccessToken } from '@/lib/supabase/client'
-
-function getOAuthCodeStorageKey(code: string) {
-  return `auth:google-oauth-code:${code}`
-}
+import {
+  readAuthFlowCookie,
+  writeAuthFlowCookie,
+  clearAuthFlowCookie,
+  createFlowNonce,
+} from '@/lib/cookies'
 
 function AuthCallbackInner() {
   const router = useRouter()
@@ -38,22 +40,32 @@ function AuthCallbackInner() {
     }
 
     const run = async () => {
-      const storageKey = getOAuthCodeStorageKey(code)
+      const nonce = createFlowNonce(code)
+      const flow = readAuthFlowCookie()
+
+      if (flow?.nonce === nonce && flow?.status === 'done') {
+        clearAuthFlowCookie()
+        const params = new URLSearchParams()
+        if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
+        router.replace(`/login?${params.toString()}`)
+        return
+      }
+
+      if (flow?.nonce === nonce && flow?.status === 'processing') {
+        return
+      }
 
       try {
-        if (typeof window !== 'undefined') {
-          const handledCode = window.sessionStorage.getItem(storageKey)
-          if (handledCode === 'processing' || handledCode === 'done') {
-            return
-          }
-          window.sessionStorage.setItem(storageKey, 'processing')
-        }
+        writeAuthFlowCookie({
+          source: 'oauth',
+          callbackUrl: nextPath !== '/' ? nextPath : undefined,
+          nonce,
+          status: 'processing',
+        })
 
         const { accessToken, supabase } = await getSupabaseBrowserAccessToken()
         if (!accessToken) {
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem(storageKey)
-          }
+          clearAuthFlowCookie()
           setStatus('error')
           redirectToLogin('oauth_missing_session')
           return
@@ -70,23 +82,25 @@ function AuthCallbackInner() {
           | null
 
         if (!res.ok || !json?.registerToken) {
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem(storageKey)
-          }
+          clearAuthFlowCookie()
           setStatus('error')
           redirectToLogin(json?.error || 'oauth_user_failed')
           return
         }
 
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(storageKey, 'done')
-        }
+        writeAuthFlowCookie({
+          source: 'oauth',
+          callbackUrl: nextPath !== '/' ? nextPath : undefined,
+          nonce,
+          status: 'done',
+        })
 
         await supabase.auth.signOut().catch(() => undefined)
 
         const params = new URLSearchParams()
         params.set('register_token', json.registerToken)
         if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
+        clearAuthFlowCookie()
         if (typeof window !== 'undefined') {
           window.location.replace(`/login?${params.toString()}`)
           return
@@ -94,9 +108,7 @@ function AuthCallbackInner() {
         router.replace(`/login?${params.toString()}`)
       } catch (err) {
         console.error('Erro no callback OAuth:', err)
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.removeItem(storageKey)
-        }
+        clearAuthFlowCookie()
         setStatus('error')
         redirectToLogin('oauth_error')
       }

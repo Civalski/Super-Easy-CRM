@@ -39,13 +39,32 @@ export function ConfirmBeforeDeleteCard() {
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Diálogo antes de excluir itens</p>
           </div>
         </div>
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={() => setConfirmBeforeDeletePreference(!enabled)}
-          className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          aria-label="Ativar confirmação antes de excluir"
-        />
+        <div className="flex shrink-0 gap-1 rounded-lg border border-slate-300/80 p-0.5 dark:border-slate-600/50">
+          <button
+            type="button"
+            onClick={() => setConfirmBeforeDeletePreference(true)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              enabled
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Ativar confirmação antes de excluir"
+          >
+            Sim
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmBeforeDeletePreference(false)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !enabled
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50'
+            }`}
+            aria-label="Desativar confirmação antes de excluir"
+          >
+            Não
+          </button>
+        </div>
       </div>
     </div>
   )

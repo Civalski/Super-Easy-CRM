@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { setThemePreference } from '@/lib/ui/themePreference'
 import { setMenuLayout } from '@/lib/ui/menuLayoutPreference'
+import { writeUxFlagsCookie } from '@/lib/cookies'
 import type { OnboardingFormData, OnboardingStatus } from '../types'
 
 export function useOnboarding() {
@@ -18,6 +19,9 @@ export function useOnboarding() {
       if (!res.ok) throw new Error('Falha ao carregar')
       const data = await res.json()
       setStatus(data)
+      if (data?.completed) {
+        writeUxFlagsCookie({ onboardingDismissed: true })
+      }
     } catch (err) {
       setError('Não foi possível carregar. Tente novamente.')
     } finally {
@@ -68,6 +72,7 @@ export function useOnboarding() {
         setThemePreference(data.temaPreferencia)
         setMenuLayout(data.menuLayout)
         setStatus((prev) => prev ? { ...prev, completed: true } : prev)
+        writeUxFlagsCookie({ onboardingDismissed: true })
         window.dispatchEvent(new CustomEvent('arker:empresa-config-updated'))
         return true
       } catch (err) {
@@ -105,6 +110,7 @@ export function useOnboarding() {
       }
       setSkipped(true)
       setStatus((prev) => prev ? { ...prev, completed: true } : prev)
+      writeUxFlagsCookie({ onboardingDismissed: true })
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao pular')

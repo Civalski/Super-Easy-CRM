@@ -10,6 +10,7 @@ import {
   startOfMonth,
   endOfMonth,
   subMonths,
+  subDays,
   format,
   eachDayOfInterval,
 } from 'date-fns'
@@ -312,53 +313,68 @@ export async function GET(request: NextRequest) {
       }
     })()
 
-    const [
-      vendasUltimos7Dias,
-      perdidasUltimos7Dias,
-      oportunidadesCriadas7Dias,
-      oportunidadesFechadas7Dias,
-      tarefasCriadas7Dias,
-      contatosCriados7Dias,
-    ] = seriesRange
-      ? await Promise.all([
-          prisma.oportunidade.findMany({
-            where: {
-              userId,
-              status: 'fechada',
-              updatedAt: seriesRange,
-            },
-            select: { valor: true, updatedAt: true },
-          }),
-          prisma.oportunidade.findMany({
-            where: {
-              userId,
-              status: 'perdida',
-              updatedAt: seriesRange,
-            },
-            select: { valor: true, updatedAt: true },
-          }),
-          prisma.oportunidade.findMany({
-            where: { userId, createdAt: seriesRange },
-            select: { clienteId: true, createdAt: true },
-          }),
-          prisma.oportunidade.findMany({
-            where: {
-              userId,
-              status: 'fechada',
-              updatedAt: seriesRange,
-            },
-            select: { clienteId: true, updatedAt: true },
-          }),
-          prisma.tarefa.findMany({
-            where: { userId, clienteId: { not: null }, createdAt: seriesRange },
-            select: { clienteId: true, createdAt: true },
-          }),
-          prisma.contato.findMany({
-            where: { userId, createdAt: seriesRange },
-            select: { clienteId: true, createdAt: true },
-          }),
-        ])
-      : [[], [], [], [], [], []]
+    const today = new Date()
+    const last7DaysEnd = endOfDay(today)
+    const last7DaysStart = startOfDay(subDays(today, 6))
+    const last7DaysRange = { gte: last7DaysStart, lte: last7DaysEnd }
+    const last7DaysKeys = eachDayOfInterval({ start: last7DaysStart, end: last7DaysEnd }).map((d) =>
+      format(d, 'yyyy-MM-dd')
+    )
+
+    const [vendasUltimos7Dias, orcamentosPerdidos7Dias, pedidosCancelados7Dias] = await Promise.all([
+      prisma.oportunidade.findMany({
+        where: {
+          userId,
+          status: 'fechada',
+          updatedAt: last7DaysRange,
+        },
+        select: { valor: true, updatedAt: true },
+      }),
+      prisma.oportunidade.findMany({
+        where: {
+          userId,
+          status: 'perdida',
+          updatedAt: last7DaysRange,
+        },
+        select: { valor: true, updatedAt: true },
+      }),
+      prisma.pedido.findMany({
+        where: {
+          userId,
+          oportunidade: {
+            status: 'perdida',
+          },
+          updatedAt: last7DaysRange,
+        },
+        select: { totalLiquido: true, updatedAt: true },
+      }),
+    ])
+
+    const [oportunidadesCriadas7Dias, oportunidadesFechadas7Dias, tarefasCriadas7Dias, contatosCriados7Dias] =
+      seriesRange
+        ? await Promise.all([
+            prisma.oportunidade.findMany({
+              where: { userId, createdAt: seriesRange },
+              select: { clienteId: true, createdAt: true },
+            }),
+            prisma.oportunidade.findMany({
+              where: {
+                userId,
+                status: 'fechada',
+                updatedAt: seriesRange,
+              },
+              select: { clienteId: true, updatedAt: true },
+            }),
+            prisma.tarefa.findMany({
+              where: { userId, clienteId: { not: null }, createdAt: seriesRange },
+              select: { clienteId: true, createdAt: true },
+            }),
+            prisma.contato.findMany({
+              where: { userId, createdAt: seriesRange },
+              select: { clienteId: true, createdAt: true },
+            }),
+          ])
+        : [[], [], [], []]
     const monthStart = isMonthByWeeks ? startOfMonth(referenceDate) : null
 
     const toBucketKey = (d: Date): string => {
@@ -371,22 +387,27 @@ export async function GET(request: NextRequest) {
       return format(d, 'yyyy-MM-dd')
     }
 
-    const vendasPorDia = dayKeys.map((day) => ({ date: day, valor: 0 }))
-    const orcamentosCanceladosPorDia = dayKeys.map((day) => ({ date: day, valor: 0 }))
+    const vendasPorDia = last7DaysKeys.map((day) => ({ date: day, valor: 0 }))
+    const orcamentosCanceladosPorDia = last7DaysKeys.map((day) => ({ date: day, valor: 0 }))
     const contatosFeitosPorDia = dayKeys.map((day) => ({ date: day, count: 0 }))
-    const vendasPorDiaMap = new Map(dayKeys.map((k, i) => [k, vendasPorDia[i]]))
-    const perdidasPorDiaMap = new Map(dayKeys.map((k, i) => [k, orcamentosCanceladosPorDia[i]]))
+    const vendasPorDiaMap = new Map(last7DaysKeys.map((k, i) => [k, vendasPorDia[i]]))
+    const perdidasPorDiaMap = new Map(last7DaysKeys.map((k, i) => [k, orcamentosCanceladosPorDia[i]]))
     const contatosPorDiaMap = new Map<string, Set<string>>(dayKeys.map((k) => [k, new Set()]))
 
     for (const o of vendasUltimos7Dias) {
-      const dayKey = toBucketKey(o.updatedAt)
+      const dayKey = format(o.updatedAt, 'yyyy-MM-dd')
       const bucket = vendasPorDiaMap.get(dayKey)
       if (bucket) bucket.valor += o.valor || 0
     }
-    for (const o of perdidasUltimos7Dias) {
-      const dayKey = toBucketKey(o.updatedAt)
+    for (const o of orcamentosPerdidos7Dias) {
+      const dayKey = format(o.updatedAt, 'yyyy-MM-dd')
       const bucket = perdidasPorDiaMap.get(dayKey)
       if (bucket) bucket.valor += o.valor || 0
+    }
+    for (const p of pedidosCancelados7Dias) {
+      const dayKey = format(p.updatedAt, 'yyyy-MM-dd')
+      const bucket = perdidasPorDiaMap.get(dayKey)
+      if (bucket) bucket.valor += p.totalLiquido || 0
     }
     for (const o of oportunidadesCriadas7Dias) {
       const dayKey = toBucketKey(o.createdAt)

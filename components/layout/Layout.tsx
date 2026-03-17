@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation'
 import { X } from '@/lib/icons'
 import Sidebar from './Sidebar'
 import Header from './Header'
-import { HelpModeProvider, useHelpMode } from './HelpModeProvider'
-import { HelpPopover } from './HelpPopover'
 import { GuideTourModal } from './GuideTourModal'
 import { GuideTourProvider, useGuideTour } from './GuideTourProvider'
 import SideCreateDrawer from '@/components/common/SideCreateDrawer'
@@ -32,7 +30,6 @@ const PUBLIC_LAYOUT_PATHS = ['/login', '/register', '/onboarding', '/auth/reset-
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { helpMode, toggleHelpMode } = useHelpMode()
   const { guideActive } = useGuideTour()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
@@ -53,12 +50,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (helpMode || guideActive) {
+    if (guideActive) {
       setMobileSidebarOpen(true)
       setIsSidebarHovered(true)
       setIsSidebarOpenedByButton(true)
     }
-  }, [helpMode, guideActive])
+  }, [guideActive])
 
   useEffect(() => {
     const syncSidebarMode = () => {
@@ -101,11 +98,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!helpMode && !guideActive) {
+    if (!guideActive) {
       setIsSidebarHovered(false)
       setIsSidebarOpenedByButton(false)
     }
-  }, [sidebarOpenMode, helpMode, guideActive])
+  }, [sidebarOpenMode, guideActive])
 
   useEffect(() => {
     return () => {
@@ -146,7 +143,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const useSidebarLayout = menuLayout === 'sidebar'
   const sidebarWidth =
-    useSidebarLayout && isDesktopSidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : useSidebarLayout ? SIDEBAR_COLLAPSED_WIDTH : '0px'
+    useSidebarLayout && isDesktopSidebarExpanded
+      ? SIDEBAR_EXPANDED_WIDTH
+      : useSidebarLayout
+        ? SIDEBAR_COLLAPSED_WIDTH
+        : '0px'
 
   const layoutStyle = {
     '--sidebar-width': sidebarWidth,
@@ -154,43 +155,20 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="crm-shell" style={layoutStyle}>
-        <div className="relative flex min-h-screen">
-        {/* Overlay quando modo ajuda ativo */}
-        {helpMode && (
-          <div
-            className="fixed inset-0 z-40 cursor-pointer bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 lg:left-[var(--sidebar-width)] lg:top-[var(--top-bar-height)]"
-            aria-hidden
-            onClick={() => {
-              toggleHelpMode()
-              setMobileSidebarOpen(false)
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                toggleHelpMode()
-                setMobileSidebarOpen(false)
-              }
-            }}
-          />
-        )}
-
-        {/* Sidebar Desktop - oculto quando menu no header */}
+      <div className="relative flex min-h-screen">
         {useSidebarLayout && (
-        <div className="hidden lg:block">
-          <Sidebar
-            collapsed={!isDesktopSidebarExpanded}
-            onMouseEnter={sidebarOpenMode === 'auto' && !helpMode ? handleSidebarMouseEnter : undefined}
-            onMouseLeave={sidebarOpenMode === 'auto' && !helpMode ? handleSidebarMouseLeave : undefined}
-            showManualToggleButton={sidebarOpenMode === 'button'}
-            onManualToggleClick={() => setIsSidebarOpenedByButton((prev) => !prev)}
-            manualOpen={isSidebarOpenedByButton}
-            helpModeActive={helpMode}
-          />
-        </div>
+          <div className="hidden lg:block">
+            <Sidebar
+              collapsed={!isDesktopSidebarExpanded}
+              onMouseEnter={sidebarOpenMode === 'auto' ? handleSidebarMouseEnter : undefined}
+              onMouseLeave={sidebarOpenMode === 'auto' ? handleSidebarMouseLeave : undefined}
+              showManualToggleButton={sidebarOpenMode === 'button'}
+              onManualToggleClick={() => setIsSidebarOpenedByButton((prev) => !prev)}
+              manualOpen={isSidebarOpenedByButton}
+            />
+          </div>
         )}
 
-        {/* Sidebar Mobile */}
         <div
           className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
             mobileSidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
@@ -201,17 +179,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             className={`absolute inset-0 bg-slate-900/25 backdrop-blur-xs transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-slate-950/55 ${
               mobileSidebarOpen ? 'opacity-100' : 'opacity-0'
             }`}
-            onClick={() => !helpMode && setMobileSidebarOpen(false)}
-          ></div>
+            onClick={() => setMobileSidebarOpen(false)}
+          />
           <Sidebar
             isMobile
             mobileOpen={mobileSidebarOpen}
             onClose={() => setMobileSidebarOpen(false)}
-            helpModeActive={helpMode}
           />
         </div>
 
-        {/* Main Content */}
         <div
           style={layoutStyle}
           className="flex min-w-0 flex-1 flex-col bg-linear-to-b from-slate-200 via-slate-200/98 to-slate-300/95 transition-[padding-left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 lg:pl-(--sidebar-width)"
@@ -237,8 +213,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         maxWidthClass="max-w-xl"
       >
         <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Configurações</h2>
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Configuracoes</h2>
             <button
               type="button"
               onClick={() => setConfigDrawerOpen(false)}
@@ -265,12 +241,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <HelpModeProvider>
-      <GuideTourProvider>
-        <LayoutContent>{children}</LayoutContent>
-        <HelpPopover />
-        <GuideTourModal />
-      </GuideTourProvider>
-    </HelpModeProvider>
+    <GuideTourProvider>
+      <LayoutContent>{children}</LayoutContent>
+      <GuideTourModal />
+    </GuideTourProvider>
   )
 }

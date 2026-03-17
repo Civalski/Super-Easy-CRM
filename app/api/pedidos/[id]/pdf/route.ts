@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFImage } from 'pdf-lib'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
+import {
+  buildPdfCacheControl,
+  buildPdfCacheKey,
+  createPdfEtag,
+  getCachedPdfBuffer,
+  setCachedPdfBuffer,
+} from '@/lib/api/pdf-cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -161,6 +168,46 @@ export async function GET(
         return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 })
       }
 
+      const today = new Date()
+      const emissaoStr = dateBr(today)
+      const docNum = String(pedido.numero).padStart(5, '0')
+      const dayKey = today.toISOString().slice(0, 10)
+      const cacheKey = buildPdfCacheKey([
+        'pedido-pdf',
+        userId,
+        pedido.id,
+        pedido.updatedAt?.getTime(),
+        pedido.oportunidade?.updatedAt?.getTime(),
+        pdfConfig?.updatedAt?.getTime(),
+        dayKey,
+      ])
+      const etag = createPdfEtag(cacheKey)
+      const cacheControl = buildPdfCacheControl()
+      const ifNoneMatch = request.headers.get('if-none-match')
+
+      const cached = getCachedPdfBuffer(cacheKey)
+      if (cached) {
+        if (ifNoneMatch === cached.etag) {
+          return new NextResponse(null, {
+            status: 304,
+            headers: {
+              ETag: cached.etag,
+              'Cache-Control': cacheControl,
+            },
+          })
+        }
+
+        return new NextResponse(cached.blob, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="Pedido ${docNum}.pdf"`,
+            'Cache-Control': cacheControl,
+            ETag: cached.etag,
+          },
+        })
+      }
+
       const pdfDoc = await PDFDocument.create()
       const { font, fontBold } = await embedFonts(pdfDoc)
 
@@ -182,10 +229,6 @@ export async function GET(
         footerBg:   rgb(0.93, 0.94, 0.97),
         white:      rgb(1, 1, 1),
       }
-
-      const today = new Date()
-      const emissaoStr = dateBr(today)
-      const docNum = String(pedido.numero).padStart(5, '0')
 
       const logoImage = pdfConfig?.logoBase64 ? await embedLogo(pdfDoc, pdfConfig.logoBase64) : null
       const logoPosicao = pdfConfig?.logoPosicao === 'rodape' ? 'rodape' : 'topo'
@@ -574,13 +617,21 @@ export async function GET(
       const fileName = `Pedido ${docNum} - ${emissaoDateForFile}.pdf`
 
       const encodedFileName = encodeURIComponent(fileName)
+      const pdfArrayBuffer = pdfBytes.buffer.slice(
+        pdfBytes.byteOffset,
+        pdfBytes.byteOffset + pdfBytes.byteLength
+      ) as ArrayBuffer
+      const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' })
 
-      return new NextResponse(Buffer.from(pdfBytes), {
+      setCachedPdfBuffer(cacheKey, pdfBlob, etag)
+
+      return new NextResponse(pdfBlob, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="Pedido ${docNum} - ${emissaoDateForFile}.pdf"; filename*=UTF-8''${encodedFileName}`,
-          'Cache-Control': 'no-store',
+          'Cache-Control': cacheControl,
+          ETag: etag,
         },
       })
     } catch (error) {

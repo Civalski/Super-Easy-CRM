@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { ChevronLeft, ChevronRight, X } from '@/lib/icons'
 import { menuItems } from '@/lib/menuItems'
 import { useGuideTour } from './GuideTourProvider'
+import { readUxFlagsCookie } from '@/lib/cookies'
 
 const GUIDE_ITEMS = menuItems.filter((item) => item.helpDescription)
 
@@ -31,6 +32,7 @@ export function GuideTourModal() {
 
   useEffect(() => {
     const handler = () => {
+      if (readUxFlagsCookie()?.guideSeen) return
       const visibleItems = getVisibleItems(session)
       if (visibleItems.length > 0) openGuide(visibleItems)
     }

@@ -4,6 +4,7 @@
  */
 export { ConfiguracoesHeader } from './ConfiguracoesHeader';
 export { ConfiguracoesContent } from './ConfiguracoesContent';
+export { AcessoContaCard } from './AcessoContaCard';
 export { AssinaturaStripeCard } from './AssinaturaStripeCard';
 export { MenuLayoutCard } from './MenuLayoutCard';
 export { SidebarBehaviorCard } from './SidebarBehaviorCard';
