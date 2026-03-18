@@ -12,6 +12,7 @@ import {
   CreateFornecedorDrawer,
   CreateFuncionarioDrawer,
   EntidadesListDrawer,
+  ContasMesDrawer,
   useFinanceiro,
 } from '@/components/features/financeiro'
 import { AMBIENTE_VIEW_LABEL } from '@/components/features/financeiro/constants'
@@ -21,6 +22,7 @@ export default function FinanceiroPage() {
   const [showFuncionarioModal, setShowFuncionarioModal] = useState(false)
   const [showEntidadesList, setShowEntidadesList] = useState(false)
   const [cadastroDropdownOpen, setCadastroDropdownOpen] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   const {
     stats, fluxo, metaReceber, metaPagar, pageReceber, pagePagar, setPageReceber, setPagePagar,
@@ -152,7 +154,11 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      <FluxoCaixaSection fluxo={fluxo} ambienteLabel={AMBIENTE_VIEW_LABEL[activeAmbiente]} />
+      <FluxoCaixaSection 
+        fluxo={fluxo} 
+        ambienteLabel={AMBIENTE_VIEW_LABEL[activeAmbiente]} 
+        onMonthClick={(month) => setSelectedMonth(month)}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="crm-card p-5">
@@ -242,6 +248,12 @@ export default function FinanceiroPage() {
           }))
           setShowCreateModal(true)
         }}
+      />
+      <ContasMesDrawer
+        open={!!selectedMonth}
+        onClose={() => setSelectedMonth(null)}
+        month={selectedMonth}
+        ambiente={activeAmbiente}
       />
     </div>
   )

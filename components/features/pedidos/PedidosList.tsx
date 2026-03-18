@@ -10,10 +10,12 @@ import {
   MoreVertical,
   PackagePlus,
   Pencil,
+  Plus,
   Trash2,
   Truck,
   X,
 } from '@/lib/icons'
+import { Button } from '@/components/common'
 import { formatCurrency, formatDate } from '@/lib/format'
 import type { Pedido, PedidoTab } from './types'
 import { SITUACAO_PEDIDO_BADGE, SITUACAO_PEDIDO_LABEL, STATUS_ENTREGA_LABEL } from './constants'
@@ -128,14 +130,10 @@ export function PedidosList({
         </div>
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">{labels.empty}</p>
-          <button
-            type="button"
-            onClick={onShowCreateModal}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
-          >
-            <ClipboardList size={20} />
+          <Button onClick={onShowCreateModal}>
+            <Plus size={16} className="mr-1.5" />
             Novo Pedido
-          </button>
+          </Button>
         </div>
       </section>
     )

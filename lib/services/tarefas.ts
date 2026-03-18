@@ -4,6 +4,7 @@ import type { TarefaCreateInput } from '@/lib/validations/tarefas'
 export type ListTarefasFilters = {
   status?: string[]
   prioridade?: string
+  atrasadas?: boolean
 }
 
 export async function listTarefas(
@@ -18,11 +19,13 @@ export async function listTarefas(
   const { filters = {}, paginated, limit = 20, page = 1 } = options
   const statusList = filters.status ?? []
   const prioridade = filters.prioridade?.trim().toLowerCase()
+  const atrasadas = filters.atrasadas
 
   const where: {
     userId: string
     status?: string | { in: string[] }
     prioridade?: string
+    dataVencimento?: { lt: Date }
   } = { userId }
 
   if (statusList.length === 1) {
@@ -35,11 +38,15 @@ export async function listTarefas(
     where.prioridade = prioridade
   }
 
+  if (atrasadas) {
+    where.dataVencimento = { lt: new Date() }
+  }
+
   if (paginated) {
     const take = Math.min(limit, 50)
     const skip = (page - 1) * take
 
-    const [tarefas, total, pendentesCount, concluidasCount] = await Promise.all([
+    const [tarefas, total, pendentesCount, concluidasCount, atrasadasCount] = await Promise.all([
       prisma.tarefa.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -56,6 +63,13 @@ export async function listTarefas(
       prisma.tarefa.count({
         where: { userId, status: 'concluida' },
       }),
+      prisma.tarefa.count({
+        where: {
+          userId,
+          status: { in: ['pendente', 'em_andamento'] },
+          dataVencimento: { lt: new Date() },
+        },
+      }),
     ])
 
     return {
@@ -69,6 +83,7 @@ export async function listTarefas(
       counts: {
         pendentes: pendentesCount,
         concluidas: concluidasCount,
+        atrasadas: atrasadasCount,
       },
     }
   }

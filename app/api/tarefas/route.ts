@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
         filters: {
           status: statusList.length > 0 ? statusList : undefined,
           prioridade: prioridade || undefined,
+          atrasadas: searchParams.get('atrasadas') === 'true',
         },
         paginated: searchParams.get('paginated') === 'true',
         limit: parseLimit(searchParams.get('limit')),

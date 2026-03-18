@@ -47,9 +47,20 @@ function dateBr(v?: Date | string | null) {
   return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
+function sanitizePdfText(text: string | null | undefined): string {
+  if (!text) return ''
+
+  return text
+    .normalize('NFKC')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function wrapText(text: string, f: PDFFont, size: number, maxW: number): string[] {
-  if (!text) return []
-  const words = text.split(/\s+/).filter(Boolean)
+  const safeText = sanitizePdfText(text)
+  if (!safeText) return []
+  const words = safeText.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ''
   for (const word of words) {
@@ -126,7 +137,7 @@ export async function GET(
       ])
 
       if (!contrato) {
-        return NextResponse.json({ error: 'Contrato nÃ£o encontrado' }, { status: 404 })
+        return NextResponse.json({ error: 'Contrato nao encontrado' }, { status: 404 })
       }
 
       const docNum = String(contrato.numero).padStart(5, '0')
@@ -195,7 +206,7 @@ export async function GET(
         if (y - h < PAGE.marginBottom) newPage()
       }
 
-      const companyName = pdfConfig?.nomeEmpresa || 'CONTRATO'
+      const companyName = sanitizePdfText(pdfConfig?.nomeEmpresa) || 'CONTRATO'
       page.drawText(companyName.toUpperCase(), {
         x: PAGE.marginX,
         y,
@@ -214,8 +225,9 @@ export async function GET(
       })
       y -= 18
 
-      page.drawText(`NÂº ${docNum}`, {
-        x: PAGE.width - PAGE.marginX - fontBold.widthOfTextAtSize(`NÂº ${docNum}`, FS.label),
+      const documentNumberLabel = `No ${docNum}`
+      page.drawText(documentNumberLabel, {
+        x: PAGE.width - PAGE.marginX - fontBold.widthOfTextAtSize(documentNumberLabel, FS.label),
         y: y + 18,
         size: FS.label,
         font: fontBold,
@@ -230,7 +242,7 @@ export async function GET(
       })
       y -= 20
 
-      page.drawText(contrato.titulo.toUpperCase(), {
+      page.drawText(sanitizePdfText(contrato.titulo).toUpperCase(), {
         x: PAGE.marginX,
         y,
         size: FS.section,
@@ -281,7 +293,7 @@ export async function GET(
             { label: 'Nome', value: parte.nome },
             { label: 'RG', value: parte.rg },
             { label: 'Documento', value: parte.documento },
-            { label: 'EndereÃ§o', value: parte.endereco },
+            { label: 'Endereco', value: parte.endereco },
             { label: 'Cidade/UF', value: [parte.cidade, parte.estado].filter(Boolean).join(' / ') },
             { label: 'CEP', value: parte.cep },
             { label: 'E-mail', value: parte.email },
@@ -308,7 +320,7 @@ export async function GET(
       }
 
       if (clausulas.length > 0) {
-        page.drawText('CLÃUSULAS', {
+        page.drawText('CLAUSULAS', {
           x: PAGE.marginX,
           y,
           size: FS.label,
@@ -350,7 +362,7 @@ export async function GET(
         borderWidth: 0.5,
       })
 
-      const localStr = contrato.localAssinatura || 'Local e data a definir'
+      const localStr = sanitizePdfText(contrato.localAssinatura) || 'Local e data a definir'
       const dataStr = contrato.dataAssinatura ? dateBr(contrato.dataAssinatura) : dateBr(new Date())
 
       page.drawText('Assinaturas:', {
@@ -360,7 +372,7 @@ export async function GET(
         font: fontBold,
         color: C.textMuted,
       })
-      page.drawText(`${localStr}, ${dataStr}.`, {
+      page.drawText(sanitizePdfText(`${localStr}, ${dataStr}.`), {
         x: PAGE.marginX + 8,
         y: y - 28,
         size: FS.small,
@@ -415,7 +427,7 @@ export async function GET(
           color: C.border,
         })
 
-        const footerText = pdfConfig?.rodape || `EmissÃ£o: ${dateBr(new Date())}`
+        const footerText = sanitizePdfText(pdfConfig?.rodape) || `Emissao: ${dateBr(new Date())}`
         const footerW = font.widthOfTextAtSize(footerText, FS.small)
         pg.drawText(footerText, {
           x: PAGE.marginX,
@@ -424,7 +436,7 @@ export async function GET(
           font,
           color: C.textMuted,
         })
-        const pgLabel = `PÃ¡g. ${i + 1} / ${totalPages}`
+        const pgLabel = `Pag. ${i + 1} / ${totalPages}`
         pg.drawText(pgLabel, {
           x: PAGE.width - PAGE.marginX - font.widthOfTextAtSize(pgLabel, FS.small),
           y: PAGE.marginBottom - 32,

@@ -22,13 +22,18 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [savingById, setSavingById] = useState<Record<string, boolean>>({})
   const lastQueryFilterRef = useRef(queryFilter)
+  const fetchCountRef = useRef(0)
 
   const fetchPedidos = useCallback(async (targetPage: number, signal?: AbortSignal) => {
+    const fetchId = ++fetchCountRef.current
     try {
       setLoading(true)
       const query = queryFilter ? `&${queryFilter}` : ''
       const res = await fetch(`/api/pedidos?paginated=true&page=${targetPage}&limit=${PEDIDOS_PAGE_SIZE}${query}`, { signal })
       const payload = await res.json().catch(() => null)
+      
+      if (fetchId !== fetchCountRef.current) return
+      
       if (!res.ok) throw new Error(payload?.error || 'Erro ao carregar pedidos')
 
       const nextData = Array.isArray(payload?.data) ? payload.data : []
@@ -48,10 +53,13 @@ export function usePedidos({ queryFilter }: UsePedidosOptions) {
       setMeta(nextMeta)
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
+      if (fetchId !== fetchCountRef.current) return
       setPedidos([])
       setMeta((prev) => ({ ...prev, total: 0, pages: 1, page: targetPage }))
     } finally {
-      setLoading(false)
+      if (fetchId === fetchCountRef.current) {
+        setLoading(false)
+      }
     }
   }, [queryFilter])
 

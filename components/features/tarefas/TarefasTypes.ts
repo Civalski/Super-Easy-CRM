@@ -52,4 +52,4 @@ export const prioridadeConfig = {
     },
 }
 
-export type TabType = 'pendentes' | 'historico'
+export type TabType = 'pendentes' | 'historico' | 'atrasadas'

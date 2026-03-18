@@ -166,17 +166,31 @@ export async function GET(request: NextRequest) {
     const ambienteParam = searchParams.get('ambiente')
     const ambienteQuery = ambienteParam && ALLOWED_AMBIENTE_QUERY.has(ambienteParam) ? ambienteParam : 'geral'
     const paginated = searchParams.get('paginated') === 'true'
+    const monthId = searchParams.get('month')
+
+    let startDate: Date | undefined
+    let endDate: Date | undefined
+
+    if (monthId && /^\d{4}-\d{2}$/.test(monthId)) {
+      const [yearStr, monthStr] = monthId.split('-')
+      const year = parseInt(yearStr, 10)
+      const month = parseInt(monthStr, 10)
+      startDate = new Date(year, month - 1, 1)
+      endDate = new Date(year, month, 0, 23, 59, 59, 999)
+    }
 
     const where: {
       userId: string
       ambiente?: string | { in: string[] }
       status?: string
       tipo?: string
+      dataVencimento?: { gte: Date; lte: Date }
     } = {
       userId,
       ...(ambienteQuery === 'total' ? { ambiente: { in: ['geral', 'pessoal'] } } : { ambiente: ambienteQuery }),
       ...(status && ALLOWED_STATUS.has(status) ? { status } : {}),
       ...(tipo && ALLOWED_TIPO_CONTA.has(tipo) ? { tipo } : {}),
+      ...(startDate && endDate ? { dataVencimento: { gte: startDate, lte: endDate } } : {}),
     }
 
     if (paginated) {
@@ -195,6 +209,9 @@ export async function GET(request: NextRequest) {
       }
       if (where.tipo) {
         dynamicWhere.push(Prisma.sql`"tipo" = ${where.tipo}`)
+      }
+      if (startDate && endDate) {
+        dynamicWhere.push(Prisma.sql`"dataVencimento" >= ${startDate} AND "dataVencimento" <= ${endDate}`)
       }
       const whereSql = Prisma.sql`${Prisma.join(dynamicWhere, ' AND ')}`
 
@@ -253,6 +270,7 @@ export async function GET(request: NextRequest) {
           FROM "contas_receber"
           WHERE "userId" = ${userId}
             AND ${ambienteQuery === 'total' ? Prisma.sql`"ambiente" IN ('geral', 'pessoal')` : Prisma.sql`"ambiente" = ${ambienteQuery}`}
+            ${startDate && endDate ? Prisma.sql`AND "dataVencimento" >= ${startDate} AND "dataVencimento" <= ${endDate}` : Prisma.empty}
         `),
       ])
 

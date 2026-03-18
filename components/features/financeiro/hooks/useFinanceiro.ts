@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import type {
@@ -51,7 +51,12 @@ export function useFinanceiro() {
     autoDebito: true, recorrenciaAtiva: true, aplicarNoGrupoRecorrente: true,
   })
 
+  const fetchReceberCountRef = useRef(0)
+  const fetchPagarCountRef = useRef(0)
+
   const fetchContasTipo = useCallback(async (tipoFiltro: 'receber' | 'pagar', targetPage: number, ambienteFiltro: AmbienteFinanceiroView, signal?: AbortSignal) => {
+    const fetchId = tipoFiltro === 'receber' ? ++fetchReceberCountRef.current : ++fetchPagarCountRef.current
+    
     const setLoading = tipoFiltro === 'receber' ? setLoadingReceber : setLoadingPagar
     const setContas = tipoFiltro === 'receber' ? setContasReceber : setContasPagar
     const setMeta = tipoFiltro === 'receber' ? setMetaReceber : setMetaPagar
@@ -61,6 +66,10 @@ export function useFinanceiro() {
       const params = new URLSearchParams({ paginated: 'true', page: String(targetPage), limit: String(CONTAS_PAGE_SIZE), tipo: tipoFiltro, ambiente: ambienteFiltro })
       const res = await fetch(`/api/financeiro/contas-receber?${params.toString()}`, { signal })
       const payload = await res.json().catch(() => null)
+      
+      const currentRef = tipoFiltro === 'receber' ? fetchReceberCountRef.current : fetchPagarCountRef.current
+      if (fetchId !== currentRef) return
+      
       if (!res.ok) throw new Error(payload?.error || 'Erro ao carregar contas financeiras')
 
       const nextContas = Array.isArray(payload?.data) ? payload.data : []
@@ -77,9 +86,18 @@ export function useFinanceiro() {
       })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
+      
+      const currentRef = tipoFiltro === 'receber' ? fetchReceberCountRef.current : fetchPagarCountRef.current
+      if (fetchId !== currentRef) return
+      
       console.error('Erro ao carregar financeiro:', error)
       setContas([]); setMeta((p) => ({ ...p, total: 0, page: targetPage, pages: 1 }))
-    } finally { setLoading(false) }
+    } finally { 
+      const currentRef = tipoFiltro === 'receber' ? fetchReceberCountRef.current : fetchPagarCountRef.current
+      if (fetchId === currentRef) {
+        setLoading(false) 
+      }
+    }
   }, [])
 
   const fetchFluxo = useCallback(async (ambienteFiltro: AmbienteFinanceiroView, signal?: AbortSignal) => {

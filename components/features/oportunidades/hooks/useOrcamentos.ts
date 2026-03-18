@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import type { Oportunidade, PaginationMeta } from '../types'
@@ -26,8 +26,10 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
   const [creatingPedidoById, setCreatingPedidoById] = useState<Record<string, boolean>>({})
   const [downloadingPdfById, setDownloadingPdfById] = useState<Record<string, boolean>>({})
   const [cancelandoLoading, setCancelandoLoading] = useState(false)
+  const fetchCountRef = useRef(0)
 
   const fetchOportunidades = useCallback(async (signal?: AbortSignal, overrides?: { pageAbertas?: number; pagePerdidas?: number }) => {
+    const fetchId = ++fetchCountRef.current
     const pageA = overrides?.pageAbertas ?? pageAbertas
     const pageP = overrides?.pagePerdidas ?? pagePerdidas
     try {
@@ -38,6 +40,9 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
           { signal }
         )
         const payload = await response.json().catch(() => null)
+        
+        if (fetchId !== fetchCountRef.current) return
+        
         if (!response.ok) throw new Error(payload?.error || 'Erro ao carregar orcamentos')
 
         const data = Array.isArray(payload?.data) ? payload.data : []
@@ -59,6 +64,9 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
           { signal }
         )
         const payload = await response.json().catch(() => null)
+        
+        if (fetchId !== fetchCountRef.current) return
+        
         if (!response.ok) throw new Error(payload?.error || 'Erro ao carregar perdidas')
 
         const data = Array.isArray(payload?.data) ? payload.data : []
@@ -77,6 +85,8 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
+      if (fetchId !== fetchCountRef.current) return
+      
       console.error('Erro ao carregar orçamentos:', error)
       if (activeTab === 'abertas') {
         setOrcamentosAbertos([])
@@ -86,7 +96,9 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
         setMetaPerdidas((prev) => ({ ...prev, total: 0, page: pagePerdidas, pages: 1 }))
       }
     } finally {
-      setLoading(false)
+      if (fetchId === fetchCountRef.current) {
+        setLoading(false)
+      }
     }
   }, [activeTab, clienteQuery, searchQuery, filtersQuery, pageAbertas, pagePerdidas])
 

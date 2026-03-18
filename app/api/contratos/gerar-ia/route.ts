@@ -28,6 +28,8 @@ interface GerarIaBody {
   prompt: string
   titulo?: string
   tipo?: string
+  preambuloBase?: string
+  clausulasBase?: ClausulaGerada[]
   model?: string
   useMultiModels?: boolean
   primaryModel?: string
@@ -87,11 +89,33 @@ function sanitizeRespostaGerada(parsed: RespostaGerada): RespostaGerada {
   }
 }
 
+function sanitizeClausulasBase(clausulasBase: unknown): ClausulaGerada[] {
+  if (!Array.isArray(clausulasBase)) return []
+
+  return clausulasBase
+    .filter(
+      (clausula): clausula is ClausulaGerada =>
+        Boolean(
+          clausula &&
+            typeof clausula === 'object' &&
+            typeof (clausula as ClausulaGerada).titulo === 'string' &&
+            typeof (clausula as ClausulaGerada).conteudo === 'string'
+        )
+    )
+    .map((clausula) => ({
+      titulo: clausula.titulo.trim(),
+      conteudo: clausula.conteudo.trim(),
+    }))
+    .filter((clausula) => clausula.titulo || clausula.conteudo)
+}
+
 function buildPrompts(input: {
   titulo: string
   tipo: string
   prompt: string
   rigidez: 'flexivel' | 'moderado' | 'rigoroso'
+  preambuloBase?: string
+  clausulasBase: ClausulaGerada[]
 }) {
   const rigidezInstrucao =
     input.rigidez === 'flexivel'
@@ -116,9 +140,30 @@ Retorne APENAS um objeto JSON valido, sem markdown ou texto extra, no formato:
 }
 Preencha os campos com dados ficticios plausiveis quando o usuario nao especificar. As clausulas devem ser formais e adequadas ao tipo de contrato.`
 
+  const partesBase: string[] = []
+  if (input.preambuloBase?.trim()) {
+    partesBase.push(`PREAMBULO_BASE:\n${input.preambuloBase.trim()}`)
+  }
+  if (input.clausulasBase.length > 0) {
+    const clausulasBaseTexto = input.clausulasBase
+      .map(
+        (clausula, index) =>
+          `${index + 1}. Titulo: ${clausula.titulo || '(sem titulo)'}\nConteudo base: ${clausula.conteudo || '(a preencher)'}`
+      )
+      .join('\n\n')
+    partesBase.push(`CLAUSULAS_BASE:\n${clausulasBaseTexto}`)
+  }
+
+  const instrucoesBase =
+    partesBase.length > 0
+      ? '\n\nUse o PREAMBULO_BASE e as CLAUSULAS_BASE como estrutura inicial. Preserve a intencao, complete lacunas e melhore a redacao juridica sem remover pontos relevantes.'
+      : ''
+
+  const contextoBase = partesBase.length > 0 ? `\n\n${partesBase.join('\n\n')}` : ''
+
   const userPrompt = input.titulo
-    ? `Titulo do contrato: ${input.titulo}. Tipo: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}`
-    : `Tipo de contrato: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}`
+    ? `Titulo do contrato: ${input.titulo}. Tipo: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
+    : `Tipo de contrato: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
 
   return { systemPrompt, userPrompt }
 }
@@ -308,6 +353,8 @@ export async function POST(request: NextRequest) {
 
     const titulo = typeof body.titulo === 'string' ? body.titulo.trim() : ''
     const tipo = typeof body.tipo === 'string' ? body.tipo.trim() : 'geral'
+    const preambuloBase = typeof body.preambuloBase === 'string' ? body.preambuloBase.trim() : ''
+    const clausulasBase = sanitizeClausulasBase(body.clausulasBase)
     const useMultiModels = Boolean(body.useMultiModels)
     const requestedPrimaryModel = EXECUTION_MODEL_IDS.includes(body.primaryModel as ExecutionModelId)
       ? (body.primaryModel as ExecutionModelId)
@@ -353,6 +400,8 @@ export async function POST(request: NextRequest) {
       tipo,
       prompt,
       rigidez,
+      preambuloBase,
+      clausulasBase,
     })
 
     try {

@@ -294,6 +294,45 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => handleChange('lembreteProximaAcao', !form.lembreteProximaAcao)}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+              form.lembreteProximaAcao
+                ? 'border-violet-400/60 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/40'
+                : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-500'
+            }`}
+          >
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                form.lembreteProximaAcao
+                  ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300'
+                  : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <Bell size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Lembrete da próxima ação</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {form.lembreteProximaAcao
+                  ? 'Você será notificado na data definida'
+                  : 'Clique para ativar notificação'}
+              </p>
+            </div>
+            <span
+              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                form.lembreteProximaAcao ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                  form.lembreteProximaAcao ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </span>
+          </button>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={LABEL_CLASS}>Data de Fechamento</label>
@@ -357,44 +396,6 @@ export function CreatePedidoDiretoModal({ initialPerson = null, onClose, onCreat
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleChange('lembreteProximaAcao', !form.lembreteProximaAcao)}
-            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-              form.lembreteProximaAcao
-                ? 'border-violet-400/60 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/40'
-                : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-500'
-            }`}
-          >
-            <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                form.lembreteProximaAcao
-                  ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300'
-                  : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-              }`}
-            >
-              <Bell size={18} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Lembrete da próxima ação</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {form.lembreteProximaAcao
-                  ? 'Você será notificado na data definida'
-                  : 'Clique para ativar notificação'}
-              </p>
-            </div>
-            <span
-              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                form.lembreteProximaAcao ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-                  form.lembreteProximaAcao ? 'left-5' : 'left-0.5'
-                }`}
-              />
-            </span>
-          </button>
 
           {hasCartItems && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/40">

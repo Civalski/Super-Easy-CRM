@@ -19,13 +19,12 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
   const [meta, setMeta] = useState<PaginationMeta>(initialPaginationMeta)
   const lastQueryFilterRef = useRef(queryFilter)
   const lastFocusFetchAtRef = useRef(0)
-  const fetchingRef = useRef(false)
+  const fetchCountRef = useRef(0)
 
   const fetchClientes = useCallback(
     async (targetPage: number, targetProfile: ClientePerfil | '', signal?: AbortSignal) => {
-      if (fetchingRef.current) return
-
-      fetchingRef.current = true
+      const fetchId = ++fetchCountRef.current
+      
       try {
         setLoading(true)
         const query = queryFilter ? `&${queryFilter}` : ''
@@ -36,6 +35,9 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
         )
 
         const payload = await response.json().catch(() => null)
+        
+        if (fetchId !== fetchCountRef.current) return
+        
         if (!response.ok) {
           throw new Error(payload?.error || 'Erro ao carregar clientes')
         }
@@ -59,13 +61,16 @@ export function useClientesPage({ queryFilter = '' }: UseClientesPageOptions = {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return
         }
+        
+        if (fetchId !== fetchCountRef.current) return
 
         console.error('Erro ao carregar clientes:', error)
         setClientes([])
         setMeta((prev) => ({ ...prev, total: 0, pages: 1, page: targetPage }))
       } finally {
-        setLoading(false)
-        fetchingRef.current = false
+        if (fetchId === fetchCountRef.current) {
+          setLoading(false)
+        }
       }
     },
     [queryFilter]

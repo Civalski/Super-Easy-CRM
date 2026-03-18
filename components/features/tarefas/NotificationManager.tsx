@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useNotifications } from './NotificationsProvider'
+import { useNotificationSound } from '@/lib/hooks/useNotificationSound'
 const STORAGE_KEY = 'notifiedTasks'
 const MAX_STORED_TASK_IDS = 500
 
@@ -41,6 +42,8 @@ export function NotificationManager() {
     const pathname = usePathname()
     const { status } = useSession()
     const { notifications } = useNotifications()
+
+    const { playSound } = useNotificationSound()
 
     useEffect(() => {
         if (pathname === '/login' || pathname === '/register') return
@@ -90,12 +93,7 @@ export function NotificationManager() {
                         }
                     }
 
-                    try {
-                        const audio = new Audio('/notification.mp3')
-                        void audio.play()
-                    } catch {
-                        // no-op
-                    }
+                    playSound()
 
                     notifiedTaskIds.push(tarefa.id)
                     seenIds.add(tarefa.id)

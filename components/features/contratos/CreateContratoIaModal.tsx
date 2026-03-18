@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { toast } from '@/lib/toast'
+import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { MODELOS_IA_CONTRATO } from '@/lib/contratos-ia'
+import { toast } from '@/lib/toast'
 import { ContratoFormDrawer } from './ContratoFormDrawer'
+import { ContratoFormFields } from './ContratoFormFields'
 import { ContratoIaAssistPanel } from './ContratoIaAssistPanel'
-import { ContratoPartiesFields } from './ContratoPartiesFields'
 import { useContratoForm } from './hooks/useContratoForm'
 import type { CreateContratoModalProps } from './types'
 
@@ -29,15 +30,24 @@ export function CreateContratoIaModal({
     form,
     setForm,
     resetForm,
+    clienteLabel,
     emptyParte,
+    clausulasMode,
+    setClausulasMode,
+    clausulasTextoBruto,
+    setClausulasTextoBruto,
     customFieldsContratante,
     customFieldsContratado,
+    handleClienteChange,
+    handleField,
+    handleClausulaChange,
+    addClausula,
+    removeClausula,
     handleParteChange,
     addCustomField,
     updateCustomField,
     removeCustomField,
-    handleField,
-    setClausulasMode,
+    applyParsedClausulas,
     buildPayload,
   } = useContratoForm()
   const [iaPrompt, setIaPrompt] = useState('')
@@ -62,6 +72,14 @@ export function CreateContratoIaModal({
       .catch(() => setIaUso([]))
   }, [open, resetForm])
 
+  const handleSelectChange = useCallback(
+    (opt: AsyncSelectOption | null) => {
+      if (opt?.tipo && opt.tipo !== 'cliente') return
+      handleClienteChange(opt?.id ?? '', opt?.nome ?? '')
+    },
+    [handleClienteChange]
+  )
+
   const handleGerarComIa = useCallback(async () => {
     const prompt = iaPrompt.trim()
     if (!prompt) {
@@ -81,6 +99,8 @@ export function CreateContratoIaModal({
           prompt,
           titulo: form.titulo || undefined,
           tipo: form.tipo || undefined,
+          preambuloBase: form.preambulo || undefined,
+          clausulasBase: form.clausulas.filter((clausula) => clausula.titulo.trim() || clausula.conteudo.trim()),
           model: useMultiModels ? 'multi-models' : primaryModel,
           useMultiModels,
           primaryModel: useMultiModels ? FIXED_MULTI_PRIMARY_MODEL : primaryModel,
@@ -100,8 +120,16 @@ export function CreateContratoIaModal({
         clausulas:
           Array.isArray(data.clausulas) && data.clausulas.length > 0 ? data.clausulas : prev.clausulas,
         dadosPartes: {
-          contratante: { ...emptyParte, ...data.dadosPartes?.contratante },
-          contratado: { ...emptyParte, ...data.dadosPartes?.contratado },
+          contratante: {
+            ...emptyParte,
+            ...prev.dadosPartes.contratante,
+            ...data.dadosPartes?.contratante,
+          },
+          contratado: {
+            ...emptyParte,
+            ...prev.dadosPartes.contratado,
+            ...data.dadosPartes?.contratado,
+          },
         },
       }))
       setClausulasMode('manual')
@@ -123,6 +151,8 @@ export function CreateContratoIaModal({
     }
   }, [
     emptyParte,
+    form.clausulas,
+    form.preambulo,
     form.tipo,
     form.titulo,
     iaPrompt,
@@ -143,8 +173,6 @@ export function CreateContratoIaModal({
   const fallbackModelLimit = MODELOS_IA_CONTRATO.find((model) => model.id === effectiveUsageKey)?.limiteDiario ?? 0
   const canGenerate = (effectiveUsage?.restante ?? fallbackModelLimit) > 0
 
-  const handlePrimaryModelChange = (value: string) => setPrimaryModel(value)
-
   return (
     <ContratoFormDrawer
       open={open}
@@ -157,81 +185,42 @@ export function CreateContratoIaModal({
       primaryDisabled={saving}
       primaryLoading={saving}
     >
-      <div className="space-y-4">
-        <ContratoIaAssistPanel
-          iaPrompt={iaPrompt}
-          iaLoading={iaLoading}
-          useMultiModels={useMultiModels}
-          primaryModel={primaryModel}
-          iaRigidez={iaRigidez}
-          iaUso={iaUso}
-          canGenerate={canGenerate}
-          onIaPromptChange={setIaPrompt}
-          onUseMultiModelsChange={setUseMultiModels}
-          onPrimaryModelChange={handlePrimaryModelChange}
-          onIaRigidezChange={setIaRigidez}
-          onGenerate={() => void handleGerarComIa()}
-        />
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Nome do contrato
-          </label>
-          <input
-            type="text"
-            value={form.titulo}
-            onChange={(event) => handleField('titulo', event.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Ex: Contrato de Prestacao de Servicos"
+      <ContratoFormFields
+        form={form}
+        clienteLabel={clienteLabel}
+        clausulasMode={clausulasMode}
+        clausulasTextoBruto={clausulasTextoBruto}
+        customFieldsContratante={customFieldsContratante}
+        customFieldsContratado={customFieldsContratado}
+        extraContent={
+          <ContratoIaAssistPanel
+            iaPrompt={iaPrompt}
+            iaLoading={iaLoading}
+            useMultiModels={useMultiModels}
+            primaryModel={primaryModel}
+            iaRigidez={iaRigidez}
+            iaUso={iaUso}
+            canGenerate={canGenerate}
+            onIaPromptChange={setIaPrompt}
+            onUseMultiModelsChange={setUseMultiModels}
+            onPrimaryModelChange={setPrimaryModel}
+            onIaRigidezChange={setIaRigidez}
+            onGenerate={() => void handleGerarComIa()}
           />
-        </div>
-
-        <ContratoPartiesFields
-          dadosPartes={form.dadosPartes}
-          customFieldsContratante={customFieldsContratante}
-          customFieldsContratado={customFieldsContratado}
-          onParteChange={handleParteChange}
-          onAddCustomField={addCustomField}
-          onUpdateCustomField={updateCustomField}
-          onRemoveCustomField={removeCustomField}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Data inicio
-            </label>
-            <input
-              type="date"
-              value={form.dataInicio}
-              onChange={(event) => handleField('dataInicio', event.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Data fim
-            </label>
-            <input
-              type="date"
-              value={form.dataFim}
-              onChange={(event) => handleField('dataFim', event.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Data assinatura
-            </label>
-            <input
-              type="date"
-              value={form.dataAssinatura}
-              onChange={(event) => handleField('dataAssinatura', event.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
-        </div>
-      </div>
+        }
+        onClienteChange={handleSelectChange}
+        onFieldChange={handleField}
+        onClausulasModeChange={setClausulasMode}
+        onClausulasTextoBrutoChange={setClausulasTextoBruto}
+        onApplyClausulasTexto={applyParsedClausulas}
+        onClausulaChange={handleClausulaChange}
+        onAddClausula={addClausula}
+        onRemoveClausula={removeClausula}
+        onParteChange={handleParteChange}
+        onAddCustomField={addCustomField}
+        onUpdateCustomField={updateCustomField}
+        onRemoveCustomField={removeCustomField}
+      />
     </ContratoFormDrawer>
   )
 }

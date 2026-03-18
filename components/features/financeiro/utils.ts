@@ -56,19 +56,40 @@ export function parseCurrencyInput(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-/** Retorna o quinto dia útil do mês atual em formato YYYY-MM-DD (exclui sábado e domingo) */
+/** Retorna o quinto dia útil. Por padrão usa o do mês seguinte, exceto se o primeiro dia útil do mês atual ainda não tiver chegado. */
 export function getDefaultDataVencimento(): string {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth()
-  const businessDays: number[] = []
-  for (let d = 1; d <= 31; d++) {
-    const date = new Date(year, month, d)
-    if (date.getMonth() !== month) break
-    const dow = date.getDay()
-    if (dow !== 0 && dow !== 6) businessDays.push(d)
+
+  const getBusinessDays = (y: number, m: number) => {
+    const bizDays: number[] = []
+    for (let d = 1; d <= 31; d++) {
+      const date = new Date(y, m, d)
+      if (date.getMonth() !== m) break
+      const dow = date.getDay()
+      if (dow !== 0 && dow !== 6) bizDays.push(d)
+    }
+    return bizDays
   }
-  const fifth = businessDays[4] ?? businessDays[businessDays.length - 1] ?? 1
-  const d = new Date(year, month, fifth)
-  return d.toISOString().slice(0, 10)
+
+  const currentMonthBizDays = getBusinessDays(year, month)
+  const firstBusinessDay = currentMonthBizDays[0] ?? 1
+
+  let targetYear = year
+  let targetMonth = month
+
+  if (now.getDate() >= firstBusinessDay) {
+    targetMonth = month + 1
+    if (targetMonth > 11) {
+      targetMonth = 0
+      targetYear++
+    }
+  }
+
+  const targetBizDays = getBusinessDays(targetYear, targetMonth)
+  const fifthBusinessDay = targetBizDays[4] ?? targetBizDays[targetBizDays.length - 1] ?? 1
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${targetYear}-${pad(targetMonth + 1)}-${pad(fifthBusinessDay)}`
 }

@@ -41,6 +41,7 @@ interface PaginationMeta {
 
 interface TaskCounts {
   pendentes: number
+  atrasadas: number
   concluidas: number
 }
 
@@ -71,6 +72,7 @@ function TarefasPageContent() {
   })
   const [counts, setCounts] = useState<TaskCounts>({
     pendentes: 0,
+    atrasadas: 0,
     concluidas: 0,
   })
   const [activeTab, setActiveTab] = useState<TabType>('pendentes')
@@ -116,6 +118,9 @@ function TarefasPageContent() {
 
       if (activeTab === 'historico') {
         params.set('status', 'concluida')
+      } else if (activeTab === 'atrasadas') {
+        params.set('status', 'pendente,em_andamento')
+        params.set('atrasadas', 'true')
       } else if (filtroStatus) {
         params.set('status', filtroStatus)
       } else {
@@ -156,6 +161,7 @@ function TarefasPageContent() {
       setMeta(nextMeta)
       setCounts({
         pendentes: Number(payload?.counts?.pendentes || 0),
+        atrasadas: Number(payload?.counts?.atrasadas || 0),
         concluidas: Number(payload?.counts?.concluidas || 0),
       })
     } catch (error) {
@@ -164,6 +170,7 @@ function TarefasPageContent() {
       setMeta((prev) => ({ ...prev, total: 0, pages: 1, page: targetPage }))
       setCounts({
         pendentes: 0,
+        atrasadas: 0,
         concluidas: 0,
       })
     } finally {
@@ -397,7 +404,7 @@ function TarefasPageContent() {
   }
 
   const tarefasExibidas =
-    activeTab === 'pendentes'
+    activeTab === 'pendentes' || activeTab === 'atrasadas'
       ? [...tarefas].sort((a, b) => {
           const prioridadeOrder = { alta: 3, media: 2, baixa: 1 }
           const prioridadeDiff =
@@ -441,6 +448,7 @@ function TarefasPageContent() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         pendentesCount={counts.pendentes}
+        atrasadasCount={counts.atrasadas}
         concluidasCount={counts.concluidas}
         onLimparFiltros={limparFiltros}
       />

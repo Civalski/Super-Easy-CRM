@@ -1,276 +1,313 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, AlertTriangle, TrendingUp, Loader2 } from '@/lib/icons'
+import { useState, useRef } from 'react'
+import { BarChart3, Loader2, FileText, Download, Target, Users, Receipt, XCircle } from 'lucide-react'
 import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
-import type { FunnelReport, LossesReport, PerformanceReport } from '@/types/reports'
-import { formatCurrency, formatDate } from '@/lib/format'
+import SideCreateDrawer from '@/components/common/SideCreateDrawer'
+import { DashboardChart, type DashboardChartRef } from '@/components/features/relatorios/DashboardChart'
+
+type MetricaKey = 'novos_clientes' | 'orcamentos' | 'pedidos' | 'cancelados'
+type ChartType = 'linha' | 'pizza'
+
+interface MetricaOption {
+  key: MetricaKey
+  label: string
+  icon: React.ElementType
+}
+
+const METRICAS_OPCIONAIS: MetricaOption[] = [
+  { key: 'novos_clientes', label: 'Novos clientes', icon: Users },
+  { key: 'orcamentos', label: 'Quantidade de orçamentos', icon: Target },
+  { key: 'pedidos', label: 'Quantidade de pedidos', icon: Receipt },
+  { key: 'cancelados', label: 'Pedidos/orçamentos cancelados', icon: XCircle },
+]
 
 export default function RelatoriosPage() {
   const minimal = usePageHeaderMinimal()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [funnel, setFunnel] = useState<FunnelReport | null>(null)
-  const [losses, setLosses] = useState<LossesReport | null>(null)
-  const [performance, setPerformance] = useState<PerformanceReport | null>(null)
+  const dashboardRef = useRef<DashboardChartRef | null>(null)
+  
+  // Sidebar visibility
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Form State
+  const [description, setDescription] = useState('')
+  const [chartType, setChartType] = useState<ChartType>('linha')
   const [startDate, setStartDate] = useState(() => {
     const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    return `${now.getFullYear()}-01-01`
   })
   const [endDate, setEndDate] = useState(() => {
     const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-      new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-    ).padStart(2, '0')}`
+    return `${now.getFullYear()}-12-31`
   })
+  const [selectedMetrics, setSelectedMetrics] = useState<Set<MetricaKey>>(new Set<MetricaKey>(['pedidos']))
 
-  const fetchReports = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const params = `start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`
-
-      const [funnelRes, lossesRes, performanceRes] = await Promise.all([
-        fetch(`/api/relatorios/funil?${params}`),
-        fetch(`/api/relatorios/perdas?${params}`),
-        fetch(`/api/relatorios/performance?${params}`),
-      ])
-
-      if (!funnelRes.ok || !lossesRes.ok || !performanceRes.ok) {
-        throw new Error('Falha ao carregar relatorios')
+  // Data state
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  
+  const toggleMetric = (key: MetricaKey) => {
+    setSelectedMetrics(prev => {
+      const nov = new Set(prev)
+      if (nov.has(key)) {
+        if (nov.size > 1) nov.delete(key) // Evita deixar vazio
+      } else {
+        nov.add(key)
       }
+      return nov
+    })
+  }
 
-      const [funnelData, lossesData, performanceData] = await Promise.all([
-        funnelRes.json(),
-        lossesRes.json(),
-        performanceRes.json(),
-      ])
+  const handleFetchAndGenerate = async () => {
+    if (selectedMetrics.size === 0) {
+      setError('Selecione pelo menos uma métrica para o relatório.')
+      return
+    }
 
-      setFunnel(funnelData)
-      setLosses(lossesData)
-      setPerformance(performanceData)
+    setLoading(true)
+    setError('')
+    try {
+      const query = new URLSearchParams()
+      query.set('data_inicio', startDate)
+      query.set('data_fim', endDate)
+      selectedMetrics.forEach(m => query.append('metricas', m))
+
+      const res = await fetch(`/api/relatorios/dashboard?${query.toString()}`)
+      if (!res.ok) throw new Error('Erro ao buscar dados do relatório')
+      
+      const json = await res.json()
+      setData(json)
+      
+      // Wait for React to render the new data into the DOM offscreen
+      setTimeout(() => {
+        if (dashboardRef.current) {
+          dashboardRef.current.generatePdf().finally(() => {
+            setLoading(false)
+            setDrawerOpen(false) // Opcional: fechar drawer ao concluir
+          })
+        } else {
+          setLoading(false)
+          setError('Erro interno ao preparar o arquivo.')
+        }
+      }, 500) // 500ms allows Recharts animations to finish before capturing
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar relatorios')
-    } finally {
+      console.error(err)
+      setError('Erro ao carregar os dados para gerar o dashboard.')
       setLoading(false)
     }
-  }, [startDate, endDate])
+  }
 
-  useEffect(() => {
-    fetchReports()
-  }, [fetchReports])
-
-  const topRisk = useMemo(() => performance?.riskRanking.slice(0, 8) || [], [performance])
+  const periodLabel = `${startDate.split('-').reverse().join('/')} a ${endDate.split('-').reverse().join('/')}`
+  const metricsData = METRICAS_OPCIONAIS.filter(m => selectedMetrics.has(m.key)).map(m => ({
+    key: m.key,
+    label: m.label
+  }))
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {!minimal && (
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-linear-to-br from-rose-500 to-red-500 p-2.5 shadow-lg shadow-rose-500/25">
+            <div className="rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 p-2.5 shadow-lg shadow-purple-500/25">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Relatorios</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Relatórios e Análises</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Funil, perdas e performance comercial
+                Gere arquivos em PDF formatados do desempenho do seu negócio
               </p>
             </div>
           </div>
         )}
 
-        <div className={`flex flex-wrap items-end gap-2 ${minimal ? 'md:ml-auto' : ''}`}>
-          <div>
-            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">Inicio</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">Fim</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
+        <div className={`flex flex-wrap items-end gap-3 ${minimal ? 'md:ml-auto' : ''}`}>
           <button
             type="button"
-            onClick={fetchReports}
-            className="rounded-lg border border-purple-300 dark:border-purple-600 shadow-xs px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800"
+            onClick={() => setDrawerOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all"
           >
-            Atualizar
+            <FileText size={16} />
+            Novo Relatório PDF
           </button>
         </div>
       </div>
 
-      {loading && (
-        <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+      <div className="flex min-h-[500px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-500 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.03)_0,transparent_100%)] w-full h-full pointer-events-none" />
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-xs border border-gray-100 dark:border-gray-700 mb-6 relative z-10">
+          <BarChart3 className="h-10 w-10 text-indigo-400" />
         </div>
-      )}
+        <h2 className="text-xl font-medium text-slate-700 dark:text-slate-300 relative z-10">Nenhum relatório na tela</h2>
+        <p className="mt-2 text-sm text-slate-500 max-w-sm relative z-10">
+          Você pode cruzar e comparar diferentes dados do seu CRM através da opção de menu lateral clicando em <strong>Novo Relatório PDF</strong>.
+        </p>
+      </div>
 
-      {!loading && error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && funnel && losses && performance && (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="crm-card p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Lead para Orçamento</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                {funnel.conversion.leadToOrcamento}%
-              </p>
-            </div>
-            <div className="crm-card p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Win Rate</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                {funnel.conversion.winRate}%
-              </p>
-            </div>
-            <div className="crm-card p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Ciclo Medio</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                {performance.metrics.cicloMedioDias} dias
+      <SideCreateDrawer
+        open={drawerOpen}
+        onClose={() => !loading && setDrawerOpen(false)}
+        maxWidthClass="max-w-md"
+      >
+        <div className="flex h-full flex-col bg-white dark:bg-slate-900 shadow-2xl relative">
+          <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white dark:bg-slate-900 z-10 sticky top-0">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white pb-1">
+                Criar Relatório Personalizado
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Preencha o formulário para configurar o PDF
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <section className="crm-card p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Funil</h2>
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+            {error && (
+              <div className="p-4 bg-red-50 text-red-600 rounded-lg dark:bg-red-900/30 dark:text-red-400 text-sm">
+                {error}
               </div>
-              <div className="space-y-3">
-                {funnel.stages.map((stage) => (
-                  <div key={stage.key}>
-                    <div className="mb-1 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
-                      <span>{stage.label}</span>
-                      <span>{stage.total}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                      <div
-                        className="h-full rounded-full bg-blue-500"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (stage.total /
-                              Math.max(...funnel.stages.map((item) => item.total), 1)) *
-                              100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            )}
 
-            <section className="crm-card p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Motivos de Perda
-                </h2>
+            {/* Title / Description */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Título descritivo do PDF
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Análise de Vendas Q1 2026"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none dark:border-gray-700 dark:bg-slate-900 dark:text-white"
+              />
+            </div>
+
+            {/* Chart Type */}
+            <div className="space-y-3">
+               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Formato de Gráfico
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setChartType('linha')}
+                  className={`border rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                    chartType === 'linha'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-800 dark:text-gray-300'
+                  }`}
+                >
+                  <BarChart3 className="h-5 w-5 mx-auto mb-1 opacity-70" />
+                  Evolução em Linha
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartType('pizza')}
+                  className={`border rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                    chartType === 'pizza'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-800 dark:text-gray-300'
+                  }`}
+                >
+                  <Target className="h-5 w-5 mx-auto mb-1 opacity-70" />
+                  Total em Pizza
+                </button>
               </div>
-              <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Perdidas</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">{losses.totals.perdidas}</p>
-                </div>
-                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Valor Perdido</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(losses.totals.valorPerdido)}
-                  </p>
-                </div>
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Início</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-indigo-500 outline-none dark:border-gray-700 dark:bg-slate-900 dark:text-white"
+                />
               </div>
               <div className="space-y-2">
-                {losses.motivos.length === 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Sem perdas no periodo.</p>
-                )}
-                {losses.motivos.slice(0, 5).map((motivo) => (
-                  <div
-                    key={motivo.motivo}
-                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-gray-700"
-                  >
-                    <span className="text-gray-700 dark:text-gray-200">{motivo.motivo}</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {motivo.total} ({motivo.percentual}%)
-                    </span>
-                  </div>
-                ))}
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Fim</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-indigo-500 outline-none dark:border-gray-700 dark:bg-slate-900 dark:text-white"
+                />
               </div>
-            </section>
+            </div>
+
+            {/* Relacionar Informações */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 block mb-1">
+                Cruzar Informações no Gráfico
+              </label>
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                {METRICAS_OPCIONAIS.map((opt) => {
+                  const Icon = opt.icon
+                  const isSelected = selectedMetrics.has(opt.key)
+                  return (
+                    <label 
+                      key={opt.key}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${
+                        isSelected 
+                          ? 'bg-white border-indigo-200 shadow-xs dark:bg-slate-800 dark:border-indigo-500/50' 
+                          : 'border-transparent hover:bg-gray-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleMetric(opt.key)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 outline-none cursor-pointer"
+                      />
+                      <Icon className={`h-5 w-5 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`} />
+                      <span className={`text-sm ${isSelected ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                        {opt.label}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
-          <section className="crm-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-                Orçamentos em Risco
-              </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Atualizado em {formatDate(performance.generatedAt)}
-              </span>
-            </div>
-            {topRisk.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Sem orçamentos em risco.</p>
-            )}
-            {topRisk.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                      <th className="px-2 py-2">Orçamento</th>
-                      <th className="px-2 py-2">Cliente</th>
-                      <th className="px-2 py-2">Score</th>
-                      <th className="px-2 py-2">Sem atualizar</th>
-                      <th className="px-2 py-2">Proxima acao</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topRisk.map((item) => (
-                      <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800">
-                        <td className="px-2 py-2 text-gray-800 dark:text-gray-100">{item.titulo}</td>
-                        <td className="px-2 py-2 text-gray-600 dark:text-gray-300">{item.cliente}</td>
-                        <td className="px-2 py-2">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                              item.riskLevel === 'alto'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                                : item.riskLevel === 'medio'
-                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                            }`}
-                          >
-                            {item.riskScore}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-gray-600 dark:text-gray-300">
-                          {item.daysWithoutUpdate} dias
-                        </td>
-                        <td className="px-2 py-2 text-gray-600 dark:text-gray-300">
-                          {item.nextAction ? formatDate(item.nextAction.at) : 'Nao definida'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
-      )}
+          {/* Footer Action */}
+          <div className="p-6 border-t border-gray-100 bg-gray-50 dark:bg-slate-900 dark:border-gray-800 mt-auto">
+            <button
+              type="button"
+              onClick={handleFetchAndGenerate}
+              disabled={loading || selectedMetrics.size === 0}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-100 focus:outline-[none] disabled:opacity-50 transition-all dark:focus:ring-indigo-900"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Gerando PDF do Relatório...
+                </>
+              ) : (
+                <>
+                  <Download className="h-5 w-5" />
+                  Gerar e Baixar PDF ({selectedMetrics.size} métricas)
+                </>
+              )}
+            </button>
+            <p className="text-center text-xs text-slate-400 mt-4">
+              O tempo de geração pode variar de acordo com a quantidade de dados.
+            </p>
+          </div>
+        </div>
+      </SideCreateDrawer>
+
+      <DashboardChart 
+        ref={dashboardRef}
+        data={data} 
+        chartType={chartType} 
+        metrics={metricsData}
+        description={description}
+        periodLabel={periodLabel} 
+      />
     </div>
   )
 }
-
-

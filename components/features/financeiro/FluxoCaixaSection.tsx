@@ -7,6 +7,7 @@ import type { FluxoData } from './types'
 interface FluxoCaixaSectionProps {
   fluxo: FluxoData | null
   ambienteLabel: string
+  onMonthClick?: (month: string) => void
 }
 
 const summaryCards = [
@@ -25,7 +26,7 @@ const numericColumns = [
   { label: 'Saldo proj.', key: 'saldoProjetado' as const, color: 'text-gray-700 dark:text-gray-300' },
 ] as const
 
-export default function FluxoCaixaSection({ fluxo, ambienteLabel }: FluxoCaixaSectionProps) {
+export default function FluxoCaixaSection({ fluxo, ambienteLabel, onMonthClick }: FluxoCaixaSectionProps) {
   return (
     <div className="crm-card p-5">
       <div className="mb-3 flex items-center gap-2">
@@ -60,8 +61,12 @@ export default function FluxoCaixaSection({ fluxo, ambienteLabel }: FluxoCaixaSe
               </thead>
               <tbody>
                 {fluxo.series.map((item) => (
-                  <tr key={item.month} className="border-b border-gray-100 dark:border-gray-800">
-                    <td className="px-2 py-2 text-gray-800 dark:text-gray-100">{formatMonthLabel(item.month)}</td>
+                  <tr 
+                    key={item.month} 
+                    onClick={() => onMonthClick?.(item.month)}
+                    className="border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="px-2 py-2 text-gray-800 dark:text-gray-100 font-medium underline decoration-dashed decoration-gray-300 dark:decoration-gray-600 underline-offset-4">{formatMonthLabel(item.month)}</td>
                     {numericColumns.map((col) => (
                       <td key={col.key} className={`px-2 py-2 ${col.color}`}>
                         {formatCurrency(item[col.key])}

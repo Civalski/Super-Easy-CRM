@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Calendar, AlertCircle, CheckCircle2, Trash2, X } from '@/lib/icons';
+import { Calendar, AlertCircle, CheckCircle2, Trash2, X, Volume2, VolumeX } from '@/lib/icons';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TaskNotification } from '@/types/notifications';
+import { useNotificationSound } from '@/lib/hooks/useNotificationSound';
 
 interface NotificationProps {
     notifications: TaskNotification[];
@@ -172,6 +173,8 @@ const SwipeableNotificationItem = ({ notification, onSelect, onDismiss, onClose 
 };
 
 export function NotificationDropdown({ notifications, isLoading, onClose, onSelect, onClearAll, onDismiss }: NotificationProps) {
+    const { isEnabled, toggleSound } = useNotificationSound();
+
     return (
         <div
             className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] crm-card max-h-[min(24rem,70vh)] overflow-hidden z-50 flex flex-col sm:w-96"
@@ -184,15 +187,28 @@ export function NotificationDropdown({ notifications, isLoading, onClose, onSele
                         {notifications.length}
                     </span>
                 </div>
-                {notifications.length > 0 && (
+                <div className="flex items-center gap-3">
                     <button
-                        onClick={onClearAll}
-                        className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 flex items-center gap-1 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSound();
+                        }}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        title={isEnabled ? "Desativar som de notificações" : "Ativar som de notificações"}
+                        aria-label={isEnabled ? "Desativar som de notificações" : "Ativar som de notificações"}
                     >
-                        <Trash2 size={12} />
-                        Limpar tudo
+                        {isEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
                     </button>
-                )}
+                    {notifications.length > 0 && (
+                        <button
+                            onClick={onClearAll}
+                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 flex items-center gap-1 transition-colors"
+                        >
+                            <Trash2 size={12} />
+                            Limpar tudo
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="overflow-y-auto flex-1">
