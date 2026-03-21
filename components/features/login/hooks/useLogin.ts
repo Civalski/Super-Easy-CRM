@@ -55,7 +55,7 @@ export function useLogin(theme: AppTheme) {
   const [error, setError] = useState(() => {
     const msg = urlError
     if (unconfirmedEmailFromQuery) {
-      return 'Seu email ainda nao foi confirmado. Reenviamos voce para a tela de confirmacao.'
+      return 'Seu email ainda nao foi confirmado.'
     }
     if (msg === 'oauth_failed') return 'Login com Google cancelado ou falhou.'
     if (msg === 'oauth_redirect_not_allowed') return 'A URL de retorno deste ambiente nao esta autorizada no Supabase para login com Google.'
@@ -107,7 +107,9 @@ export function useLogin(theme: AppTheme) {
 
       const unconfirmedEmail = extractUnconfirmedEmail(result?.error ?? undefined)
       if (unconfirmedEmail) {
-        router.replace(`/register/check-email?email=${encodeURIComponent(unconfirmedEmail)}&status=error`)
+        router.replace(
+          `/login?email=${encodeURIComponent(unconfirmedEmail)}&confirmation=required`
+        )
         router.refresh()
         return
       }

@@ -247,7 +247,9 @@ export function useRegisterCheckout(theme: AppTheme = 'dark') {
         const emailToConfirm = data.email ?? form.email
         if (data.requiresEmailConfirmation !== false && emailToConfirm) {
           setLoadingStep('redirecting')
-          router.replace(`/register/check-email?email=${encodeURIComponent(emailToConfirm)}`)
+          router.replace(
+            `/login?email=${encodeURIComponent(emailToConfirm)}&confirmation=pending`
+          )
           return
         }
 

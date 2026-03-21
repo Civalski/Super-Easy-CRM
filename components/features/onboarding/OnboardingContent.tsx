@@ -50,7 +50,7 @@ export function OnboardingContent() {
 
     window.dispatchEvent(new CustomEvent('arker:onboarding-completed'))
     if (!isRefazer) {
-      window.dispatchEvent(new CustomEvent('arker:show-guide'))
+      window.dispatchEvent(new CustomEvent('arker:show-guide', { detail: { force: true } }))
     }
   }
 
@@ -60,7 +60,7 @@ export function OnboardingContent() {
 
     window.dispatchEvent(new CustomEvent('arker:onboarding-completed'))
     if (!isRefazer) {
-      window.dispatchEvent(new CustomEvent('arker:show-guide'))
+      window.dispatchEvent(new CustomEvent('arker:show-guide', { detail: { force: true } }))
     }
   }
 

@@ -90,7 +90,9 @@ export async function GET(request: NextRequest) {
     const registerToken = createRegisterCompletionToken(user.id)
 
     return NextResponse.redirect(
-      buildRedirectUrl(request, '/register/verified', {
+      buildRedirectUrl(request, '/login', {
+        confirmed: '1',
+        email: confirmedEmail,
         register_token: registerToken,
       })
     )

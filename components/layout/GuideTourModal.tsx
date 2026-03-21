@@ -95,8 +95,9 @@ export function GuideTourModal() {
     useGuideTour()
 
   useEffect(() => {
-    const handler = () => {
-      if (readUxFlagsCookie()?.guideSeen) return
+    const handler = (event: Event) => {
+      const force = (event as CustomEvent<{ force?: boolean }>).detail?.force === true
+      if (!force && readUxFlagsCookie()?.guideSeen) return
       const visibleItems = getVisibleItems(session)
       if (visibleItems.length > 0) openGuide(visibleItems)
     }

@@ -5,6 +5,7 @@ import { Button } from '@/components/common'
 import { ArrowRight, QuestionMarkCircle } from '@/lib/icons'
 import type { LoginThemeAppearance } from './types'
 import type { AppTheme } from '@/lib/ui/themePreference'
+import { LoginEmailConfirmationPanel } from './LoginEmailConfirmationPanel'
 
 type LoginFormCardProps = {
   appearance: LoginThemeAppearance
@@ -70,6 +71,8 @@ export function LoginFormCard({
       </div>
 
       <form className="space-y-4" onSubmit={onSubmit}>
+        <LoginEmailConfirmationPanel appearance={appearance} />
+
         <div className="space-y-1.5">
           <label htmlFor="username" className={`text-sm font-medium ${appearance.label}`}>
             Usuario ou email
