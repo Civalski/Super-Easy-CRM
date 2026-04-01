@@ -15,6 +15,7 @@ import {
 
 export interface GuideStepMeta {
   funilTab?: 'sem_contato' | 'contatado' | 'em_potencial' | 'aguardando_orcamento'
+  messageGuideField?: 'title' | 'description'
 }
 
 export interface MenuItemGuideStep {

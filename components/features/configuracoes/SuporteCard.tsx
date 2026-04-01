@@ -37,7 +37,7 @@ export function SuporteCard() {
             </a>
 
             <a
-              href="mailto:arkersoft@gmail.com"
+              href="mailto:arkersoft@arkersoft.com.br"
               className="flex items-center gap-2 rounded-lg border border-slate-200 p-2.5 text-gray-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800/60"
             >
               <Mail className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-400" />

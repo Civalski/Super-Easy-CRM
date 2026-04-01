@@ -15,7 +15,7 @@ export function ComprarLeadDrawer({ open, onClose, onImportClick }: ComprarLeadD
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Comprar lead</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Importar leads</h2>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               Leads qualificados para prospecção B2B
             </p>

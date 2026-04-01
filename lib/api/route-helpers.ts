@@ -79,7 +79,7 @@ export async function withAuth(
         return NextResponse.json(
           {
             error:
-              'Acesso inativo. Confirme seu email para liberar os 7 dias gratis ou assine um plano para continuar usando o CRM.',
+              'Acesso inativo. O periodo de 1 mes premium gratis terminou. Assine um plano e aplique o cupom ARKER25 para 25% de desconto vitalicio na mensalidade.',
             code: 'SUBSCRIPTION_REQUIRED',
             status: access.status,
           },

@@ -184,7 +184,10 @@ export function useOrcamentos({ activeTab, clienteQuery, searchQuery, filtersQue
   const handleDownloadOrcamentoPdf = async (oportunidade: Oportunidade) => {
     try {
       setDownloadingPdfById((prev) => ({ ...prev, [oportunidade.id]: true }))
-      const response = await fetch(`/api/oportunidades/${oportunidade.id}/pdf`)
+      const pdfEndpoint = oportunidade.pedido?.id
+        ? `/api/pedidos/${oportunidade.pedido.id}/pdf`
+        : `/api/oportunidades/${oportunidade.id}/pdf`
+      const response = await fetch(pdfEndpoint)
       if (!response.ok) {
         const data = await response.json().catch(() => null)
         throw new Error(data?.error || 'Nao foi possivel gerar o PDF do orcamento.')

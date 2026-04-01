@@ -1,7 +1,8 @@
 'use client'
 
-import useSWR from 'swr'
+import { useQuery } from '@tanstack/react-query'
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
+import { fetchJson } from '@/lib/query/fetch-json'
 
 export type SubscriptionPayload = {
   provider: string | null
@@ -19,45 +20,34 @@ type UseSubscriptionStatusOptions = {
   dedupingIntervalMs?: number
 }
 
-type SubscriptionRequestError = Error & {
-  status?: number
-}
-
 async function fetchSubscription(url: string): Promise<SubscriptionPayload> {
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) {
-    const error = new Error('Falha ao consultar assinatura') as SubscriptionRequestError
-    error.status = response.status
-    throw error
-  }
-
-  return (await response.json()) as SubscriptionPayload
+  return fetchJson<SubscriptionPayload>(url, { cache: 'no-store' })
 }
 
 export function useSubscriptionStatus(options?: UseSubscriptionStatusOptions) {
   const billingEnabled = isBillingSubscriptionEnabledClient()
   const enabled = options?.enabled ?? true
   const shouldFetch = billingEnabled && enabled
+  const staleTime = options?.dedupingIntervalMs ?? 15_000
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR<SubscriptionPayload>(
-    shouldFetch ? '/api/billing/subscription' : null,
-    fetchSubscription,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      shouldRetryOnError: false,
-      dedupingInterval: options?.dedupingIntervalMs ?? 15_000,
-    }
-  )
+  const query = useQuery({
+    queryKey: ['billing', 'subscription'] as const,
+    queryFn: () => fetchSubscription('/api/billing/subscription'),
+    enabled: shouldFetch,
+    staleTime,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
 
   return {
     billingEnabled,
-    subscription: data ?? null,
-    active: billingEnabled ? Boolean(data?.active) : true,
-    checkoutUrl: data?.checkoutUrl ?? null,
-    error,
-    isLoading: shouldFetch ? isLoading : false,
-    isValidating: shouldFetch ? isValidating : false,
-    mutate,
+    subscription: query.data ?? null,
+    active: billingEnabled ? Boolean(query.data?.active) : true,
+    checkoutUrl: query.data?.checkoutUrl ?? null,
+    error: query.error,
+    isLoading: shouldFetch ? query.isLoading : false,
+    isValidating: shouldFetch ? query.isFetching : false,
+    mutate: () => query.refetch(),
   }
 }

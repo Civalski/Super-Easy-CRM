@@ -16,6 +16,8 @@ type OnboardingStatusPayload = {
   completed: boolean
 }
 
+const PREMIUM_TRIAL_DAYS = 30
+
 async function fetchOnboardingStatus() {
   const response = await fetch('/api/users/me/onboarding', { cache: 'no-store' })
   if (!response.ok) {
@@ -132,7 +134,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId: selectedPlanId,
-          trialDays: selectedPlanId === 'plan_1' ? 7 : 0,
+          trialDays: PREMIUM_TRIAL_DAYS,
         }),
       })
       const payload = (await response.json()) as CheckoutStartPayload

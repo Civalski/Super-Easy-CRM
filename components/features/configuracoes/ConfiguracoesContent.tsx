@@ -23,11 +23,10 @@ import {
   SuporteCard,
   ThemePreferenceCard,
 } from '@/components/features/configuracoes'
+import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
 
 export function ConfiguracoesContent() {
-  const billingEnabled =
-    process.env.NEXT_PUBLIC_BILLING_SUBSCRIPTION_ENABLED === 'true' ||
-    process.env.NEXT_PUBLIC_BILLING_SUBSCRIPTION_ENABLED === '1'
+  const billingEnabled = isBillingSubscriptionEnabledClient()
 
   return (
     <div className="space-y-4">

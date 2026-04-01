@@ -1,70 +1,73 @@
-import useSWR from 'swr'
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
 import type { DashboardData, GoalSummary, FluxoData, DashboardActivity } from '@/types/dashboard'
+import { fetchJson } from '@/lib/query/fetch-json'
+import { dashboardQueryKeys } from '@/lib/query/query-keys'
 
-type FetchError = Error & {
-  status?: number
-}
-
-const fetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((res) => {
-    if (!res.ok) {
-      const error = new Error(`Erro ao buscar ${url}`) as FetchError
-      error.status = res.status
-      throw error
-    }
-    return res.json()
-  })
-
-const swrOptions = {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: false,
-  shouldRetryOnError: (error: unknown) => {
-    const status = (error as FetchError)?.status
-    if (status === 400 || status === 401 || status === 402 || status === 403 || status === 404) {
-      return false
-    }
-    return true
-  },
-  errorRetryCount: 2,
-} as const
+const DASHBOARD_STALE_TIME = 15 * 1000
+const ATIVIDADES_STALE_TIME = 10 * 1000
+const LONGER_STALE_TIME = 60 * 1000
 
 export function useDashboard(filter: 'day' | 'week' | 'month', date: Date) {
   const dateParam = date.toISOString()
-  const { data, error, isLoading, isValidating, mutate } = useSWR<DashboardData>(
-    `/api/dashboard?filter=${filter}&date=${dateParam}`,
-    fetcher,
-    swrOptions
-  )
+  const query = useQuery({
+    queryKey: dashboardQueryKeys.summary(filter, dateParam),
+    queryFn: () => fetchJson<DashboardData>(`/api/dashboard?filter=${filter}&date=${dateParam}`),
+    staleTime: DASHBOARD_STALE_TIME,
+  })
 
-  return { data: data ?? null, error, isLoading, isValidating, mutate }
+  return {
+    data: query.data ?? null,
+    error: query.error,
+    isLoading: query.isLoading,
+    isValidating: query.isFetching,
+    mutate: () => query.refetch(),
+  }
 }
 
 export function useMetas() {
-  const { data, error, isLoading, mutate } = useSWR<GoalSummary[]>(
-    '/api/metas',
-    fetcher,
-    swrOptions
-  )
+  const query = useQuery({
+    queryKey: dashboardQueryKeys.metas(),
+    queryFn: () => fetchJson<GoalSummary[]>('/api/metas'),
+    staleTime: LONGER_STALE_TIME,
+  })
 
-  return { goals: Array.isArray(data) ? data : [], error, isLoading, mutate }
+  return {
+    goals: Array.isArray(query.data) ? query.data : [],
+    error: query.error,
+    isLoading: query.isLoading,
+    mutate: () => query.refetch(),
+  }
 }
 
 export function useFluxoCaixa(months = 6) {
-  const { data, error, isLoading, mutate } = useSWR<FluxoData>(
-    `/api/financeiro/fluxo-caixa?months=${months}`,
-    fetcher,
-    swrOptions
-  )
+  const query = useQuery({
+    queryKey: dashboardQueryKeys.fluxoCaixa(months),
+    queryFn: () => fetchJson<FluxoData>(`/api/financeiro/fluxo-caixa?months=${months}`),
+    staleTime: LONGER_STALE_TIME,
+  })
 
-  return { fluxo: data ?? null, error, isLoading, mutate }
+  return {
+    fluxo: query.data ?? null,
+    error: query.error,
+    isLoading: query.isLoading,
+    mutate: () => query.refetch(),
+  }
 }
 
 export function useAtividadesRecentes() {
-  const { data, error, isLoading, mutate } = useSWR<DashboardActivity[]>(
-    '/api/dashboard/atividades-recentes',
-    fetcher,
-    swrOptions
-  )
+  const query = useQuery({
+    queryKey: dashboardQueryKeys.atividadesRecentes(),
+    queryFn: () => fetchJson<DashboardActivity[]>('/api/dashboard/atividades-recentes'),
+    staleTime: ATIVIDADES_STALE_TIME,
+  })
 
-  return { activities: Array.isArray(data) ? data : [], error, isLoading, mutate }
+  return {
+    activities: Array.isArray(query.data) ? query.data : [],
+    error: query.error,
+    isLoading: query.isLoading,
+    mutate: () => query.refetch(),
+  }
 }
+

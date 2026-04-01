@@ -124,6 +124,10 @@ export async function GET(request: NextRequest) {
                             telefone: p.telefone1,
                             empresa: p.razaoSocial,
                             cnpj: p.cnpj,
+                            capitalSocial: p.capitalSocial,
+                            atividadePrincipal:
+                                p.cnaePrincipalDesc || p.cnaePrincipal,
+                            municipio: p.municipio || null,
                         },
                     }
                 })
@@ -155,6 +159,10 @@ export async function GET(request: NextRequest) {
                                     email: true,
                                     telefone: true,
                                     empresa: true,
+                                    capitalSocial: true,
+                                    cnaePrincipal: true,
+                                    cnaePrincipalDesc: true,
+                                    cidade: true,
                                 },
                             },
                         },
@@ -162,11 +170,23 @@ export async function GET(request: NextRequest) {
                     prisma.oportunidade.count({ where: whereOportunidade }),
                 ])
 
-                data = oportunidades.map((o) => ({
-                    ...o,
-                    status: mapOpportunityStatusForResponse(o.status),
-                    type: 'oportunidade',
-                }))
+                data = oportunidades.map((o) => {
+                    const cliente = o.cliente
+                    return {
+                        ...o,
+                        status: mapOpportunityStatusForResponse(o.status),
+                        type: 'oportunidade',
+                        cliente: {
+                            ...cliente,
+                            capitalSocial: cliente?.capitalSocial || null,
+                            atividadePrincipal:
+                                cliente?.cnaePrincipalDesc ||
+                                cliente?.cnaePrincipal ||
+                                null,
+                            municipio: cliente?.cidade || null,
+                        },
+                    }
+                })
                 total = count
             }
 

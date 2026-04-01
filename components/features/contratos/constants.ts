@@ -18,6 +18,7 @@ export const RIGIDEZ_OPCOES = [
 
 export const TIPOS_CONTRATO = [
   { value: 'geral', label: 'Contrato Geral' },
+  { value: 'proposta', label: 'Proposta de Serviços' },
   { value: 'prestacao_servicos', label: 'Prestação de Serviços' },
   { value: 'compra_venda', label: 'Compra e Venda' },
   { value: 'locacao', label: 'Locação' },

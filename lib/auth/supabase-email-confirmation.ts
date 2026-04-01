@@ -2,7 +2,7 @@ import 'server-only'
 import { prisma } from '@/lib/prisma'
 
 export const EMAIL_CONFIRMATION_PROVIDER = 'supabase'
-export const EMAIL_CONFIRMATION_TRIAL_DAYS = 7
+export const EMAIL_CONFIRMATION_TRIAL_DAYS = 30
 
 type PendingRegistrationUser = {
   subscriptionProvider: string | null

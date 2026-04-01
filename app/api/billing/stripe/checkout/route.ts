@@ -14,20 +14,10 @@ function parseTrialDays(value: unknown) {
   return value
 }
 
-function resolveRequestedPriceId(planId: string | null) {
-  const PLAN_ENV_KEYS: Record<string, string> = {
-    plan_1: 'STRIPE_PRICE_ID_PLAN_1',
-    plan_3: 'STRIPE_PRICE_ID_PLAN_3',
-    plan_5: 'STRIPE_PRICE_ID_PLAN_5',
-    plan_10: 'STRIPE_PRICE_ID_PLAN_10_PLUS',
-    plan_10_plus: 'STRIPE_PRICE_ID_PLAN_10_PLUS',
-  }
-
-  if (!planId) return null
-  if (planId.startsWith('price_')) return planId
-
-  const envKey = PLAN_ENV_KEYS[planId]
-  return envKey ? process.env[envKey] ?? null : null
+function isEnabled(value: string | undefined) {
+  if (!value) return false
+  const normalized = value.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
 }
 
 export async function POST(request: NextRequest) {
@@ -36,7 +26,6 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const requestedPlanId = typeof body.planId === 'string' ? body.planId : null
   const trialDays = parseTrialDays(body.trialDays)
 
   return withAuth(request, async (userId) => {
@@ -49,27 +38,32 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       )
     }
+    const liveModeOnly = isEnabled(process.env.STRIPE_LIVE_MODE_ONLY)
+    if (liveModeOnly && secretKey.startsWith('sk_test_')) {
+      return NextResponse.json(
+        {
+          error:
+            'Checkout em modo teste bloqueado. Configure STRIPE_SECRET_KEY com chave sk_live_ para abrir o Stripe real.',
+        },
+        { status: 503 }
+      )
+    }
 
     const { stripe } = await import('@/lib/billing/stripe')
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         email: true,
-        subscriptionPlanCode: true,
       },
     })
 
     const priceId =
-      resolveRequestedPriceId(requestedPlanId) ??
-      user?.subscriptionPlanCode ??
-      process.env.STRIPE_PRICE_ID_PLAN_1 ??
-      process.env.STRIPE_PRICE_ID
+      process.env.STRIPE_PRICE_ID_PLAN_1 ?? process.env.STRIPE_PRICE_ID
 
     if (!priceId) {
       return NextResponse.json(
         {
-          error:
-            'Plano nao configurado. Configure STRIPE_PRICE_ID_PLAN_* no .env ou salve um plano no cadastro.',
+          error: 'Plano individual nao configurado. Configure STRIPE_PRICE_ID_PLAN_1 no .env.',
         },
         { status: 503 }
       )
@@ -107,6 +101,7 @@ export async function POST(request: NextRequest) {
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: successUrl,
         cancel_url: cancelUrl,
+        allow_promotion_codes: true,
         client_reference_id: userId,
         customer: customerId,
         payment_method_collection: 'always',
@@ -123,6 +118,16 @@ export async function POST(request: NextRequest) {
               },
             }),
       })
+
+      if (liveModeOnly && !session.livemode) {
+        return NextResponse.json(
+          {
+            error:
+              'Sessao de checkout criada em modo teste, mas o ambiente exige Stripe live. Verifique STRIPE_SECRET_KEY e STRIPE_PRICE_ID_PLAN_1.',
+          },
+          { status: 503 }
+        )
+      }
 
       await prisma.user.update({
         where: { id: userId },

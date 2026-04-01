@@ -15,7 +15,7 @@ export function ExcluirDadosCard() {
   const handleExcluir = async () => {
     const ok = await confirm({
       title: 'Excluir todos os dados?',
-      description: 'Remove clientes, contatos, orçamentos, tarefas, prospectos e metas da sua conta. Usuários não são apagados.',
+      description: 'Remove clientes, contatos, contratos, orçamentos, tarefas, prospectos e metas da sua conta. Usuários não são apagados.',
       confirmLabel: 'Sim, excluir',
       cancelLabel: 'Cancelar',
       confirmVariant: 'danger',
@@ -51,7 +51,7 @@ export function ExcluirDadosCard() {
           <Trash2 className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-white">Excluir dados da conta</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Remove clientes, tarefas, prospectos e demais dados da sua conta</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Remove clientes, contratos, tarefas, prospectos e demais dados da sua conta</p>
           </div>
         </div>
         <Button

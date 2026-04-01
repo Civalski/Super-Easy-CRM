@@ -93,7 +93,7 @@ export function HeaderNav() {
 
   const getResolvedTitle = (item: (typeof visibleMenuItems)[0]) => {
     if (item.requiresPremium && premiumAccess === 'inactive') {
-      return `${item.name} (Premium - assine para liberar)`
+      return `${item.name} (Premium - assine e use cupom ARKER25 para 25% vitalicio)`
     }
     return item.name
   }

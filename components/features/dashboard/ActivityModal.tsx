@@ -22,6 +22,7 @@ import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
 import type { DashboardActivity, DashboardActivityDetails } from '@/types/dashboard'
 import { getProbabilityBadgeClass, getProbabilityLabel } from '@/lib/domain/probabilidade'
+import { useDashboardInvalidation } from '@/lib/hooks/useDashboardInvalidation'
 
 interface ActivityModalProps {
   isOpen: boolean
@@ -40,6 +41,7 @@ export default function ActivityModal({
 }: ActivityModalProps) {
   const router = useRouter()
   const { confirm } = useConfirm()
+  const { invalidateForActivityType } = useDashboardInvalidation()
   const [isProcessing, setIsProcessing] = useState(false)
 
   if (!isOpen || !activity) return null
@@ -65,6 +67,7 @@ export default function ActivityModal({
       })
 
       if (response.ok) {
+        await invalidateForActivityType('tarefa')
         toast.success('Tarefa concluida com sucesso!')
         onUpdate()
         onClose()
@@ -104,6 +107,7 @@ export default function ActivityModal({
       })
 
       if (response.ok) {
+        await invalidateForActivityType(type)
         toast.success('Excluido!', { description: 'O item foi excluido com sucesso.' })
         onUpdate()
         onClose()

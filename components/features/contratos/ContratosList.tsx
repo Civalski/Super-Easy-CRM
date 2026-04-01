@@ -84,7 +84,7 @@ export function ContratosList({
           Nenhum contrato cadastrado
         </p>
         <p className="mb-4 max-w-sm text-center text-xs text-gray-500 dark:text-gray-500">
-          Crie contratos preenchendo clausulas, dados das partes e gerando PDFs formais.
+          Crie contratos e propostas comerciais com PDF profissional e fluxo objetivo.
         </p>
         <NovoContratoMenuButton onSelect={onNovo} />
       </div>

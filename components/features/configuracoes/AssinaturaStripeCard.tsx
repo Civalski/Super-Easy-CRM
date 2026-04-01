@@ -1,15 +1,28 @@
 /**
- * Card de assinatura via Stripe. Botao "Assinar Premium" que abre modal com planos.
+ * Card de assinatura premium com os planos exibidos dentro do proprio CRM.
  */
 'use client'
 
-import { useEffect, useState } from 'react'
-import { signOut } from 'next-auth/react'
-import { CreditCard, Loader2, CheckCircle2, X, Sparkles, MessageCircle, LogOut } from '@/lib/icons'
-import { toast } from '@/lib/toast'
+import { useEffect, useRef, useState } from 'react'
+import {
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  Sparkles,
+} from '@/lib/icons'
 import { Button } from '@/components/common'
-import { PREMIUM_PLANS, type PlanId } from './assinatura/constants'
-import { PlanOptionCard } from './assinatura/PlanOptionCard'
+import {
+  PREMIUM_COUPON_CODE,
+  PREMIUM_PLANS,
+} from '@/components/features/planos/constants'
+import type {
+  PlanTier,
+  PremiumPlanDefinition,
+} from '@/components/features/planos/types'
+import {
+  buildWhatsAppQuoteUrl,
+  clampUserCount,
+} from '@/components/features/planos/utils'
 
 type SubscriptionPayload = {
   provider: string | null
@@ -23,12 +36,20 @@ type SubscriptionPayload = {
 }
 
 export function AssinaturaStripeCard() {
+  const [stripeLoading, setStripeLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionPayload | null>(null)
   const [billingDisabled, setBillingDisabled] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('plan_1')
+  const checkoutInFlightRef = useRef(false)
+  const [userCountByPlan, setUserCountByPlan] = useState<Record<PlanTier, number>>(() =>
+    PREMIUM_PLANS.reduce<Record<PlanTier, number>>(
+      (acc, plan) => {
+        acc[plan.id] = plan.defaultUsers
+        return acc
+      },
+      { enterprise: 25, solo: 1, team: 5 }
+    )
+  )
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -54,49 +75,64 @@ export function AssinaturaStripeCard() {
         setLoading(false)
       }
     }
-    fetchSubscription()
+
+    void fetchSubscription()
   }, [])
 
-  const selectedPlanConfig = PREMIUM_PLANS.find((plan) => plan.id === selectedPlan) ?? PREMIUM_PLANS[0]
-  const isContactPlan = selectedPlanConfig.actionType === 'whatsapp'
-  const selectedTheme = selectedPlanConfig.theme
+  const updateUserCount = (plan: PremiumPlanDefinition, value: number) => {
+    const clamped = clampUserCount(value, plan.minUsers)
+    setUserCountByPlan((current) => ({
+      ...current,
+      [plan.id]: clamped,
+    }))
+  }
 
-  const handlePrimaryAction = async () => {
-    if (selectedPlanConfig.actionType === 'whatsapp') {
-      window.open(selectedPlanConfig.whatsappUrl, '_blank', 'noopener,noreferrer')
-      return
-    }
+  const startSoloCheckout = async () => {
+    if (checkoutInFlightRef.current) return
 
-    setCheckoutLoading(true)
+    checkoutInFlightRef.current = true
+    setStripeLoading(true)
     try {
-      const res = await fetch('/api/billing/stripe/checkout', {
+      const response = await fetch('/api/billing/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: selectedPlanConfig.id }),
+        body: JSON.stringify({ planId: 'plan_1' }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const msg = data.details
-          ? `${data.error}: ${data.details}`
-          : data.error || 'Falha ao criar sessao de checkout'
-        throw new Error(msg)
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok || !payload.url) {
+        const errorText =
+          payload?.details ??
+          payload?.error ??
+          'Nao foi possivel iniciar o checkout agora. Tente novamente em instantes.'
+        throw new Error(errorText)
       }
-      if (data.url) {
-        window.location.href = data.url
-        return
-      }
-      throw new Error('URL de checkout nao retornada')
-    } catch (error) {
-      toast.error('Erro ao iniciar assinatura', {
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-      })
-    } finally {
-      setCheckoutLoading(false)
+
+      window.location.assign(payload.url as string)
+    } catch {
+      checkoutInFlightRef.current = false
+      setStripeLoading(false)
     }
   }
 
-  const handleOpenModal = () => setModalOpen(true)
-  const handleCloseModal = () => setModalOpen(false)
+  const openWhatsAppQuote = (plan: PremiumPlanDefinition) => {
+    const userCount = userCountByPlan[plan.id]
+    const url = buildWhatsAppQuoteUrl(plan, userCount)
+    const popup = window.open(url, '_blank', 'noopener,noreferrer')
+
+    if (!popup) {
+      window.location.href = url
+    }
+  }
+
+  const handlePlanAction = async (plan: PremiumPlanDefinition) => {
+    if (plan.actionType === 'stripe') {
+      await startSoloCheckout()
+      return
+    }
+
+    openWhatsAppQuote(plan)
+  }
 
   if (billingDisabled) return null
 
@@ -113,143 +149,128 @@ export function AssinaturaStripeCard() {
 
   const isActive = subscription?.active ?? false
 
-  if (isActive) {
-    return (
-      <div className="crm-card p-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <CreditCard className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Assinatura Premium</p>
-              <p className="truncate text-xs text-gray-500 dark:text-gray-400">Sua assinatura esta ativa</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5 text-green-600 dark:text-green-400">
-            <CheckCircle2 className="h-4 w-4" />
-            <span className="text-xs font-medium">Ativa</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       <div className="crm-card overflow-hidden p-0">
         <div className="relative flex flex-col gap-3 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div className="pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full bg-sky-200/40 blur-2xl dark:bg-sky-600/20" />
           <div className="pointer-events-none absolute -bottom-8 -right-6 h-24 w-24 rounded-full bg-emerald-200/40 blur-2xl dark:bg-emerald-600/20" />
+
           <div className="min-w-0 text-center sm:text-left">
             <div className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
-              <Sparkles className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-              Premium
+              {isActive ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Sparkles className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />}
+              {isActive ? 'Premium ativo' : 'Premium'}
             </div>
-            <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Planos premium para cada fase do CRM</p>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">Checkout direto ou atendimento dedicado via WhatsApp, no mesmo fluxo.</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+              {isActive ? 'Seu plano premium esta ativo' : 'Escolha seu plano premium'}
+            </p>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+              Use o cupom {PREMIUM_COUPON_CODE} para garantir 25% de desconto vitalicio na mensalidade.
+            </p>
           </div>
 
-          <Button
-            onClick={handleOpenModal}
-            variant="primary"
-            size="sm"
-            className="z-[1] shrink-0 border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-900/50"
-          >
-            <CreditCard className="h-4 w-4" />
-            Assinar Premium
-          </Button>
+          <div className="z-[1] rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+            3 opcoes disponiveis dentro do CRM
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-3 md:grid-cols-3">
+          {PREMIUM_PLANS.map((plan) => {
+            const Icon = plan.icon
+            const isStripePlan = plan.actionType === 'stripe'
+            const isPlanLoading = isStripePlan && stripeLoading
+            return (
+              <article
+                key={plan.id}
+                className="rounded-xl border border-slate-200 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/60"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="rounded-lg border border-slate-200 bg-white p-2 text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-sky-300">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        {plan.name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        {plan.label}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:border-sky-900/50 dark:bg-sky-900/30 dark:text-sky-200">
+                    {plan.badge}
+                  </span>
+                </div>
+
+                <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">
+                  {plan.description}
+                </p>
+
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800/70">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Investimento
+                  </p>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white">
+                    {plan.priceLabel}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {plan.priceHint}
+                  </p>
+                </div>
+
+                <ul className="mt-2 space-y-1">
+                  {plan.highlights.slice(0, 3).map((highlight) => (
+                    <li key={highlight} className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {!isStripePlan && (
+                  <div className="mt-2">
+                    <label
+                      htmlFor={`usuarios-${plan.id}`}
+                      className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                    >
+                      Usuarios para proposta
+                    </label>
+                    <input
+                      id={`usuarios-${plan.id}`}
+                      type="number"
+                      min={plan.minUsers}
+                      value={userCountByPlan[plan.id]}
+                      onChange={(event) => updateUserCount(plan, Number(event.target.value))}
+                      className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 outline-hidden transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => void handlePlanAction(plan)}
+                  variant="primary"
+                  size="sm"
+                  className="mt-3 w-full justify-center border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-900/50"
+                  disabled={isPlanLoading}
+                >
+                  {isPlanLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Redirecionando...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4" />
+                      {plan.actionLabel}
+                    </>
+                  )}
+                </Button>
+              </article>
+            )
+          })}
         </div>
       </div>
-
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="crm-card relative w-full max-w-4xl overflow-hidden border border-slate-200/70 dark:border-slate-700/70"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handleCloseModal}
-              className="absolute right-3 top-3 z-10 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-              aria-label="Fechar"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-6 dark:border-slate-700 dark:bg-slate-900/70">
-              <div className="mx-auto max-w-2xl text-center">
-                <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${selectedTheme.iconSelected}`}>
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <h2 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Escolha seu plano premium</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Todos os planos liberam recursos premium.
-                  <span className={`ml-1 font-medium ${selectedTheme.subtleText}`}>
-                    {selectedTheme.tierLabel} selecionado: {selectedPlanConfig.name}.
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="p-6 sm:p-7">
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {PREMIUM_PLANS.map((plan) => (
-                  <PlanOptionCard
-                    key={plan.id}
-                    plan={plan}
-                    selectedPlan={selectedPlan}
-                    onSelect={setSelectedPlan}
-                  />
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-col items-center gap-3 border-t border-slate-200 pt-5 dark:border-slate-700">
-                <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                  {isContactPlan
-                    ? 'Abriremos o WhatsApp com uma mensagem pronta para o time comercial.'
-                    : 'Voce sera redirecionado para o checkout seguro para concluir a assinatura.'}
-                </p>
-                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                  <Button
-                    onClick={() => signOut({ callbackUrl: '/login' })}
-                    variant="secondary"
-                    size="md"
-                    className="w-full sm:w-auto"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sair da conta
-                  </Button>
-                  <Button
-                    onClick={handlePrimaryAction}
-                    disabled={checkoutLoading}
-                    variant="primary"
-                    size="md"
-                    className={`w-full sm:w-auto ${selectedTheme.ctaButton}`}
-                  >
-                    {checkoutLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Redirecionando...
-                      </>
-                    ) : isContactPlan ? (
-                      <>
-                        <MessageCircle className="h-4 w-4" />
-                        {selectedPlanConfig.ctaLabel}
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-4 w-4" />
-                        Continuar para pagamento
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

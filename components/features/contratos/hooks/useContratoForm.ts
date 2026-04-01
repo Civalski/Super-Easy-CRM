@@ -190,8 +190,11 @@ export function useContratoForm() {
   }, [clausulasTextoBruto])
 
   const buildPayload = useCallback((): ContratoFormValues => {
+    const isProposta = form.tipo === 'proposta'
     const clausulas =
-      clausulasMode === 'paste'
+      isProposta
+        ? []
+        : clausulasMode === 'paste'
         ? parseClausulasFromText(clausulasTextoBruto)
         : form.clausulas.filter((clausula) => clausula.titulo.trim() || clausula.conteudo.trim())
 

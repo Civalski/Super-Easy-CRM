@@ -35,6 +35,11 @@ export interface OportunidadeKanban {
     avisoDescartar?: boolean
 }
 
+export interface WhatsAppTemplateOption {
+    id: string
+    title: string
+}
+
 const TABS = [
     { label: 'Sem contato', value: 'sem_contato', icon: Target },
     { label: 'Contatado', value: 'contatado', icon: MessageCircle },
@@ -98,11 +103,13 @@ export interface FunilKanbanProps {
     onViewDetails: (item: OportunidadeKanban) => void
     onStatusChange: (item: OportunidadeKanban, newStatus: string) => Promise<void>
     getAvailableActions: (currentStatus: string) => { label: string; value: string }[]
-    onStartContact?: (item: OportunidadeKanban) => void
+    whatsAppTemplates?: WhatsAppTemplateOption[]
+    onStartContact?: (item: OportunidadeKanban, templateId?: string) => void
     onSendEmail?: (item: OportunidadeKanban) => void
     onEdit?: (item: OportunidadeKanban) => void
     onDelete?: (item: OportunidadeKanban) => void
     onTransformarCliente?: (item: OportunidadeKanban) => void
+    onCreateOrcamento?: (item: OportunidadeKanban) => void
     onCreatePedido?: (item: OportunidadeKanban) => void
     updatingId: string | null
     refreshTrigger?: number
@@ -112,11 +119,13 @@ export function FunilKanban({
     onViewDetails,
     onStatusChange,
     getAvailableActions,
+    whatsAppTemplates = [],
     onStartContact,
     onSendEmail,
     onEdit,
     onDelete,
     onTransformarCliente,
+    onCreateOrcamento,
     onCreatePedido,
     updatingId,
     refreshTrigger = 0,
@@ -368,11 +377,13 @@ export function FunilKanban({
                         onViewDetails={onViewDetails}
                         onStatusChange={onStatusChange}
                         getAvailableActions={getAvailableActions}
+                        whatsAppTemplates={whatsAppTemplates}
                         onStartContact={onStartContact}
                         onSendEmail={onSendEmail}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onTransformarCliente={onTransformarCliente}
+                        onCreateOrcamento={onCreateOrcamento}
                         onCreatePedido={onCreatePedido}
                         updatingId={updatingId}
                         isDragging={!!activeId}
@@ -515,11 +526,13 @@ interface KanbanColumnProps {
     onViewDetails: (item: OportunidadeKanban) => void
     onStatusChange: (item: OportunidadeKanban, newStatus: string) => Promise<void>
     getAvailableActions: (currentStatus: string) => { label: string; value: string }[]
-    onStartContact?: (item: OportunidadeKanban) => void
+    whatsAppTemplates?: WhatsAppTemplateOption[]
+    onStartContact?: (item: OportunidadeKanban, templateId?: string) => void
     onSendEmail?: (item: OportunidadeKanban) => void
     onEdit?: (item: OportunidadeKanban) => void
     onDelete?: (item: OportunidadeKanban) => void
     onTransformarCliente?: (item: OportunidadeKanban) => void
+    onCreateOrcamento?: (item: OportunidadeKanban) => void
     onCreatePedido?: (item: OportunidadeKanban) => void
     updatingId: string | null
     isDragging?: boolean
@@ -540,11 +553,13 @@ function KanbanColumn({
     onViewDetails,
     onStatusChange,
     getAvailableActions,
+    whatsAppTemplates = [],
     onStartContact,
     onSendEmail,
     onEdit,
     onDelete,
     onTransformarCliente,
+    onCreateOrcamento,
     onCreatePedido,
     updatingId,
     isDragging = false,
@@ -599,11 +614,13 @@ function KanbanColumn({
                             onViewDetails={onViewDetails}
                             onStatusChange={onStatusChange}
                             getAvailableActions={getAvailableActions}
+                            whatsAppTemplates={whatsAppTemplates}
                             onStartContact={onStartContact}
                             onSendEmail={onSendEmail}
                             onEdit={onEdit}
                             onDelete={onDelete}
                             onTransformarCliente={onTransformarCliente}
+                            onCreateOrcamento={onCreateOrcamento}
                             onCreatePedido={onCreatePedido}
                             updatingId={updatingId}
                         />
@@ -644,11 +661,13 @@ interface DraggableCardProps {
     onViewDetails: (item: OportunidadeKanban) => void
     onStatusChange: (item: OportunidadeKanban, newStatus: string) => Promise<void>
     getAvailableActions: (currentStatus: string) => { label: string; value: string }[]
-    onStartContact?: (item: OportunidadeKanban) => void
+    whatsAppTemplates?: WhatsAppTemplateOption[]
+    onStartContact?: (item: OportunidadeKanban, templateId?: string) => void
     onSendEmail?: (item: OportunidadeKanban) => void
     onEdit?: (item: OportunidadeKanban) => void
     onDelete?: (item: OportunidadeKanban) => void
     onTransformarCliente?: (item: OportunidadeKanban) => void
+    onCreateOrcamento?: (item: OportunidadeKanban) => void
     onCreatePedido?: (item: OportunidadeKanban) => void
     updatingId: string | null
 }
@@ -658,11 +677,13 @@ function DraggableCard({
     onViewDetails,
     onStatusChange,
     getAvailableActions,
+    whatsAppTemplates = [],
     onStartContact,
     onSendEmail,
     onEdit,
     onDelete,
     onTransformarCliente,
+    onCreateOrcamento,
     onCreatePedido,
     updatingId,
 }: DraggableCardProps) {
@@ -690,11 +711,13 @@ function DraggableCard({
                 onViewDetails={onViewDetails}
                 onStatusChange={onStatusChange}
                 getAvailableActions={getAvailableActions}
+                whatsAppTemplates={whatsAppTemplates}
                 onStartContact={onStartContact}
                 onSendEmail={onSendEmail}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onTransformarCliente={onTransformarCliente}
+                onCreateOrcamento={onCreateOrcamento}
                 onCreatePedido={onCreatePedido}
                 updatingId={updatingId}
                 dragHandleProps={{ ...attributes, ...listeners }}
@@ -708,11 +731,13 @@ interface KanbanCardProps {
     onViewDetails: (item: OportunidadeKanban) => void
     onStatusChange: (item: OportunidadeKanban, newStatus: string) => Promise<void>
     getAvailableActions: (currentStatus: string) => { label: string; value: string }[]
-    onStartContact?: (item: OportunidadeKanban) => void
+    whatsAppTemplates?: WhatsAppTemplateOption[]
+    onStartContact?: (item: OportunidadeKanban, templateId?: string) => void
     onSendEmail?: (item: OportunidadeKanban) => void
     onEdit?: (item: OportunidadeKanban) => void
     onDelete?: (item: OportunidadeKanban) => void
     onTransformarCliente?: (item: OportunidadeKanban) => void
+    onCreateOrcamento?: (item: OportunidadeKanban) => void
     onCreatePedido?: (item: OportunidadeKanban) => void
     updatingId: string | null
     dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
@@ -723,19 +748,25 @@ function KanbanCard({
     onViewDetails,
     onStatusChange,
     getAvailableActions,
+    whatsAppTemplates = [],
     onStartContact,
     onSendEmail,
     onEdit,
     onDelete,
     onTransformarCliente,
+    onCreateOrcamento,
     onCreatePedido,
     updatingId,
     dragHandleProps,
 }: KanbanCardProps) {
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+    const [whatsAppMenuOpen, setWhatsAppMenuOpen] = useState(false)
+    const [whatsAppMenuPos, setWhatsAppMenuPos] = useState({ top: 0, left: 0 })
     const menuRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLButtonElement>(null)
+    const whatsAppMenuRef = useRef<HTMLDivElement>(null)
+    const whatsAppTriggerRef = useRef<HTMLButtonElement>(null)
 
     const hasValidPhone = item.cliente.telefone && item.cliente.telefone.replace(/\D/g, '').length > 0
     const showWhatsApp = hasValidPhone && onStartContact
@@ -757,15 +788,28 @@ function KanbanCard({
     }, [menuOpen])
 
     useEffect(() => {
+        if (whatsAppMenuOpen && whatsAppTriggerRef.current) {
+            const rect = whatsAppTriggerRef.current.getBoundingClientRect()
+            const menuW = 220
+            const left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8))
+            const top = Math.min(rect.bottom + 4, window.innerHeight - 200)
+            setWhatsAppMenuPos({ top, left })
+        }
+    }, [whatsAppMenuOpen])
+
+    useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             const target = e.target as Node
             if (menuRef.current && !menuRef.current.contains(target) && triggerRef.current && !triggerRef.current.contains(target)) {
                 setMenuOpen(false)
             }
+            if (whatsAppMenuRef.current && !whatsAppMenuRef.current.contains(target) && whatsAppTriggerRef.current && !whatsAppTriggerRef.current.contains(target)) {
+                setWhatsAppMenuOpen(false)
+            }
         }
-        if (menuOpen) document.addEventListener('click', handleClickOutside)
+        if (menuOpen || whatsAppMenuOpen) document.addEventListener('click', handleClickOutside)
         return () => document.removeEventListener('click', handleClickOutside)
-    }, [menuOpen])
+    }, [menuOpen, whatsAppMenuOpen])
 
     return (
         <div
@@ -794,19 +838,54 @@ function KanbanCard({
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                         {showWhatsApp && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onStartContact?.(item)
-                                }}
-                                onPointerDown={(e) => e.stopPropagation()}
-                                disabled={updatingId === item.id}
-                                className="inline-flex items-center px-2 py-1 border border-emerald-300 dark:border-emerald-600 text-xs font-medium rounded text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 disabled:opacity-50"
-                                title="Enviar WhatsApp"
-                            >
-                                <MessageCircle size={12} className="mr-0.5" />
-                                WhatsApp
-                            </button>
+                            <div className="relative inline-block">
+                                <button
+                                    ref={whatsAppTriggerRef}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setWhatsAppMenuOpen((o) => !o)
+                                        setMenuOpen(false)
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    disabled={updatingId === item.id}
+                                    className="inline-flex items-center px-2 py-1 border border-emerald-300 dark:border-emerald-600 text-xs font-medium rounded text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 disabled:opacity-50"
+                                    title="Enviar WhatsApp"
+                                >
+                                    <MessageCircle size={12} className="mr-0.5" />
+                                    WhatsApp
+                                </button>
+                                {whatsAppMenuOpen && typeof document !== 'undefined' && createPortal(
+                                    <div
+                                        ref={whatsAppMenuRef}
+                                        className="fixed z-[9999] w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
+                                        style={{ top: whatsAppMenuPos.top, left: whatsAppMenuPos.left }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {whatsAppTemplates.length === 0 ? (
+                                            <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                                Nenhuma mensagem ativa.
+                                            </p>
+                                        ) : (
+                                            whatsAppTemplates.map((template) => (
+                                                <button
+                                                    key={template.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        onStartContact?.(item, template.id)
+                                                        setWhatsAppMenuOpen(false)
+                                                    }}
+                                                    className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
+                                                >
+                                                    <MessageCircle size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                                    {template.title}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>,
+                                    document.body
+                                )}
+                            </div>
                         )}
                         {showEmail && (
                             <button
@@ -830,6 +909,7 @@ function KanbanCard({
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     setMenuOpen((o) => !o)
+                                    setWhatsAppMenuOpen(false)
                                 }}
                                 onPointerDown={(e) => e.stopPropagation()}
                                 className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
@@ -897,6 +977,20 @@ function KanbanCard({
                                         >
                                             <ShoppingCart size={12} />
                                             Criar pedido
+                                        </button>
+                                    )}
+                                    {item.type === 'prospecto' && onCreateOrcamento && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onCreateOrcamento(item)
+                                                setMenuOpen(false)
+                                            }}
+                                            disabled={updatingId === item.id}
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50"
+                                        >
+                                            <FileText size={12} />
+                                            Criar orçamento
                                         </button>
                                     )}
                                     {prevStatus && (

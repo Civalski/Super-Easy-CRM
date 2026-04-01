@@ -1,47 +1,29 @@
 'use client'
 
-import useSWR from 'swr'
+import { useQuery } from '@tanstack/react-query'
+import { AppFetchError, fetchJson } from '@/lib/query/fetch-json'
 import type { TeamOverviewResponse } from '../types'
 
-type FetchError = Error & {
-  status?: number
-}
-
-const fetcher = async (url: string) => {
-  const response = await fetch(url, { credentials: 'include' })
-  const payload = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    const error = new Error(payload?.error || 'Erro ao carregar equipe.') as FetchError
-    error.status = response.status
-    throw error
-  }
-
-  return payload as TeamOverviewResponse
-}
-
-const swrOptions = {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: false,
-  shouldRetryOnError: (error: unknown) => {
-    const status = (error as FetchError | undefined)?.status
-    return !status || status >= 500
-  },
-  errorRetryCount: 2,
-} as const
+const STALE_TIME = 30 * 1000
+const RETRY_COUNT = 2
 
 export function useEquipe() {
-  const { data, error, isLoading, isValidating, mutate } = useSWR<TeamOverviewResponse>(
-    '/api/equipe',
-    fetcher,
-    swrOptions
-  )
+  const query = useQuery({
+    queryKey: ['equipe'] as const,
+    queryFn: () => fetchJson<TeamOverviewResponse>('/api/equipe'),
+    staleTime: STALE_TIME,
+    retry: (failureCount, error) => {
+      if (failureCount >= RETRY_COUNT) return false
+      const status = error instanceof AppFetchError ? error.status : undefined
+      return !status || status >= 500
+    },
+  })
 
   return {
-    data: data ?? null,
-    error,
-    isLoading,
-    isRefreshing: isValidating && !isLoading,
-    mutate,
+    data: query.data ?? null,
+    error: query.error,
+    isLoading: query.isLoading,
+    isRefreshing: query.isFetching && !query.isLoading,
+    mutate: () => query.refetch(),
   }
 }

@@ -80,9 +80,8 @@ async function executeRegister(request: Request): Promise<NextResponse> {
       }
 
       const body = await request.json()
-      const planId =
-        body.planId === 'plan_3' || body.planId === 'plan_10' ? body.planId : 'plan_1'
-      const isManager = Boolean(body.isManager && (planId === 'plan_3' || planId === 'plan_10'))
+      const planId = 'plan_1'
+      const isManager = false
       const name = typeof body.name === 'string' ? body.name.trim() : ''
       const email =
         typeof body.email === 'string' && body.email.trim() !== ''
@@ -184,7 +183,7 @@ async function executeRegister(request: Request): Promise<NextResponse> {
         )
       }
 
-      const expectedTeamSize = planId === 'plan_3' ? 2 : planId === 'plan_10' ? 9 : 0
+      const expectedTeamSize = 0
       if (expectedTeamSize > 0 && teamMembers.length !== expectedTeamSize) {
         return NextResponse.json(
           {

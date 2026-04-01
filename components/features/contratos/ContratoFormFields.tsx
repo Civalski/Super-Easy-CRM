@@ -7,6 +7,7 @@ import { TIPOS_CONTRATO } from './constants'
 import type { ContratoCustomField, ContratoFormState } from './types'
 import { ContratoClausesFields } from './ContratoClausesFields'
 import { ContratoPartiesFields } from './ContratoPartiesFields'
+import { PropostaCommercialFields } from './PropostaCommercialFields'
 
 const INPUT_CLASS =
   'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
@@ -60,6 +61,24 @@ export function ContratoFormFields({
   onUpdateCustomField,
   onRemoveCustomField,
 }: ContratoFormFieldsProps) {
+  const isProposta = form.tipo === 'proposta'
+  const propostaTextoPlaceholder = `## Diagnostico atual
+Descreva o cenario e a dor principal do cliente.
+
+## Escopo principal
+- Item 1
+- Item 2
+
+## Entregaveis
+- Entregavel 1
+- Entregavel 2
+
+## Plano de execucao
+Informe prazos, marcos e dependencias.
+
+## Garantias e suporte
+Explique atendimento, ajustes e limites.`
+
   return (
     <div className="space-y-4">
       <div>
@@ -69,7 +88,7 @@ export function ContratoFormFields({
           value={form.titulo}
           onChange={(event) => onFieldChange('titulo', event.target.value)}
           className={INPUT_CLASS}
-          placeholder="Ex: Contrato de Prestacao de Servicos"
+          placeholder={isProposta ? 'Ex: Proposta comercial - Desenvolvimento de Web App' : 'Ex: Contrato de Prestacao de Servicos'}
         />
       </div>
 
@@ -101,41 +120,51 @@ export function ContratoFormFields({
       {extraContent}
 
       <div>
-        <label className={LABEL_CLASS}>Preambulo</label>
+        <label className={LABEL_CLASS}>{isProposta ? 'Escopo da proposta (blocos com titulos)' : 'Preambulo'}</label>
         <textarea
           value={form.preambulo}
           onChange={(event) => onFieldChange('preambulo', event.target.value)}
           className={INPUT_CLASS}
-          rows={3}
-          placeholder="Texto introdutorio do contrato..."
+          rows={isProposta ? 12 : 3}
+          placeholder={
+            isProposta ? propostaTextoPlaceholder : 'Texto introdutorio do contrato...'
+          }
         />
       </div>
 
-      <ContratoClausesFields
-        clausulas={form.clausulas}
-        clausulasMode={clausulasMode}
-        clausulasTextoBruto={clausulasTextoBruto}
-        onClausulasModeChange={onClausulasModeChange}
-        onClausulasTextoBrutoChange={onClausulasTextoBrutoChange}
-        onApplyClausulasTexto={onApplyClausulasTexto}
-        onClausulaChange={onClausulaChange}
-        onAddClausula={onAddClausula}
-        onRemoveClausula={onRemoveClausula}
-      />
+      {!isProposta ? (
+        <ContratoClausesFields
+          clausulas={form.clausulas}
+          clausulasMode={clausulasMode}
+          clausulasTextoBruto={clausulasTextoBruto}
+          onClausulasModeChange={onClausulasModeChange}
+          onClausulasTextoBrutoChange={onClausulasTextoBrutoChange}
+          onApplyClausulasTexto={onApplyClausulasTexto}
+          onClausulaChange={onClausulaChange}
+          onAddClausula={onAddClausula}
+          onRemoveClausula={onRemoveClausula}
+        />
+      ) : null}
 
-      <ContratoPartiesFields
-        dadosPartes={form.dadosPartes}
-        customFieldsContratante={customFieldsContratante}
-        customFieldsContratado={customFieldsContratado}
-        onParteChange={onParteChange}
-        onAddCustomField={onAddCustomField}
-        onUpdateCustomField={onUpdateCustomField}
-        onRemoveCustomField={onRemoveCustomField}
-      />
+      {!isProposta ? (
+        <ContratoPartiesFields
+          dadosPartes={form.dadosPartes}
+          customFieldsContratante={customFieldsContratante}
+          customFieldsContratado={customFieldsContratado}
+          onParteChange={onParteChange}
+          onAddCustomField={onAddCustomField}
+          onUpdateCustomField={onUpdateCustomField}
+          onRemoveCustomField={onRemoveCustomField}
+        />
+      ) : (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
+          Em proposta comercial, os dados de contratante/contratado sao opcionais e ficam ocultos para manter o fluxo mais objetivo.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <label className={LABEL_CLASS}>Data inicio</label>
+          <label className={LABEL_CLASS}>{isProposta ? 'Inicio previsto' : 'Data inicio'}</label>
           <input
             type="date"
             value={form.dataInicio}
@@ -144,7 +173,7 @@ export function ContratoFormFields({
           />
         </div>
         <div>
-          <label className={LABEL_CLASS}>Data fim</label>
+          <label className={LABEL_CLASS}>{isProposta ? 'Validade da proposta' : 'Data fim'}</label>
           <input
             type="date"
             value={form.dataFim}
@@ -153,7 +182,7 @@ export function ContratoFormFields({
           />
         </div>
         <div>
-          <label className={LABEL_CLASS}>Data assinatura</label>
+          <label className={LABEL_CLASS}>{isProposta ? 'Data de emissao' : 'Data assinatura'}</label>
           <input
             type="date"
             value={form.dataAssinatura}
@@ -164,7 +193,7 @@ export function ContratoFormFields({
       </div>
 
       <div>
-        <label className={LABEL_CLASS}>Local de assinatura</label>
+        <label className={LABEL_CLASS}>{isProposta ? 'Cidade de emissao (opcional)' : 'Local de assinatura'}</label>
         <input
           type="text"
           value={form.localAssinatura}
@@ -174,15 +203,29 @@ export function ContratoFormFields({
         />
       </div>
 
-      <div>
-        <label className={LABEL_CLASS}>Observacoes</label>
-        <textarea
-          value={form.observacoes}
-          onChange={(event) => onFieldChange('observacoes', event.target.value)}
-          className={INPUT_CLASS}
-          rows={2}
-        />
-      </div>
+      {isProposta ? (
+        <div>
+          <label className={LABEL_CLASS}>Condicoes comerciais estruturadas</label>
+          <PropostaCommercialFields
+            observacoes={form.observacoes}
+            dataFim={form.dataFim}
+            inputClassName={INPUT_CLASS}
+            labelClassName={LABEL_CLASS}
+            onObservacoesChange={(value) => onFieldChange('observacoes', value)}
+          />
+        </div>
+      ) : (
+        <div>
+          <label className={LABEL_CLASS}>Observacoes</label>
+          <textarea
+            value={form.observacoes}
+            onChange={(event) => onFieldChange('observacoes', event.target.value)}
+            className={INPUT_CLASS}
+            rows={2}
+          />
+        </div>
+      )}
     </div>
   )
 }
+

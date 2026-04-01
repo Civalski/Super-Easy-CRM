@@ -4,9 +4,11 @@
  */
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
+import { createQueryClient } from '@/lib/query/client';
 import {
     THEME_EVENT,
     applyThemeToDocument,
@@ -19,6 +21,8 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
+    const [queryClient] = useState(() => createQueryClient());
+
     useEffect(() => {
         const syncTheme = () => {
             applyThemeToDocument(getThemePreference());
@@ -40,10 +44,12 @@ export function Providers({ children }: ProvidersProps) {
     }, []);
 
     return (
-        <AuthProvider>
-            <ConfirmProvider>
-                {children}
-            </ConfirmProvider>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+                <ConfirmProvider>
+                    {children}
+                </ConfirmProvider>
+            </AuthProvider>
+        </QueryClientProvider>
     );
 }

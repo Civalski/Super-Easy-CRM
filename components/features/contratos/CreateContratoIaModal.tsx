@@ -89,6 +89,8 @@ export function CreateContratoIaModal({
       return
     }
 
+    const isProposta = form.tipo === 'proposta'
+
     setIaLoading(true)
 
     try {
@@ -99,8 +101,11 @@ export function CreateContratoIaModal({
           prompt,
           titulo: form.titulo || undefined,
           tipo: form.tipo || undefined,
+          modoDocumento: isProposta ? 'proposta' : 'contrato',
           preambuloBase: form.preambulo || undefined,
-          clausulasBase: form.clausulas.filter((clausula) => clausula.titulo.trim() || clausula.conteudo.trim()),
+          clausulasBase: isProposta
+            ? []
+            : form.clausulas.filter((clausula) => clausula.titulo.trim() || clausula.conteudo.trim()),
           model: useMultiModels ? 'multi-models' : primaryModel,
           useMultiModels,
           primaryModel: useMultiModels ? FIXED_MULTI_PRIMARY_MODEL : primaryModel,
@@ -117,8 +122,13 @@ export function CreateContratoIaModal({
       setForm((prev) => ({
         ...prev,
         preambulo: data.preambulo ?? prev.preambulo,
+        observacoes: isProposta ? (data.condicoesComerciais ?? prev.observacoes) : prev.observacoes,
         clausulas:
-          Array.isArray(data.clausulas) && data.clausulas.length > 0 ? data.clausulas : prev.clausulas,
+          isProposta
+            ? []
+            : Array.isArray(data.clausulas) && data.clausulas.length > 0
+              ? data.clausulas
+              : prev.clausulas,
         dadosPartes: {
           contratante: {
             ...emptyParte,

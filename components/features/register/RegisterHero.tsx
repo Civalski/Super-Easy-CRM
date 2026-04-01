@@ -31,14 +31,15 @@ export function RegisterHero({ appearance }: RegisterHeroProps) {
           Crie sua conta e padronize seu processo comercial.
         </h1>
         <p className={`max-w-lg text-sm sm:text-base ${appearance.heroDescription}`}>
-          Cadastre-se em minutos, adicione seu cartao no checkout seguro. Na licenca individual, use 7 dias gratis para validar o processo completo.
+          Cadastre-se em minutos e valide o processo completo com 1 mes premium gratis
+          antes da assinatura mensal.
         </p>
       </div>
 
       <div className="relative z-10 hidden gap-4 text-xs sm:flex">
         <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>Cadastro seguro</span>
         <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>Criptografia moderna</span>
-        <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>7 dias gratis (licenca individual)</span>
+        <span className={`rounded-full border px-3 py-1 ${appearance.heroChip}`}>1 mes premium gratis</span>
       </div>
     </section>
   )

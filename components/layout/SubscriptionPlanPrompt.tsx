@@ -6,7 +6,7 @@ import { Button } from '@/components/common'
 import { SelectablePlanCard } from '@/components/common/SelectablePlanCard'
 import { REGISTER_PLANS } from '@/components/features/register/constants'
 import type { RegisterPlanId } from '@/components/features/register/types'
-import { ArrowRight, LogOut } from '@/lib/icons'
+import { ArrowRight, LogOut, Percent, Sparkles } from '@/lib/icons'
 
 type SubscriptionPlanPromptProps = {
   loading: boolean
@@ -16,27 +16,15 @@ type SubscriptionPlanPromptProps = {
 }
 
 const AVAILABLE_CHECKOUT_PLANS = REGISTER_PLANS.filter((plan) => !plan.whatsappRedirect)
+const COUPON_CODE = 'ARKER25'
 
-const ONBOARDING_PLAN_PRICING: Record<
-  RegisterPlanId,
-  { priceLabel: string; pricePeriod?: string; description?: string }
+const ONBOARDING_PLAN_PRICING: Partial<
+  Record<RegisterPlanId, { priceLabel: string; pricePeriod?: string; description?: string }>
 > = {
   plan_1: {
     priceLabel: 'R$ 39,90',
     pricePeriod: '/mes',
-    description: 'Plano individual para continuar no CRM depois do seu periodo gratis.',
-  },
-  plan_3: {
-    priceLabel: 'R$ 99,90',
-    pricePeriod: '/mes',
-  },
-  plan_10: {
-    priceLabel: 'R$ 299,90',
-    pricePeriod: '/mes',
-  },
-  plan_personalizado: {
-    priceLabel: 'Fale conosco',
-    pricePeriod: 'via WhatsApp',
+    description: 'Plano individual para continuar no CRM apos seu 1 mes premium gratis.',
   },
 }
 
@@ -70,8 +58,37 @@ export function SubscriptionPlanPrompt({
           </div>
         </div>
 
+        <div className="mx-auto mt-6 flex w-full max-w-[1040px] flex-col gap-4 rounded-2xl border border-sky-200/70 bg-gradient-to-r from-sky-50 via-white to-emerald-50 px-4 py-4 shadow-[0_20px_40px_-35px_rgba(2,132,199,0.55)] dark:border-sky-700/40 dark:from-sky-950/25 dark:via-slate-900/70 dark:to-emerald-950/20 sm:px-5">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white/90 px-2.5 py-1 text-sky-700 dark:border-sky-700/70 dark:bg-sky-900/30 dark:text-sky-200">
+              <Sparkles className="h-3.5 w-3.5" />
+              Premium
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/90 px-2.5 py-1 text-emerald-700 dark:border-emerald-700/70 dark:bg-emerald-900/30 dark:text-emerald-200">
+              1 mes premium gratis concluido
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Para assinar agora, use o cupom <span className="font-bold text-slate-900 dark:text-white">{COUPON_CODE}</span> e
+              ganhe 25% de desconto vitalicio na mensalidade.
+            </p>
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-sky-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:border-sky-700/70 dark:bg-sky-900/35 dark:text-sky-200">
+              <Percent className="h-4 w-4" />
+              Cupom {COUPON_CODE}
+            </span>
+          </div>
+        </div>
+
         <div className="mx-auto mt-7 w-full max-w-[1040px] bg-transparent p-0.5">
-          <div className="grid gap-4 lg:grid-cols-3 lg:gap-4">
+          <div className="rounded-3xl border border-slate-200/70 bg-white/70 p-4 shadow-[0_25px_50px_-45px_rgba(15,23,42,0.85)] dark:border-slate-700/60 dark:bg-slate-900/55 sm:p-5">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white sm:text-lg">Escolha seu plano premium</h2>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                Compare os pacotes abaixo e continue para o checkout seguro com campo para cupom.
+              </p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3 lg:gap-4">
             {AVAILABLE_CHECKOUT_PLANS.map((plan) => {
               const pricing = ONBOARDING_PLAN_PRICING[plan.id]
 
@@ -90,10 +107,16 @@ export function SubscriptionPlanPrompt({
                 />
               )
             })}
+            </div>
           </div>
         </div>
 
-        <div className="mt-auto flex flex-col items-center justify-center gap-3 pt-8 sm:flex-row">
+        <div className="mt-auto flex flex-col items-center justify-center gap-3 pt-8">
+          <p className="text-center text-xs text-slate-600 dark:text-slate-300">
+            No Stripe, aplique o cupom <span className="font-semibold text-slate-900 dark:text-white">{COUPON_CODE}</span> para ativar 25% OFF
+            vitalicio.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
           <Button
             type="button"
             variant="secondary"
@@ -112,6 +135,7 @@ export function SubscriptionPlanPrompt({
             {loading ? 'Redirecionando para o Stripe...' : 'Continuar para o pagamento'}
             <ArrowRight size={16} />
           </Button>
+          </div>
         </div>
       </div>
     </div>

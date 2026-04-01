@@ -13,6 +13,11 @@ type OpenAiModelId = Extract<ExecutionModelId, 'gpt-5-nano' | 'gpt-5-mini' | 'gp
 const DEFAULT_OPENAI_MODEL: OpenAiModelId = 'gpt-5-nano'
 const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
 
+function isPrivilegedRole(role: string | null | undefined) {
+  const normalized = (role ?? '').trim().toLowerCase()
+  return normalized === 'admin' || normalized === 'owner' || normalized === 'superadmin'
+}
+
 function getLimiteDiario(model: string): number {
   const config = MODELOS_IA_CONTRATO.find((m) => m.id === model)
   return config?.limiteDiario ?? 1
@@ -28,6 +33,7 @@ interface GerarIaBody {
   prompt: string
   titulo?: string
   tipo?: string
+  modoDocumento?: string
   preambuloBase?: string
   clausulasBase?: ClausulaGerada[]
   model?: string
@@ -56,6 +62,7 @@ interface DadosParteGerada {
 
 interface RespostaGerada {
   preambulo?: string
+  condicoesComerciais?: string
   clausulas: ClausulaGerada[]
   dadosPartes?: {
     contratante?: DadosParteGerada
@@ -76,7 +83,9 @@ function parseJsonFromResponse(text: string): RespostaGerada | null {
 
 function sanitizeRespostaGerada(parsed: RespostaGerada): RespostaGerada {
   return {
-    preambulo: parsed.preambulo || '',
+    preambulo: typeof parsed.preambulo === 'string' ? parsed.preambulo.trim() : '',
+    condicoesComerciais:
+      typeof parsed.condicoesComerciais === 'string' ? parsed.condicoesComerciais.trim() : '',
     clausulas: Array.isArray(parsed.clausulas)
       ? parsed.clausulas.filter(
           (c) => c && typeof c.titulo === 'string' && typeof c.conteudo === 'string'
@@ -87,6 +96,132 @@ function sanitizeRespostaGerada(parsed: RespostaGerada): RespostaGerada {
       contratado: {},
     },
   }
+}
+
+type ModoDocumento = 'contrato' | 'proposta'
+const COMMERCIAL_TITLES = [
+  'Valor do projeto',
+  'Taxa extra',
+  'Opcionais',
+  'Forma de pagamento',
+  'Validade da proposta',
+] as const
+
+function sanitizeGeneratedMultilineText(value: string | null | undefined): string {
+  if (!value) return ''
+  return value
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function normalizeSearchKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function normalizeProposalTitle(title: string, fallbackTitle: string): string {
+  const cleanTitle = title.trim().replace(/^#+\s*/, '')
+  if (!cleanTitle) return fallbackTitle
+  const normalized = normalizeSearchKey(cleanTitle)
+  if (/^(bloco|secao|sessao|topico|titulo)\s*\d*$/.test(normalized)) {
+    return fallbackTitle
+  }
+  return cleanTitle
+}
+
+function normalizeProposalBlocksText(text: string | null | undefined, fallbackTitle: string): string {
+  const normalized = sanitizeGeneratedMultilineText(text)
+  if (!normalized) return ''
+
+  const lines = normalized.split('\n')
+  const sections: Array<{ title: string; content: string }> = []
+  let currentTitle = fallbackTitle
+  let currentLines: string[] = []
+
+  const flushCurrent = () => {
+    const content = sanitizeGeneratedMultilineText(currentLines.join('\n'))
+    if (!content) {
+      currentLines = []
+      return
+    }
+    sections.push({
+      title: normalizeProposalTitle(currentTitle, fallbackTitle),
+      content,
+    })
+    currentLines = []
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    const headingMatch = line.match(/^#{1,3}\s+(.+)$/)
+    if (headingMatch) {
+      flushCurrent()
+      currentTitle = headingMatch[1].trim()
+      continue
+    }
+    currentLines.push(rawLine)
+  }
+
+  flushCurrent()
+
+  if (sections.length === 0) {
+    return `## ${fallbackTitle}\n${normalized}`
+  }
+
+  return sections
+    .map((section) => `## ${section.title}\n${section.content}`)
+    .join('\n\n')
+    .trim()
+}
+
+function mapCommercialTitle(key: string): (typeof COMMERCIAL_TITLES)[number] | null {
+  if (key.includes('valor') || key.includes('investimento')) return 'Valor do projeto'
+  if (key.includes('taxa')) return 'Taxa extra'
+  if (key.includes('opcion')) return 'Opcionais'
+  if (key.includes('pag') && (key.includes('forma') || key.includes('condic'))) return 'Forma de pagamento'
+  if (key.includes('validade')) return 'Validade da proposta'
+  return null
+}
+
+function normalizeProposalCommercialText(text: string | null | undefined): string {
+  const normalized = sanitizeGeneratedMultilineText(text)
+  if (!normalized) return ''
+
+  const mappedValues: Partial<Record<(typeof COMMERCIAL_TITLES)[number], string>> = {}
+  const extraLines: string[] = []
+
+  for (const rawLine of normalized.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) continue
+    if (/^#{1,3}\s+/.test(line)) {
+      extraLines.push(line)
+      continue
+    }
+
+    const separatorIndex = line.indexOf(':')
+    if (separatorIndex > 0) {
+      const key = normalizeSearchKey(line.slice(0, separatorIndex))
+      const value = line.slice(separatorIndex + 1).trim()
+      const mappedTitle = mapCommercialTitle(key)
+      if (mappedTitle && value) {
+        mappedValues[mappedTitle] = value
+        continue
+      }
+    }
+
+    extraLines.push(line)
+  }
+
+  const requiredLines = COMMERCIAL_TITLES
+    .map((title) => (mappedValues[title] ? `${title}: ${mappedValues[title]}` : ''))
+    .filter(Boolean)
+  const customBlocks = normalizeProposalBlocksText(extraLines.join('\n'), 'Detalhes comerciais')
+  return [requiredLines.join('\n'), customBlocks].filter(Boolean).join('\n\n').trim()
 }
 
 function sanitizeClausulasBase(clausulasBase: unknown): ClausulaGerada[] {
@@ -112,6 +247,7 @@ function sanitizeClausulasBase(clausulasBase: unknown): ClausulaGerada[] {
 function buildPrompts(input: {
   titulo: string
   tipo: string
+  modoDocumento: ModoDocumento
   prompt: string
   rigidez: 'flexivel' | 'moderado' | 'rigoroso'
   preambuloBase?: string
@@ -124,12 +260,14 @@ function buildPrompts(input: {
         ? 'Use linguagem juridica formal, tecnica e rigorosa, com termos precisos e clausulas detalhadas.'
         : 'Use equilibrio entre formalidade juridica e clareza, adequado para a maioria dos contratos.'
 
-  const systemPrompt = `Voce e um assistente juridico que gera contratos em portugues do Brasil.
+  const isProposta = input.modoDocumento === 'proposta'
+  const systemPrompt = `Voce e um assistente juridico que gera ${isProposta ? 'propostas comerciais' : 'contratos'} em portugues do Brasil.
 ${rigidezInstrucao}
 
 Retorne APENAS um objeto JSON valido, sem markdown ou texto extra, no formato:
 {
-  "preambulo": "texto introdutorio do contrato",
+  "preambulo": "${isProposta ? 'texto da proposta em blocos com titulos personalizados no formato ## Titulo' : 'texto introdutorio do contrato'}",
+  "condicoesComerciais": "${isProposta ? 'texto com linhas obrigatorias de condicoes e blocos adicionais com titulos personalizados' : ''}",
   "clausulas": [
     { "titulo": "Titulo da clausula", "conteudo": "Texto completo da clausula" }
   ],
@@ -138,7 +276,11 @@ Retorne APENAS um objeto JSON valido, sem markdown ou texto extra, no formato:
     "contratado": { "nome": "", "rg": "", "documento": "", "endereco": "", "cidade": "", "estado": "", "cep": "", "email": "", "telefone": "" }
   }
 }
-Preencha os campos com dados ficticios plausiveis quando o usuario nao especificar. As clausulas devem ser formais e adequadas ao tipo de contrato.`
+${isProposta ? 'Em proposta comercial, NAO invente dados de partes. Retorne "dadosPartes" com objetos vazios.' : 'Preencha os campos com dados ficticios plausiveis quando o usuario nao especificar.'} ${
+    isProposta
+      ? 'Em proposta comercial, NAO gere clausulas juridicas. Retorne "clausulas": []. No "preambulo", gere de 3 a 5 blocos com TITULOS PERSONALIZADOS, agrupando informacoes relacionadas em cada bloco. Cada bloco deve comecar com "## <Titulo do bloco>" seguido do conteudo em paragrafos e/ou listas. O TITULO precisa fazer sentido com a descricao do bloco. NUNCA retorne bloco vazio ou com titulo sem conteudo. Se nao houver conteudo util para um bloco, NAO crie esse bloco. Em "condicoesComerciais", inclua primeiro as linhas com os titulos EXATOS: "Valor do projeto", "Taxa extra", "Opcionais", "Forma de pagamento", "Validade da proposta". Depois dessas linhas, acrescente no maximo 1 ou 2 blocos adicionais com titulos personalizados e conteudo coerente.'
+      : 'As clausulas devem ser formais e adequadas ao tipo de contrato.'
+  }`
 
   const partesBase: string[] = []
   if (input.preambuloBase?.trim()) {
@@ -161,9 +303,10 @@ Preencha os campos com dados ficticios plausiveis quando o usuario nao especific
 
   const contextoBase = partesBase.length > 0 ? `\n\n${partesBase.join('\n\n')}` : ''
 
+  const docLabel = isProposta ? 'proposta' : 'contrato'
   const userPrompt = input.titulo
-    ? `Titulo do contrato: ${input.titulo}. Tipo: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
-    : `Tipo de contrato: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
+    ? `Titulo da ${docLabel}: ${input.titulo}. Tipo: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
+    : `Tipo de ${docLabel}: ${input.tipo}.\n\nDescricao/requisitos: ${input.prompt}${instrucoesBase}${contextoBase}`
 
   return { systemPrompt, userPrompt }
 }
@@ -261,8 +404,22 @@ async function runSingleModelFlow(
   prompts: { systemPrompt: string; userPrompt: string }
 ): Promise<RespostaGerada> {
   if (model === 'gemini-2.0-flash') {
-    const geminiRaw = await callGeminiJson(prompts.systemPrompt, prompts.userPrompt)
-    return parseOrThrow('Gemini', geminiRaw)
+    try {
+      const geminiRaw = await callGeminiJson(prompts.systemPrompt, prompts.userPrompt)
+      return parseOrThrow('Gemini', geminiRaw)
+    } catch (geminiError) {
+      const openAiKey = process.env.OPENAI_API_KEY?.trim()
+      if (!openAiKey) throw geminiError
+
+      try {
+        const openAiRaw = await callOpenAiJson('gpt-5-mini', prompts.systemPrompt, prompts.userPrompt)
+        return parseOrThrow('OpenAI', openAiRaw)
+      } catch (fallbackError) {
+        const geminiMsg = geminiError instanceof Error ? geminiError.message : 'falha desconhecida'
+        const fallbackMsg = fallbackError instanceof Error ? fallbackError.message : 'falha desconhecida'
+        throw new Error(`Gemini indisponivel (${geminiMsg}). Fallback OpenAI falhou (${fallbackMsg}).`)
+      }
+    }
   }
 
   const openAiRaw = await callOpenAiJson(model, prompts.systemPrompt, prompts.userPrompt)
@@ -353,6 +510,7 @@ export async function POST(request: NextRequest) {
 
     const titulo = typeof body.titulo === 'string' ? body.titulo.trim() : ''
     const tipo = typeof body.tipo === 'string' ? body.tipo.trim() : 'geral'
+    const modoDocumento: ModoDocumento = body.modoDocumento === 'proposta' || tipo === 'proposta' ? 'proposta' : 'contrato'
     const preambuloBase = typeof body.preambuloBase === 'string' ? body.preambuloBase.trim() : ''
     const clausulasBase = sanitizeClausulasBase(body.clausulasBase)
     const useMultiModels = Boolean(body.useMultiModels)
@@ -377,19 +535,26 @@ export async function POST(request: NextRequest) {
 
     try {
       await ensureDatabaseInitialized()
-      const dataHoje = getDataHojeBR()
-      const usoHoje = await prisma.iaGeracaoContrato.count({
-        where: { userId, model, data: dataHoje },
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
       })
-      const limite = getLimiteDiario(model)
-      if (usoHoje >= limite) {
-        return NextResponse.json(
-          {
-            error: `Limite diario atingido para ${model}. Voce pode usar ate ${limite} vez(es) por dia.`,
-            code: 'RATE_LIMIT',
-          },
-          { status: 429 }
-        )
+
+      if (!isPrivilegedRole(user?.role)) {
+        const dataHoje = getDataHojeBR()
+        const usoHoje = await prisma.iaGeracaoContrato.count({
+          where: { userId, model, data: dataHoje },
+        })
+        const limite = getLimiteDiario(model)
+        if (usoHoje >= limite) {
+          return NextResponse.json(
+            {
+              error: `Limite diario atingido para ${model}. Voce pode usar ate ${limite} vez(es) por dia.`,
+              code: 'RATE_LIMIT',
+            },
+            { status: 429 }
+          )
+        }
       }
     } catch (err) {
       console.error('[contratos/gerar-ia] Erro ao verificar limite:', err)
@@ -398,6 +563,7 @@ export async function POST(request: NextRequest) {
     const prompts = buildPrompts({
       titulo,
       tipo,
+      modoDocumento,
       prompt,
       rigidez,
       preambuloBase,
@@ -409,13 +575,25 @@ export async function POST(request: NextRequest) {
         model === 'multi-models'
           ? await runMultiModelsFlow(primaryModel, secondaryModel, prompts)
           : await runSingleModelFlow(model as ExecutionModelId, prompts)
+      const propostaPreambulo =
+        modoDocumento === 'proposta'
+          ? normalizeProposalBlocksText(result.preambulo, 'Resumo da proposta')
+          : result.preambulo || ''
+      const propostaCondicoes =
+        modoDocumento === 'proposta'
+          ? normalizeProposalCommercialText(result.condicoesComerciais)
+          : ''
 
       await registrarUso(userId, model)
 
       return NextResponse.json({
-        preambulo: result.preambulo || '',
-        clausulas: result.clausulas,
-        dadosPartes: result.dadosPartes || { contratante: {}, contratado: {} },
+        preambulo: propostaPreambulo,
+        condicoesComerciais: propostaCondicoes,
+        clausulas: modoDocumento === 'proposta' ? [] : result.clausulas,
+        dadosPartes:
+          modoDocumento === 'proposta'
+            ? { contratante: {}, contratado: {} }
+            : result.dadosPartes || { contratante: {}, contratado: {} },
       })
     } catch (error) {
       console.error('[contratos/gerar-ia] Error:', error)

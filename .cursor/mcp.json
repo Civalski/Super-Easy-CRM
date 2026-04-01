@@ -1,13 +1,27 @@
 {
   "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
+    },
     "next-devtools": {
       "command": "npx",
       "args": ["-y", "next-devtools-mcp@latest"]
+    },
+    "prisma": {
+      "command": "npx",
+      "args": ["-y", "prisma", "mcp"]
     },
     "resend": {
       "command": "npx",
       "args": ["-y", "resend-mcp"],
       "envFile": "${workspaceFolder}/.env.local"
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=sxbtwpanyctadtmokfqx",
+      "headers": {}
     }
   }
 }

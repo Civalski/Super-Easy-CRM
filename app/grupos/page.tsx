@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import { readCsvToObjects } from '@/lib/csv'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/components/common'
-import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, MessageCircle, Plus, PhoneCall, LayoutList, ShoppingCart, MoreVertical, Edit2, Trash2, UserPlus } from '@/lib/icons'
+import { Loader2, ChevronLeft, ChevronRight, Layers, Eye, X, User, Mail, Phone, Building2, MapPin, FileText, Calendar, Star, Hash, Briefcase, Tag, DollarSign, Scale, MessageCircle, Plus, PhoneCall, LayoutList, ShoppingCart, MoreVertical, Edit2, Trash2, UserPlus, QuestionMarkCircle } from '@/lib/icons'
 import {
     FunilKanban,
     CadastrarLeadDrawer,
@@ -22,11 +22,12 @@ import { CreatePedidoDiretoModal } from '@/components/features/pedidos/CreatePed
 import type { AsyncSelectOption } from '@/components/common/AsyncSelect'
 import { MotivoPerdaModal } from '@/components/features/oportunidades'
 import { SideCreateDrawer } from '@/components/common'
-import { formatCurrency } from '@/lib/format'
 import { getEmailComposeUrl } from '@/lib/emailCompose'
 import { MetaBatidaModal } from '@/components/features/metas/MetaBatidaModal'
 import { usePageHeaderMinimal } from '@/lib/ui/usePageHeaderMinimal'
 import { useTipoPublico } from '@/lib/hooks/useTipoPublico'
+import { useGuideTour } from '@/components/layout/GuideTourProvider'
+import type { MenuItem } from '@/lib/menuItems'
 
 let lastMetaBatidaAt = 0
 const META_BATIDA_DEBOUNCE_MS = 10000
@@ -59,6 +60,9 @@ interface Oportunidade {
         telefone: string | null
         empresa: string | null
         cnpj?: string | null
+        capitalSocial?: string | null
+        atividadePrincipal?: string | null
+        municipio?: string | null
     }
     type?: 'prospecto' | 'oportunidade'
     subStatus?: string
@@ -83,17 +87,83 @@ function getPrevStatus(status: string): string | null {
     return FUNIL_TABS[idx - 1].value
 }
 
+function formatCapitalSocial(value: string | null | undefined): string {
+    if (!value) return '-'
+    const valorLimpo = String(value).replace(/\./g, '').replace(',', '.')
+    const numero = Number(valorLimpo)
+    if (Number.isNaN(numero)) return `R$ ${value}`
+    return `R$ ${numero.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}`
+}
+
 const WHATSAPP_MESSAGES_STORAGE_KEY = 'grupos_whatsapp_messages_v1'
+const WHATSAPP_MESSAGE_GUIDE_SEEN_STORAGE_KEY = 'grupos_whatsapp_message_guide_seen_v1'
 /** Limite para o link wa.me suportar o parâmetro text (URL segura) */
 const MAX_WHATSAPP_MESSAGE_LENGTH = 1500
 /** Mensagem padrão: usuário deve substituir o espaço entre aspas pela profissão */
 const DEFAULT_WHATSAPP_MESSAGE = 'Olá, você trabalha com " "?'
 /** Mensagem padrão antiga: migrar para a nova ao carregar */
 const LEGACY_DEFAULT_MESSAGE = 'ola {nome} como vai?'
+const DEFAULT_WHATSAPP_TEMPLATE_TITLE = 'Mensagem principal'
+
+const WHATSAPP_MESSAGE_GUIDE_ITEM: MenuItem = {
+    name: 'Guia: Mensagens WhatsApp',
+    href: '/grupos',
+    icon: MessageCircle,
+    guideSteps: [
+        {
+            title: 'Passo 1: Defina o título',
+            description:
+                'No campo "Título da mensagem", coloque um nome curto para identificar o contexto.\n\n' +
+                '- Esse título aparece no botão "WhatsApp" ao escolher a mensagem.\n' +
+                '- Exemplos bons: Restaurante, Academia, Loja de Roupas.',
+            meta: { messageGuideField: 'title' },
+        },
+        {
+            title: 'Passo 2: Escreva a mensagem',
+            description:
+                'No campo de descrição, monte o texto que será enviado.\n\n' +
+                '- Evite mensagens longas; curto e direto costuma converter melhor.\n' +
+                '- Se possível, chame o cliente pelo nome usando {nome}.',
+            meta: { messageGuideField: 'description' },
+        },
+        {
+            title: 'Passo 3: Personalize com contexto',
+            description:
+                'Use contexto do lead para soar natural e aumentar resposta.\n\n' +
+                '- Pergunte sobre a atividade principal da empresa quando fizer sentido.\n' +
+                '- Exemplo: "Bom dia, (nome do cliente). Esse número é do restaurante (nome do restaurante)?"',
+            meta: { messageGuideField: 'description' },
+        },
+    ],
+}
+
+interface WhatsAppMessageTemplate {
+    id: string
+    title: string
+    message: string
+}
+
+interface WhatsAppTemplateOption {
+    id: string
+    title: string
+}
+
+function createWhatsAppTemplate(index: number, overrides?: Partial<WhatsAppMessageTemplate>): WhatsAppMessageTemplate {
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: `Mensagem ${index + 1}`,
+        message: '',
+        ...overrides,
+    }
+}
 
 function ListaItemActions({
     item,
     updatingId,
+    whatsAppTemplates,
     onViewDetails,
     onStartContact,
     onSendEmail,
@@ -101,23 +171,30 @@ function ListaItemActions({
     onDelete,
     onStatusChange,
     onTransformarCliente,
+    onCreateOrcamento,
     onCreatePedido,
 }: {
     item: Oportunidade
     updatingId: string | null
+    whatsAppTemplates: WhatsAppTemplateOption[]
     onViewDetails: (item: Oportunidade) => void
-    onStartContact?: (item: Oportunidade) => void
+    onStartContact?: (item: Oportunidade, templateId?: string) => void
     onSendEmail?: (item: Oportunidade) => void
     onEdit?: (item: Oportunidade) => void
     onDelete?: (item: Oportunidade) => void
     onStatusChange: (item: Oportunidade, newStatus: string) => Promise<void>
     onTransformarCliente?: (item: Oportunidade) => void
+    onCreateOrcamento?: (item: Oportunidade) => void
     onCreatePedido?: (item: Oportunidade) => void
 }) {
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+    const [whatsAppMenuOpen, setWhatsAppMenuOpen] = useState(false)
+    const [whatsAppMenuPos, setWhatsAppMenuPos] = useState({ top: 0, left: 0 })
     const menuRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLButtonElement>(null)
+    const whatsAppMenuRef = useRef<HTMLDivElement>(null)
+    const whatsAppTriggerRef = useRef<HTMLButtonElement>(null)
 
     const hasValidPhone = item.cliente.telefone && item.cliente.telefone.replace(/\D/g, '').length > 0
     const showWhatsApp = hasValidPhone && onStartContact
@@ -137,28 +214,77 @@ function ListaItemActions({
     }, [menuOpen])
 
     useEffect(() => {
+        if (whatsAppMenuOpen && whatsAppTriggerRef.current) {
+            const rect = whatsAppTriggerRef.current.getBoundingClientRect()
+            const menuW = 220
+            const left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8))
+            const top = Math.min(rect.bottom + 4, window.innerHeight - 200)
+            setWhatsAppMenuPos({ top, left })
+        }
+    }, [whatsAppMenuOpen])
+
+    useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             const target = e.target as Node
             if (menuRef.current && !menuRef.current.contains(target) && triggerRef.current && !triggerRef.current.contains(target)) {
                 setMenuOpen(false)
             }
+            if (whatsAppMenuRef.current && !whatsAppMenuRef.current.contains(target) && whatsAppTriggerRef.current && !whatsAppTriggerRef.current.contains(target)) {
+                setWhatsAppMenuOpen(false)
+            }
         }
-        if (menuOpen) document.addEventListener('click', handleClickOutside)
+        if (menuOpen || whatsAppMenuOpen) document.addEventListener('click', handleClickOutside)
         return () => document.removeEventListener('click', handleClickOutside)
-    }, [menuOpen])
+    }, [menuOpen, whatsAppMenuOpen])
 
     return (
         <div className="flex items-center gap-2">
             {showWhatsApp && (
-                <button
-                    onClick={() => onStartContact?.(item)}
-                    disabled={updatingId === item.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-emerald-300 dark:border-emerald-600 shadow-xs text-xs font-medium rounded-sm text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                    title="Enviar WhatsApp"
-                >
-                    <MessageCircle size={12} />
-                    WhatsApp
-                </button>
+                <div className="relative inline-block">
+                    <button
+                        ref={whatsAppTriggerRef}
+                        type="button"
+                        onClick={() => {
+                            setWhatsAppMenuOpen((o) => !o)
+                            setMenuOpen(false)
+                        }}
+                        disabled={updatingId === item.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-emerald-300 dark:border-emerald-600 shadow-xs text-xs font-medium rounded-sm text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                        title="Enviar WhatsApp"
+                    >
+                        <MessageCircle size={12} />
+                        WhatsApp
+                    </button>
+                    {whatsAppMenuOpen && typeof document !== 'undefined' && createPortal(
+                        <div
+                            ref={whatsAppMenuRef}
+                            className="fixed z-[9999] w-56 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
+                            style={{ top: whatsAppMenuPos.top, left: whatsAppMenuPos.left }}
+                        >
+                            {whatsAppTemplates.length === 0 ? (
+                                <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                    Nenhuma mensagem ativa.
+                                </p>
+                            ) : (
+                                whatsAppTemplates.map((template) => (
+                                    <button
+                                        key={template.id}
+                                        type="button"
+                                        onClick={() => {
+                                            onStartContact?.(item, template.id)
+                                            setWhatsAppMenuOpen(false)
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    >
+                                        <MessageCircle size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                        {template.title}
+                                    </button>
+                                ))
+                            )}
+                        </div>,
+                        document.body
+                    )}
+                </div>
             )}
             {showEmail && (
                 <button
@@ -175,7 +301,10 @@ function ListaItemActions({
                 <button
                     ref={triggerRef}
                     type="button"
-                    onClick={() => setMenuOpen((o) => !o)}
+                    onClick={() => {
+                        setMenuOpen((o) => !o)
+                        setWhatsAppMenuOpen(false)
+                    }}
                     className="p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700"
                     title="Ações"
                 >
@@ -229,6 +358,17 @@ function ListaItemActions({
                                 Criar pedido
                             </button>
                         )}
+                        {item.type === 'prospecto' && onCreateOrcamento && (
+                            <button
+                                type="button"
+                                onClick={() => { onCreateOrcamento(item); setMenuOpen(false) }}
+                                disabled={updatingId === item.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                            >
+                                <FileText size={12} />
+                                Criar orçamento
+                            </button>
+                        )}
                         {prevStatus && (
                             <button
                                 type="button"
@@ -271,6 +411,7 @@ export default function GruposPage() {
     const router = useRouter()
     const minimal = usePageHeaderMinimal()
     const { prompt, confirm } = useConfirm()
+    const { openGuide, guideActive, currentGuideStep } = useGuideTour()
     const [activeTab, setActiveTab] = useState<FunilTabValue>('sem_contato')
     const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista')
     const [kanbanRefreshTrigger, setKanbanRefreshTrigger] = useState(0)
@@ -298,8 +439,12 @@ export default function GruposPage() {
     const [detailModal, setDetailModal] = useState<any | null>(null)
     const [detailLoading, setDetailLoading] = useState(false)
     const [showMessageConfig, setShowMessageConfig] = useState(false)
-    const [whatsAppMessages, setWhatsAppMessages] = useState<string[]>([DEFAULT_WHATSAPP_MESSAGE])
-    const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<string[]>([DEFAULT_WHATSAPP_MESSAGE])
+    const [whatsAppMessages, setWhatsAppMessages] = useState<WhatsAppMessageTemplate[]>([
+        createWhatsAppTemplate(0, { title: DEFAULT_WHATSAPP_TEMPLATE_TITLE, message: DEFAULT_WHATSAPP_MESSAGE }),
+    ])
+    const [draftWhatsAppMessages, setDraftWhatsAppMessages] = useState<WhatsAppMessageTemplate[]>([
+        createWhatsAppTemplate(0, { title: DEFAULT_WHATSAPP_TEMPLATE_TITLE, message: DEFAULT_WHATSAPP_MESSAGE }),
+    ])
     const [contatosIniciadosHoje, setContatosIniciadosHoje] = useState<number | null>(null)
     const [metaContatosHoje, setMetaContatosHoje] = useState<number | null>(null)
     const [showMetaBatidaModal, setShowMetaBatidaModal] = useState(false)
@@ -497,30 +642,51 @@ export default function GruposPage() {
             if (!Array.isArray(parsed)) return
 
             const normalized = parsed
-                .filter((v: unknown) => typeof v === 'string')
-                .map((v: string) => v.trim())
-            const trimmed: string[] = []
-            for (let i = 0; i < normalized.length; i++) {
-                trimmed.push(normalized[i])
-            }
-            while (trimmed.length > 1 && trimmed[trimmed.length - 1] === '') {
-                trimmed.pop()
-            }
-            if (trimmed.length === 0) trimmed.push(DEFAULT_WHATSAPP_MESSAGE)
+                .map((entry, index): WhatsAppMessageTemplate | null => {
+                    if (typeof entry === 'string') {
+                        return createWhatsAppTemplate(index, {
+                            title: index === 0 ? DEFAULT_WHATSAPP_TEMPLATE_TITLE : `Mensagem ${index + 1}`,
+                            message: entry.trim(),
+                        })
+                    }
+                    if (!entry || typeof entry !== 'object') return null
+                    const rawTitle = 'title' in entry && typeof entry.title === 'string' ? entry.title.trim() : ''
+                    const rawMessage = 'message' in entry && typeof entry.message === 'string' ? entry.message.trim() : ''
+                    const rawId = 'id' in entry && typeof entry.id === 'string' ? entry.id.trim() : ''
+                    return createWhatsAppTemplate(index, {
+                        id: rawId || undefined,
+                        title: rawTitle || `Mensagem ${index + 1}`,
+                        message: rawMessage,
+                    })
+                })
+                .filter((entry): entry is WhatsAppMessageTemplate => entry !== null)
 
-            const isLegacyDefault = trimmed.length === 1 && trimmed[0].toLowerCase() === LEGACY_DEFAULT_MESSAGE.toLowerCase()
-            if (isLegacyDefault) {
-                const migrated = [DEFAULT_WHATSAPP_MESSAGE]
+            while (
+                normalized.length > 1 &&
+                normalized[normalized.length - 1].message.trim() === ''
+            ) {
+                normalized.pop()
+            }
+
+            if (
+                normalized.length === 1 &&
+                normalized[0].message.toLowerCase() === LEGACY_DEFAULT_MESSAGE.toLowerCase()
+            ) {
+                const migrated = [
+                    createWhatsAppTemplate(0, {
+                        title: DEFAULT_WHATSAPP_TEMPLATE_TITLE,
+                        message: DEFAULT_WHATSAPP_MESSAGE,
+                    }),
+                ]
                 setWhatsAppMessages(migrated)
                 setDraftWhatsAppMessages(migrated)
                 window.localStorage.setItem(WHATSAPP_MESSAGES_STORAGE_KEY, JSON.stringify(migrated))
                 return
             }
 
-            const hasContent = trimmed.some((m) => m.length > 0)
-            if (hasContent) {
-                setWhatsAppMessages(trimmed)
-                setDraftWhatsAppMessages(trimmed)
+            if (normalized.length > 0) {
+                setWhatsAppMessages(normalized)
+                setDraftWhatsAppMessages(normalized)
             }
         } catch (error) {
             console.error('Erro ao carregar mensagens de WhatsApp:', error)
@@ -593,21 +759,20 @@ export default function GruposPage() {
         }
     }
 
-    const getRandomWhatsappMessage = (item: Oportunidade) => {
-        const activeMessages = whatsAppMessages
-            .map((message) => message.trim())
-            .filter((message) => message.length > 0)
+    const getWhatsappMessage = (item: Oportunidade, templateId?: string) => {
+        const activeTemplates = whatsAppMessages.filter((template) => template.message.trim().length > 0)
+        if (activeTemplates.length === 0) return ''
 
-        if (activeMessages.length === 0) return ''
-
-        const selected = activeMessages[Math.floor(Math.random() * activeMessages.length)]
+        const selected = templateId
+            ? activeTemplates.find((template) => template.id === templateId) ?? activeTemplates[0]
+            : activeTemplates[0]
         const nome = item.cliente.nome || ''
         const empresa = item.cliente.empresa || item.cliente.nome || ''
         const email = item.cliente.email || ''
         const telefone = item.cliente.telefone || ''
         const cnpj = item.cliente.cnpj || ''
 
-        let result = selected
+        let result = selected.message
             .replace(/\{nome\}/gi, nome)
             .replace(/\{empresa\}/gi, empresa)
             .replace(/\{email\}/gi, email)
@@ -621,27 +786,71 @@ export default function GruposPage() {
     }
 
     const handleOpenMessageConfig = () => {
-        setDraftWhatsAppMessages([...whatsAppMessages].length ? [...whatsAppMessages] : [''])
+        setDraftWhatsAppMessages(
+            whatsAppMessages.length
+                ? whatsAppMessages.map((template) => ({ ...template }))
+                : [createWhatsAppTemplate(0, { title: DEFAULT_WHATSAPP_TEMPLATE_TITLE, message: DEFAULT_WHATSAPP_MESSAGE })]
+        )
+
+        let hasSeenGuide = false
+        try {
+            hasSeenGuide = window.localStorage.getItem(WHATSAPP_MESSAGE_GUIDE_SEEN_STORAGE_KEY) === '1'
+        } catch {
+            hasSeenGuide = false
+        }
+        if (!hasSeenGuide) {
+            try {
+                window.localStorage.setItem(WHATSAPP_MESSAGE_GUIDE_SEEN_STORAGE_KEY, '1')
+            } catch {
+                // ignore
+            }
+            if (!guideActive) {
+                openGuide([WHATSAPP_MESSAGE_GUIDE_ITEM])
+            }
+        }
         setShowMessageConfig(true)
     }
 
     const handleCancelMessageConfig = () => {
-        setDraftWhatsAppMessages([...whatsAppMessages])
+        setDraftWhatsAppMessages(whatsAppMessages.map((template) => ({ ...template })))
         setShowMessageConfig(false)
     }
 
-    const handleSaveMessageConfig = () => {
-        const trimmed = draftWhatsAppMessages.map((m) => m.trim().slice(0, MAX_WHATSAPP_MESSAGE_LENGTH))
-        let normalized = trimmed
-        while (normalized.length > 1 && normalized[normalized.length - 1] === '') {
-            normalized = normalized.slice(0, -1)
+    const handleReplayMessageGuide = () => {
+        try {
+            window.localStorage.setItem(WHATSAPP_MESSAGE_GUIDE_SEEN_STORAGE_KEY, '1')
+        } catch {
+            // ignore
         }
-        if (normalized.length === 0) normalized = ['']
+        openGuide([WHATSAPP_MESSAGE_GUIDE_ITEM])
+    }
+
+    const handleSaveMessageConfig = () => {
+        const normalized = draftWhatsAppMessages.map((template, index) => ({
+            id: template.id || createWhatsAppTemplate(index).id,
+            title: (template.title || `Mensagem ${index + 1}`).trim() || `Mensagem ${index + 1}`,
+            message: (template.message || '').trim().slice(0, MAX_WHATSAPP_MESSAGE_LENGTH),
+        }))
+
+        while (
+            normalized.length > 1 &&
+            normalized[normalized.length - 1].message.trim() === ''
+        ) {
+            normalized.pop()
+        }
+        if (normalized.length === 0) {
+            normalized.push(
+                createWhatsAppTemplate(0, {
+                    title: DEFAULT_WHATSAPP_TEMPLATE_TITLE,
+                    message: '',
+                })
+            )
+        }
 
         setWhatsAppMessages(normalized)
-        setDraftWhatsAppMessages(normalized)
+        setDraftWhatsAppMessages(normalized.map((template) => ({ ...template })))
 
-        const hasAnyMessage = normalized.some((message) => message.length > 0)
+        const hasAnyMessage = normalized.some((template) => template.message.length > 0)
         if (hasAnyMessage) {
             window.localStorage.setItem(WHATSAPP_MESSAGES_STORAGE_KEY, JSON.stringify(normalized))
         } else {
@@ -652,7 +861,10 @@ export default function GruposPage() {
     }
 
     const handleAddAnotherMessage = () => {
-        setDraftWhatsAppMessages([...draftWhatsAppMessages, ''])
+        setDraftWhatsAppMessages([
+            ...draftWhatsAppMessages,
+            createWhatsAppTemplate(draftWhatsAppMessages.length),
+        ])
     }
 
     const handleRemoveDraftMessage = (index: number) => {
@@ -661,10 +873,10 @@ export default function GruposPage() {
         setDraftWhatsAppMessages(next)
     }
 
-    const handleStartContact = async (item: Oportunidade) => {
+    const handleStartContact = async (item: Oportunidade, templateId?: string) => {
         if (!item.cliente.telefone) return
 
-        const message = getRandomWhatsappMessage(item)
+        const message = getWhatsappMessage(item, templateId)
         const profissaoEmBranco = /"\s+"/.test(message)
 
         if (profissaoEmBranco) {
@@ -890,7 +1102,16 @@ export default function GruposPage() {
         return [...tabActions, ...extraActions]
     }
 
-    const activeMessageCount = whatsAppMessages.filter((message) => message.trim().length > 0).length
+    const activeTemplates = whatsAppMessages.filter((template) => template.message.trim().length > 0)
+    const activeMessageCount = activeTemplates.length
+    const whatsAppTemplateOptions: WhatsAppTemplateOption[] = activeTemplates.map((template, index) => ({
+        id: template.id,
+        title: template.title.trim() || `Mensagem ${index + 1}`,
+    }))
+    const isMessageGuideActive = showMessageConfig && guideActive && currentGuideStep?.href === '/grupos'
+    const guideFieldHighlight = isMessageGuideActive ? currentGuideStep?.meta?.messageGuideField : undefined
+    const highlightTitleField = guideFieldHighlight === 'title'
+    const highlightDescriptionField = guideFieldHighlight === 'description'
 
     const handleDefinirMetaContatos = async () => {
         const value = await prompt({
@@ -982,7 +1203,7 @@ export default function GruposPage() {
                             className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 shadow-xs hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800"
                         >
                             <ShoppingCart size={16} />
-                            Comprar lead
+                            Importar leads
                         </button>
                     )}
                     <input
@@ -1008,8 +1229,8 @@ export default function GruposPage() {
                         {activeMessageCount === 0
                             ? 'Sem mensagem personalizada'
                             : activeMessageCount === 1
-                                ? '1 mensagem ativa'
-                                : `${activeMessageCount} mensagens ativas (aleatório)`}
+                                ? '1 mensagem ativa com título'
+                                : `${activeMessageCount} mensagens ativas com título`}
                     </span>
                 </div>
             </div>
@@ -1026,14 +1247,25 @@ export default function GruposPage() {
                                     Use no &quot;Iniciar Contato&quot;. Máx. {MAX_WHATSAPP_MESSAGE_LENGTH} caracteres por mensagem (limite do link).
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={handleCancelMessageConfig}
-                                className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-                                aria-label="Fechar"
-                            >
-                                <X size={18} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handleReplayMessageGuide}
+                                    className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                                    aria-label="Refazer guia de personalização de mensagem"
+                                    title="Ver guia novamente"
+                                >
+                                    <QuestionMarkCircle size={18} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelMessageConfig}
+                                    className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                                    aria-label="Fechar"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -1045,8 +1277,8 @@ export default function GruposPage() {
                                 Substitua o espaço entre aspas pela profissão do lead. Se deixar em branco, o sistema pedirá para alterar antes de iniciar contato.
                             </p>
 
-                            {draftWhatsAppMessages.map((text, index) => (
-                                <div key={index}>
+                            {draftWhatsAppMessages.map((template, index) => (
+                                <div key={template.id}>
                                     <div className="flex items-center justify-between mb-1">
                                         <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
                                             Mensagem {index + 1}
@@ -1061,20 +1293,42 @@ export default function GruposPage() {
                                             </button>
                                         )}
                                     </div>
+                                    <p className="mb-1 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                                        Título que aparece no menu do botão WhatsApp
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={template.title}
+                                        maxLength={60}
+                                        onChange={(e) => {
+                                            const next = [...draftWhatsAppMessages]
+                                            next[index] = { ...next[index], title: e.target.value }
+                                            setDraftWhatsAppMessages(next)
+                                        }}
+                                        className={`mb-2 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                                            highlightTitleField ? 'ring-2 ring-amber-400 bg-amber-50 dark:bg-amber-400/10' : ''
+                                        }`}
+                                        placeholder="Título da mensagem (ex.: Academia)"
+                                    />
+                                    <p className="mb-1 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                                        Descrição da mensagem que será enviada
+                                    </p>
                                     <textarea
-                                        value={text}
+                                        value={template.message}
                                         maxLength={MAX_WHATSAPP_MESSAGE_LENGTH}
                                         onChange={(e) => {
                                             const next = [...draftWhatsAppMessages]
-                                            next[index] = e.target.value
+                                            next[index] = { ...next[index], message: e.target.value }
                                             setDraftWhatsAppMessages(next)
                                         }}
                                         rows={4}
-                                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                                            highlightDescriptionField ? 'ring-2 ring-amber-400 bg-amber-50 dark:bg-amber-400/10' : ''
+                                        }`}
                                         placeholder="Digite a mensagem para o WhatsApp..."
                                     />
                                     <p className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
-                                        {text.length} / {MAX_WHATSAPP_MESSAGE_LENGTH}
+                                        {template.message.length} / {MAX_WHATSAPP_MESSAGE_LENGTH}
                                     </p>
                                 </div>
                             ))}
@@ -1085,7 +1339,7 @@ export default function GruposPage() {
                                 className="inline-flex items-center gap-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                                 <Plus size={16} />
-                                Acrescentar outra mensagem (enviar aleatoriamente)
+                                Acrescentar outra mensagem
                             </button>
                         </div>
 
@@ -1185,11 +1439,13 @@ export default function GruposPage() {
                             onViewDetails={handleViewDetails}
                             onStatusChange={handleStatusChange}
                             getAvailableActions={getAvailableActions}
+                            whatsAppTemplates={whatsAppTemplateOptions}
                             onStartContact={handleStartContact}
                             onSendEmail={handleSendEmail}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                             onTransformarCliente={handleTransformarCliente}
+                            onCreateOrcamento={handleCreateOrcamento}
                             onCreatePedido={handleCreatePedido}
                             updatingId={updatingId}
                             refreshTrigger={kanbanRefreshTrigger}
@@ -1214,13 +1470,16 @@ export default function GruposPage() {
                             <thead className="bg-gray-50 dark:bg-gray-900/50">
                                 <tr>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Cliente / Empresa
+                                        Empresa
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Orçamento
+                                        Capital Social
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Valor
+                                        Atividade Principal
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Municipio
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Ações
@@ -1231,30 +1490,30 @@ export default function GruposPage() {
                                 {data.map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {item.cliente.nome}
-                                                </span>
-                                                {item.cliente.empresa && (
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {item.cliente.empresa}
-                                                    </span>
-                                                )}
-
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                {item.cliente.empresa || item.cliente.nome}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-900 dark:text-white">
+                                                {formatCapitalSocial(item.cliente.capitalSocial)}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900 dark:text-white max-w-[320px] truncate" title={item.cliente.atividadePrincipal || '-'}>
+                                                {item.cliente.atividadePrincipal || '-'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 dark:text-white">{item.titulo}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 dark:text-white font-medium">
-                                                {formatCurrency(item.valor)}
+                                            <div className="text-sm text-gray-900 dark:text-white">
+                                                {item.cliente.municipio || '-'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <ListaItemActions
                                                 item={item}
                                                 updatingId={updatingId}
+                                                whatsAppTemplates={whatsAppTemplateOptions}
                                                 onViewDetails={handleViewDetails}
                                                 onStartContact={handleStartContact}
                                                 onSendEmail={handleSendEmail}
@@ -1262,6 +1521,7 @@ export default function GruposPage() {
                                                 onDelete={handleDelete}
                                                 onStatusChange={handleStatusChange}
                                                 onTransformarCliente={handleTransformarCliente}
+                                                onCreateOrcamento={handleCreateOrcamento}
                                                 onCreatePedido={handleCreatePedido}
                                             />
                                         </td>

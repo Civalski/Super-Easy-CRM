@@ -22,6 +22,26 @@ function getDownloadFileNameFromHeader(header: string | null): string | null {
   return simple ? simple[1].trim() : null
 }
 
+async function fetchContractPdfWithFallback(contractId: string) {
+  const urls = [`/api/contratos/${contractId}/pdf-v2`, `/api/contratos/${contractId}/pdf`]
+  let lastError: Error | null = null
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url)
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'Nao foi possivel gerar o PDF.')
+      }
+      return response
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Erro ao gerar PDF.')
+    }
+  }
+
+  throw lastError || new Error('Nao foi possivel gerar o PDF.')
+}
+
 export default function ContratosPage() {
   const minimal = usePageHeaderMinimal()
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -59,11 +79,7 @@ export default function ContratosPage() {
   const handleDownloadPdf = useCallback(async (c: Contrato) => {
     try {
       setDownloadingPdfById((prev) => ({ ...prev, [c.id]: true }))
-      const res = await fetch(`/api/contratos/${c.id}/pdf`)
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || 'Não foi possível gerar o PDF.')
-      }
+      const res = await fetchContractPdfWithFallback(c.id)
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -230,3 +246,4 @@ export default function ContratosPage() {
     </div>
   )
 }
+

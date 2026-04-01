@@ -1,5 +1,5 @@
 import { PLAN_CARD_THEMES } from '@/components/common/planCardThemes'
-import { User, Users, Building2, Database } from '@/lib/icons'
+import { User } from '@/lib/icons'
 
 /**
  * Planos premium disponiveis para assinatura.
@@ -18,46 +18,6 @@ export const PREMIUM_PLANS = [
     highlights: ['1 usuario', 'Suporte padrao'],
     icon: User,
     theme: PLAN_CARD_THEMES.bronze,
-  },
-  {
-    id: 'plan_5',
-    actionType: 'checkout',
-    envKey: 'STRIPE_PRICE_ID_PLAN_5',
-    name: 'Equipe',
-    label: '5 licencas',
-    price: '99,90',
-    period: '/mes',
-    description: 'Para pequenas equipes',
-    highlights: ['Ate 5 usuarios', 'Visao compartilhada'],
-    icon: Users,
-    theme: PLAN_CARD_THEMES.silver,
-  },
-  {
-    id: 'plan_10_plus',
-    actionType: 'checkout',
-    envKey: 'STRIPE_PRICE_ID_PLAN_10_PLUS',
-    name: 'Enterprise',
-    label: '10+ licencas',
-    price: '299,90',
-    period: '/mes',
-    description: 'Inclui perfil gerente para monitorar desempenho',
-    highlights: ['10+ usuarios', 'Gestao por gerente'],
-    icon: Building2,
-    theme: PLAN_CARD_THEMES.gold,
-  },
-  {
-    id: 'dedicated_server',
-    actionType: 'whatsapp',
-    name: 'Servidor Dedicado',
-    label: 'Infra exclusiva',
-    price: 'Sob consulta',
-    description: 'Ambiente exclusivo com ajuste de performance e suporte prioritario',
-    highlights: ['Banco e app isolados', 'SLA prioritario'],
-    ctaLabel: 'Entrar em contato via WhatsApp',
-    whatsappUrl:
-      'https://wa.me/5519998205608?text=Ola%2C%20quero%20saber%20mais%20sobre%20o%20plano%20Servidor%20Dedicado%20do%20Arker%20CRM.',
-    icon: Database,
-    theme: PLAN_CARD_THEMES.diamond,
   },
 ] as const
 
