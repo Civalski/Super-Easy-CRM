@@ -24,9 +24,11 @@ import {
   ThemePreferenceCard,
 } from '@/components/features/configuracoes'
 import { isBillingSubscriptionEnabledClient } from '@/lib/billing/feature-toggle'
+import { isOssEdition } from '@/lib/crmEdition'
 
 export function ConfiguracoesContent() {
   const billingEnabled = isBillingSubscriptionEnabledClient()
+  const oss = isOssEdition()
 
   return (
     <div className="space-y-4">
@@ -100,15 +102,17 @@ export function ConfiguracoesContent() {
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Backup e exportacao
-        </h2>
-        <div className="space-y-2">
-          <ExportarDadosCard />
-          <ImportarDadosCard />
-        </div>
-      </section>
+      {!oss && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            Backup e exportacao
+          </h2>
+          <div className="space-y-2">
+            <ExportarDadosCard />
+            <ImportarDadosCard />
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">

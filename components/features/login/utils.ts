@@ -1,3 +1,4 @@
+import { getPostLoginPath } from '@/lib/crmEdition'
 import type { AppTheme } from '@/lib/ui/themePreference'
 
 export function resolveLoginCallbackUrl(callbackUrlFromQuery: string | null) {
@@ -11,7 +12,7 @@ export function resolveLoginCallbackUrl(callbackUrlFromQuery: string | null) {
     return callbackUrlFromQuery
   }
 
-  return '/dashboard'
+  return getPostLoginPath()
 }
 
 export function getTurnstileTheme(theme: AppTheme): 'light' | 'dark' {

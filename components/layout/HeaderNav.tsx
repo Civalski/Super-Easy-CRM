@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { menuItems, getMenuItemsForUser } from '@/lib/menuItems'
+import {
+  menuItems,
+  getMenuItemsForUser,
+  filterMenuItemsByCrmEdition,
+} from '@/lib/menuItems'
 import { LogOut } from '@/lib/icons'
 import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 import { useGuideTour } from './GuideTourProvider'
@@ -53,7 +57,8 @@ export function HeaderNav() {
   }, [userStorageKey])
 
   const allowedMenuItems = useMemo(
-    () => getMenuItemsForUser(menuItems, { role, username }),
+    () =>
+      filterMenuItemsByCrmEdition(getMenuItemsForUser(menuItems, { role, username })),
     [role, username]
   )
 

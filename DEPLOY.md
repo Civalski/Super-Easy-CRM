@@ -29,6 +29,10 @@ DIRECT_URL=<sua_connection_string_direta>
 NEXTAUTH_URL=https://seu-app.vercel.app
 NEXTAUTH_SECRET=<gerar_com_openssl_rand_base64_32>
 
+# Edicao do CRM (build-time). Omita na producao completa.
+# Use "oss" apenas se quiser o build limitado (funil + clientes + tarefas).
+# NEXT_PUBLIC_CRM_EDITION=oss
+
 # Turnstile (Cloudflare)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=<chave_do_site_turnstile>
 TURNSTILE_SECRET_KEY=<chave_secreta_turnstile>

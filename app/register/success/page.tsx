@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Suspense, useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { getPostLoginPath } from '@/lib/crmEdition'
 
 function RegisterSuccessContent() {
   const router = useRouter()
@@ -35,7 +36,7 @@ function RegisterSuccessContent() {
         return
       }
 
-      router.replace('/dashboard?subscription=success')
+      router.replace(`${getPostLoginPath()}?subscription=success`)
       router.refresh()
     }
 
@@ -65,7 +66,7 @@ function RegisterSuccessContent() {
         <h1 className="text-2xl font-semibold text-white">Acesso pendente</h1>
         <p className="mt-3 text-sm text-slate-300">{error}</p>
         <Link
-          href="/login?callbackUrl=/dashboard"
+          href={`/login?callbackUrl=${encodeURIComponent(getPostLoginPath())}`}
           className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500"
         >
           Entrar manualmente

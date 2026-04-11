@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isOssEdition } from '@/lib/crmEdition'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
@@ -86,33 +87,37 @@ export async function GET(request: NextRequest) {
       take: maxResultsPerType,
     })
 
-    const parsedNumero = Number(query)
-    const numeroFiltro = Number.isInteger(parsedNumero) ? parsedNumero : null
+    let pedidos: Awaited<ReturnType<typeof prisma.pedido.findMany>> = []
 
-    const pedidos = await prisma.pedido.findMany({
-      where: {
-        userId,
-        OR: [
-          { oportunidade: { titulo: { contains: query, mode: 'insensitive' } } },
-          { oportunidade: { cliente: { nome: { contains: query, mode: 'insensitive' } } } },
-          ...(numeroFiltro !== null ? [{ numero: numeroFiltro }] : []),
-        ],
-      },
-      include: {
-        oportunidade: {
-          select: {
-            titulo: true,
-            cliente: {
-              select: {
-                nome: true,
+    if (!isOssEdition()) {
+      const parsedNumero = Number(query)
+      const numeroFiltro = Number.isInteger(parsedNumero) ? parsedNumero : null
+
+      pedidos = await prisma.pedido.findMany({
+        where: {
+          userId,
+          OR: [
+            { oportunidade: { titulo: { contains: query, mode: 'insensitive' } } },
+            { oportunidade: { cliente: { nome: { contains: query, mode: 'insensitive' } } } },
+            ...(numeroFiltro !== null ? [{ numero: numeroFiltro }] : []),
+          ],
+        },
+        include: {
+          oportunidade: {
+            select: {
+              titulo: true,
+              cliente: {
+                select: {
+                  nome: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: maxResultsPerType,
-    })
+        orderBy: { createdAt: 'desc' },
+        take: maxResultsPerType,
+      })
+    }
 
     return NextResponse.json(
       {

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, ChevronUp } from '@/lib/icons'
-import { menuItems, getMenuItemsForUser } from '@/lib/menuItems'
+import { menuItems, getMenuItemsForUser, filterMenuItemsByCrmEdition } from '@/lib/menuItems'
 import {
   MENU_MODULES_HIDDEN_EVENT,
-  REQUIRED_MENU_MODULE_HREFS,
+  getRequiredMenuModuleHrefs,
   getHiddenMenuModules,
   resolveVisibleMenuModuleHrefs,
   setHiddenMenuModules,
@@ -34,7 +34,8 @@ export function UserModulesMenu({
   const userStorageKey = userId ?? userEmail ?? username ?? null
 
   const availableMenuItems = useMemo(
-    () => getMenuItemsForUser(menuItems, { role, username }),
+    () =>
+      filterMenuItemsByCrmEdition(getMenuItemsForUser(menuItems, { role, username })),
     [role, username]
   )
 
@@ -87,7 +88,7 @@ export function UserModulesMenu({
     [availableMenuItems, hiddenModules]
   )
 
-  const requiredSet = useMemo(() => new Set(REQUIRED_MENU_MODULE_HREFS), [])
+  const requiredSet = useMemo(() => new Set(getRequiredMenuModuleHrefs()), [])
 
   const handleToggleModule = (href: string) => {
     if (requiredSet.has(href)) return

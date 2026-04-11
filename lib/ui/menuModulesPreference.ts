@@ -1,6 +1,12 @@
+import { getCrmEdition } from '@/lib/crmEdition'
+
 export const MENU_MODULES_HIDDEN_STORAGE_PREFIX = 'arker:ui:menu-modules:hidden'
 export const MENU_MODULES_HIDDEN_EVENT = 'arker:ui:menu-modules-hidden-change'
-export const REQUIRED_MENU_MODULE_HREFS: ReadonlyArray<string> = ['/dashboard']
+
+/** Item de menu que não pode ser ocultado pelo usuário (home pós-login por edição). */
+export function getRequiredMenuModuleHrefs(): readonly string[] {
+  return getCrmEdition() === 'oss' ? ['/grupos'] : ['/dashboard']
+}
 
 function normalizeUserKey(userKey?: string | null): string {
   return (userKey ?? '').trim().toLowerCase()
@@ -46,7 +52,7 @@ export function resolveVisibleMenuModuleHrefs(
   hiddenHrefs: string[]
 ): string[] {
   const hiddenSet = new Set(hiddenHrefs)
-  const requiredSet = new Set(REQUIRED_MENU_MODULE_HREFS)
+  const requiredSet = new Set(getRequiredMenuModuleHrefs())
 
   return availableHrefs.filter((href) => requiredSet.has(href) || !hiddenSet.has(href))
 }

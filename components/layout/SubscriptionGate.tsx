@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { getPostLoginPath } from '@/lib/crmEdition'
 import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 import { SubscriptionPlanPrompt } from './SubscriptionPlanPrompt'
 import type { RegisterPlanId } from '@/components/features/register/types'
@@ -177,7 +178,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
     if (subscriptionState === 'canceled') {
       setCheckoutRequested(false)
-      router.replace('/dashboard')
+      router.replace(getPostLoginPath())
       return
     }
 
@@ -192,7 +193,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         if (payload?.active) {
           await mutateSubscription()
           if (cancelled) return
-          router.replace('/dashboard')
+          router.replace(getPostLoginPath())
           router.refresh()
           setVerifyingCheckout(false)
           setCheckoutRequested(false)
@@ -204,7 +205,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
       await mutateSubscription()
       if (cancelled) return
-      router.replace('/dashboard')
+      router.replace(getPostLoginPath())
       router.refresh()
       setVerifyingCheckout(false)
       setCheckoutRequested(false)

@@ -44,9 +44,7 @@ yarn-error.log*
 .env*.development
 .env.development
 backend/.env
-.env.example
 .env.production
-.env.development
 
 
 # vercel
@@ -65,3 +63,8 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+/arker-easy-crm/
+/arker easy crm/
+arker easy crm
+
+/arker-easy-crm

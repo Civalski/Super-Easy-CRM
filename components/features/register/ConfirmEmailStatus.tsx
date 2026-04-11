@@ -5,6 +5,7 @@ import Script from 'next/script'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTurnstileWidget } from '@/components/common/turnstile/useTurnstileWidget'
+import { getPostLoginPath } from '@/lib/crmEdition'
 
 export function ConfirmEmailStatus() {
   const searchParams = useSearchParams()
@@ -236,7 +237,7 @@ export function ConfirmEmailStatus() {
             {loading ? 'Reenviando...' : 'Reenviar email'}
           </button>
           <Link
-            href="/login?callbackUrl=/dashboard"
+            href={`/login?callbackUrl=${encodeURIComponent(getPostLoginPath())}`}
             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-600 px-5 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
           >
             Ir para o login

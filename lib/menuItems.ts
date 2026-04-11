@@ -1,3 +1,4 @@
+import { isOssEdition, OSS_MENU_HREFS } from '@/lib/crmEdition'
 import type { LucideIcon } from '@/lib/icons'
 import {
   BarChart3,
@@ -208,6 +209,12 @@ export const menuItems: MenuItem[] = [
       'É a camada financeira que fecha o ciclo do CRM.',
   },
 ]
+
+/** Na edição OSS, mantém apenas itens do escopo público (funil, clientes, tarefas). */
+export function filterMenuItemsByCrmEdition(items: MenuItem[]): MenuItem[] {
+  if (!isOssEdition()) return items
+  return items.filter((item) => OSS_MENU_HREFS.has(item.href))
+}
 
 export function getMenuItemsForUser(
   items: MenuItem[],

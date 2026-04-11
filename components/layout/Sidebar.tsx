@@ -11,7 +11,12 @@ import {
   LogOut,
   X,
 } from '@/lib/icons'
-import { menuItems, getMenuItemsForUser } from '@/lib/menuItems'
+import { getPostLoginPath } from '@/lib/crmEdition'
+import {
+  menuItems,
+  getMenuItemsForUser,
+  filterMenuItemsByCrmEdition,
+} from '@/lib/menuItems'
 import type { MenuItem } from '@/lib/menuItems'
 import { useSubscriptionStatus } from '@/lib/hooks/useSubscriptionStatus'
 import { useGuideTour } from './GuideTourProvider'
@@ -82,7 +87,8 @@ export default function Sidebar({
   }, [userStorageKey])
 
   const allowedMenuItems = useMemo(
-    () => getMenuItemsForUser(menuItems, { role, username }),
+    () =>
+      filterMenuItemsByCrmEdition(getMenuItemsForUser(menuItems, { role, username })),
     [role, username]
   )
 
@@ -148,7 +154,7 @@ export default function Sidebar({
           className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
           <Link
-            href="/dashboard"
+            href={getPostLoginPath()}
             onClick={onClose}
             className={`group flex items-center justify-center ${isMobile ? '' : 'w-full'}`}
           >
