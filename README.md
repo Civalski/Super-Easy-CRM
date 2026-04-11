@@ -1,13 +1,12 @@
 # Arker Easy CRM
 
-CRM web para gestão comercial (oportunidades, pedidos, financeiro, metas, produtos, prospecção, integrações, etc.).
+CRM web para gestão comercial: oportunidades, pedidos, financeiro, metas, produtos, prospecção, integrações e demais módulos operacionais em uma única aplicação.
 
-### Repositório público, produção completa e edição OSS
+## O que inclui
 
-O código pode ficar em um repositório **público** sem expor segredos: use apenas variáveis de ambiente no deploy e siga [SECURITY.md](./SECURITY.md). Um modelo de referência está em [.env.example](./.env.example) (sem valores sensíveis).
-
-- **Produção comercial (CRM completo no ar):** não defina `NEXT_PUBLIC_CRM_EDITION`, ou mantenha-a vazia. O build comporta-se como **edição completa** (todos os módulos e APIs ativos, como no ambiente hospedado pela Arker).
-- **Build / demo open source:** defina `NEXT_PUBLIC_CRM_EDITION=oss` no momento do **build**. A interface e o **middleware** passam a expor somente **funil de vendas** (`/grupos` + `/oportunidades`), **clientes** e **tarefas**; demais páginas redirecionam (por exemplo para `/grupos`) e APIs fora do escopo respondem **403**. O código dos outros módulos pode permanecer no repositório (open core), mas **não fica utilizável** nessa edição sem recompilar com a variável adequada.
+- Funil e grupos de vendas, oportunidades, clientes e tarefas
+- Pedidos, financeiro, metas, catálogo de produtos e fluxos de prospecção
+- Autenticação (NextAuth + Supabase), e-mail (Resend), pagamentos (Stripe), observabilidade (Sentry)
 
 ## Stack
 
@@ -26,31 +25,30 @@ O código pode ficar em um repositório **público** sem expor segredos: use ape
 
 ## Configuração rápida
 
-1. Clone o repositório e instale dependências:
+1. Clone o repositório e instale as dependências:
 
    ```bash
    npm install
    ```
 
-2. Crie um arquivo `.env` (ou `.env.local`) na raiz com as variáveis necessárias. **Não commite segredos.**
+2. Crie um arquivo `.env` ou `.env.local` na raiz. Use [.env.example](./.env.example) como referência de nomes de variáveis e consulte [SECURITY.md](./SECURITY.md) para boas práticas. **Não commite segredos.**
 
    Variáveis centrais:
 
    - `DATABASE_URL` — connection string PostgreSQL (pooler)
    - `DIRECT_URL` — connection string direta (recomendado para migrations com Prisma)
    - `NEXTAUTH_URL` e `NEXTAUTH_SECRET`
-   - `NEXT_PUBLIC_CRM_EDITION` — use `oss` só para build da edição limitada; em produção completa, omita
    - Supabase (quando usar auth/storage): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`), e opcionalmente `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_EMAIL_REDIRECT_URL`
 
-   Lista mais completa para produção e deploy: veja [DEPLOY.md](./DEPLOY.md).
+   Detalhes de produção e deploy: [DEPLOY.md](./DEPLOY.md).
 
-3. Ajuste o schema e gere o cliente Prisma (o `setup:dev` garante o datasource PostgreSQL):
+3. Ajuste o schema e gere o cliente Prisma:
 
    ```bash
    npm run setup:dev
    ```
 
-4. Aplique migrations e (opcional) seed:
+4. Aplique migrations e, se quiser, o seed:
 
    ```bash
    npm run db:deploy
@@ -63,7 +61,15 @@ O código pode ficar em um repositório **público** sem expor segredos: use ape
    npm run dev
    ```
 
-   Na primeira vez, você pode usar `npm run dev:first`, que roda `setup:dev` antes do frontend.
+   Na primeira execução, você pode usar `npm run dev:first`, que roda `setup:dev` antes do frontend.
+
+## Edição limitada no build (opcional)
+
+Para um build que expõe apenas funil de vendas (`/grupos`, `/oportunidades`), clientes e tarefas — com redirecionamento das demais rotas e **403** nas APIs fora do escopo — defina no **momento do build**:
+
+`NEXT_PUBLIC_CRM_EDITION=oss`
+
+Para a aplicação **completa** (todos os módulos), **não** defina essa variável ou deixe-a vazia.
 
 ## Scripts npm
 
@@ -82,18 +88,18 @@ O código pode ficar em um repositório **público** sem expor segredos: use ape
 | `npm run db:studio` | Prisma Studio |
 | `npm run db:seed` | Executa o seed definido no Prisma |
 
-Outros scripts utilitários (backup, exportação, etc.) estão em [package.json](./package.json).
+Outros scripts utilitários estão em [package.json](./package.json).
 
-## Estrutura e convenções
+## Estrutura do código
 
 - Rotas e páginas em `app/`
-- Features modulares em `components/features/<nome>/` (tipos, constantes, utils, hooks e componentes)
-- Regras detalhadas para agentes e contribuição: [AGENTS.md](./AGENTS.md)
+- Features em `components/features/<nome>/` (tipos, constantes, utils, hooks e componentes)
+- Convenções para contribuição e agentes: [AGENTS.md](./AGENTS.md)
 
 ## Deploy
 
-Instruções para Vercel, variáveis de ambiente, migrations e cron financeiro: [DEPLOY.md](./DEPLOY.md).
+Vercel, variáveis de ambiente, migrations e cron financeiro: [DEPLOY.md](./DEPLOY.md).
 
 ## Licença
 
-Projeto privado (`private: true` no `package.json`). Ajuste esta seção se houver licença pública.
+Projeto privado (open source reduzido) (`private: true` no `package.json`).
