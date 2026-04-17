@@ -63,10 +63,6 @@ CRM web para gestão comercial: oportunidades, pedidos, financeiro, metas, produ
 
    Na primeira execução, você pode usar `npm run dev:first`, que roda `setup:dev` antes do frontend.
 
-## Edição limitada no build (opcional)
-
-Para um build que expõe apenas funil de vendas (`/grupos`, `/oportunidades`), clientes e tarefas — com redirecionamento das demais rotas e **403** nas APIs fora do escopo — defina no **momento do build**:
-
 `NEXT_PUBLIC_CRM_EDITION=oss`
 
 Para a aplicação **completa** (todos os módulos), **não** defina essa variável ou deixe-a vazia.
@@ -102,4 +98,4 @@ Vercel, variáveis de ambiente, migrations e cron financeiro: [DEPLOY.md](./DEPL
 
 ## Licença
 
-Projeto privado (open source reduzido) (`private: true` no `package.json`).
+Projeto open source reduzido.
