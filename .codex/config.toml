@@ -1,3 +1,18 @@
-﻿[mcp_servers.context7]
+﻿# Configuracao de MCPs para o Codex.
+# Mantem paridade com .cursor/mcp.json, exceto pelo resend (Cursor-only).
+# Documentacao de uso: docs/agent/MCP.md
+
+[mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
 bearer_token_env_var = "CONTEXT7_API_KEY"
+
+[mcp_servers.prisma]
+command = "npx"
+args = ["-y", "prisma", "mcp"]
+
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=sxbtwpanyctadtmokfqx"
+
+[mcp_servers.next-devtools]
+command = "npx"
+args = ["-y", "next-devtools-mcp@latest"]

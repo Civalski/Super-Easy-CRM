@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (userId) => {
     console.info('[api/clientes/import] Usuario autenticado', { userId })
 
-    const rateLimitResponse = enforceApiRateLimit({
+    const rateLimitResponse = await enforceApiRateLimit({
       key: `api:clientes:import:user:${userId}`,
       config: importRateLimitConfig,
       error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',
@@ -166,12 +166,13 @@ export async function POST(request: NextRequest) {
           await createCliente(userId, payload)
           importados++
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
+          const rawMsg = err instanceof Error ? err.message : String(err)
           const code = (err as { code?: string }).code
-          if (msg === 'CLIENTE_EMAIL_DUPLICADO' || code === 'P2002') {
+          if (rawMsg === 'CLIENTE_EMAIL_DUPLICADO' || code === 'P2002') {
             duplicados++
           } else {
-            erros.push(`Linha ${i + 2}: ${msg}`)
+            const safeMsg = code?.startsWith('P') ? 'Erro de validacao no banco de dados' : 'Erro ao processar registro'
+            erros.push(`Linha ${i + 2}: ${safeMsg}`)
             console.error('[api/clientes/import] Erro ao criar cliente', { linha: i + 2, payload, err })
           }
         }

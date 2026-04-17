@@ -103,7 +103,12 @@ export async function PATCH(
       if (tipo !== null) updateData.tipo = tipo
       if (descricao !== null) updateData.descricao = descricao
       if (preambulo !== null) updateData.preambulo = preambulo
-      if (clausulas !== null) updateData.clausulas = clausulas
+      if (tipo === 'proposta') {
+        updateData.clausulas = []
+      } else if (clausulas !== null) {
+        const effectiveTipo = tipo !== null ? tipo : contrato.tipo
+        updateData.clausulas = effectiveTipo === 'proposta' ? [] : clausulas
+      }
       if (dadosPartes !== null) updateData.dadosPartes = dadosPartes
       if (localAssinatura !== null) updateData.localAssinatura = localAssinatura
       if (observacoes !== null) updateData.observacoes = observacoes

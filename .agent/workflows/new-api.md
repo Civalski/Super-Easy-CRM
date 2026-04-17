@@ -1,92 +1,24 @@
 ---
-description: Como adicionar uma nova rota de API
+description: Criar nova rota de API em app/api/**/route.ts
 ---
-# Criar Nova API Route
 
-## Estrutura de uma API Route:
+# Criar nova API route
 
-Criar arquivo em `/app/api/[recurso]/route.ts`:
+## Checklist
 
-```typescript
-/**
- * Descrição da API
- */
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+1. Criar `app/api/<recurso>/route.ts`.
+2. Copiar o template de [docs/agent/RECIPES.md](../../docs/agent/RECIPES.md) (secao "API route").
+3. Confirmar as 6 obrigacoes:
+   - `getUserIdFromRequest` de [lib/auth.ts](../../lib/auth.ts). Sem `userId` -> 401.
+   - `enforceApiRateLimit` de [lib/security/api-rate-limit.ts](../../lib/security/api-rate-limit.ts) em escritas.
+   - Zod para body/query/params.
+   - Multi-tenant: `where: { userId, ... }` em TODA query Prisma.
+   - `logBusinessEvent` de [lib/observability/audit.ts](../../lib/observability/audit.ts) para eventos relevantes.
+   - Respeitar edicao OSS via [lib/crmEdition.ts](../../lib/crmEdition.ts).
+4. Rotas dinamicas `[id]`: conferir `registro.userId === userId` antes de mutar/apagar.
+5. Rodar `npm run check` ao final.
 
-// GET /api/[recurso]
-export async function GET(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const param = searchParams.get('param');
-        
-        // Lógica aqui
-        const data = await prisma.modelo.findMany();
-        
-        return NextResponse.json(data);
-    } catch (error) {
-        console.error('Erro:', error);
-        return NextResponse.json(
-            { error: 'Mensagem de erro' },
-            { status: 500 }
-        );
-    }
-}
+## Regra Cursor aplicavel
 
-// POST /api/[recurso]
-export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        
-        const data = await prisma.modelo.create({
-            data: body
-        });
-        
-        return NextResponse.json(data, { status: 201 });
-    } catch (error) {
-        console.error('Erro:', error);
-        return NextResponse.json(
-            { error: 'Erro ao criar' },
-            { status: 500 }
-        );
-    }
-}
-
-// DELETE /api/[recurso]
-export async function DELETE(request: NextRequest) {
-    try {
-        // Lógica de exclusão
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Erro:', error);
-        return NextResponse.json(
-            { error: 'Erro ao excluir' },
-            { status: 500 }
-        );
-    }
-}
-```
-
-## Para rotas dinâmicas:
-
-Criar em `/app/api/[recurso]/[id]/route.ts`:
-
-```typescript
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
-    const { id } = params;
-    // Usar o id
-}
-```
-
-## Comunicando com Backend Python:
-
-```typescript
-const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
-
-const response = await fetch(`${PYTHON_API_URL}/endpoint?${params}`, {
-    signal: AbortSignal.timeout(30000), // 30s timeout
-});
-```
+- `.cursor/rules/auth-api.mdc` (ativa automaticamente em `app/api/**/route.ts`).
+- `.cursor/rules/security-oss.mdc`.

@@ -30,28 +30,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Assinatura inválida' }, { status: 400 })
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
-    await syncUserSubscriptionFromCheckoutSession(session)
-  }
-
-  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as Stripe.Subscription
-    const user = await prisma.user.findFirst({
-      where: { subscriptionExternalId: sub.id },
-    })
-    if (user) {
-      const status = mapStripeStatusToNormalized(sub.status)
-      const nextBillingAt = getSubscriptionNextBillingAt(sub)
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          subscriptionStatus: status,
-          subscriptionNextBillingAt: nextBillingAt,
-          subscriptionLastWebhookAt: new Date(),
-        },
-      })
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session
+      await syncUserSubscriptionFromCheckoutSession(session)
     }
+
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object as Stripe.Subscription
+      const user = await prisma.user.findFirst({
+        where: { subscriptionExternalId: sub.id },
+      })
+      if (user) {
+        const status = mapStripeStatusToNormalized(sub.status)
+        const nextBillingAt = getSubscriptionNextBillingAt(sub)
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            subscriptionStatus: status,
+            subscriptionNextBillingAt: nextBillingAt,
+            subscriptionLastWebhookAt: new Date(),
+          },
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[stripe-webhook] Erro ao processar evento:', event.type, err)
+    return NextResponse.json({ error: 'Erro interno ao processar webhook' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })

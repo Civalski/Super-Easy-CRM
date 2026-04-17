@@ -94,7 +94,7 @@ Outros scripts utilitários estão em [package.json](./package.json).
 
 - Rotas e páginas em `app/`
 - Features em `components/features/<nome>/` (tipos, constantes, utils, hooks e componentes)
-- Convenções para contribuição e agentes: [AGENTS.md](./AGENTS.md)
+- Convenções para contribuição e agentes: [AGENTS.md](./AGENTS.md), mapa por tarefa: [AGENT_INDEX.md](./AGENT_INDEX.md), fluxo spec + harness: [docs/agent/SPEC_AND_HARNESS.md](./docs/agent/SPEC_AND_HARNESS.md)
 
 ## Deploy
 

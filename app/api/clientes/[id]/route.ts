@@ -296,13 +296,16 @@ export async function GET(
           id: oportunidade.id,
           titulo: oportunidade.titulo,
           status: oportunidade.status,
-          valor: oportunidade.valor,
+          valor: oportunidade.valor !== null ? Number(oportunidade.valor) : null,
           motivoPerda: oportunidade.motivoPerda,
           createdAt: oportunidade.createdAt,
           updatedAt: oportunidade.updatedAt,
           pedidoId: oportunidade.pedido?.id ?? null,
         })),
-        pedidosRecentes,
+        pedidosRecentes: pedidosRecentes.map((p) => ({
+          ...p,
+          totalLiquido: Number(p.totalLiquido),
+        })),
       }
 
       return NextResponse.json({

@@ -165,9 +165,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Item nao encontrado' }, { status: 404 })
     }
 
-    const quantidade = parsePositive(payload.quantidade, existing.quantidade)
-    const precoUnitario = parsePositive(payload.precoUnitario, existing.precoUnitario)
-    const desconto = parsePositive(payload.desconto, existing.desconto)
+    const quantidade = parsePositive(payload.quantidade, Number(existing.quantidade))
+    const precoUnitario = parsePositive(payload.precoUnitario, Number(existing.precoUnitario))
+    const desconto = parsePositive(payload.desconto, Number(existing.desconto))
     const descricao =
       typeof payload.descricao === 'string' ? payload.descricao.trim() : existing.descricao
 

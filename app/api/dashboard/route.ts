@@ -280,7 +280,7 @@ export async function GET(request: NextRequest) {
       const bucket = monthlyByKey.get(monthKey)
       if (!bucket) continue
 
-      const valor = oportunidade.valor || 0
+      const valor = Number(oportunidade.valor ?? 0)
       if (status === 'fechada') {
         bucket.faturamento += valor
       }
@@ -397,17 +397,17 @@ export async function GET(request: NextRequest) {
     for (const o of vendasUltimos7Dias) {
       const dayKey = format(o.updatedAt, 'yyyy-MM-dd')
       const bucket = vendasPorDiaMap.get(dayKey)
-      if (bucket) bucket.valor += o.valor || 0
+      if (bucket) bucket.valor += Number(o.valor ?? 0)
     }
     for (const o of orcamentosPerdidos7Dias) {
       const dayKey = format(o.updatedAt, 'yyyy-MM-dd')
       const bucket = perdidasPorDiaMap.get(dayKey)
-      if (bucket) bucket.valor += o.valor || 0
+      if (bucket) bucket.valor += Number(o.valor ?? 0)
     }
     for (const p of pedidosCancelados7Dias) {
       const dayKey = format(p.updatedAt, 'yyyy-MM-dd')
       const bucket = perdidasPorDiaMap.get(dayKey)
-      if (bucket) bucket.valor += p.totalLiquido || 0
+      if (bucket) bucket.valor += Number(p.totalLiquido ?? 0)
     }
     for (const o of oportunidadesCriadas7Dias) {
       const dayKey = toBucketKey(o.createdAt)

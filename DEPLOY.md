@@ -45,9 +45,32 @@ AUTH_RESEND_CONFIRMATION_WINDOW_SECONDS=1800
 AUTH_RESEND_CONFIRMATION_MAX_ATTEMPTS=3
 AUTH_RESEND_CONFIRMATION_BLOCK_SECONDS=1800
 
-# Scheduler de automacoes financeiras
+# Scheduler de automacoes financeiras e leads
 FINANCE_SCHEDULER_SECRET=<segredo_forte_para_cron>
+LEADS_SCHEDULER_SECRET=<segredo_para_post_prospectos_agendamentos_processar>
 CRON_SECRET=<opcional_no_vercel_cron>
+
+# E-mail (Resend) — confirmacao de conta, esqueci senha
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=noreply@seudominio.com
+
+# Supabase (Auth / storage conforme uso)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Stripe (checkout e webhook)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_PRICE_ID=
+
+# Rate limit distribuido (recomendado em Vercel / multi-instancia)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
+# Observabilidade (opcional)
+# NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 ---
@@ -79,9 +102,27 @@ Query params opcionais:
 
 ---
 
+## Cron recomendado (leads agendados)
+
+Chame periodicamente (ex.: diario ou conforme volume):
+
+```bash
+POST /api/prospectos/agendamentos/processar
+Header: x-scheduler-secret: <LEADS_SCHEDULER_SECRET>
+```
+
+Ou `Authorization: Bearer <LEADS_SCHEDULER_SECRET>`.
+
+---
+
 ## Checklist
 
 - [ ] Database criado e variaveis configuradas
-- [ ] Migrations aplicadas
+- [ ] Migrations aplicadas (`prisma migrate deploy`)
+- [ ] `NEXTAUTH_SECRET` e `NEXTAUTH_URL` de producao definidos
+- [ ] Stripe: chaves live, webhook apontando para `https://<dominio>/api/billing/stripe/webhook`
+- [ ] Turnstile e Resend configurados se usar registro/login por e-mail
+- [ ] `UPSTASH_*` definido para rate limit consistente em serverless
+- [ ] `FINANCE_SCHEDULER_SECRET` e `LEADS_SCHEDULER_SECRET` fortes; cron configurado
 - [ ] Frontend deployado
 

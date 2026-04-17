@@ -1,4 +1,4 @@
 RH:
 1. Implementar o recurso bater ponto, com geolocalização e horário imutavel.
 2. Gestão de folha de pagamentos, cadastro funcionários, pagamentos, férias, FGTS, INSS, IRRF e etc.
-3. f
+3. 

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { consumeRateLimit, type RateLimitConfig } from '@/lib/security/rate-limit'
 
-export function enforceApiRateLimit(input: {
+export async function enforceApiRateLimit(input: {
   key: string
   config: RateLimitConfig
   error: string
 }) {
-  const result = consumeRateLimit(input.key, input.config)
+  const result = await consumeRateLimit(input.key, input.config)
   if (result.allowed) return null
 
   return NextResponse.json(

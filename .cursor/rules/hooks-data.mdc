@@ -1,0 +1,18 @@
+---
+description: Padroes para hooks de dados (TanStack Query e SWR) em components/features/**/hooks e lib/hooks
+globs:
+  - components/features/**/hooks/**
+  - lib/hooks/**
+alwaysApply: false
+---
+
+Regras para hooks que acessam API:
+
+- TanStack Query e a escolha padrao para mutacoes e listas com invalidacao. SWR pode ser usado em leituras simples ja estabelecidas (ver `lib/hooks/useDashboardData.ts`).
+- Chaves de query devem ser estaveis e descritivas: `['pedidos', { userId, filtro }]`, nao strings concatenadas.
+- Mutacoes devem invalidar apenas as chaves afetadas (`queryClient.invalidateQueries({ queryKey: [...] })`). Evitar `invalidateQueries()` sem escopo.
+- Nenhum hook excede 200 linhas; acima disso, quebrar em helpers/utils.
+- Tratamento de erro: retornar `error` para o consumidor e emitir toast via [lib/toast.ts](mdc:lib/toast.ts) apenas em efeitos colaterais (mutacoes).
+- Nunca chamar fetch direto dentro de componentes; sempre via hook.
+
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 4.

@@ -15,7 +15,7 @@ const buscaRateLimitConfig = {
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
     try {
-      const rateLimitResponse = enforceApiRateLimit({
+      const rateLimitResponse = await enforceApiRateLimit({
       key: `api:busca:user:${userId}`,
       config: buscaRateLimitConfig,
       error: 'Muitas buscas em pouco tempo. Tente novamente em alguns segundos.',

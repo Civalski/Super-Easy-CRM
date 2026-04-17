@@ -1,0 +1,24 @@
+---
+description: Aritmetica monetaria segura via lib/money.ts (roundMoney, sumMoney, moneyRemaining)
+globs:
+  - app/**/*.ts
+  - app/**/*.tsx
+  - components/**/*.ts
+  - components/**/*.tsx
+  - lib/**/*.ts
+alwaysApply: false
+---
+
+Regras obrigatorias ao manipular valores financeiros (parcelas, totais, pagamentos, metas, pedidos, contas):
+
+- NUNCA usar operadores nativos (`+`, `-`, `*`, `/`) diretamente em valores monetarios.
+- Use os helpers de [lib/money.ts](mdc:lib/money.ts):
+  - `toNumber(value)` para converter entrada.
+  - `roundMoney(value)` para arredondar a 2 casas com seguranca.
+  - `sumMoney(values[])` para somas.
+  - `moneyRemaining(total, received)` para saldos.
+- Exibicao humana: [lib/format.ts](mdc:lib/format.ts) (`formatCurrency`, `formatDate`, `formatMonthLabel`).
+- Persistencia no banco: sempre o numero ja arredondado (`roundMoney`). Nao armazenar resultado bruto de multiplicacoes.
+- Calculos de pedidos: reutilizar [lib/pedidos/totals.ts](mdc:lib/pedidos/totals.ts).
+
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 7.

@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       const page = parsePage(searchParams.get('page'))
       const limit = parseLimit(searchParams.get('limit'), 20, 100)
       const tipo = parseOptionalString(searchParams.get('tipo'))
+      const excludeTipo = parseOptionalString(searchParams.get('excludeTipo'))
       const statusRaw = parseOptionalString(searchParams.get('status'))
       const dataInicioRaw = parseOptionalString(searchParams.get('dataInicio'))
       const dataFimRaw = parseOptionalString(searchParams.get('dataFim'))
@@ -35,12 +36,16 @@ export async function GET(request: NextRequest) {
       const where: {
         userId: string
         status?: (typeof STATUS_VALUES)[number]
-        tipo?: string
+        tipo?: string | { not: string }
         createdAt?: { gte?: Date; lte?: Date }
       } = { userId }
 
       if (status) where.status = status
-      if (tipo) where.tipo = tipo
+      if (tipo) {
+        where.tipo = tipo
+      } else if (excludeTipo) {
+        where.tipo = { not: excludeTipo }
+      }
       if (dataInicio || dataFim) {
         where.createdAt = {}
         if (dataInicio && !Number.isNaN(dataInicio.getTime())) where.createdAt.gte = dataInicio
@@ -108,7 +113,7 @@ export async function POST(request: NextRequest) {
         : 'em_andamento'
       const descricao = parseOptionalString(body.descricao)
       const preambulo = parseOptionalString(body.preambulo)
-      const clausulas = Array.isArray(body.clausulas)
+      const clausulasRaw = Array.isArray(body.clausulas)
         ? body.clausulas.filter(
             (c: unknown) =>
               c &&
@@ -120,6 +125,7 @@ export async function POST(request: NextRequest) {
             conteudo: String(c.conteudo).trim(),
           }))
         : []
+      const clausulas = tipo === 'proposta' ? [] : clausulasRaw
       const dadosPartes =
         body.dadosPartes && typeof body.dadosPartes === 'object'
           ? body.dadosPartes

@@ -1,0 +1,20 @@
+---
+description: Regras para alteracoes no schema Prisma e migrations (nao usar db push, sempre migrations)
+globs:
+  - prisma/schema.prisma
+  - prisma/migrations/**
+alwaysApply: false
+---
+
+Alteracoes em schema e banco:
+
+- Use SEMPRE migrations. Nao altere producao com `prisma db push`.
+- Fluxo de desenvolvimento: editar `schema.prisma` -> `npm run db:migrate` (cria migration com nome) -> `npm run db:generate`.
+- Deploy: `npm run db:deploy` aplica migrations pendentes.
+- Antes de um deploy sensivel: `npm run db:status` para conferir.
+- Toda model multi-tenant deve ter `userId String` + index apropriado; a API depende disso (ver rule `auth-api`).
+- Nomes de migrations devem ser descritivos em ingles curto (ex: `add_pedidos_recorrencia`).
+- Apos rodar `db:generate`, o Prisma Client fica em `.next/dev/node_modules/@prisma/client-*`; nao edite nada nessa pasta.
+
+Variaveis de ambiente: `DATABASE_URL` (pooler, runtime) e `DIRECT_URL` (migrations). Detalhes: [DATABASE.md](mdc:DATABASE.md).
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 7.

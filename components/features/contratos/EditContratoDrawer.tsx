@@ -67,18 +67,25 @@ export function EditContratoDrawer({
 
   if (!contrato) return null
 
+  const isProposta = contrato.tipo === 'proposta'
+
   return (
     <ContratoFormDrawer
       open={open}
       onClose={onClose}
       onSubmit={() => void handleSubmit()}
-      title="Editar contrato"
-      description={`Altere os dados do contrato #${String(contrato.numero).padStart(5, '0')}`}
+      title={isProposta ? 'Editar proposta' : 'Editar contrato'}
+      description={
+        isProposta
+          ? `Altere os dados da proposta #${String(contrato.numero).padStart(5, '0')}`
+          : `Altere os dados do contrato #${String(contrato.numero).padStart(5, '0')}`
+      }
       primaryLabel="Salvar alterações"
       primaryDisabled={saving}
       primaryLoading={saving}
     >
       <ContratoFormFields
+        formContext={isProposta ? 'proposta' : 'contrato'}
         form={form}
         clienteLabel={clienteLabel}
         clausulasMode={clausulasMode}

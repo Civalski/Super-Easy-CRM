@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
   }
 
   return withAuth(request, async (userId) => {
-    const rateLimitResponse = enforceApiRateLimit({
+    const rateLimitResponse = await enforceApiRateLimit({
       key: `api:clientes:import-via-leads:user:${userId}`,
       config: importRateLimitConfig,
       error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',

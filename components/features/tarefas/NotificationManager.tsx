@@ -107,7 +107,7 @@ export function NotificationManager() {
         } catch (error) {
             console.error('Erro ao verificar notificacoes de tarefas:', error)
         }
-    }, [pathname, status, notifications])
+    }, [pathname, status, notifications, playSound])
 
     return null
 }

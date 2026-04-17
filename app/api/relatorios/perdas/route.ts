@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     ])
 
     const totalPerdidas = perdidas.length
-    const totalValorPerdido = perdidas.reduce((sum, item) => sum + (item.valor || 0), 0)
+    const totalValorPerdido = perdidas.reduce((sum, item) => sum + Number(item.valor || 0), 0)
     const totalDecisoes = fechadas + totalPerdidas
 
     const motivosMap = new Map<string, { motivo: string; total: number; valor: number }>()
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       const motivo = (perda.motivoPerda || 'Sem motivo informado').trim()
       const entry = motivosMap.get(motivo) || { motivo, total: 0, valor: 0 }
       entry.total += 1
-      entry.valor += perda.valor || 0
+      entry.valor += Number(perda.valor || 0)
       motivosMap.set(motivo, entry)
     }
 

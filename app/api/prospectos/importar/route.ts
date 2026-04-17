@@ -5,8 +5,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withRouteContext } from '@/lib/api/route-helpers';
-import { getAuthIdentityFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
 import { heavyRoutesDisabledResponse, isHeavyRoutesDisabled } from '@/lib/security/heavy-routes';
 import type { EmpresaParquet } from '@/types/leads';
@@ -146,18 +145,13 @@ function mapearEmpresaParaProspecto(empresa: EmpresaParquet) {
 
 // POST /api/prospectos/importar - Importa multiplas empresas
 export async function POST(request: NextRequest) {
-    return withRouteContext(request, async () => {
+    return withAuth(request, async (userId) => {
         try {
             if (isHeavyRoutesDisabled()) {
                 return heavyRoutesDisabledResponse();
             }
 
-            const { userId } = await getAuthIdentityFromRequest(request);
-            if (!userId) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-
-            const rateLimitResponse = enforceApiRateLimit({
+            const rateLimitResponse = await enforceApiRateLimit({
                 key: `api:prospectos:importar:user:${userId}`,
                 config: importRateLimitConfig,
                 error: 'Muitas importacoes em pouco tempo. Aguarde um minuto.',

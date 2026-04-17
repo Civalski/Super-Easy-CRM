@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, ensureDatabaseInitialized } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
 import { MODELOS_IA_CONTRATO } from '@/lib/contratos-ia'
+import {
+  buildPropostaIaCommercialOutput,
+  stripCommercialScalarLinesFromText,
+  type PropostaComercialFields,
+} from '@/components/features/contratos/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +73,7 @@ interface RespostaGerada {
     contratante?: DadosParteGerada
     contratado?: DadosParteGerada
   }
+  camposComerciaisProposta?: Partial<PropostaComercialFields>
 }
 
 function parseJsonFromResponse(text: string): RespostaGerada | null {
@@ -79,6 +85,23 @@ function parseJsonFromResponse(text: string): RespostaGerada | null {
   } catch {
     return null
   }
+}
+
+function sanitizeCamposComerciaisProposta(raw: unknown): Partial<PropostaComercialFields> {
+  if (!raw || typeof raw !== 'object') return {}
+  const o = raw as Record<string, unknown>
+  const out: Partial<PropostaComercialFields> = {}
+  for (const key of [
+    'precoProjeto',
+    'taxasExtras',
+    'formaPagamento',
+    'opcionais',
+    'validadeProposta',
+  ] as const) {
+    const v = o[key]
+    if (typeof v === 'string' && v.trim()) out[key] = v.trim()
+  }
+  return out
 }
 
 function sanitizeRespostaGerada(parsed: RespostaGerada): RespostaGerada {
@@ -95,6 +118,7 @@ function sanitizeRespostaGerada(parsed: RespostaGerada): RespostaGerada {
       contratante: {},
       contratado: {},
     },
+    camposComerciaisProposta: sanitizeCamposComerciaisProposta(parsed.camposComerciaisProposta),
   }
 }
 
@@ -261,25 +285,31 @@ function buildPrompts(input: {
         : 'Use equilibrio entre formalidade juridica e clareza, adequado para a maioria dos contratos.'
 
   const isProposta = input.modoDocumento === 'proposta'
+
+  const propostaRegras = `FORMATO OBRIGATORIO (proposta comercial):
+- "preambulo": SOMENTE escopo, contexto, diagnostico, entregaveis, premissas e prazos de execucao em blocos com "## Titulo" (3 a 5 blocos uteis). PROIBIDO no preambulo: valores em R$, parcelamento, condicoes de pagamento, investimento, validade comercial, tabelas de precos ou linhas cujo foco seja preco.
+- "camposComerciaisProposta": OBRIGATORIO preencher com todo dado comercial do usuario: precoProjeto (ex: "R$ 12.500,00"), taxasExtras, opcionais, formaPagamento, validadeProposta (ex: "15 dias" ou DD/MM/AAAA). String vazia se nao existir na descricao.
+- "condicoesComerciais": Primeiro as linhas com titulos EXATOS "Valor do projeto:", "Taxa extra:", "Opcionais:", "Forma de pagamento:", "Validade da proposta:" alinhadas aos campos JSON; depois no maximo 1-2 blocos "## Titulo" com detalhes extras.
+- Retorne "clausulas": [] e "dadosPartes" com contratante/contratado vazios. NAO invente partes. NAO gere clausulas juridicas.
+- Se mencionar numeros monetarios ou parcelas, eles DEVEM aparecer em "camposComerciaisProposta" e nas linhas correspondentes de "condicoesComerciais", nao so em prosa no preambulo.`
+
   const systemPrompt = `Voce e um assistente juridico que gera ${isProposta ? 'propostas comerciais' : 'contratos'} em portugues do Brasil.
 ${rigidezInstrucao}
 
 Retorne APENAS um objeto JSON valido, sem markdown ou texto extra, no formato:
 {
-  "preambulo": "${isProposta ? 'texto da proposta em blocos com titulos personalizados no formato ## Titulo' : 'texto introdutorio do contrato'}",
-  "condicoesComerciais": "${isProposta ? 'texto com linhas obrigatorias de condicoes e blocos adicionais com titulos personalizados' : ''}",
+  "preambulo": "${isProposta ? 'texto da proposta em blocos ## Titulo (somente escopo e contexto comercial, sem precos)' : 'texto introdutorio do contrato'}",
+  "condicoesComerciais": "${isProposta ? 'linhas comerciais canonicas e blocos opcionais ## Titulo' : ''}",
   "clausulas": [
     { "titulo": "Titulo da clausula", "conteudo": "Texto completo da clausula" }
   ],
   "dadosPartes": {
     "contratante": { "nome": "", "rg": "", "documento": "", "endereco": "", "cidade": "", "estado": "", "cep": "", "email": "", "telefone": "" },
     "contratado": { "nome": "", "rg": "", "documento": "", "endereco": "", "cidade": "", "estado": "", "cep": "", "email": "", "telefone": "" }
-  }
+  }${isProposta ? ',\n  "camposComerciaisProposta": { "precoProjeto": "", "taxasExtras": "", "opcionais": "", "formaPagamento": "", "validadeProposta": "" }' : ''}
 }
-${isProposta ? 'Em proposta comercial, NAO invente dados de partes. Retorne "dadosPartes" com objetos vazios.' : 'Preencha os campos com dados ficticios plausiveis quando o usuario nao especificar.'} ${
-    isProposta
-      ? 'Em proposta comercial, NAO gere clausulas juridicas. Retorne "clausulas": []. No "preambulo", gere de 3 a 5 blocos com TITULOS PERSONALIZADOS, agrupando informacoes relacionadas em cada bloco. Cada bloco deve comecar com "## <Titulo do bloco>" seguido do conteudo em paragrafos e/ou listas. O TITULO precisa fazer sentido com a descricao do bloco. NUNCA retorne bloco vazio ou com titulo sem conteudo. Se nao houver conteudo util para um bloco, NAO crie esse bloco. Em "condicoesComerciais", inclua primeiro as linhas com os titulos EXATOS: "Valor do projeto", "Taxa extra", "Opcionais", "Forma de pagamento", "Validade da proposta". Depois dessas linhas, acrescente no maximo 1 ou 2 blocos adicionais com titulos personalizados e conteudo coerente.'
-      : 'As clausulas devem ser formais e adequadas ao tipo de contrato.'
+${isProposta ? `${propostaRegras}\n\n` : ''}${isProposta ? '' : 'Preencha os campos com dados ficticios plausiveis quando o usuario nao especificar. '}${
+    isProposta ? '' : 'As clausulas devem ser formais e adequadas ao tipo de contrato.'
   }`
 
   const partesBase: string[] = []
@@ -575,14 +605,24 @@ export async function POST(request: NextRequest) {
         model === 'multi-models'
           ? await runMultiModelsFlow(primaryModel, secondaryModel, prompts)
           : await runSingleModelFlow(model as ExecutionModelId, prompts)
-      const propostaPreambulo =
-        modoDocumento === 'proposta'
-          ? normalizeProposalBlocksText(result.preambulo, 'Resumo da proposta')
-          : result.preambulo || ''
-      const propostaCondicoes =
-        modoDocumento === 'proposta'
-          ? normalizeProposalCommercialText(result.condicoesComerciais)
-          : ''
+      let propostaPreambulo = result.preambulo || ''
+      let propostaCondicoes = ''
+      if (modoDocumento === 'proposta') {
+        const stripped = stripCommercialScalarLinesFromText(result.preambulo || '')
+        const mergedExplicit: Partial<PropostaComercialFields> = {
+          ...stripped.fields,
+          ...sanitizeCamposComerciaisProposta(result.camposComerciaisProposta),
+        }
+        const built = buildPropostaIaCommercialOutput({
+          preambulo: stripped.remainder || result.preambulo || '',
+          condicoesComerciais: result.condicoesComerciais || '',
+          camposExplicitos: mergedExplicit,
+        })
+        propostaPreambulo = normalizeProposalBlocksText(built.preambulo, 'Resumo da proposta')
+        propostaCondicoes = normalizeProposalCommercialText(built.condicoesComerciais)
+      } else {
+        propostaCondicoes = ''
+      }
 
       await registrarUso(userId, model)
 
@@ -598,7 +638,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('[contratos/gerar-ia] Error:', error)
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : 'Erro ao gerar contrato com IA' },
+        { error: 'Erro ao gerar contrato com IA. Tente novamente.' },
         { status: 500 }
       )
     }

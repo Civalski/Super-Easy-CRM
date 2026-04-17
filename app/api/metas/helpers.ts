@@ -238,7 +238,7 @@ export async function computeGoalProgress(goal: {
           updatedAt: { gte: periodStart, lte: periodEnd },
         },
       })
-      const current = Math.round(result._sum.valor ?? 0)
+      const current = Math.round(Number(result._sum.valor ?? 0))
       return { current, periodStart, periodEnd, active }
     }
 
@@ -253,7 +253,7 @@ export async function computeGoalProgress(goal: {
     const filtered = weekDays.length === 0
       ? items
       : items.filter((item) => isAllowedDay(item.updatedAt, weekDays))
-    const current = Math.round(filtered.reduce((sum, item) => sum + (item.valor ?? 0), 0))
+    const current = Math.round(filtered.reduce((sum, item) => sum + Number(item.valor ?? 0), 0))
     return { current, periodStart, periodEnd, active }
   }
 

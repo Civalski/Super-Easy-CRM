@@ -2,7 +2,7 @@
 
 ## Reportar vulnerabilidades
 
-Se você encontrar um problema de segurança, **não** abra um issue público com detalhes exploráveis. Entre em contato com os mantenedores por um canal privado (e-mail ou formulário de suporte do projeto, se existir).
+Se você encontrar um problema de segurança, **não** abra um issue público com detalhes exploráveis. Entre em contato com os mantenedores por um canal privado.
 
 Inclua, quando possível:
 

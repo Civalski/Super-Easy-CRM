@@ -23,7 +23,7 @@ export type EmailConfirmacaoClienteProps = {
 export default function EmailConfirmacaoCliente({
   confirmationLink,
   nome = 'Cliente',
-  logoUrl = 'https://i.ibb.co/fdSkTf3n/arkerlogo1.png',
+  logoUrl,
   siteUrl = 'https://arkersoft.com.br',
 }: EmailConfirmacaoClienteProps) {
   return (
@@ -34,7 +34,11 @@ export default function EmailConfirmacaoCliente({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoWrapper}>
-            <Img src={logoUrl} alt="Arkersoft" width="180" style={logo} />
+            {logoUrl ? (
+              <Img src={logoUrl} alt="Arkersoft" width="180" style={logo} />
+            ) : (
+              <Text style={brandMark}>Arker CRM</Text>
+            )}
           </Section>
 
           <Section style={content}>
@@ -121,6 +125,16 @@ const logoWrapper = {
 const logo = {
   margin: '0 auto',
   height: 'auto',
+}
+
+const brandMark = {
+  margin: '0',
+  fontSize: '26px',
+  lineHeight: '32px',
+  fontWeight: '700',
+  color: '#ffffff',
+  letterSpacing: '-0.02em',
+  textAlign: 'center' as const,
 }
 
 const content = {

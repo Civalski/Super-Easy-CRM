@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
             select: { createdAt: true, totalLiquido: true },
           })
           pedidos.forEach(item =>
-            addMetricValue(item.createdAt, 'receita_pedidos', Math.round((item.totalLiquido || 0) * 100) / 100)
+            addMetricValue(item.createdAt, 'receita_pedidos', Math.round(Number(item.totalLiquido || 0) * 100) / 100)
           )
         } else if (metrica === 'receita_fechamentos') {
           const fechadaStatuses = expandOpportunityStatuses(['fechada'])
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
           })
           oportunidades.forEach(item => {
             if (!item.dataFechamento) return
-            addMetricValue(item.dataFechamento, 'receita_fechamentos', Math.round((item.valor || 0) * 100) / 100)
+            addMetricValue(item.dataFechamento, 'receita_fechamentos', Math.round(Number(item.valor || 0) * 100) / 100)
           })
         } else if (metrica === 'pedidos_pagos') {
           const pedidosPagos = await prisma.pedido.findMany({
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
           pedidos.forEach(item => {
             const dateKey = ensureDateKey(item.createdAt)
             const current = groupedByDay.get(dateKey) || { date: item.createdAt, sum: 0, count: 0 }
-            current.sum += item.totalLiquido || 0
+            current.sum += Number(item.totalLiquido || 0)
             current.count += 1
             groupedByDay.set(dateKey, current)
           })

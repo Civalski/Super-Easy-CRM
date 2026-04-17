@@ -14,7 +14,7 @@ const clientesListRateLimitConfig = {
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (userId) => {
-    const rateLimitResponse = enforceApiRateLimit({
+    const rateLimitResponse = await enforceApiRateLimit({
       key: `api:clientes:user:${userId}`,
       config: clientesListRateLimitConfig,
       error: 'Muitas requisicoes em pouco tempo. Aguarde alguns segundos.',

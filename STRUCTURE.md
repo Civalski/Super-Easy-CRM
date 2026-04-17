@@ -24,8 +24,10 @@ Assinatura via Stripe (em preparação). Deploy na Vercel.
 | `postcss.config.js` | Configuração do PostCSS (Tailwind). |
 | `eslint.config.mjs` | Configuração do ESLint. |
 | `vercel.json` | Configuração de deploy na Vercel. |
-| `AGENTS.md` | Regras de arquitetura para agentes de IA. |
-| `DATABASE.md` | Documentação do schema do banco de dados. |
+| `AGENTS.md` | Regras de arquitetura para agentes de IA (Layer 0). |
+| `AGENT_INDEX.md` | Mapa "tarefa → arquivos" para agentes; leitura minima por tarefa. |
+| `docs/agent/` | Spec + harness, glossário, recipes e cheatsheet de MCPs (consulta sob demanda). |
+| `DATABASE.md` | PostgreSQL/Supabase: variáveis, comandos Prisma e fluxo de migrations. |
 | `AUTOMACAO.md` | Documentação das automações do sistema (recorrências, agendamentos). |
 | `DEPLOY.md` | Guia de deploy e variáveis de ambiente necessárias. |
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { moneyRemaining, roundMoney } from '@/lib/money'
+import { moneyRemaining, roundMoney, toNumber } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
 const ALLOWED_AMBIENTES = new Set(['geral', 'pessoal', 'total'])
@@ -105,11 +105,11 @@ async function buildFluxoForAmbiente(
     const bucket = map.get(key)
     if (!bucket) continue
     if (mov.tipo === 'estorno') {
-      bucket.estornado = roundMoney(bucket.estornado + mov.valor)
+      bucket.estornado = roundMoney(bucket.estornado + toNumber(mov.valor))
     } else if (mov.tipo === 'saida') {
-      bucket.saida = roundMoney(bucket.saida + mov.valor)
+      bucket.saida = roundMoney(bucket.saida + toNumber(mov.valor))
     } else {
-      bucket.recebido = roundMoney(bucket.recebido + mov.valor)
+      bucket.recebido = roundMoney(bucket.recebido + toNumber(mov.valor))
     }
   }
 

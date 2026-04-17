@@ -62,7 +62,7 @@ async function executeRegister(request: Request): Promise<NextResponse> {
   const clientIp = extractClientIpFromRequest(request)
       const ipRateKey = `auth:register:ip:${clientIp}`
 
-      const ipRateLimit = consumeRateLimit(ipRateKey, registerRateLimitConfig)
+      const ipRateLimit = await consumeRateLimit(ipRateKey, registerRateLimitConfig)
       if (!ipRateLimit.allowed) {
         return NextResponse.json(
           {
@@ -119,7 +119,7 @@ async function executeRegister(request: Request): Promise<NextResponse> {
       }
 
       if (userRateKey) {
-        const userRateLimit = consumeRateLimit(userRateKey, registerRateLimitConfig)
+        const userRateLimit = await consumeRateLimit(userRateKey, registerRateLimitConfig)
         if (!userRateLimit.allowed) {
           return NextResponse.json(
             {
@@ -380,9 +380,9 @@ async function executeRegister(request: Request): Promise<NextResponse> {
       })
       if (dbError) return dbError
 
-      resetRateLimit(ipRateKey)
+      await resetRateLimit(ipRateKey)
       if (userRateKey) {
-        resetRateLimit(userRateKey)
+        await resetRateLimit(userRateKey)
       }
 
   return NextResponse.json({

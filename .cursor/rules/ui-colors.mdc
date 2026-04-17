@@ -1,0 +1,25 @@
+---
+description: Paleta de cores oficial (claro/escuro) e padroes visuais de densidade compacta
+globs:
+  - app/**/*.tsx
+  - components/**/*.tsx
+  - app/globals.css
+alwaysApply: false
+---
+
+Paleta e superficies sao definidas em [colors.MD](mdc:colors.MD) e [app/globals.css](mdc:app/globals.css).
+
+Regras de aplicacao:
+
+- Sempre suportar tema claro E escuro: usar classes Tailwind com prefixo `dark:`.
+- Tema claro: base em `slate`, `sky`, `white`; acentos suaves.
+- Tema escuro: base em `slate`, `indigo`, `purple`; superficies translucidas (`/60`, `/70`).
+- Links: `sky-700` no claro, `indigo-300` no escuro.
+- Estados padronizados (nao reinventar paleta por tela):
+  - Erro: fundo `red-50/90` claro / `red-500/10` escuro, texto `red-700`/`red-200`.
+  - Aviso: `amber-700` / `amber-300`.
+  - Sucesso: tons de `emerald`/`green`.
+- Densidade compacta em listas, tabelas e cards operacionais. Evitar empilhar linhas grandes para itens repetitivos; preferir agrupar por entidade e expandir sob demanda.
+- Cards: `rounded-lg`, `shadow-sm`, fundo `bg-white dark:bg-slate-800/65` (ou equivalente listado em `colors.MD`).
+
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 6.

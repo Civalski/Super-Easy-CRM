@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const ipRateKey = `auth:forgot-password:ip:${clientIp}`
     const emailRateKey = email ? `auth:forgot-password:email:${email}` : ''
 
-    const ipRateLimit = consumeRateLimit(ipRateKey, forgotPasswordRateLimitConfig)
+    const ipRateLimit = await consumeRateLimit(ipRateKey, forgotPasswordRateLimitConfig)
     if (!ipRateLimit.allowed) {
       return NextResponse.json(
         {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     }
 
     if (emailRateKey) {
-      const emailRateLimit = consumeRateLimit(emailRateKey, forgotPasswordRateLimitConfig)
+      const emailRateLimit = await consumeRateLimit(emailRateKey, forgotPasswordRateLimitConfig)
       if (!emailRateLimit.allowed) {
         return NextResponse.json(
           {

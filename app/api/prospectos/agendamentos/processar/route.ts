@@ -52,7 +52,7 @@ async function processar(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const rateLimitResponse = enforceApiRateLimit({
+        const rateLimitResponse = await enforceApiRateLimit({
             key: 'api:prospectos:agendamentos:processar:global',
             config: schedulerRateLimitConfig,
             error: 'Processamento em cooldown. Tente novamente em alguns minutos.',

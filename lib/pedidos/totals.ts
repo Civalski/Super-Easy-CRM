@@ -32,7 +32,7 @@ export async function recalculatePedidoTotals(
   })
 
   const totalBruto = sumMoney(
-    itens.map((item) => roundMoney(item.quantidade * item.precoUnitario))
+    itens.map((item) => roundMoney(Number(item.quantidade) * Number(item.precoUnitario)))
   )
   const totalDesconto = sumMoney(itens.map((item) => roundMoney(item.desconto)))
   const totalLiquido = sumMoney(itens.map((item) => roundMoney(item.subtotal)))

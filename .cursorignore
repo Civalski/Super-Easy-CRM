@@ -1,0 +1,46 @@
+﻿# Arquivos/diretorios ignorados por buscas e indexacao do Cursor.
+# Objetivo: reduzir consumo de tokens evitando varredura de artefatos de build,
+# dependencias, dados locais e arquivos binarios/grandes.
+
+# Build artifacts
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Backups e dados locais
+backups/
+data/
+dados/
+parquet/
+
+# Cache e logs
+.husky/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env e segredos (nunca indexar)
+.env
+.env.*
+!.env.example
+
+# Assets estaticos grandes (procure por path quando precisar)
+public/
+
+# Sentry
+.env.sentry-build-plugin
+
+# Transcripts e plan files locais
+.cursor/plans/
+.cursor/debug-*.log
+
+# Docs historicos / backup
+scripts/README-BACKUP.md

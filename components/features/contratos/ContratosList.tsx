@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, Download, DocumentCheck, Edit2, Eye, Loader2, MoreVertical, Trash2, XCircle } from '@/lib/icons'
 import { useConfirm } from '@/components/common'
 import type { Contrato } from './types'
-import { TIPOS_CONTRATO } from './constants'
+import { getTipoDocumentoLabel } from './constants'
 import { NovoContratoMenuButton } from './NovoContratoMenuButton'
 
 interface ContratosListProps {
+  listVariant?: 'contrato' | 'proposta'
   contratos: Contrato[]
   loading: boolean
   downloadingPdfById: Record<string, boolean>
@@ -20,10 +21,6 @@ interface ContratosListProps {
   showTopAction?: boolean
 }
 
-function getTipoLabel(value: string) {
-  return TIPOS_CONTRATO.find((t) => t.value === value)?.label ?? value
-}
-
 function formatDate(v: Date | string | null | undefined) {
   if (!v) return '-'
   const d = new Date(v)
@@ -31,6 +28,7 @@ function formatDate(v: Date | string | null | undefined) {
 }
 
 export function ContratosList({
+  listVariant = 'contrato',
   contratos,
   loading,
   downloadingPdfById,
@@ -42,6 +40,7 @@ export function ContratosList({
   onView,
   showTopAction = true,
 }: ContratosListProps) {
+  const isPropostaList = listVariant === 'proposta'
   const { confirm } = useConfirm()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
@@ -60,8 +59,8 @@ export function ContratosList({
 
   const handleDelete = async (c: Contrato) => {
     const ok = await confirm({
-      title: 'Excluir contrato',
-      description: `Deseja excluir o contrato "${c.titulo}"?`,
+      title: isPropostaList ? 'Excluir proposta' : 'Excluir contrato',
+      description: `Deseja excluir ${isPropostaList ? 'a proposta' : 'o contrato'} "${c.titulo}"?`,
       confirmLabel: 'Excluir',
       confirmVariant: 'danger',
     })
@@ -81,12 +80,14 @@ export function ContratosList({
       <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 dark:border-gray-700">
         <DocumentCheck className="mb-4 h-12 w-12 text-gray-400" />
         <p className="mb-2 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
-          Nenhum contrato cadastrado
+          {isPropostaList ? 'Nenhuma proposta cadastrada' : 'Nenhum contrato cadastrado'}
         </p>
         <p className="mb-4 max-w-sm text-center text-xs text-gray-500 dark:text-gray-500">
-          Crie contratos e propostas comerciais com PDF profissional e fluxo objetivo.
+          {isPropostaList
+            ? 'Monte propostas comerciais com escopo, condições e PDF profissional — sem cláusulas de contrato.'
+            : 'Crie contratos com cláusulas, partes e PDF formal.'}
         </p>
-        <NovoContratoMenuButton onSelect={onNovo} />
+        <NovoContratoMenuButton variant={isPropostaList ? 'proposta' : 'contrato'} onSelect={onNovo} />
       </div>
     )
   }
@@ -95,7 +96,7 @@ export function ContratosList({
     <div className="space-y-3">
       {showTopAction ? (
         <div className="flex justify-end">
-          <NovoContratoMenuButton onSelect={onNovo} />
+          <NovoContratoMenuButton variant={isPropostaList ? 'proposta' : 'contrato'} onSelect={onNovo} />
         </div>
       ) : null}
 
@@ -109,7 +110,7 @@ export function ContratosList({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-gray-900 dark:text-white">{c.titulo}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  #{String(c.numero).padStart(5, '0')} · {getTipoLabel(c.tipo)}
+                  #{String(c.numero).padStart(5, '0')} · {getTipoDocumentoLabel(c.tipo)}
                 </p>
               </div>
               <div className="relative shrink-0">

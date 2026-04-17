@@ -1,0 +1,22 @@
+---
+description: RBAC multi-tenant, edicao OSS e guardas de rota (middleware e API)
+globs:
+  - app/api/**
+  - middleware.ts
+  - proxy.ts
+  - lib/security/**
+  - lib/crmEdition.ts
+alwaysApply: false
+---
+
+Seguranca nao-negociavel:
+
+- Toda rota autenticada valida `userId` no servidor, mesmo quando o middleware ja filtrou. Nunca confiar em `userId` vindo do cliente.
+- `middleware.ts` / `proxy.ts` aplicam autenticacao basica; a logica de RBAC por recurso fica em cada rota de API.
+- Rate limit em escrita: `enforceApiRateLimit` de [lib/security/api-rate-limit.ts](mdc:lib/security/api-rate-limit.ts).
+- Rotas pesadas (relatorios, exports): guardar com [lib/security/heavy-routes.ts](mdc:lib/security/heavy-routes.ts).
+- Turnstile em login/registro: [lib/security/turnstile.ts](mdc:lib/security/turnstile.ts).
+- Edicao OSS (`NEXT_PUBLIC_CRM_EDITION=oss`): rotas e APIs fora do escopo publico respondem 403 ou redirecionam. Checar escopo em [lib/crmEdition.ts](mdc:lib/crmEdition.ts). Escopo publico oficial: funil (`/grupos`, `/oportunidades`), clientes, tarefas.
+- Segredos (`.env`, `NEXTAUTH_SECRET`, chaves Stripe/Supabase/Resend) NUNCA no repositorio. Ver [SECURITY.md](mdc:SECURITY.md).
+
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 5.

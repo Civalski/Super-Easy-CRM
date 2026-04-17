@@ -1,6 +1,7 @@
 import { render } from '@react-email/render'
 import React from 'react'
 import EmailRedefinirSenha from './EmailRedefinirSenha'
+import { resolveEmailLogoUrl } from './resolve-email-logo-url'
 
 export type ResetPasswordEmailParams = {
   resetLink: string
@@ -16,7 +17,7 @@ export async function buildResetPasswordEmailHtml(
     React.createElement(EmailRedefinirSenha, {
       resetLink: params.resetLink,
       nome: params.nome,
-      logoUrl: params.logoUrl,
+      logoUrl: params.logoUrl ?? resolveEmailLogoUrl(),
       siteUrl: params.siteUrl,
     })
   )

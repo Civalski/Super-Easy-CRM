@@ -25,6 +25,7 @@ export function CreateContratoIaModal({
   onSave,
   saving,
   onBack,
+  documentVariant = 'contrato',
 }: CreateContratoIaModalProps) {
   const {
     form,
@@ -60,7 +61,7 @@ export function CreateContratoIaModal({
   useEffect(() => {
     if (!open) return
 
-    resetForm()
+    resetForm({ tipo: documentVariant === 'proposta' ? 'proposta' : 'geral' })
     setIaPrompt('')
     setUseMultiModels(false)
     setPrimaryModel(DEFAULT_PRIMARY_MODEL)
@@ -70,7 +71,7 @@ export function CreateContratoIaModal({
       .then((response) => response.json())
       .then((data) => setIaUso(data.uso ?? []))
       .catch(() => setIaUso([]))
-  }, [open, resetForm])
+  }, [documentVariant, open, resetForm])
 
   const handleSelectChange = useCallback(
     (opt: AsyncSelectOption | null) => {
@@ -83,8 +84,11 @@ export function CreateContratoIaModal({
   const handleGerarComIa = useCallback(async () => {
     const prompt = iaPrompt.trim()
     if (!prompt) {
-      toast.error('Descreva o contrato', {
-        description: 'Informe o que deseja no contrato para a IA gerar.',
+      toast.error(documentVariant === 'proposta' ? 'Descreva a proposta' : 'Descreva o contrato', {
+        description:
+          documentVariant === 'proposta'
+            ? 'Informe escopo e condições para a IA montar a proposta comercial.'
+            : 'Informe o que deseja no contrato para a IA gerar.',
       })
       return
     }
@@ -151,10 +155,15 @@ export function CreateContratoIaModal({
             : uso
         )
       )
-      toast.success('Contrato gerado com IA')
+      toast.success(documentVariant === 'proposta' ? 'Proposta gerada com IA' : 'Contrato gerado com IA')
     } catch (error) {
       toast.error('Erro', {
-        description: error instanceof Error ? error.message : 'Nao foi possivel gerar o contrato.',
+        description:
+          error instanceof Error
+            ? error.message
+            : documentVariant === 'proposta'
+              ? 'Nao foi possivel gerar a proposta.'
+              : 'Nao foi possivel gerar o contrato.',
       })
     } finally {
       setIaLoading(false)
@@ -164,6 +173,7 @@ export function CreateContratoIaModal({
     form.clausulas,
     form.preambulo,
     form.tipo,
+    documentVariant,
     form.titulo,
     iaPrompt,
     iaRigidez,
@@ -189,13 +199,18 @@ export function CreateContratoIaModal({
       onClose={onClose}
       onBack={onBack}
       onSubmit={() => void handleSubmit()}
-      title="Novo contrato com I.A"
-      description="Fluxo dedicado a IA: descreva o contrato, gere e revise os dados das partes."
-      primaryLabel="Criar contrato"
+      title={documentVariant === 'proposta' ? 'Nova proposta com I.A' : 'Novo contrato com I.A'}
+      description={
+        documentVariant === 'proposta'
+          ? 'Descreva a oportunidade: a IA monta escopo e condições comerciais (sem cláusulas).'
+          : 'Fluxo dedicado a IA: descreva o contrato, gere e revise os dados das partes.'
+      }
+      primaryLabel={documentVariant === 'proposta' ? 'Criar proposta' : 'Criar contrato'}
       primaryDisabled={saving}
       primaryLoading={saving}
     >
       <ContratoFormFields
+        formContext={documentVariant === 'proposta' ? 'proposta' : 'contrato'}
         form={form}
         clienteLabel={clienteLabel}
         clausulasMode={clausulasMode}

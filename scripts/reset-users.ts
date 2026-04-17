@@ -16,17 +16,23 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({ adapter })
 
+function requiredEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`Variavel de ambiente ${name} nao definida. Defina no .env.`)
+  return value
+}
+
 const USERS = [
   {
-    username: 'alisson355',
-    password: 'Pilhadeira10@',
+    username: requiredEnv('RESET_ADMIN_USERNAME'),
+    password: requiredEnv('RESET_ADMIN_PASSWORD'),
     name: 'Admin',
     role: 'admin' as const,
   },
   {
-    username: 'igor',
-    password: 'igor2026@',
-    name: 'Igor',
+    username: requiredEnv('RESET_USER_USERNAME'),
+    password: requiredEnv('RESET_USER_PASSWORD'),
+    name: 'User',
     role: 'user' as const,
   },
 ]

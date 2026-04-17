@@ -1,5 +1,7 @@
 import React from 'react'
 import { Document, Image, Page, Text, View } from '@react-pdf/renderer'
+import type { PropostaComercialFields } from '@/components/features/contratos/utils'
+import { parseProposalSections } from './mapper'
 import { createDocumentStyles } from './styles'
 import type { ContractPdfTheme } from './theme'
 import type { ContractPdfViewModel, PdfTextBlock, PdfTopicSection } from './types'
@@ -118,11 +120,32 @@ function isAdditionalInfoLabel(label: string): boolean {
   ])
 }
 
-function sectionsSource(model: ContractPdfViewModel): PdfTopicSection[] {
+/** Secoes narrativas da proposta (apenas escopo / preambulo no PDF). */
+function proposalDescriptionSectionsSource(model: ContractPdfViewModel): PdfTopicSection[] {
   if (model.proposalSections.length > 0) return model.proposalSections
-  const fallback = [...model.contractSections.preambulo, ...model.contractSections.observacoes]
+  const fallback = model.contractSections.preambulo
   if (fallback.length === 0) return []
-  return [{ title: 'Resumo comercial', blocks: fallback }]
+  return [{ title: 'Resumo da proposta', blocks: fallback }]
+}
+
+function hasProposalScalarCommercial(c: PropostaComercialFields): boolean {
+  return Boolean(
+    c.precoProjeto.trim() ||
+      c.taxasExtras.trim() ||
+      c.opcionais.trim() ||
+      c.formaPagamento.trim() ||
+      c.validadeProposta.trim(),
+  )
+}
+
+function complementaresToAdditionalLines(extras: string): string[] {
+  const t = normalizeMultiline(extras)
+  if (!t) return []
+  return t
+    .split('\n')
+    .map((l) => cleanDisplayText(l))
+    .filter(Boolean)
+    .slice(0, 24)
 }
 
 function sectionLines(section: PdfTopicSection): string[] {
@@ -165,13 +188,10 @@ function keepMonetaryValue(value: string): string {
   return normalized.startsWith('R$') ? normalized : `R$ ${normalized}`
 }
 
-function buildProposalLayoutData(model: ContractPdfViewModel): ProposalLayoutData {
-  const sections = sectionsSource(model)
-  const allLines = sections.flatMap((section) => sectionLines(section))
-  const keyValues = allLines.flatMap((line) => extractKeyValues(line))
+function buildDescriptionSectionsFromSections(sections: PdfTopicSection[]): ProposalDescriptionSection[] {
   const seenDescriptionSections = new Set<string>()
 
-  const descriptionSections = sections
+  return sections
     .map((section) => {
       const title = cleanDisplayText(section.title)
       const paragraphs = section.blocks
@@ -200,6 +220,16 @@ function buildProposalLayoutData(model: ContractPdfViewModel): ProposalLayoutDat
       return { title, paragraphs }
     })
     .filter((item): item is ProposalDescriptionSection => Boolean(item))
+}
+
+type CommercialLayoutSlice = Pick<
+  ProposalLayoutData,
+  'priceRows' | 'priceHighlight' | 'additionalInfoLines' | 'validityLabel'
+>
+
+function buildHeuristicCommercialFromSections(sections: PdfTopicSection[]): CommercialLayoutSlice {
+  const allLines = sections.flatMap((section) => sectionLines(section))
+  const keyValues = allLines.flatMap((line) => extractKeyValues(line))
 
   const priceRows = dedupeRows(
     keyValues
@@ -228,11 +258,71 @@ function buildProposalLayoutData(model: ContractPdfViewModel): ProposalLayoutDat
     ''
 
   return {
-    descriptionSections,
     priceRows,
     priceHighlight,
     additionalInfoLines,
     validityLabel,
+  }
+}
+
+function buildStructuredCommercialFromFields(fields: PropostaComercialFields): CommercialLayoutSlice {
+  const priceRows: ProposalPriceRow[] = []
+  const preco = fields.precoProjeto.trim()
+  if (preco) {
+    const display = keepMonetaryValue(preco) || cleanDisplayText(preco)
+    priceRows.push({ label: 'Valor do projeto', value: display })
+  }
+  if (fields.taxasExtras.trim()) {
+    priceRows.push({ label: 'Taxa extra', value: cleanDisplayText(fields.taxasExtras) })
+  }
+  if (fields.opcionais.trim()) {
+    priceRows.push({ label: 'Opcionais', value: cleanDisplayText(fields.opcionais) })
+  }
+  if (fields.formaPagamento.trim()) {
+    priceRows.push({ label: 'Forma de pagamento', value: cleanDisplayText(fields.formaPagamento) })
+  }
+
+  const priceHighlight =
+    (preco ? keepMonetaryValue(preco) || cleanDisplayText(preco) : '') ||
+    priceRows.find((row) => row.label === 'Valor do projeto')?.value ||
+    ''
+
+  const additionalInfoLines = complementaresToAdditionalLines(fields.observacoesComplementares)
+
+  let validityLabel = cleanDisplayText(fields.validadeProposta)
+  if (!validityLabel) {
+    validityLabel =
+      additionalInfoLines.find((line) => containsKeyword(line, ['validade da proposta', 'validade'])) || '-'
+  }
+  if (!validityLabel) validityLabel = '-'
+
+  return {
+    priceRows,
+    priceHighlight,
+    additionalInfoLines,
+    validityLabel,
+  }
+}
+
+function buildProposalLayoutData(model: ContractPdfViewModel): ProposalLayoutData {
+  const descriptionSections = buildDescriptionSectionsFromSections(proposalDescriptionSectionsSource(model))
+  const commercial = model.proposalCommercial
+
+  const useStructured =
+    commercial &&
+    (hasProposalScalarCommercial(commercial) || commercial.observacoesComplementares.trim())
+
+  const commercialSlice: CommercialLayoutSlice =
+    useStructured && commercial
+      ? buildStructuredCommercialFromFields(commercial)
+      : buildHeuristicCommercialFromSections([
+          ...model.proposalSections,
+          ...parseProposalSections(model.proposalObservacoesRaw ?? ''),
+        ])
+
+  return {
+    descriptionSections,
+    ...commercialSlice,
   }
 }
 
@@ -378,7 +468,7 @@ function ProposalDocument({
             {data.priceRows.length > 0 ? (
               <View style={styles.priceTable}>
                 <View style={styles.priceTableHeader}>
-                  <Text style={styles.priceTableHeaderColA}>Descricao</Text>
+                  <Text style={styles.priceTableHeaderColA}>Item</Text>
                   <Text style={styles.priceTableHeaderColB}>Valor</Text>
                 </View>
                 {data.priceRows.map((row, index) => (

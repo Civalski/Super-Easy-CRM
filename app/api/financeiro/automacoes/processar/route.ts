@@ -101,7 +101,7 @@ async function processar(request: NextRequest) {
       )
     }
 
-    const rateLimitResponse = enforceApiRateLimit({
+    const rateLimitResponse = await enforceApiRateLimit({
       key: 'api:financeiro:automacoes:processar:global',
       config: schedulerRateLimitConfig,
       error: 'Processamento financeiro em cooldown. Tente novamente em alguns minutos.',

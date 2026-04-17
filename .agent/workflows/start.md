@@ -1,27 +1,34 @@
 ---
-description: Como iniciar o servidor de desenvolvimento do projeto
+description: Como iniciar o servidor de desenvolvimento
 ---
-# Iniciar o Projeto
 
-// turbo-all
+# Iniciar o projeto
 
-## Passos:
+O CRM e 100% Next.js; nao existe backend Python separado.
 
-1. Ativar o ambiente virtual Python (para o backend):
+## Primeira execucao (apos clone)
+
 ```powershell
-& "d:/Projetos/Arker CRM/.venv/Scripts/Activate.ps1"
+npm install
+npm run dev:first
 ```
 
-2. Iniciar o servidor de desenvolvimento (frontend + backend):
+`dev:first` executa `setup:dev` (copia envs + gera Prisma Client) e depois `next dev`.
+
+## Execucao normal
+
 ```powershell
 npm run dev
 ```
 
-O comando `npm run dev` inicia simultaneamente:
-- Next.js frontend na porta 3000
-- Backend Python FastAPI na porta 8000
+O script ja chama `scripts/kill-ports.ps1` para liberar a porta 3000 antes de subir o Next.
 
-## URLs:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- Documentação API: http://localhost:8000/docs
+## URL
+
+- Frontend + API: http://localhost:3000
+
+## Banco de dados
+
+- Dev e prod usam PostgreSQL (Supabase). Ver [DATABASE.md](../../DATABASE.md).
+- Nao existe mais SQLite local.
+- Se o schema mudou, ver [migrate-db.md](migrate-db.md).

@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
 
     const ticketMedio =
       vendasFechadas.length > 0
-        ? vendasFechadas.reduce((sum, item) => sum + (item.valor || 0), 0) / vendasFechadas.length
+        ? vendasFechadas.reduce((sum, item) => sum + Number(item.valor || 0), 0) / vendasFechadas.length
         : 0
 
     return NextResponse.json({

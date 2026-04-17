@@ -324,8 +324,8 @@ export async function GET(request: NextRequest) {
         ...conta,
         status: deriveFinanceStatus({
           status: conta.status,
-          valorTotal: conta.valorTotal,
-          valorRecebido: conta.valorRecebido,
+          valorTotal: Number(conta.valorTotal),
+          valorRecebido: Number(conta.valorRecebido),
           dataVencimento: conta.dataVencimento,
         }),
       }))
@@ -382,8 +382,8 @@ export async function GET(request: NextRequest) {
       ...conta,
       status: deriveFinanceStatus({
         status: conta.status,
-        valorTotal: conta.valorTotal,
-        valorRecebido: conta.valorRecebido,
+        valorTotal: Number(conta.valorTotal),
+        valorRecebido: Number(conta.valorRecebido),
         dataVencimento: conta.dataVencimento,
       }),
     }))
@@ -663,7 +663,7 @@ export async function PATCH(request: NextRequest) {
 
     const valorTaxa = payload.valorTaxa !== undefined ? parseMoney(payload.valorTaxa) : null
     if (valorTaxa !== null && valorTaxa > 0) {
-      const base = valorTotal ?? existing.valorTotal
+      const base = valorTotal ?? Number(existing.valorTotal)
       valorTotal = roundMoney(base + valorTaxa)
     }
     const dataVencimento =

@@ -115,7 +115,9 @@ export function PropostaCommercialFields({
       </div>
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        A validade da proposta e sincronizada automaticamente com o campo "Validade da proposta" acima.
+        {
+          'A validade da proposta e sincronizada automaticamente com o campo "Validade da proposta" acima.'
+        }
       </p>
     </div>
   )

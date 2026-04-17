@@ -1,3 +1,4 @@
+import { parsePropostaComercialFields } from '@/components/features/contratos/utils'
 import type {
   ContractDocKind,
   ContractPdfConfigInput,
@@ -128,7 +129,7 @@ function parseTextBlocks(text: string | null | undefined): PdfTextBlock[] {
   return blocks.filter((block) => hasVisibleText(block.text))
 }
 
-function parseProposalSections(text: string | null | undefined): PdfTopicSection[] {
+export function parseProposalSections(text: string | null | undefined): PdfTopicSection[] {
   const normalized = sanitizeMultilineText(text)
   if (!normalized) return []
 
@@ -250,20 +251,18 @@ export function buildContractPdfViewModel(input: {
       return { label, lines }
     })
 
-  let proposalSections = [
-    ...parseProposalSections(contrato.preambulo),
-    ...parseProposalSections(contrato.observacoes),
-  ]
+  let proposalSections: PdfTopicSection[] =
+    kind === 'proposta' ? [...parseProposalSections(contrato.preambulo)] : [...parseProposalSections(contrato.preambulo), ...parseProposalSections(contrato.observacoes)]
 
   if (proposalSections.length === 0 && kind === 'proposta') {
-    const fallback = parseTextBlocks([contrato.preambulo, contrato.observacoes].filter(Boolean).join('\n\n'))
+    const fallback = parseTextBlocks(contrato.preambulo ?? '')
     if (fallback.length > 0) {
-      proposalSections = [{
-        title: 'Resumo comercial',
-        blocks: fallback,
-      }]
+      proposalSections = [{ title: 'Resumo da proposta', blocks: fallback }]
     }
   }
+
+  const proposalCommercial = kind === 'proposta' ? parsePropostaComercialFields(contrato.observacoes) : undefined
+  const proposalObservacoesRaw = kind === 'proposta' ? contrato.observacoes : undefined
 
   return {
     kind,
@@ -295,5 +294,7 @@ export function buildContractPdfViewModel(input: {
       observacoes: parseTextBlocks(contrato.observacoes),
     },
     proposalSections,
+    proposalCommercial,
+    proposalObservacoesRaw,
   }
 }

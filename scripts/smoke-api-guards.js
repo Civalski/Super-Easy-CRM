@@ -4,6 +4,50 @@ const { spawnSync } = require('node:child_process')
 
 const rootDir = process.cwd()
 
+const PUBLIC_AUTH_ROUTES = new Set([
+  'app/api/auth/[...nextauth]/route.ts',
+  'app/api/auth/register/route.ts',
+  'app/api/auth/register/resend-confirmation/route.ts',
+  'app/api/auth/forgot-password/route.ts',
+  'app/api/auth/oauth-complete/route.ts',
+  'app/api/auth/sync-password/route.ts',
+])
+
+const WEBHOOK_ROUTES = new Set(['app/api/billing/stripe/webhook/route.ts'])
+
+const CRON_ROUTES = new Set([
+  'app/api/financeiro/automacoes/processar/route.ts',
+  'app/api/prospectos/agendamentos/processar/route.ts',
+])
+
+function normalizeRel(filePath) {
+  return path.relative(rootDir, filePath).split(path.sep).join('/')
+}
+
+function collectApiRouteFiles() {
+  const base = path.join(rootDir, 'app', 'api')
+  const out = []
+  function walk(dir) {
+    for (const name of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, name.name)
+      if (name.isDirectory()) {
+        walk(full)
+      } else if (name.name === 'route.ts') {
+        out.push(normalizeRel(full))
+      }
+    }
+  }
+  walk(base)
+  return out.sort()
+}
+
+function classifyApiRoute(relativePath) {
+  if (PUBLIC_AUTH_ROUTES.has(relativePath)) return 'B'
+  if (WEBHOOK_ROUTES.has(relativePath)) return 'C'
+  if (CRON_ROUTES.has(relativePath)) return 'D'
+  return 'A'
+}
+
 function readFile(relativePath) {
   const filePath = path.join(rootDir, relativePath)
   return fs.readFileSync(filePath, 'utf8')
@@ -125,7 +169,66 @@ const tests = [
   }),
 ]
 
-const allChecks = [...tests, ...unauthorizedChecks]
+const routeFiles = collectApiRouteFiles()
+const stripeWebhook = readFile('app/api/billing/stripe/webhook/route.ts')
+const financeAutomacoes = readFile('app/api/financeiro/automacoes/processar/route.ts')
+const prospectosProcessar = readFile('app/api/prospectos/agendamentos/processar/route.ts')
+const middleware = readFile('middleware.ts')
+
+const inventoryChecks = [
+  check('Inventario API: cada route.ts tem classificacao conhecida', () => routeFiles.length > 0),
+  ...routeFiles.map((rel) =>
+    check(`Inventario API: ${rel} autenticado ou excecao documentada`, () => {
+      const kind = classifyApiRoute(rel)
+      if (kind !== 'A') return true
+      const content = readFile(rel)
+      return content.includes('withAuth')
+    })
+  ),
+  check('Webhook Stripe valida assinatura (constructEvent)', () =>
+    includesAll(stripeWebhook, ['constructEvent', 'stripe-signature', 'STRIPE_WEBHOOK_SECRET'])
+  ),
+  check('Cron financeiro exige segredo de agendador', () =>
+    includesAll(financeAutomacoes, ['hasSchedulerSecret', 'Unauthorized', 'status: 401'])
+  ),
+  check('Cron prospectos agendados exige segredo', () =>
+    includesAll(prospectosProcessar, ['LEADS_SCHEDULER_SECRET', 'Unauthorized', 'status: 401'])
+  ),
+  check('Middleware define allowlist OSS para APIs', () =>
+    includesAll(middleware, ['OSS_API_ALLOW_PREFIXES', 'OSS_API_DENIED_PREFIXES', 'applyOssGuard'])
+  ),
+  check('Rotas com $queryRaw em API parametrizam tenant (userId)', () => {
+    const rawFiles = [
+      'app/api/financeiro/contas-receber/route.ts',
+      'app/api/dashboard/route.ts',
+      'app/api/produtos-servicos/route.ts',
+      'app/api/prospectos/route.ts',
+    ]
+    return rawFiles.every((rel) => {
+      const content = readFile(rel)
+      return content.includes('$queryRaw') && content.includes('${userId}')
+    })
+  }),
+  check('Assinatura inativa: API retorna 402 (SUBSCRIPTION_REQUIRED)', () =>
+    includesAll(routeHelpers, ['402', 'SUBSCRIPTION_REQUIRED', 'getUserSubscriptionAccess'])
+  ),
+  check('Sessao: JWT validado contra sessao ativa (sessionId)', () => {
+    const auth = readFile('lib/auth.ts')
+    return (
+      auth.includes('isActiveUserSession') &&
+      auth.includes('sessionId') &&
+      auth.includes('tokenSessionId')
+    )
+  }),
+  check('Middleware OSS nega APIs fora da allowlist (403 JSON)', () =>
+    includesAll(middleware, [
+      'status: 403',
+      'Recurso não disponível nesta edição do CRM.',
+    ])
+  ),
+]
+
+const allChecks = [...tests, ...unauthorizedChecks, ...inventoryChecks]
 
 let failed = 0
 for (const result of allChecks) {

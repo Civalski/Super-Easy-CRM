@@ -16,6 +16,8 @@ interface PaginationMeta {
 export interface UseContratosFilters {
   status?: 'em_andamento' | 'aprovado_assinado' | 'rejeitado'
   tipo?: string
+  /** Exclui um valor de `tipo` (ex.: `proposta` na listagem de contratos). */
+  excludeTipo?: string
   dataInicio?: string
   dataFim?: string
 }
@@ -40,6 +42,7 @@ export function useContratos(filters: UseContratosFilters = {}) {
         limit: String(CONTRATOS_PAGE_SIZE),
       })
       if (filters.tipo) params.set('tipo', filters.tipo)
+      if (filters.excludeTipo) params.set('excludeTipo', filters.excludeTipo)
       if (filters.status) params.set('status', filters.status)
       if (filters.dataInicio) params.set('dataInicio', filters.dataInicio)
       if (filters.dataFim) params.set('dataFim', filters.dataFim)
@@ -64,15 +67,15 @@ export function useContratos(filters: UseContratosFilters = {}) {
     } finally {
       setLoading(false)
     }
-  }, [filters.dataFim, filters.dataInicio, filters.status, filters.tipo])
+  }, [filters.dataFim, filters.dataInicio, filters.excludeTipo, filters.status, filters.tipo])
 
   useEffect(() => {
     fetchContratos(page)
-  }, [fetchContratos, page, filters.dataFim, filters.dataInicio, filters.status, filters.tipo])
+  }, [fetchContratos, page, filters.dataFim, filters.dataInicio, filters.excludeTipo, filters.status, filters.tipo])
 
   useEffect(() => {
     setPage(1)
-  }, [filters.dataFim, filters.dataInicio, filters.status, filters.tipo])
+  }, [filters.dataFim, filters.dataInicio, filters.excludeTipo, filters.status, filters.tipo])
 
   const createContrato = useCallback(async (values: ContratoFormValues) => {
     try {
@@ -84,7 +87,7 @@ export function useContratos(filters: UseContratosFilters = {}) {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao criar contrato')
-      toast.success('Contrato criado')
+      toast.success(values.tipo === 'proposta' ? 'Proposta criada' : 'Contrato criado')
       return data as Contrato
     } catch (error) {
       toast.error('Erro', {
@@ -96,14 +99,16 @@ export function useContratos(filters: UseContratosFilters = {}) {
     }
   }, [])
 
-  const deleteContrato = useCallback(async (id: string) => {
+  const deleteContrato = useCallback(async (target: string | Contrato) => {
+    const id = typeof target === 'string' ? target : target.id
+    const isProposta = typeof target !== 'string' && target.tipo === 'proposta'
     try {
       const res = await fetch(`/api/contratos/${id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao excluir contrato')
       setContratos((prev) => prev.filter((c) => c.id !== id))
       setMeta((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }))
-      toast.success('Contrato excluído')
+      toast.success(isProposta ? 'Proposta excluída' : 'Contrato excluído')
       return true
     } catch (error) {
       toast.error('Erro', {
@@ -178,7 +183,7 @@ export function useContratos(filters: UseContratosFilters = {}) {
             : c
         )
       )
-      toast.success('Contrato atualizado')
+      toast.success(values.tipo === 'proposta' ? 'Proposta atualizada' : 'Contrato atualizado')
       return data as Contrato
     } catch (error) {
       toast.error('Erro', {

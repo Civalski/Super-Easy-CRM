@@ -160,17 +160,17 @@ export default function Header({
             </button>
           </div>
 
-          <div className="flex-1 px-1 sm:px-3">
+          <div className="flex min-w-0 flex-1 justify-center px-1 sm:px-3">
             <div
               ref={buscaRef}
-              className="relative mx-auto flex w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-600/65 dark:bg-slate-900/55"
+              className="relative flex h-10 min-h-[44px] w-full max-w-[min(100%,20rem)] items-center gap-0 overflow-hidden rounded-lg border border-slate-300/70 bg-white/80 transition focus-within:border-indigo-400/70 focus-within:ring-2 focus-within:ring-indigo-500/20 sm:max-w-md lg:h-9 lg:min-h-0 lg:max-w-lg dark:border-slate-600/65 dark:bg-slate-900/55"
             >
               <div
-                className="flex h-10 min-h-[44px] w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400 sm:h-11"
+                className="flex h-10 min-h-[44px] w-10 shrink-0 cursor-default items-center justify-center text-slate-500 dark:text-slate-400 lg:h-9 lg:w-9 lg:min-h-0"
                 aria-hidden
                 onMouseDown={(e) => e.preventDefault()}
               >
-                <Search size={19} />
+                <Search size={18} />
               </div>
               <input
                 type="text"
@@ -178,20 +178,20 @@ export default function Header({
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 onFocus={abrirResultados}
-                className="h-10 min-h-[44px] min-w-0 flex-1 border-0 bg-transparent py-2 pl-2 pr-2 text-base text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400 sm:h-11 sm:text-sm"
+                className="h-10 min-h-[44px] min-w-0 flex-1 border-0 bg-transparent py-2 pl-1.5 pr-2 text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400 lg:h-9 lg:min-h-0 lg:py-0 lg:pl-1 lg:pr-2.5"
               />
               {busca ? (
                 <button
                   type="button"
                   onClick={limparBusca}
-                  className="shrink-0 rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+                  className="shrink-0 rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 lg:p-1.5"
                   aria-label="Limpar busca"
                 >
-                  <X size={17} />
+                  <X size={16} />
                 </button>
               ) : (
                 <div
-                  className="h-10 min-h-[44px] w-10 shrink-0 cursor-default sm:h-11"
+                  className="h-10 min-h-[44px] w-10 shrink-0 cursor-default lg:h-9 lg:w-9 lg:min-h-0"
                   aria-hidden
                   onMouseDown={(e) => e.preventDefault()}
                 />

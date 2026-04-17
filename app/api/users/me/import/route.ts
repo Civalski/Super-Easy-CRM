@@ -21,7 +21,7 @@ const importRateLimitConfig = {
 
 export async function POST(request: NextRequest) {
   return withAuth(request, async (userId) => {
-    const rateLimitResponse = enforceApiRateLimit({
+    const rateLimitResponse = await enforceApiRateLimit({
       key: `api:users:import:user:${userId}`,
       config: importRateLimitConfig,
       error: 'Muitas importações em pouco tempo. Aguarde um minuto.',
@@ -75,8 +75,10 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       console.error('Erro ao importar dados:', error)
-      const msg = error instanceof Error ? error.message : 'Erro ao importar dados.'
-      return NextResponse.json({ error: msg }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Erro ao importar dados. Verifique o formato do arquivo e tente novamente.' },
+        { status: 500 }
+      )
     }
   })
 }

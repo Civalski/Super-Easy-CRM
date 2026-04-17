@@ -52,10 +52,16 @@ async function processAutoDebits(userId: string) {
   })
 
   for (const conta of dueAccounts) {
-    const restante = moneyRemaining(conta.valorTotal, conta.valorRecebido)
-    if (restante <= 0) continue
-
     await prisma.$transaction(async (tx) => {
+      const fresh = await tx.contaReceber.findUnique({
+        where: { id: conta.id },
+        select: { valorTotal: true, valorRecebido: true, status: true },
+      })
+      if (!fresh || !['pendente', 'parcial', 'atrasado'].includes(fresh.status)) return
+
+      const restante = moneyRemaining(fresh.valorTotal, fresh.valorRecebido)
+      if (restante <= 0) return
+
       const claimed = await tx.contaReceber.updateMany({
         where: {
           id: conta.id,
@@ -65,14 +71,12 @@ async function processAutoDebits(userId: string) {
           status: { in: ['pendente', 'parcial', 'atrasado'] },
         },
         data: {
-          valorRecebido: roundMoney(conta.valorTotal),
+          valorRecebido: roundMoney(fresh.valorTotal),
           status: 'pago',
         },
       })
 
-      if (claimed.count === 0) {
-        return
-      }
+      if (claimed.count === 0) return
 
       await tx.movimentoFinanceiro.create({
         data: {

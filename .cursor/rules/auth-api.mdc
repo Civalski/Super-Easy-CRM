@@ -1,0 +1,18 @@
+---
+description: Padrao obrigatorio para rotas em app/api/**/route.ts (auth multi-tenant, Zod, rate limit, audit)
+globs:
+  - app/api/**/route.ts
+alwaysApply: false
+---
+
+Toda rota de API autenticada DEVE seguir, nesta ordem:
+
+1. Extrair identidade com `getUserIdFromRequest` de [lib/auth.ts](mdc:lib/auth.ts). Sem `userId` -> 401.
+2. Em rotas de escrita (POST/PATCH/PUT/DELETE), aplicar `enforceApiRateLimit` de [lib/security/api-rate-limit.ts](mdc:lib/security/api-rate-limit.ts) com `{ key, config, error }`. Se retornar `NextResponse`, devolver imediatamente (429). Ver exemplos em `app/api/clientes/route.ts` e [docs/agent/RECIPES.md](mdc:docs/agent/RECIPES.md).
+3. Validar body/query/params com Zod. Erros de validacao -> 400 com mensagem padronizada.
+4. Multi-tenant: TODA query Prisma tem `where: { userId, ... }`. Nunca leia/atualize/apague dados sem o filtro `userId`. Nunca retorne registros de outros usuarios.
+5. Registrar eventos de negocio com `logBusinessEvent` de [lib/observability/audit.ts](mdc:lib/observability/audit.ts) quando relevante.
+6. Respeitar edicao OSS: se a rota nao estiver no escopo publico e `NEXT_PUBLIC_CRM_EDITION=oss`, responder 403. Ver [lib/crmEdition.ts](mdc:lib/crmEdition.ts).
+7. Erros inesperados: `console.error` + retorno 500 sem vazar stack trace.
+
+Receita completa (com codigo): [docs/agent/RECIPES.md](mdc:docs/agent/RECIPES.md). Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 5.

@@ -15,42 +15,54 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({ adapter })
 
+function requiredEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`Variavel de ambiente ${name} nao definida. Defina no .env.`)
+  return value
+}
+
 async function main() {
-  console.log('Excluindo usuários (exceto alisson355)...')
+  const adminUsername = requiredEnv('RESET_ADMIN_USERNAME')
+  const testUser1 = requiredEnv('RESET_TEST1_USERNAME')
+  const testUser1Pass = requiredEnv('RESET_TEST1_PASSWORD')
+  const testUser2 = requiredEnv('RESET_TEST2_USERNAME')
+  const testUser2Pass = requiredEnv('RESET_TEST2_PASSWORD')
+
+  console.log(`Excluindo usuários (exceto ${adminUsername})...`)
 
   const deleted = await prisma.user.deleteMany({
-    where: { username: { not: 'alisson355' } },
+    where: { username: { not: adminUsername } },
   })
   console.log(`${deleted.count} usuário(s) excluído(s)`)
 
-  const [teste10Hash, teste20Hash] = await Promise.all([
-    bcrypt.hash('teste10', 12),
-    bcrypt.hash('teste20', 12),
+  const [hash1, hash2] = await Promise.all([
+    bcrypt.hash(testUser1Pass, 12),
+    bcrypt.hash(testUser2Pass, 12),
   ])
 
   await prisma.user.create({
     data: {
-      username: 'teste10',
-      passwordHash: teste10Hash,
-      name: 'Teste 10',
-      email: 'teste10@local.test',
+      username: testUser1,
+      passwordHash: hash1,
+      name: 'Teste 1',
+      email: `${testUser1}@local.test`,
       role: 'user',
     },
   })
-  console.log('Usuário criado: teste10 / teste10')
+  console.log(`Usuário criado: ${testUser1}`)
 
   await prisma.user.create({
     data: {
-      username: 'teste20',
-      passwordHash: teste20Hash,
-      name: 'Teste 20',
-      email: 'teste20@local.test',
+      username: testUser2,
+      passwordHash: hash2,
+      name: 'Teste 2',
+      email: `${testUser2}@local.test`,
       role: 'user',
     },
   })
-  console.log('Usuário criado: teste20 / teste20')
+  console.log(`Usuário criado: ${testUser2}`)
 
-  console.log('\nConcluído. Usuários atuais: alisson355 (admin), teste10, teste20')
+  console.log('\nConcluído.')
 }
 
 main()

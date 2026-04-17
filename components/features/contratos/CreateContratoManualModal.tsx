@@ -18,6 +18,7 @@ export function CreateContratoManualModal({
   onSave,
   saving,
   onBack,
+  documentVariant = 'contrato',
 }: CreateContratoManualModalProps) {
   const {
     form,
@@ -43,8 +44,10 @@ export function CreateContratoManualModal({
   } = useContratoForm()
 
   useEffect(() => {
-    if (open) resetForm()
-  }, [open, resetForm])
+    if (open) {
+      resetForm({ tipo: documentVariant === 'proposta' ? 'proposta' : 'geral' })
+    }
+  }, [documentVariant, open, resetForm])
 
   const handleSelectChange = useCallback(
     (opt: AsyncSelectOption | null) => {
@@ -65,13 +68,18 @@ export function CreateContratoManualModal({
       onClose={onClose}
       onBack={onBack}
       onSubmit={() => void handleSubmit()}
-      title="Novo contrato manual"
-      description="Preencha os dados do contrato sem usar geracao por IA."
-      primaryLabel="Criar contrato"
+      title={documentVariant === 'proposta' ? 'Nova proposta manual' : 'Novo contrato manual'}
+      description={
+        documentVariant === 'proposta'
+          ? 'Monte a proposta comercial: escopo, condições e validade. Sem cláusulas de contrato.'
+          : 'Preencha os dados do contrato sem usar geracao por IA.'
+      }
+      primaryLabel={documentVariant === 'proposta' ? 'Criar proposta' : 'Criar contrato'}
       primaryDisabled={saving}
       primaryLoading={saving}
     >
       <ContratoFormFields
+        formContext={documentVariant === 'proposta' ? 'proposta' : 'contrato'}
         form={form}
         clienteLabel={clienteLabel}
         clausulasMode={clausulasMode}

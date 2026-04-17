@@ -7,8 +7,7 @@ export const dynamic = 'force-dynamic'
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withRouteContext } from '@/lib/api/route-helpers';
-import { getAuthIdentityFromRequest } from '@/lib/auth';
+import { withAuth } from '@/lib/api/route-helpers';
 import { enviarLeadsAoFunil } from '@/lib/prospectos/enviarAoFunil';
 import { Prisma } from '@prisma/client';
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit';
@@ -28,21 +27,18 @@ const bulkDeleteRateLimitConfig = {
 
 // PATCH /api/prospectos/bulk - Atualiza status em massa (ex: enviar ao funil)
 export async function PATCH(request: NextRequest) {
-    return withRouteContext(request, async () => {
+    return withAuth(request, async (userId) => {
         try {
             if (isHeavyRoutesDisabled()) {
                 return heavyRoutesDisabledResponse();
             }
 
-            const { userId, role } = await getAuthIdentityFromRequest(request);
-            if (!userId) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-            if (role !== 'admin') {
+            const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+            if (user?.role !== 'admin') {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
 
-            const rateLimitResponse = enforceApiRateLimit({
+            const rateLimitResponse = await enforceApiRateLimit({
                 key: `api:prospectos:bulk:patch:user:${userId}`,
                 config: bulkPatchRateLimitConfig,
                 error: 'Muitas operacoes em massa em pouco tempo. Aguarde um minuto.',
@@ -91,21 +87,18 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE /api/prospectos/bulk - Exclui todos ou por filtro
 export async function DELETE(request: NextRequest) {
-    return withRouteContext(request, async () => {
+    return withAuth(request, async (userId) => {
         try {
             if (isHeavyRoutesDisabled()) {
                 return heavyRoutesDisabledResponse();
             }
 
-            const { userId, role } = await getAuthIdentityFromRequest(request);
-            if (!userId) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-            if (role !== 'admin') {
+            const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+            if (user?.role !== 'admin') {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
 
-            const rateLimitResponse = enforceApiRateLimit({
+            const rateLimitResponse = await enforceApiRateLimit({
                 key: `api:prospectos:bulk:delete:user:${userId}`,
                 config: bulkDeleteRateLimitConfig,
                 error: 'Muitas exclusoes em massa em pouco tempo. Aguarde um minuto.',

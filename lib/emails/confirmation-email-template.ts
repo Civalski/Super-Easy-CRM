@@ -1,6 +1,7 @@
 import { render } from '@react-email/render'
 import React from 'react'
 import EmailConfirmacaoCliente from './EmailConfirmacaoCliente'
+import { resolveEmailLogoUrl } from './resolve-email-logo-url'
 
 export type ConfirmationEmailParams = {
   confirmationLink: string
@@ -16,7 +17,7 @@ export async function buildConfirmationEmailHtml(
     React.createElement(EmailConfirmacaoCliente, {
       confirmationLink: params.confirmationLink,
       nome: params.nome,
-      logoUrl: params.logoUrl,
+      logoUrl: params.logoUrl ?? resolveEmailLogoUrl(),
       siteUrl: params.siteUrl,
     })
   )

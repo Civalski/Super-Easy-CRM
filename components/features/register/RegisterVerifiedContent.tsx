@@ -12,7 +12,18 @@ export function RegisterVerifiedContent() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const registerToken = searchParams.get('register_token')
+    let registerToken: string | null = null
+    try { registerToken = sessionStorage.getItem('__register_token') } catch {}
+    if (!registerToken) registerToken = searchParams.get('register_token')
+
+    if (registerToken) {
+      try { sessionStorage.removeItem('__register_token') } catch {}
+      if (typeof window !== 'undefined' && searchParams.has('register_token')) {
+        const cleaned = new URL(window.location.href)
+        cleaned.searchParams.delete('register_token')
+        window.history.replaceState(null, '', cleaned.toString())
+      }
+    }
 
     if (!registerToken) {
       setError('Nao foi possivel concluir a confirmacao do email.')

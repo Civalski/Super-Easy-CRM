@@ -26,20 +26,9 @@ export async function getAuthIdentityFromRequest(req: NextRequest): Promise<{
 
   if (tokenUserId) {
     if (!tokenSessionId) {
-      // Compatibilidade com JWTs legados sem sessionId.
-      const legacyUser = await prisma.user.findUnique({
-        where: { id: tokenUserId },
-        select: { id: true, role: true },
-      })
-
-      if (!legacyUser) {
-        return {}
-      }
-
-      return {
-        userId: legacyUser.id,
-        role: legacyUser.role ?? role,
-      }
+      // Tokens legados sem sessionId nao podem ser validados contra sessao ativa.
+      // Rejeitar para forcar re-autenticacao com token atualizado.
+      return {}
     }
 
     const activeSession = await isActiveUserSession({

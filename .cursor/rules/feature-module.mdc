@@ -1,0 +1,28 @@
+---
+description: Estrutura feature-first em components/features/<feature>/ (types, constants, utils, hooks, barrel)
+globs:
+  - components/features/**/*.ts
+  - components/features/**/*.tsx
+alwaysApply: false
+---
+
+Cada feature em `components/features/<feature>/` deve seguir:
+
+```
+types.ts         interfaces e tipos locais da feature
+constants.ts     labels, enums, mapas de cor, status
+utils.ts         funcoes puras (formatacao, calculos)
+hooks/useX.ts    chamadas de API e estado (TanStack Query / SWR)
+*.tsx            componentes de apresentacao (ate 250 linhas cada)
+index.ts         barrel export
+```
+
+Regras:
+- Componentes de apresentacao recebem tudo via props; nao fazem fetch direto.
+- Chamadas de API ficam apenas em hooks (`hooks/` da feature ou `lib/hooks/`).
+- Nenhum componente ultrapassa 250 linhas; se passar, quebre em sub-componentes.
+- Exportar sempre via `index.ts` (barrel) para uso externo.
+- Tipos reutilizados entre features vao para `types/` na raiz; locais ficam em `types.ts` da feature.
+
+Referencia viva: [components/features/pedidos/](mdc:components/features/pedidos) + [app/pedidos/page.tsx](mdc:app/pedidos/page.tsx).
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 4.

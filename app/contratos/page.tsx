@@ -74,7 +74,7 @@ export default function ContratosPage() {
     updateContrato,
     updateContratoStatus,
     fetchContratos,
-  } = useContratos({ ...filters, status: activeStatus })
+  } = useContratos({ ...filters, excludeTipo: 'proposta', status: activeStatus })
 
   const handleDownloadPdf = useCallback(async (c: Contrato) => {
     try {
@@ -123,7 +123,7 @@ export default function ContratosPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Contratos</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Crie contratos, preencha cláusulas e gere PDFs formais
+                Formalize acordos com cláusulas, partes assinantes e PDF
               </p>
             </div>
           </div>
@@ -144,6 +144,7 @@ export default function ContratosPage() {
               <Filter size={16} />
             </button>
             <NovoContratoMenuButton
+              variant="contrato"
               onSelect={(mode) => {
                 setCreateMode(mode)
                 setShowCreateModal(true)
@@ -199,6 +200,7 @@ export default function ContratosPage() {
       </div>
 
       <ContratosList
+        listVariant="contrato"
         contratos={contratos}
         loading={loading}
         downloadingPdfById={downloadingPdfById}
@@ -208,7 +210,7 @@ export default function ContratosPage() {
           setShowCreateModal(true)
         }}
         onDownloadPdf={(c) => void handleDownloadPdf(c)}
-        onDelete={(c) => void deleteContrato(c.id)}
+        onDelete={(c) => void deleteContrato(c)}
         onChangeStatus={(c, status) => void updateContratoStatus(c.id, status)}
         onEdit={(c) => setEditContrato(c)}
         onView={(c) => setPreviewContrato(c)}

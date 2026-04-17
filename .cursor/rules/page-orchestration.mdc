@@ -1,0 +1,23 @@
+---
+description: Regras para paginas app/**/page.tsx (orquestracao, sem fetch direto, limite de 300 linhas)
+globs:
+  - app/**/page.tsx
+alwaysApply: false
+---
+
+Uma `page.tsx` e casca fina de orquestracao. Deve conter APENAS:
+
+- Importacao dos hooks da feature (`components/features/<feature>/hooks/`).
+- Composicao de componentes de apresentacao da feature.
+- Handlers simples de UI (abrir/fechar drawers, trocar tab).
+
+NAO colocar em `page.tsx`:
+- `fetch(...)` ou chamadas diretas ao Prisma.
+- Logica de dominio (calculos, validacoes de negocio).
+- Definicoes de tipos longas (vao para `types.ts` da feature).
+- Constantes/labels (vao para `constants.ts` da feature).
+
+Limite de tamanho: 300 linhas. Se passar, extrair sub-componentes ou mover handlers para hooks.
+
+Referencia: [app/pedidos/page.tsx](mdc:app/pedidos/page.tsx) + [components/features/pedidos/](mdc:components/features/pedidos).
+Regra geral: [AGENTS.md](mdc:AGENTS.md) secao 4.

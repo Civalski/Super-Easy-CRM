@@ -18,6 +18,14 @@ const EMPTY_PROPOSTA_COMERCIAL_FIELDS: PropostaComercialFields = {
   observacoesComplementares: '',
 }
 
+const PROPOSTA_SCALAR_KEYS = [
+  'precoProjeto',
+  'taxasExtras',
+  'formaPagamento',
+  'opcionais',
+  'validadeProposta',
+] as const satisfies readonly (keyof PropostaComercialFields)[]
+
 function sanitizeMultilineText(value: string | null | undefined): string {
   if (!value) return ''
   return value
@@ -101,6 +109,84 @@ export function parsePropostaComercialFields(text: string | null | undefined): P
 
   next.observacoesComplementares = sanitizeMultilineText(extraLines.join('\n'))
   return next
+}
+
+/**
+ * Remove linhas "Campo: valor" reconheciveis como campos comerciais do corpo da proposta,
+ * para nao duplicar no PDF (preco deve ir aos inputs / bloco comercial estruturado).
+ */
+export function stripCommercialScalarLinesFromText(text: string | null | undefined): {
+  remainder: string
+  fields: Partial<Pick<PropostaComercialFields, (typeof PROPOSTA_SCALAR_KEYS)[number]>>
+} {
+  const normalized = sanitizeMultilineText(text)
+  if (!normalized) return { remainder: '', fields: {} }
+
+  const fields: Partial<Pick<PropostaComercialFields, (typeof PROPOSTA_SCALAR_KEYS)[number]>> = {}
+  const remainderLines: string[] = []
+
+  for (const rawLine of normalized.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) {
+      remainderLines.push('')
+      continue
+    }
+
+    if (/^#{1,3}\s+/.test(line)) {
+      remainderLines.push(line)
+      continue
+    }
+
+    const separatorIndex = rawLine.indexOf(':')
+    if (separatorIndex > 0) {
+      const label = rawLine.slice(0, separatorIndex)
+      const value = rawLine.slice(separatorIndex + 1).trim()
+      const mappedField = mapPropostaFieldKey(label)
+      if (mappedField && value) {
+        fields[mappedField] = cleanFieldValue(value)
+        continue
+      }
+    }
+
+    remainderLines.push(rawLine)
+  }
+
+  return {
+    remainder: sanitizeMultilineText(remainderLines.join('\n')),
+    fields,
+  }
+}
+
+/**
+ * Consolida preambulo + condicoes + campos explicitos da IA nos campos do formulario (observacoes comerciais).
+ */
+export function buildPropostaIaCommercialOutput(input: {
+  preambulo: string
+  condicoesComerciais: string
+  camposExplicitos?: Partial<PropostaComercialFields>
+}): { preambulo: string; condicoesComerciais: string } {
+  const explicit = input.camposExplicitos ?? {}
+  const strip = stripCommercialScalarLinesFromText(input.preambulo)
+  const parsedCond = parsePropostaComercialFields(input.condicoesComerciais)
+
+  const merged: PropostaComercialFields = {
+    ...EMPTY_PROPOSTA_COMERCIAL_FIELDS,
+    observacoesComplementares: parsedCond.observacoesComplementares,
+  }
+
+  for (const key of PROPOSTA_SCALAR_KEYS) {
+    const v =
+      (explicit[key]?.trim() ||
+        strip.fields[key]?.trim() ||
+        parsedCond[key]?.trim() ||
+        '') as string
+    merged[key] = v
+  }
+
+  return {
+    preambulo: strip.remainder.trim(),
+    condicoesComerciais: buildPropostaComercialText(merged),
+  }
 }
 
 export function formatPropostaValidadeFromDate(isoDate: string | null | undefined): string {

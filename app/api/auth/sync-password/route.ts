@@ -1,12 +1,27 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: Request) {
+const syncPasswordRateLimitConfig = {
+  windowMs: 10 * 60 * 1000,
+  maxAttempts: 5,
+  blockDurationMs: 15 * 60 * 1000,
+}
+
+export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const rateLimitResponse = await enforceApiRateLimit({
+      key: `api:auth:sync-password:ip:${ip}`,
+      config: syncPasswordRateLimitConfig,
+      error: 'Muitas tentativas. Aguarde antes de tentar novamente.',
+    })
+    if (rateLimitResponse) return rateLimitResponse
+
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 

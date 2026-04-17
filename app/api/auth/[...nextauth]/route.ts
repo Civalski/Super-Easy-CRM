@@ -55,8 +55,8 @@ const handler = NextAuth({
                 const byIpKey = `auth:login:ip:${clientIp}`
                 const byIdentifierKey = `auth:login:id:${clientIp}:${identifier || "unknown"}`
 
-                const byIpLimit = consumeRateLimit(byIpKey, loginRateLimitConfig)
-                const byIdentifierLimit = consumeRateLimit(byIdentifierKey, loginRateLimitConfig)
+                const byIpLimit = await consumeRateLimit(byIpKey, loginRateLimitConfig)
+                const byIdentifierLimit = await consumeRateLimit(byIdentifierKey, loginRateLimitConfig)
 
                 if (!byIpLimit.allowed || !byIdentifierLimit.allowed) {
                     console.warn("Login bloqueado por rate limit", { clientIp, identifier })
@@ -109,8 +109,8 @@ const handler = NextAuth({
                         })
                         syncActiveUserSessionCache({ userId: user.id, sessionId })
 
-                        resetRateLimit(byIpKey)
-                        resetRateLimit(byIdentifierKey)
+                        await resetRateLimit(byIpKey)
+                        await resetRateLimit(byIdentifierKey)
 
                         return {
                             id: user.id,
@@ -150,8 +150,8 @@ const handler = NextAuth({
                         })
                         syncActiveUserSessionCache({ userId: user.id, sessionId })
 
-                        resetRateLimit(byIpKey)
-                        resetRateLimit(byIdentifierKey)
+                        await resetRateLimit(byIpKey)
+                        await resetRateLimit(byIdentifierKey)
 
                         return {
                             id: user.id,
@@ -232,8 +232,8 @@ const handler = NextAuth({
                 })
                 syncActiveUserSessionCache({ userId: user.id, sessionId })
 
-                resetRateLimit(byIpKey)
-                resetRateLimit(byIdentifierKey)
+                await resetRateLimit(byIpKey)
+                await resetRateLimit(byIdentifierKey)
 
                 return {
                     id: user.id,

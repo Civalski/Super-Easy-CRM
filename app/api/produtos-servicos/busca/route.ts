@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         produto.tipo === 'servico' ? 'Servico' : 'Produto',
         produto.unidade || null,
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-          produto.precoPadrao || 0
+          Number(produto.precoPadrao || 0)
         ),
       ]
         .filter(Boolean)

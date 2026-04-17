@@ -26,10 +26,10 @@ const emptyParte: DadosParte = {
   telefone: '',
 }
 
-function createInitialFormState(): ContratoFormState {
+function createInitialFormState(tipo: string = 'geral'): ContratoFormState {
   return {
     titulo: '',
-    tipo: 'geral',
+    tipo,
     descricao: '',
     preambulo: '',
     clausulas: [{ titulo: '', conteudo: '' }],
@@ -70,20 +70,23 @@ export function useContratoForm() {
   const [customFieldsContratado, setCustomFieldsContratado] = useState<ContratoCustomField[]>([])
   const [form, setForm] = useState<ContratoFormState>(createInitialFormState)
 
-  const resetForm = useCallback(() => {
+  const resetForm = useCallback((options?: { tipo?: string }) => {
     setClienteId('')
     setClienteLabel('')
     setClausulasMode('manual')
     setClausulasTextoBruto('')
     setCustomFieldsContratante([])
     setCustomFieldsContratado([])
-    setForm(createInitialFormState())
+    setForm(createInitialFormState(options?.tipo ?? 'geral'))
   }, [])
 
   const setFormFromContrato = useCallback((contrato: Contrato) => {
-    const clausulas = Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0
-      ? contrato.clausulas.map((c) => ({ titulo: c.titulo ?? '', conteudo: c.conteudo ?? '' }))
-      : [{ titulo: '', conteudo: '' }]
+    const isProposta = contrato.tipo === 'proposta'
+    const clausulas = isProposta
+      ? []
+      : Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0
+        ? contrato.clausulas.map((c) => ({ titulo: c.titulo ?? '', conteudo: c.conteudo ?? '' }))
+        : [{ titulo: '', conteudo: '' }]
 
     const dadosPartes = contrato.dadosPartes ?? {}
     const contratante = { ...emptyParte, ...dadosPartes.contratante }

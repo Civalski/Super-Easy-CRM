@@ -132,12 +132,12 @@ export function UserModulesMenu({
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 w-72 rounded-xl border border-slate-200/90 bg-white p-2 shadow-xl dark:border-slate-700/70 dark:bg-slate-900"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 flex w-72 max-h-[min(24rem,calc(100dvh-5.5rem))] flex-col rounded-xl border border-slate-200/90 bg-white p-2 shadow-xl dark:border-slate-700/70 dark:bg-slate-900"
         >
-          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="shrink-0 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Modulos no menu
           </p>
-          <div className="max-h-80 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             {availableMenuItems.map((item) => {
               const isRequired = requiredSet.has(item.href)
               const isVisible = visibleHrefs.includes(item.href)

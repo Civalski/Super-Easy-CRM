@@ -72,6 +72,8 @@ export interface ContratoCustomField {
 export interface CreateContratoModalProps {
   open: boolean
   initialMode?: 'manual' | 'ia' | null
+  /** `proposta`: fluxo de proposta comercial (sem cláusulas), tipo fixo. */
+  documentVariant?: 'contrato' | 'proposta'
   onClose: () => void
   onCreated: () => void
   onSave: (values: ContratoFormValues) => Promise<unknown>

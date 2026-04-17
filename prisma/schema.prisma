@@ -334,7 +334,7 @@ model Oportunidade {
   userId                 String
   titulo                 String
   descricao              String?
-  valor                  Float?
+  valor                  Decimal?
   status                 String    @default("orcamento") // sem_contato, em_potencial, orcamento, fechada, perdida
   statusAnterior         String?
   motivoPerda            String?
@@ -342,7 +342,7 @@ model Oportunidade {
   dataFechamento         DateTime?
   formaPagamento         String?
   parcelas               Int?
-  desconto               Float?
+  desconto               Decimal?
   proximaAcaoEm          DateTime?
   canalProximaAcao       String?
   responsavelProximaAcao String?
@@ -380,9 +380,9 @@ model Pedido {
   dataEntrega         DateTime?
   dataAprovacao       DateTime  @default(now())
   observacoes         String?
-  totalBruto          Float     @default(0)
-  totalDesconto       Float     @default(0)
-  totalLiquido        Float     @default(0)
+  totalBruto          Decimal   @default(0)
+  totalDesconto       Decimal   @default(0)
+  totalLiquido        Decimal   @default(0)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -642,12 +642,12 @@ model ProdutoServico {
   unidade             String   @default("UN") // UN | CX | KG | M | M2 | M3 | L | HORA | DIARIA | MES
   descricao           String?
   observacoesInternas String?
-  precoPadrao         Float    @default(0)
-  custoPadrao         Float    @default(0)
-  comissaoPercentual  Float    @default(0)
+  precoPadrao         Decimal  @default(0)
+  custoPadrao         Decimal  @default(0)
+  comissaoPercentual  Decimal  @default(0)
   controlaEstoque     Boolean  @default(false)
-  estoqueAtual        Float    @default(0)
-  estoqueMinimo       Float    @default(0)
+  estoqueAtual        Decimal  @default(0)
+  estoqueMinimo       Decimal  @default(0)
   tempoPadraoMinutos  Int?
   garantiaDias        Int?
   prazoEntregaDias    Int?
@@ -673,10 +673,10 @@ model PedidoItem {
   pedidoId         String
   produtoServicoId String?
   descricao        String
-  quantidade       Float    @default(1)
-  precoUnitario    Float    @default(0)
-  desconto         Float    @default(0)
-  subtotal         Float    @default(0)
+  quantidade       Decimal  @default(1)
+  precoUnitario    Decimal  @default(0)
+  desconto         Decimal  @default(0)
+  subtotal         Decimal  @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -702,8 +702,8 @@ model ContaReceber {
   ambiente                 String    @default("geral") // geral | pessoal
   tipo                     String    @default("receber") // receber | pagar
   descricao                String?
-  valorTotal               Float
-  valorRecebido            Float     @default(0)
+  valorTotal               Decimal
+  valorRecebido            Decimal   @default(0)
   autoDebito               Boolean   @default(false)
   grupoParcelaId           String?
   numeroParcela            Int?
@@ -713,8 +713,8 @@ model ContaReceber {
   recorrenciaDiaVencimento Int?
   dataVencimento           DateTime?
   status                   String    @default("pendente") // pendente | parcial | pago | atrasado | cancelado
-  multaPorAtrasoPercentual  Float?
-  multaPorAtrasoValor      Float?
+  multaPorAtrasoPercentual  Decimal?
+  multaPorAtrasoValor      Decimal?
   multaPorAtrasoPeriodo    String?   // dia | semana | mes
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
@@ -749,8 +749,8 @@ model MovimentoFinanceiro {
   id             String   @id @default(cuid())
   userId         String
   contaReceberId String
-  tipo           String   @default("entrada") // entrada | estorno
-  valor          Float
+  tipo           String   @default("entrada") // entrada | saida | estorno
+  valor          Decimal
   dataMovimento  DateTime @default(now())
   observacoes    String?
   createdAt      DateTime @default(now())

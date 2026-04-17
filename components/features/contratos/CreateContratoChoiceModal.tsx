@@ -7,21 +7,28 @@ interface CreateContratoChoiceModalProps {
   open: boolean
   onClose: () => void
   onSelect: (mode: 'manual' | 'ia') => void
+  variant?: 'contrato' | 'proposta'
 }
 
 export function CreateContratoChoiceModal({
   open,
   onClose,
   onSelect,
+  variant = 'contrato',
 }: CreateContratoChoiceModalProps) {
+  const isProposta = variant === 'proposta'
   return (
     <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-xl">
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-5 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Novo contrato</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              {isProposta ? 'Nova proposta de serviço' : 'Novo contrato'}
+            </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Escolha como deseja iniciar a criacao do contrato.
+              {isProposta
+                ? 'Escolha como deseja montar a proposta comercial (sem cláusulas contratuais).'
+                : 'Escolha como deseja iniciar a criacao do contrato.'}
             </p>
           </div>
           <button

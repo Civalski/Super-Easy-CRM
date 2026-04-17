@@ -1,3 +1,5 @@
+import type { PropostaComercialFields } from '@/components/features/contratos/utils'
+
 export type ContractDocKind = 'contrato' | 'proposta'
 
 export interface PdfParty {
@@ -93,4 +95,8 @@ export interface ContractPdfViewModel {
     observacoes: PdfTextBlock[]
   }
   proposalSections: PdfTopicSection[]
+  /** Proposta: campos comerciais parseados de `observacoes` (condicoes estruturadas). */
+  proposalCommercial?: PropostaComercialFields
+  /** Proposta: texto bruto de observacoes para fallback de layout legado. */
+  proposalObservacoesRaw?: string | null
 }

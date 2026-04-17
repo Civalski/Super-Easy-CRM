@@ -447,9 +447,9 @@ export async function PATCH(
 
       if (vendaConfirmada) {
         const valorConta =
-          pedidoAtualizado.totalLiquido > 0
-            ? pedidoAtualizado.totalLiquido
-            : oportunidadeAtual.valor || 0
+          Number(pedidoAtualizado.totalLiquido) > 0
+            ? Number(pedidoAtualizado.totalLiquido)
+            : Number(oportunidadeAtual.valor || 0)
         const valorContaNormalizado = roundMoney(valorConta)
 
         const conta = await tx.contaReceber.upsert({
@@ -577,7 +577,7 @@ export async function PATCH(
             },
           })
 
-          if (conta.valorRecebido > 0) {
+          if (Number(conta.valorRecebido) > 0) {
             await tx.movimentoFinanceiro.create({
               data: {
                 userId,

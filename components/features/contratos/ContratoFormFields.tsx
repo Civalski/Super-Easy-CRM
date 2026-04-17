@@ -14,6 +14,8 @@ const INPUT_CLASS =
 const LABEL_CLASS = 'mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'
 
 export interface ContratoFormFieldsProps {
+  /** `proposta`: oculta seletor de tipo e fluxo de cláusulas (proposta não usa cláusulas). */
+  formContext?: 'contrato' | 'proposta'
   form: ContratoFormState
   clienteLabel: string
   clausulasMode: 'manual' | 'paste'
@@ -41,6 +43,7 @@ export interface ContratoFormFieldsProps {
 }
 
 export function ContratoFormFields({
+  formContext = 'contrato',
   form,
   clienteLabel,
   clausulasMode,
@@ -61,7 +64,7 @@ export function ContratoFormFields({
   onUpdateCustomField,
   onRemoveCustomField,
 }: ContratoFormFieldsProps) {
-  const isProposta = form.tipo === 'proposta'
+  const isProposta = formContext === 'proposta' || form.tipo === 'proposta'
   const propostaTextoPlaceholder = `## Diagnostico atual
 Descreva o cenario e a dor principal do cliente.
 
@@ -92,20 +95,22 @@ Explique atendimento, ajustes e limites.`
         />
       </div>
 
-      <div>
-        <label className={LABEL_CLASS}>Tipo</label>
-        <select
-          value={form.tipo}
-          onChange={(event) => onFieldChange('tipo', event.target.value)}
-          className={INPUT_CLASS}
-        >
-          {TIPOS_CONTRATO.map((tipo) => (
-            <option key={tipo.value} value={tipo.value}>
-              {tipo.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {formContext === 'contrato' ? (
+        <div>
+          <label className={LABEL_CLASS}>Tipo</label>
+          <select
+            value={form.tipo}
+            onChange={(event) => onFieldChange('tipo', event.target.value)}
+            className={INPUT_CLASS}
+          >
+            {TIPOS_CONTRATO.map((tipo) => (
+              <option key={tipo.value} value={tipo.value}>
+                {tipo.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       <div>
         <label className={LABEL_CLASS}>Cliente (opcional)</label>
@@ -156,11 +161,7 @@ Explique atendimento, ajustes e limites.`
           onUpdateCustomField={onUpdateCustomField}
           onRemoveCustomField={onRemoveCustomField}
         />
-      ) : (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
-          Em proposta comercial, os dados de contratante/contratado sao opcionais e ficam ocultos para manter o fluxo mais objetivo.
-        </div>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Layers,
   Package,
+  Send,
   Trophy,
   Users,
   Wallet,
@@ -108,7 +109,18 @@ export const menuItems: MenuItem[] = [
       'Espaço para formalizar acordos com mais segurança.\n\n' +
       '- Preencha cláusulas, partes, datas e assinaturas.\n' +
       '- Gere PDFs com visual profissional para envio ou impressão.\n\n' +
-      'Ideal para transformar combinados em documentação sólida.',
+      'Propostas comerciais ficam em Proposta.',
+  },
+  {
+    name: 'Proposta',
+    href: '/propostas',
+    icon: Send,
+    helpDescription:
+      'Documentos comerciais objetivos, sem cláusulas de contrato.\n\n' +
+      '- Monte escopo, condições e validade.\n' +
+      '- Use IA ou preenchimento manual.\n' +
+      '- Exporte PDF para enviar ao cliente.\n\n' +
+      'Separado de Contratos para manter o fluxo de venda mais leve.',
   },
   {
     name: 'Funil',

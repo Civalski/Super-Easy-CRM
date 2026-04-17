@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const ipRateKey = `auth:resend-confirmation:ip:${clientIp}`
     const emailRateKey = email ? `auth:resend-confirmation:email:${email}` : ''
 
-    const ipRateLimit = consumeRateLimit(ipRateKey, resendConfirmationRateLimitConfig)
+    const ipRateLimit = await consumeRateLimit(ipRateKey, resendConfirmationRateLimitConfig)
     if (!ipRateLimit.allowed) {
       return NextResponse.json(
         {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     if (emailRateKey) {
-      const emailRateLimit = consumeRateLimit(emailRateKey, resendConfirmationRateLimitConfig)
+      const emailRateLimit = await consumeRateLimit(emailRateKey, resendConfirmationRateLimitConfig)
       if (!emailRateLimit.allowed) {
         return NextResponse.json(
           {

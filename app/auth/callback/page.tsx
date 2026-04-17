@@ -164,10 +164,11 @@ function AuthCallbackInner() {
         await supabase.auth.signOut().catch(() => undefined)
 
         const params = new URLSearchParams()
-        params.set('register_token', json.registerToken)
+        params.set('register_complete', '1')
         if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
         clearAuthFlowCookie()
         if (typeof window !== 'undefined') {
+          try { sessionStorage.setItem('__register_token', json.registerToken) } catch {}
           window.location.replace(`/login?${params.toString()}`)
           return
         }

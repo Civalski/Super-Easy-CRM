@@ -17,6 +17,8 @@ interface ContratosFiltersProps {
   onChange: (values: ContratosFiltersValues) => void
   onClose: () => void
   onClear: () => void
+  /** Quando false, oculta o filtro por tipo (ex.: página só de propostas). */
+  showTipoFilter?: boolean
 }
 
 export function ContratosFilters({
@@ -26,11 +28,12 @@ export function ContratosFilters({
   onChange,
   onClose,
   onClear,
+  showTipoFilter = true,
 }: ContratosFiltersProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [position, setPosition] = useState({ top: 0, left: 0, width: 320 })
 
-  const hasActiveFilters = Boolean(values.tipo || values.dataInicio || values.dataFim)
+  const hasActiveFilters = Boolean((showTipoFilter && values.tipo) || values.dataInicio || values.dataFim)
 
   const tipoOptions = useMemo(
     () => [{ value: '', label: 'Todos os tipos' }, ...TIPOS_CONTRATO.map((t) => ({ value: t.value, label: t.label }))],
@@ -43,9 +46,10 @@ export function ContratosFilters({
     const updatePosition = () => {
       const rect = anchorRef.current?.getBoundingClientRect()
       if (!rect) return
+      // `position: fixed` usa coordenadas do viewport (nao somar scroll da janela).
       setPosition({
-        top: rect.bottom + window.scrollY + 8,
-        left: Math.max(8, rect.right + window.scrollX - 320),
+        top: rect.bottom + 8,
+        left: Math.max(8, rect.right - 320),
         width: 320,
       })
     }
@@ -89,20 +93,22 @@ export function ContratosFilters({
       style={{ top: position.top, left: position.left, width: position.width }}
     >
       <div className="space-y-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo de contrato</label>
-          <select
-            value={values.tipo}
-            onChange={(e) => onChange({ ...values, tipo: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-          >
-            {tipoOptions.map((opt) => (
-              <option key={opt.value || 'all'} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {showTipoFilter ? (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo de contrato</label>
+            <select
+              value={values.tipo}
+              onChange={(e) => onChange({ ...values, tipo: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            >
+              {tipoOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-2">
           <div>

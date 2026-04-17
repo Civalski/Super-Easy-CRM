@@ -149,7 +149,7 @@ export default function Sidebar({
       onMouseEnter={isMobile ? undefined : onMouseEnter}
       onMouseLeave={isMobile ? undefined : onMouseLeave}
     >
-      <div className="flex h-full flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] backdrop-blur-xl transition-shadow duration-300 dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
+      <div className="flex h-full min-h-0 flex-col border-r border-slate-200/80 bg-linear-to-b from-slate-50/96 via-slate-50/92 to-white/96 shadow-[0_24px_55px_-35px_rgba(15,23,42,0.35)] backdrop-blur-xl transition-shadow duration-300 dark:border-slate-600/35 dark:from-slate-900/95 dark:via-slate-900/92 dark:to-slate-800/90 dark:shadow-[0_24px_55px_-35px_rgba(2,6,23,0.95)]">
         <div
           className={`flex min-h-(--top-bar-height) items-center border-b border-slate-200/80 px-4 dark:border-slate-600/30 ${topBarLayoutClass}`}
         >
@@ -219,8 +219,8 @@ export default function Sidebar({
           )}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3">
-          <ul className="space-y-1.5">
+        <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
+          <ul className="space-y-1.5 pb-1">
             {visibleMenuItems.map((item) => {
               const ItemIcon = item.icon
               const isActive = isItemActive(item.href)

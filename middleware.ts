@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { isOssEdition } from '@/lib/crmEdition'
+import { getNextAuthSecret } from '@/lib/nextauth-secret'
+
+/* ------------------------------------------------------------------ */
+/*  Paths that never require a session (login, register, OAuth, etc.) */
+/* ------------------------------------------------------------------ */
+
+const PUBLIC_PAGE_BASES = [
+  '/login',
+  '/register',
+  '/auth',
+] as const
+
+function isPublicPage(pathname: string): boolean {
+  return PUBLIC_PAGE_BASES.some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`)
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  OSS-edition allow / deny lists                                    */
+/* ------------------------------------------------------------------ */
 
 function matchesBasePath(pathname: string, base: string): boolean {
   if (pathname === base) return true
@@ -53,31 +75,63 @@ function isOssApiAllowed(pathname: string): boolean {
   )
 }
 
-export function middleware(request: NextRequest) {
-  if (!isOssEdition()) {
-    return NextResponse.next()
-  }
+/* ------------------------------------------------------------------ */
+/*  OSS page/API guard                                                */
+/* ------------------------------------------------------------------ */
 
-  const { pathname } = request.nextUrl
+function applyOssGuard(request: NextRequest, pathname: string): NextResponse | null {
+  if (!isOssEdition()) return null
 
   if (pathname.startsWith('/api/')) {
-    if (isOssApiAllowed(pathname)) {
-      return NextResponse.next()
-    }
+    if (isOssApiAllowed(pathname)) return null
     return NextResponse.json(
       { error: 'Recurso não disponível nesta edição do CRM.' },
       { status: 403 }
     )
   }
 
-  if (isOssPageAllowed(pathname)) {
-    return NextResponse.next()
-  }
+  if (isOssPageAllowed(pathname)) return null
 
   const url = request.nextUrl.clone()
   url.pathname = '/grupos'
   url.search = ''
   return NextResponse.redirect(url)
+}
+
+/* ------------------------------------------------------------------ */
+/*  Middleware                                                         */
+/* ------------------------------------------------------------------ */
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // API routes handle their own auth via withAuth — skip JWT check here.
+  // Sentry tunnel (/monitoring) is also excluded.
+  if (pathname.startsWith('/api/') || pathname === '/monitoring') {
+    const ossResponse = applyOssGuard(request, pathname)
+    return ossResponse ?? NextResponse.next()
+  }
+
+  // Public pages (login, register, OAuth callback) — no session required.
+  if (isPublicPage(pathname)) {
+    return NextResponse.next()
+  }
+
+  // All other pages require a valid NextAuth JWT.
+  const token = await getToken({ req: request, secret: getNextAuthSecret() })
+
+  if (!token) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set(
+      'callbackUrl',
+      `${pathname}${request.nextUrl.search}`
+    )
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Authenticated — apply OSS restriction if applicable.
+  const ossResponse = applyOssGuard(request, pathname)
+  return ossResponse ?? NextResponse.next()
 }
 
 export const config = {

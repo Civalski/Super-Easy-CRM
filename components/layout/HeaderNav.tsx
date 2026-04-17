@@ -104,7 +104,10 @@ export function HeaderNav() {
   }
 
   return (
-    <nav className="hidden items-center gap-0.5 overflow-x-auto scrollbar-thin lg:flex">
+    <nav
+      className="hidden w-max min-w-0 items-center gap-0.5 lg:inline-flex"
+      aria-label="Navegacao principal"
+    >
       {visibleMenuItems.map((item) => {
         const ItemIcon = item.icon
         const isActive = isItemActive(item.href)
@@ -118,37 +121,38 @@ export function HeaderNav() {
             key={item.href}
             href={href}
             title={title}
+            aria-label={title}
             data-guide-href={item.href}
             onClick={(event) => {
               if (guideActive) {
                 event.preventDefault()
               }
             }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium leading-none transition-colors lg:px-2 lg:py-1.5 ${
               isActive
                 ? 'bg-indigo-100/80 text-indigo-900 dark:bg-indigo-400/10 dark:text-white'
                 : isLocked
                   ? 'text-slate-500 hover:bg-amber-50/70 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300'
                   : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/55 dark:hover:text-white'
-            } ${isGuideHighlight ? 'ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+            } ${isGuideHighlight ? 'ring-2 ring-amber-500 ring-offset-1 dark:ring-offset-slate-900' : ''} ${
               guideActive ? 'cursor-not-allowed' : ''
             }`}
             aria-disabled={guideActive}
           >
             <ItemIcon
-              size={16}
+              size={14}
               className={`shrink-0 ${
                 isActive
                   ? 'text-indigo-700 dark:text-indigo-200'
                   : 'text-slate-500 dark:text-slate-400'
               }`}
             />
-            <span>{item.name}</span>
-            {isLocked && (
-              <span className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            <span className="max-w-[9.5rem] truncate sm:max-w-[11rem]">{item.name}</span>
+            {isLocked ? (
+              <span className="rounded bg-amber-100 px-0.5 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                 Pro
               </span>
-            )}
+            ) : null}
           </Link>
         )
       })}
@@ -156,9 +160,10 @@ export function HeaderNav() {
         type="button"
         onClick={() => signOut()}
         title="Sair"
-        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-slate-300 dark:hover:bg-red-500/14 dark:hover:text-red-100"
+        aria-label="Sair"
+        className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium leading-none text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-slate-300 dark:hover:bg-red-500/14 dark:hover:text-red-100 lg:px-2 lg:py-1.5"
       >
-        <LogOut size={16} className="shrink-0 text-slate-500 dark:text-slate-400" />
+        <LogOut size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
         <span>Sair</span>
       </button>
     </nav>

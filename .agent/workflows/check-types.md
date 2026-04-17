@@ -1,25 +1,40 @@
 ---
-description: Como verificar erros de TypeScript antes de fazer alterações
+description: Como validar tipos e lint antes de encerrar uma tarefa
 ---
-# Verificar TypeScript
 
-// turbo-all
+# Verificar tipos, lint e smoke
 
-## Verificar erros de compilação:
+Sempre ao final de uma tarefa de codigo, rodar:
 
-1. Rodar verificação de tipos:
+```powershell
+npm run check
+```
+
+`check` executa na sequencia:
+
+1. `npm run lint` (ESLint)
+2. `npm run type-check` (`tsc --noEmit`)
+3. `npm run test:smoke` (garantias de auth em rotas de API)
+
+## Checks individuais
+
+```powershell
+npm run type-check   # so tipos
+npm run lint         # so lint
+npm run test:smoke   # so smoke de API guards
+```
+
+## Quando ha muitos erros
+
+Rodar so type-check filtrando os primeiros 40 erros:
+
 ```powershell
 npx tsc --noEmit --pretty 2>&1 | Select-Object -First 40
 ```
 
-Este comando:
-- Compila o TypeScript sem gerar arquivos
-- Mostra os 40 primeiros erros (se houver)
-- Deve ser executado ANTES de fazer alterações significativas
-- Deve ser executado DEPOIS de alterações para verificar se não introduziu erros
+Corrigir na origem (componentes e hooks) antes de tocar em tipos globais em `types/`.
 
-## Verificar lint:
+## O que NAO fazer
 
-```powershell
-npx eslint . --ext .ts,.tsx --max-warnings 0
-```
+- Nao ignorar erros com `@ts-ignore` / `any` sem justificativa explicita.
+- Nao encerrar a tarefa sem `npm run check` passando quando a alteracao for de codigo.

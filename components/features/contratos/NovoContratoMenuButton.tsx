@@ -6,9 +6,11 @@ import { Button } from '@/components/common'
 
 interface NovoContratoMenuButtonProps {
   onSelect: (mode: 'manual' | 'ia') => void
+  variant?: 'contrato' | 'proposta'
 }
 
-export function NovoContratoMenuButton({ onSelect }: NovoContratoMenuButtonProps) {
+export function NovoContratoMenuButton({ onSelect, variant = 'contrato' }: NovoContratoMenuButtonProps) {
+  const isProposta = variant === 'proposta'
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -44,7 +46,7 @@ export function NovoContratoMenuButton({ onSelect }: NovoContratoMenuButtonProps
   return (
     <div ref={menuRef} className="relative inline-flex">
       <Button onClick={() => setOpen((prev) => !prev)}>
-        <Plus size={16} className="mr-1.5" /> Novo contrato
+        <Plus size={16} className="mr-1.5" /> {isProposta ? 'Nova proposta' : 'Novo contrato'}
       </Button>
 
       {open ? (
