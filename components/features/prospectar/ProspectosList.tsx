@@ -97,7 +97,186 @@ export function ProspectosList({
 
     return (
         <div className="crm-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="prospecto-list-mobile-scope divide-y divide-gray-200 dark:divide-gray-700 lg:hidden">
+                {prospectos.map((prospecto) => {
+                    const isSelected = selectedIds.has(prospecto.id);
+                    const isContacted = prospecto.status !== 'novo' && prospecto.status !== 'lead_frio';
+                    const canToggleContato = prospecto.status === 'novo' || prospecto.status === 'em_contato';
+                    const canQualificar = prospecto.status === 'novo' || prospecto.status === 'em_contato';
+
+                    return (
+                        <div key={prospecto.id} className={`p-4 ${isSelected ? 'bg-purple-50 dark:bg-purple-900/20' : ''}`}>
+                            <div className="flex items-start justify-between gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleSelect(prospecto.id)}
+                                    className="mt-0.5 shrink-0 focus:outline-hidden"
+                                    aria-label={isSelected ? 'Desmarcar' : 'Selecionar'}
+                                >
+                                    {isSelected ? (
+                                        <CheckSquare className="h-6 w-6 text-purple-500" />
+                                    ) : (
+                                        <Square className="h-6 w-6 text-gray-400" />
+                                    )}
+                                </button>
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-base font-semibold text-gray-900 dark:text-white truncate" title={prospecto.nomeFantasia || prospecto.razaoSocial}>
+                                        {prospecto.nomeFantasia || prospecto.razaoSocial}
+                                    </div>
+                                    {prospecto.nomeFantasia ? (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={prospecto.razaoSocial}>
+                                            {prospecto.razaoSocial}
+                                        </div>
+                                    ) : null}
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                            <MapPin className="h-3 w-3" />
+                                            {prospecto.municipio}/{prospecto.uf}
+                                        </span>
+                                        <span className="text-gray-300 dark:text-gray-600">·</span>
+                                        <span className="truncate">{prospecto.cnpj}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => onPrioridadeChange(prospecto.id, star === prospecto.prioridade ? 0 : star)}
+                                        className="focus:outline-hidden min-h-[40px] min-w-[40px] flex items-center justify-center"
+                                        aria-label={`Prioridade ${star}`}
+                                    >
+                                        <Star
+                                            className={`h-5 w-5 ${star <= prospecto.prioridade
+                                                ? 'fill-yellow-400 text-yellow-400'
+                                                : 'text-gray-300 dark:text-gray-600'
+                                                }`}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                                {prospecto.telefone1 ? (
+                                    <a href={`tel:${prospecto.telefone1}`} className="flex min-h-[44px] items-center gap-2">
+                                        <Phone className="h-4 w-4 shrink-0" />
+                                        <span className="truncate">{prospecto.telefone1}</span>
+                                    </a>
+                                ) : null}
+                                {prospecto.email ? (
+                                    <a href={`mailto:${prospecto.email}`} className="flex min-h-[44px] items-center gap-2">
+                                        <Mail className="h-4 w-4 shrink-0" />
+                                        <span className="truncate">{prospecto.email}</span>
+                                    </a>
+                                ) : null}
+                                {prospecto.ultimoContato ? (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Último contato: {formatDate(prospecto.ultimoContato)}
+                                    </p>
+                                ) : null}
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleContato(prospecto.id, prospecto.status === 'novo');
+                                    }}
+                                    disabled={!canToggleContato}
+                                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-3 text-xs font-medium ${!canToggleContato ? 'cursor-not-allowed opacity-50 border-gray-200 dark:border-gray-700' : 'border-gray-300 dark:border-gray-600'}`}
+                                >
+                                    {isContacted ? <CheckSquare className="h-4 w-4 text-green-600" /> : <Square className="h-4 w-4 text-gray-400" />}
+                                    Contatado
+                                </button>
+                                <div className="relative min-w-0 flex-1 basis-[200px]">
+                                    <select
+                                        value={prospecto.status}
+                                        onChange={(e) => onStatusChange(prospecto.id, e.target.value)}
+                                        disabled={prospecto.status === 'convertido'}
+                                        className={`min-h-[44px] w-full appearance-none rounded-full px-3 py-2 pr-8 text-[11px] font-semibold ${getStatusConfig(prospecto.status).color} border-0 focus:ring-2 focus:ring-purple-500`}
+                                    >
+                                        {STATUS_OPTIONS.map((s) => (
+                                            <option key={s.value} value={s.value} className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+                                                {s.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2" />
+                                </div>
+                            </div>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                <Link
+                                    href={`/clientes/${prospecto.id}`}
+                                    className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-blue-100 px-3 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                    Ver
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => onQualificar(prospecto.id)}
+                                    disabled={!canQualificar}
+                                    className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-xs font-medium text-white disabled:bg-gray-300 dark:disabled:bg-gray-700"
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Em potencial
+                                </button>
+                            </div>
+                            <div className="relative mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onMenuToggle(openMenuId === prospecto.id ? null : prospecto.id)}
+                                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-gray-300 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-200"
+                                    aria-label="Mais ações"
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                    Mais ações
+                                </button>
+                                {openMenuId === prospecto.id ? (
+                                    <div className="absolute left-0 right-0 z-10 mt-1 max-h-[70vh] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onEditObservacao(prospecto.id, prospecto.observacoes || '');
+                                                onMenuToggle(null);
+                                            }}
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                                        >
+                                            <MessageSquare className="h-4 w-4" />
+                                            Adicionar observação
+                                        </button>
+                                        {prospecto.status !== 'convertido' ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    onConverter(prospecto.id);
+                                                    onMenuToggle(null);
+                                                }}
+                                                className="flex w-full min-h-[44px] items-center gap-2 px-4 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                            >
+                                                <UserCheck className="h-4 w-4" />
+                                                Converter em cliente
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onDelete(prospecto.id);
+                                                onMenuToggle(null);
+                                            }}
+                                            className="flex w-full min-h-[44px] items-center gap-2 px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Excluir
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="prospecto-list-desktop-scope hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[980px] table-fixed">
                     <thead className="crm-table-head">
                         <tr>
@@ -117,7 +296,7 @@ export function ProspectosList({
                                 Status
                             </th>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[20%]">
-                                A??es
+                                Ações
                             </th>
                         </tr>
                     </thead>
@@ -164,7 +343,7 @@ export function ProspectosList({
                                                         <MapPin className="w-3 h-3" />
                                                         {prospecto.municipio}/{prospecto.uf}
                                                     </span>
-                                                    <span className="text-gray-300 dark:text-gray-600">?</span>
+                                                    <span className="text-gray-300 dark:text-gray-600">·</span>
                                                     <span className="truncate">{prospecto.cnpj}</span>
                                                 </div>
                                             </div>
@@ -206,7 +385,7 @@ export function ProspectosList({
                                             )}
                                             {prospecto.ultimoContato && (
                                                 <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                                                    ?ltimo contato: {formatDate(prospecto.ultimoContato)}
+                                                    Último contato: {formatDate(prospecto.ultimoContato)}
                                                 </span>
                                             )}
                                         </div>
@@ -290,7 +469,7 @@ export function ProspectosList({
                                                             className="w-full flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
                                                         >
                                                             <MessageSquare className="w-4 h-4" />
-                                                            Adicionar Observa??o
+                                                            Adicionar observação
                                                         </button>
 
                                                         {prospecto.status !== 'convertido' && (

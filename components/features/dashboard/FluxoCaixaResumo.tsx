@@ -89,7 +89,42 @@ export function FluxoCaixaResumo({ fluxo }: FluxoCaixaResumoProps) {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="space-y-2 lg:hidden">
+            {fluxo.series.map((item) => (
+              <div
+                key={item.month}
+                className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/50"
+              >
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {formatMonthLabel(item.month)}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px]">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Recebido</span>
+                    <p className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(item.recebido)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Pago</span>
+                    <p className="font-medium text-rose-600 dark:text-rose-400">{formatCurrency(item.saida)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Prev. rec.</span>
+                    <p className="font-medium text-cyan-600 dark:text-cyan-400">{formatCurrency(item.previstoReceber)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Prev. pag.</span>
+                    <p className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(item.previstoPagar)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500 dark:text-gray-400">Saldo</span>
+                    <p className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.saldoProjetado)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="min-w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">

@@ -347,7 +347,7 @@ export function EditPedidoDrawer({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={LABEL_CLASS}>Forma de Pagamento</label>
                 <select
@@ -414,7 +414,7 @@ export function EditPedidoDrawer({
               </span>
             </button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={LABEL_CLASS}>Data de Fechamento</label>
                 <input
@@ -453,7 +453,7 @@ export function EditPedidoDrawer({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={LABEL_CLASS}>Canal</label>
                 <select

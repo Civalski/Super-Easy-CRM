@@ -104,7 +104,7 @@ export function ClienteDetalhesDrawer({
 
   return (
     <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-2xl">
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -124,7 +124,7 @@ export function ClienteDetalhesDrawer({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex min-h-[200px] items-center justify-center">
               <Loader2 className="animate-spin text-blue-600" size={32} />
@@ -198,7 +198,7 @@ export function ClienteDetalhesDrawer({
                 <h3 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Resumo comercial
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 dark:border-amber-800 dark:bg-amber-900/20">
                     <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
                       {resumo?.orcamentosEmAberto ?? 0}

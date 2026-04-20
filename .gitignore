@@ -3,10 +3,9 @@
 Dados
 /Dados
 /dados
-data
-/data
-parquet
-/parquet
+# Pastas de dados locais apenas na raiz (nao ignorar `**/data` dentro do codigo)
+/data/
+/parquet/
 .env.sentry-build-plugin
 
 # dependencies
@@ -19,6 +18,7 @@ parquet
 
 # next.js
 /.next/
+.next.arker-relocated-*
 /out/
 
 # production

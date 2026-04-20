@@ -34,7 +34,7 @@ export function ClienteEditForm({
         <h2 className="text-lg font-semibold">Editar Cliente</h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={LABEL_CLASS}>Nome *</label>
           <input
@@ -76,7 +76,7 @@ export function ClienteEditForm({
             className={INPUT_CLASS}
           />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className={LABEL_CLASS}>Endereço</label>
           <input
             type="text"
@@ -121,7 +121,7 @@ export function ClienteEditForm({
 
       <div>
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Mais informações</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={LABEL_CLASS}>Cargo</label>
             <input
@@ -162,7 +162,7 @@ export function ClienteEditForm({
               className={INPUT_CLASS}
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className={LABEL_CLASS}>Observações</label>
             <textarea
               name="observacoes"
@@ -179,7 +179,7 @@ export function ClienteEditForm({
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Campos personalizados</h3>
         <div className="space-y-3">
           {formData.camposPersonalizados.map((campo, index) => (
-            <div key={index} className="flex gap-2 items-start">
+            <div key={index} className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start">
               <input
                 type="text"
                 placeholder="Label"

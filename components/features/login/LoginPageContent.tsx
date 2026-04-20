@@ -48,7 +48,7 @@ function LoginPageInner() {
         <LoginHero appearance={appearance} theme={theme} />
 
         <section
-          className={`relative flex items-center justify-center px-3 py-8 sm:px-8 lg:px-12 ${appearance.formSection}`}
+          className={`relative flex min-h-0 items-center justify-center px-3 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8 lg:px-12 ${appearance.formSection}`}
         >
           <div className={`pointer-events-none absolute inset-0 ${appearance.formGlow}`} />
           <div className="absolute right-3 top-4 z-20 sm:right-6 sm:top-6">
@@ -77,7 +77,7 @@ function LoginPageInner() {
             website={website}
           />
 
-          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 text-[11px] text-slate-400">
+          <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 text-center text-[11px] text-slate-400">
             <Link
               href="https://www.arkersoft.com.br/termos-de-uso"
               target="_blank"

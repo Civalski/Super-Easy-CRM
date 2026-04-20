@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/common'
 import { ClipboardList, DocumentDuplicate, Download, Eye, MoreVertical, Pencil, Plus, Trash2 } from '@/lib/icons'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { clampFixedMenuPosition } from '@/lib/ui/clampFixedMenuPosition'
 import { getProbabilityBadgeClass, getProbabilityLabel } from '@/lib/domain/probabilidade'
 import type { Oportunidade, PaginationMeta } from './types'
 
@@ -26,6 +27,12 @@ interface OrcamentosListProps {
   onCancelar?: (id: string) => void
 }
 
+const ORC_GRID_COLS =
+  'min-w-[940px] grid-cols-[minmax(48px,60px)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(80px,100px)_minmax(80px,100px)_minmax(80px,100px)_minmax(52px,68px)_minmax(88px,110px)_minmax(60px,80px)_32px]'
+
+const ORC_MENU_WIDTH = 192
+const ORC_MENU_HEIGHT_EST = 340
+
 export default function OrcamentosList({
   orcamentos, meta, page, onPageChange, onVerDetalhes,
   onEdit, tab, onDownloadPdf, downloadingPdfById = {}, onTransformarEmPedido,
@@ -38,7 +45,7 @@ export default function OrcamentosList({
   useEffect(() => {
     if (!openMenuId || typeof document === 'undefined') return
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node
       const btn = document.querySelector(`[data-orc-menu-btn="${openMenuId}"]`)
       if (btn?.contains(target)) return
@@ -48,20 +55,26 @@ export default function OrcamentosList({
     }
 
     const updatePosition = () => {
-      const btn = document.querySelector(`[data-orc-menu-btn="${openMenuId}"]`) as HTMLElement
+      const desktop = window.matchMedia('(min-width: 1024px)').matches
+      const scope = desktop
+        ? document.querySelector('.orc-list-desktop-scope')
+        : document.querySelector('.orc-list-mobile-scope')
+      const btn = scope?.querySelector(`[data-orc-menu-btn="${openMenuId}"]`) as HTMLElement | undefined
       if (btn) {
         const rect = btn.getBoundingClientRect()
-        setMenuPosition({ top: rect.bottom + 4, left: rect.right - 192 })
+        setMenuPosition(clampFixedMenuPosition(rect, ORC_MENU_WIDTH, ORC_MENU_HEIGHT_EST, true))
       }
     }
 
     updatePosition()
     document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
     window.addEventListener('scroll', updatePosition, true)
     window.addEventListener('resize', updatePosition)
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
       window.removeEventListener('scroll', updatePosition, true)
       window.removeEventListener('resize', updatePosition)
     }
@@ -88,36 +101,53 @@ export default function OrcamentosList({
           Nenhum orçamento perdido registrado.
         </p>
       ) : (
-        <div className="divide-y divide-gray-100 dark:divide-gray-700 overflow-x-auto">
-          <div className="crm-table-head grid min-w-[940px] grid-cols-[minmax(48px,60px)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(80px,100px)_minmax(80px,100px)_minmax(80px,100px)_minmax(52px,68px)_minmax(88px,110px)_minmax(60px,80px)_32px] gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
-            <div className="text-right">Nº</div>
-            <div className="min-w-0">Cliente</div>
-            <div className="min-w-0">Título</div>
-            <div className="text-right">Criada</div>
-            <div className="text-right">{isAbertas ? 'Previsão' : 'Cancelado em'}</div>
-            <div className="text-right">Próx. ação</div>
-            <div className="text-right">Forma pgto</div>
-            <div className="text-right">Valor</div>
-            <div className="text-right">Probab.</div>
-            <div />
+        <>
+          <div className="orc-list-mobile-scope divide-y divide-gray-100 dark:divide-gray-700 lg:hidden">
+            {orcamentos.map((orc) => (
+              <OrcamentoMobileCard
+                key={orc.id}
+                orc={orc}
+                isAbertas={isAbertas}
+                openMenuId={openMenuId}
+                onMenuToggle={setOpenMenuId}
+              />
+            ))}
           </div>
-          {orcamentos.map((orc) => (
-            <OrcamentoRow
-              key={orc.id}
-              orc={orc}
-              isAbertas={isAbertas}
-              onEdit={onEdit}
-              onDownloadPdf={onDownloadPdf}
-              downloadingPdf={downloadingPdfById[orc.id]}
-              onTransformarEmPedido={onTransformarEmPedido}
-              creatingPedido={creatingPedidoById[orc.id]}
-              onReturnToPipeline={onReturnToPipeline}
-              openMenuId={openMenuId}
-              onMenuToggle={setOpenMenuId}
-              onVerDetalhes={onVerDetalhes}
-            />
-          ))}
-        </div>
+          <div className="orc-list-desktop-scope hidden lg:block">
+            <div className="divide-y divide-gray-100 dark:divide-gray-700 overflow-x-auto">
+              <div
+                className={`crm-table-head grid ${ORC_GRID_COLS} gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300`}
+              >
+                <div className="text-right">Nº</div>
+                <div className="min-w-0">Cliente</div>
+                <div className="min-w-0">Título</div>
+                <div className="text-right">Criada</div>
+                <div className="text-right">{isAbertas ? 'Previsão' : 'Cancelado em'}</div>
+                <div className="text-right">Próx. ação</div>
+                <div className="text-right">Forma pgto</div>
+                <div className="text-right">Valor</div>
+                <div className="text-right">Probab.</div>
+                <div />
+              </div>
+              {orcamentos.map((orc) => (
+                <OrcamentoRow
+                  key={orc.id}
+                  orc={orc}
+                  isAbertas={isAbertas}
+                  onEdit={onEdit}
+                  onDownloadPdf={onDownloadPdf}
+                  downloadingPdf={downloadingPdfById[orc.id]}
+                  onTransformarEmPedido={onTransformarEmPedido}
+                  creatingPedido={creatingPedidoById[orc.id]}
+                  onReturnToPipeline={onReturnToPipeline}
+                  openMenuId={openMenuId}
+                  onMenuToggle={setOpenMenuId}
+                  onVerDetalhes={onVerDetalhes}
+                />
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {openOrc && menuPosition && typeof document !== 'undefined' && createPortal(
@@ -181,7 +211,7 @@ function OrcamentoMenuDropdown({
   return (
     <div
       id={`orc-menu-${orc.id}`}
-      className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="fixed z-[9999] w-48 max-w-[calc(100vw-1rem)] rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       style={{ top: position.top, left: position.left }}
     >
       <button
@@ -266,6 +296,65 @@ function OrcamentoMenuDropdown({
   )
 }
 
+function OrcamentoMobileCard({
+  orc,
+  isAbertas,
+  openMenuId,
+  onMenuToggle,
+}: {
+  orc: Oportunidade
+  isAbertas: boolean
+  openMenuId: string | null
+  onMenuToggle: (id: string | null) => void
+}) {
+  const lostDate = orc.dataFechamento || orc.updatedAt || orc.createdAt || null
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            Orç. #{orc.numero != null ? orc.numero : '-'}
+          </div>
+          <div className="truncate text-base font-semibold text-gray-900 dark:text-white" title={orc.cliente.nome}>
+            {orc.cliente.nome}
+          </div>
+          <div className="mt-0.5 truncate text-sm text-gray-600 dark:text-gray-400" title={orc.titulo || undefined}>
+            {orc.titulo || '-'}
+          </div>
+        </div>
+        <button
+          type="button"
+          data-orc-menu-btn={orc.id}
+          onClick={() => onMenuToggle(openMenuId === orc.id ? null : orc.id)}
+          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          title="Ações"
+          aria-label="Ações"
+        >
+          <MoreVertical size={18} />
+        </button>
+      </div>
+      <div className="mt-2 text-sm">
+        <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(orc.valor)}</span>
+        <span
+          className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${getProbabilityBadgeClass(orc.probabilidade)}`}
+        >
+          {getProbabilityLabel(orc.probabilidade)}
+        </span>
+      </div>
+      <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+        <p>Criada: {orc.createdAt ? formatDate(orc.createdAt) : '-'}</p>
+        <p>
+          {isAbertas ? 'Previsão: ' : 'Cancelado: '}
+          {isAbertas ? (orc.dataFechamento ? formatDate(orc.dataFechamento) : '-') : lostDate ? formatDate(lostDate) : '-'}
+        </p>
+        {isAbertas && orc.proximaAcaoEm ? <p>Próx. ação: {formatDate(orc.proximaAcaoEm)}</p> : null}
+        {orc.formaPagamento ? <p>Forma pgto: {orc.formaPagamento}</p> : null}
+      </div>
+    </div>
+  )
+}
+
 function OrcamentoRow({
   orc, isAbertas, onEdit,
   onDownloadPdf, downloadingPdf, onTransformarEmPedido, creatingPedido, onReturnToPipeline,
@@ -285,11 +374,9 @@ function OrcamentoRow({
 }) {
   const lostDate = orc.dataFechamento || orc.updatedAt || orc.createdAt || null
 
-  const gridCols = 'min-w-[940px] grid-cols-[minmax(48px,60px)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(80px,100px)_minmax(80px,100px)_minmax(80px,100px)_minmax(52px,68px)_minmax(88px,110px)_minmax(60px,80px)_32px]'
-
   return (
     <div>
-      <div className={`grid ${gridCols} gap-3 px-3 py-2 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35 items-center`}>
+      <div className={`grid ${ORC_GRID_COLS} gap-3 px-3 py-2 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/35 items-center`}>
         <div className="text-right text-sm font-medium text-gray-600 dark:text-gray-300 tabular-nums">
           {orc.numero != null ? orc.numero : '-'}
         </div>

@@ -49,7 +49,46 @@ export default function FluxoCaixaSection({ fluxo, ambienteLabel, onMonthClick }
             ))}
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="space-y-2 lg:hidden">
+            {fluxo.series.map((item) => {
+              const body = (
+                <>
+                  <p className="text-sm font-semibold text-gray-900 underline decoration-dashed decoration-gray-300 underline-offset-4 dark:text-gray-100 dark:decoration-gray-600">
+                    {formatMonthLabel(item.month)}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-2 text-xs">
+                    {numericColumns.map((col) => (
+                      <div key={col.key}>
+                        <span className="text-gray-500 dark:text-gray-400">{col.label}</span>
+                        <p className={`font-medium ${col.color}`}>{formatCurrency(item[col.key])}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )
+              const cardClass =
+                'w-full rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-left dark:border-gray-700 dark:bg-gray-800/50'
+              if (onMonthClick) {
+                return (
+                  <button
+                    key={item.month}
+                    type="button"
+                    onClick={() => onMonthClick(item.month)}
+                    className={`${cardClass} cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800`}
+                  >
+                    {body}
+                  </button>
+                )
+              }
+              return (
+                <div key={item.month} className={cardClass}>
+                  {body}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">

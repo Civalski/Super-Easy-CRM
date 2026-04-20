@@ -175,7 +175,7 @@ export default function EditOrcamentoDrawer({ oportunidadeId, onClose, onSaved }
 
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Comercial</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label><span className={LABEL_CLASS}>Valor (R$)</span>
                   <input value={cart.hasCartItems ? currency(cart.totalCarrinho) : formData.valor} onChange={handleCurrencyChange('valor')} disabled={cart.hasCartItems} className={FIELD_CLASS} />
                 </label>
@@ -208,7 +208,7 @@ export default function EditOrcamentoDrawer({ oportunidadeId, onClose, onSaved }
                     {CANAL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </label>
-                <label className="col-span-2"><span className={LABEL_CLASS}>Responsável</span>
+                <label className="sm:col-span-2"><span className={LABEL_CLASS}>Responsável</span>
                   <input name="responsavelProximaAcao" value={formData.responsavelProximaAcao} onChange={handleChange} className={FIELD_CLASS} />
                 </label>
               </div>

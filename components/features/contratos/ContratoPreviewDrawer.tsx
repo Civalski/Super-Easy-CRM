@@ -83,7 +83,7 @@ export function ContratoPreviewDrawer({
 
   return (
     <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-4xl">
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-5 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -101,7 +101,7 @@ export function ContratoPreviewDrawer({
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
+        <div className="min-h-0 flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
           {loadingPreview ? (
             <div className="flex h-full items-center justify-center px-6 text-sm text-gray-500 dark:text-gray-300">
               Gerando preview do PDF...

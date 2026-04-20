@@ -9,7 +9,7 @@ import { NotificationManager } from '@/components/features/tarefas/NotificationM
 import { NotificationsProvider } from '@/components/features/tarefas/NotificationsProvider'
 import { readUiPrefsCookie } from '@/lib/cookies/server'
 import { DEFAULT_THEME } from '@/lib/cookies'
-import { AppToaster } from '@/components/ui/AppToaster'
+import { AppToaster } from '@/components/common/AppToaster'
 
 const bodyFont = Plus_Jakarta_Sans({
   subsets: ['latin'],

@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { Loader2, Target, MessageCircle, Mail, Layers, Menu, MoreVertical, Edit2, Trash2, Eye, ChevronLeft, ChevronRight, UserPlus, FileText, ShoppingCart, AlertTriangle } from '@/lib/icons'
 import { formatCurrency } from '@/lib/format'
+import { clampFixedMenuPosition } from '@/lib/ui/clampFixedMenuPosition'
 import Button from '@/components/common/Button'
 
 export interface OportunidadeKanban {
@@ -359,7 +360,7 @@ export function FunilKanban({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto pb-4">
+            <div className="flex flex-nowrap gap-4 overflow-x-auto overscroll-x-contain pb-4 lg:grid lg:grid-cols-2 lg:overflow-x-visible xl:grid-cols-4">
                 {TABS.map((tab) => (
                     <KanbanColumn
                         key={tab.value}
@@ -576,7 +577,7 @@ function KanbanColumn({
     return (
         <div
             ref={setNodeRef}
-            className={`flex flex-col min-w-[260px] rounded-lg border transition-colors ${
+            className={`flex min-w-[260px] flex-col rounded-lg border transition-colors max-lg:shrink-0 ${
                 isOver
                     ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600'
                     : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
@@ -778,27 +779,39 @@ function KanbanCard({
     const prevStatus = getPrevStatus(item.status)
 
     useEffect(() => {
-        if (menuOpen && triggerRef.current) {
+        if (!menuOpen || !triggerRef.current) return
+        const place = () => {
+            if (!triggerRef.current) return
             const rect = triggerRef.current.getBoundingClientRect()
-            const menuW = 200
-            const left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8))
-            const top = Math.min(rect.bottom + 4, window.innerHeight - 200)
-            setMenuPos({ top, left })
+            setMenuPos(clampFixedMenuPosition(rect, 208, 280, true))
+        }
+        place()
+        window.addEventListener('resize', place)
+        window.addEventListener('scroll', place, true)
+        return () => {
+            window.removeEventListener('resize', place)
+            window.removeEventListener('scroll', place, true)
         }
     }, [menuOpen])
 
     useEffect(() => {
-        if (whatsAppMenuOpen && whatsAppTriggerRef.current) {
+        if (!whatsAppMenuOpen || !whatsAppTriggerRef.current) return
+        const place = () => {
+            if (!whatsAppTriggerRef.current) return
             const rect = whatsAppTriggerRef.current.getBoundingClientRect()
-            const menuW = 220
-            const left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8))
-            const top = Math.min(rect.bottom + 4, window.innerHeight - 200)
-            setWhatsAppMenuPos({ top, left })
+            setWhatsAppMenuPos(clampFixedMenuPosition(rect, 224, 320, true))
+        }
+        place()
+        window.addEventListener('resize', place)
+        window.addEventListener('scroll', place, true)
+        return () => {
+            window.removeEventListener('resize', place)
+            window.removeEventListener('scroll', place, true)
         }
     }, [whatsAppMenuOpen])
 
     useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
+        const handleClickOutside = (e: MouseEvent | TouchEvent) => {
             const target = e.target as Node
             if (menuRef.current && !menuRef.current.contains(target) && triggerRef.current && !triggerRef.current.contains(target)) {
                 setMenuOpen(false)
@@ -807,8 +820,14 @@ function KanbanCard({
                 setWhatsAppMenuOpen(false)
             }
         }
-        if (menuOpen || whatsAppMenuOpen) document.addEventListener('click', handleClickOutside)
-        return () => document.removeEventListener('click', handleClickOutside)
+        if (menuOpen || whatsAppMenuOpen) {
+            document.addEventListener('click', handleClickOutside)
+            document.addEventListener('touchstart', handleClickOutside, { passive: true })
+        }
+        return () => {
+            document.removeEventListener('click', handleClickOutside)
+            document.removeEventListener('touchstart', handleClickOutside)
+        }
     }, [menuOpen, whatsAppMenuOpen])
 
     return (
@@ -849,7 +868,7 @@ function KanbanCard({
                                     }}
                                     onPointerDown={(e) => e.stopPropagation()}
                                     disabled={updatingId === item.id}
-                                    className="inline-flex items-center px-2 py-1 border border-emerald-300 dark:border-emerald-600 text-xs font-medium rounded text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-800 disabled:opacity-50"
+                                    className="inline-flex min-h-[44px] items-center rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-800 lg:min-h-0"
                                     title="Enviar WhatsApp"
                                 >
                                     <MessageCircle size={12} className="mr-0.5" />
@@ -895,7 +914,7 @@ function KanbanCard({
                                 }}
                                 onPointerDown={(e) => e.stopPropagation()}
                                 disabled={updatingId === item.id}
-                                className="inline-flex items-center px-2 py-1 border border-sky-300 dark:border-sky-600 text-xs font-medium rounded text-sky-700 dark:text-sky-200 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-800 disabled:opacity-50"
+                                className="inline-flex min-h-[44px] items-center rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 disabled:opacity-50 dark:border-sky-600 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800 lg:min-h-0"
                                 title="Enviar email"
                             >
                                 <Mail size={12} className="mr-0.5" />
@@ -912,7 +931,7 @@ function KanbanCard({
                                     setWhatsAppMenuOpen(false)
                                 }}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-400 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 active:bg-gray-200 dark:hover:bg-gray-700 dark:hover:text-gray-400 dark:active:bg-gray-600 lg:min-h-[36px] lg:min-w-[36px]"
                                 title="Ações"
                                 aria-label="Ações"
                             >

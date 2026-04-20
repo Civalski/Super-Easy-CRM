@@ -12,7 +12,7 @@ Cada feature em `components/features/<feature>/` deve seguir:
 types.ts         interfaces e tipos locais da feature
 constants.ts     labels, enums, mapas de cor, status
 utils.ts         funcoes puras (formatacao, calculos)
-hooks/useX.ts    chamadas de API e estado (TanStack Query / SWR)
+hooks/useX.ts    chamadas de API e estado (TanStack Query)
 *.tsx            componentes de apresentacao (ate 250 linhas cada)
 index.ts         barrel export
 ```

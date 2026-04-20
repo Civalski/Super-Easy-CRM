@@ -105,7 +105,7 @@ export default function EntidadesListDrawer({ open, onClose, onOpenCreateConta }
   return (
     <>
       <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-xl">
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <div className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-purple-500" />
@@ -148,7 +148,7 @@ export default function EntidadesListDrawer({ open, onClose, onOpenCreateConta }
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4" onClick={() => setOpenMenuId(null)}>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4" onClick={() => setOpenMenuId(null)}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
@@ -176,7 +176,7 @@ export default function EntidadesListDrawer({ open, onClose, onOpenCreateConta }
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setOpenMenuId((prev) => (prev === item.id ? null : item.id)) }}
-                        className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 dark:text-gray-400"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 dark:text-gray-400 lg:h-9 lg:w-9"
                         title="Ações"
                       >
                         <MoreVertical size={16} />

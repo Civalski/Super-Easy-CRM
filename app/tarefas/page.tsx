@@ -532,7 +532,7 @@ function TarefasPageContent() {
         }}
         maxWidthClass="max-w-2xl"
       >
-        <div className="h-full overflow-y-auto">
+        <div className="min-h-0 h-full overflow-y-auto">
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-5">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nova Tarefa</h2>

@@ -2,7 +2,6 @@
 description: RBAC multi-tenant, edicao OSS e guardas de rota (middleware e API)
 globs:
   - app/api/**
-  - middleware.ts
   - proxy.ts
   - lib/security/**
   - lib/crmEdition.ts
@@ -11,8 +10,8 @@ alwaysApply: false
 
 Seguranca nao-negociavel:
 
-- Toda rota autenticada valida `userId` no servidor, mesmo quando o middleware ja filtrou. Nunca confiar em `userId` vindo do cliente.
-- `middleware.ts` / `proxy.ts` aplicam autenticacao basica; a logica de RBAC por recurso fica em cada rota de API.
+- Toda rota autenticada valida `userId` no servidor, mesmo quando o proxy ja filtrou. Nunca confiar em `userId` vindo do cliente.
+- `proxy.ts` aplica autenticacao basica; a logica de RBAC por recurso fica em cada rota de API.
 - Rate limit em escrita: `enforceApiRateLimit` de [lib/security/api-rate-limit.ts](mdc:lib/security/api-rate-limit.ts).
 - Rotas pesadas (relatorios, exports): guardar com [lib/security/heavy-routes.ts](mdc:lib/security/heavy-routes.ts).
 - Turnstile em login/registro: [lib/security/turnstile.ts](mdc:lib/security/turnstile.ts).

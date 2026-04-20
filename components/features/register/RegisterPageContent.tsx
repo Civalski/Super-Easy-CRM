@@ -58,7 +58,9 @@ export function RegisterPageContent() {
 
         <RegisterHero appearance={appearance} />
 
-        <div className={`relative flex flex-col items-center justify-center gap-4 ${appearance.formSection}`}>
+        <div
+          className={`relative flex min-h-0 flex-col items-center justify-center gap-4 px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] ${appearance.formSection}`}
+        >
           <div className={`pointer-events-none absolute inset-0 ${appearance.formGlow}`} />
           <div className="absolute right-3 top-4 z-20 sm:right-6 sm:top-6">
             <LoginThemeToggle />

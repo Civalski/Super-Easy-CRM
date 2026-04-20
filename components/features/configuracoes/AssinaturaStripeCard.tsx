@@ -174,7 +174,7 @@ export function AssinaturaStripeCard() {
           </div>
         </div>
 
-        <div className="grid gap-3 p-3 md:grid-cols-3">
+        <div className="grid min-w-0 gap-3 p-3 md:grid-cols-3">
           {PREMIUM_PLANS.map((plan) => {
             const Icon = plan.icon
             const isStripePlan = plan.actionType === 'stripe'

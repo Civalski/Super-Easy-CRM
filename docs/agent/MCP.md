@@ -13,7 +13,7 @@ Quando usar cada MCP configurado em [.cursor/mcp.json](../../.cursor/mcp.json) /
 
 ## context7 (docs de stack)
 
-- Use para: Next.js 16 (App Router, middleware, metadata), React 19, Prisma 7, Tailwind CSS 4, NextAuth, Stripe, Resend, SWR, TanStack Query.
+- Use para: Next.js 16 (App Router, middleware, metadata), React 19, Prisma 7, Tailwind CSS 4, NextAuth, Stripe, Resend, TanStack Query.
 - Padrao: ao responder duvida de API (sintaxe, opcao de config, breaking change), consultar antes de escrever codigo.
 - Nao usar para: logica de negocio interna, nomes de arquivos locais.
 

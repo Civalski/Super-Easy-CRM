@@ -63,7 +63,7 @@ export function RegisterForm({
     <section className={`relative flex items-center justify-center px-2 py-6 sm:px-6 lg:px-10 ${appearance.formSection}`}>
       <div className={`relative z-10 w-full max-w-3xl rounded-3xl border p-4 backdrop-blur-xl sm:p-6 ${appearance.formCard}`}>
         <div className="mb-5 flex justify-center">
-          <div className="relative flex h-12 w-[220px] items-center justify-center">
+          <div className="relative flex h-12 w-full max-w-[220px] items-center justify-center">
             <Image
               src="/arkercrmlogo.png?v=2"
               alt="Arker CRM"

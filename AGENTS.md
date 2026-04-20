@@ -50,7 +50,7 @@ Cada feature do CRM vive em `components/features/<feature>/`:
 types.ts         interfaces e tipos locais
 constants.ts     labels, enums, mapas de cor
 utils.ts         funcoes puras (formatacao, calculos)
-hooks/useX.ts    estado e chamadas de API (TanStack Query / SWR)
+hooks/useX.ts    estado e chamadas de API (TanStack Query; ver lib/query/fetch-json.ts)
 *.tsx            componentes de apresentacao
 index.ts         barrel export
 ```
@@ -87,6 +87,7 @@ Receita completa: [docs/agent/RECIPES.md#api-route](docs/agent/RECIPES.md).
 
 ## 6. UI
 
+- **Mobile vs desktop**: breakpoint de layout operacional = `lg` (1024px). Abaixo de `lg`, priorizar listas em cards ou layouts empilhados; em `lg` e acima, manter tabelas/grids densos como no desktop (sem mudar hierarquia visual legada nesse intervalo).
 - Densidade compacta em listas, tabelas e cards operacionais. Evitar empilhar linhas repetitivas (ex.: parcelas) sem agrupamento.
 - Cores seguem [colors.MD](colors.MD). Suportar tema claro e escuro (`dark:` prefix).
 - Feedback: usar `toast` de [lib/toast.ts](lib/toast.ts) (wrapper de Sonner). SweetAlert2 apenas em telas legadas que ja o utilizam.

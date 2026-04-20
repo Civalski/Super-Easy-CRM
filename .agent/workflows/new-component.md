@@ -19,7 +19,7 @@ components/features/<feature>/
   types.ts         interfaces e tipos locais
   constants.ts     labels, enums, mapas
   utils.ts         funcoes puras
-  hooks/useX.ts    chamadas de API (TanStack Query / SWR)
+  hooks/useX.ts    chamadas de API (TanStack Query)
   *.tsx            componentes (<= 250 linhas cada)
   index.ts         barrel export
 ```

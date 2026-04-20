@@ -130,8 +130,11 @@ function ContasMenuDropdown({ grupoId, menuItems, onClose, triggerSelector }: {
       const btn = document.querySelector(triggerSelector) as HTMLElement
       if (btn) {
         const rect = btn.getBoundingClientRect()
-        // Menu abre para cima (bottom) para não ser cortado no fim da página
-        setPos({ bottom: window.innerHeight - rect.top + 4, left: Math.max(8, rect.right - 200) })
+        const w = 192
+        let left = rect.right - w
+        left = Math.max(8, left)
+        left = Math.min(left, window.innerWidth - w - 8)
+        setPos({ bottom: window.innerHeight - rect.top + 4, left })
       }
     }
     const handleClick = (e: MouseEvent) => {
@@ -156,7 +159,7 @@ function ContasMenuDropdown({ grupoId, menuItems, onClose, triggerSelector }: {
   return (
     <div
       id={`conta-menu-${grupoId}`}
-      className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="fixed z-[9999] w-48 max-w-[calc(100vw-1rem)] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       style={{ bottom: pos.bottom, left: pos.left }}
     >
       {menuItems}

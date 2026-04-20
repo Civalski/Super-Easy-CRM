@@ -17,6 +17,7 @@ import {
 } from '@/lib/icons'
 import { Button } from '@/components/common'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { clampFixedMenuPosition } from '@/lib/ui/clampFixedMenuPosition'
 import type { Pedido, PedidoTab } from './types'
 import { SITUACAO_PEDIDO_BADGE, SITUACAO_PEDIDO_LABEL, STATUS_ENTREGA_LABEL } from './constants'
 import { getPedidoSituacao } from './utils'
@@ -68,6 +69,9 @@ const TAB_COUNT_CLASS: Record<PedidoTab, string> = {
 const GRID_COLS =
   'min-w-[980px] grid-cols-[minmax(48px,60px)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(80px,100px)_minmax(0,1fr)_minmax(52px,68px)_minmax(88px,110px)_minmax(70px,90px)_32px]'
 
+const PED_MENU_WIDTH = 192
+const PED_MENU_HEIGHT_EST = 320
+
 export function PedidosList({
   activeTab,
   pedidos,
@@ -88,7 +92,7 @@ export function PedidosList({
   useEffect(() => {
     if (!openMenuId || typeof document === 'undefined') return
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node
       const btn = document.querySelector(`[data-ped-menu-btn="${openMenuId}"]`)
       if (btn?.contains(target)) return
@@ -98,20 +102,26 @@ export function PedidosList({
     }
 
     const updatePosition = () => {
-      const btn = document.querySelector(`[data-ped-menu-btn="${openMenuId}"]`) as HTMLElement
+      const desktop = window.matchMedia('(min-width: 1024px)').matches
+      const scope = desktop
+        ? document.querySelector('.ped-list-desktop-scope')
+        : document.querySelector('.ped-list-mobile-scope')
+      const btn = scope?.querySelector(`[data-ped-menu-btn="${openMenuId}"]`) as HTMLElement | undefined
       if (btn) {
         const rect = btn.getBoundingClientRect()
-        setMenuPosition({ top: rect.bottom + 4, left: rect.right - 192 })
+        setMenuPosition(clampFixedMenuPosition(rect, PED_MENU_WIDTH, PED_MENU_HEIGHT_EST, true))
       }
     }
 
     updatePosition()
     document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
     window.addEventListener('scroll', updatePosition, true)
     window.addEventListener('resize', updatePosition)
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
       window.removeEventListener('scroll', updatePosition, true)
       window.removeEventListener('resize', updatePosition)
     }
@@ -159,37 +169,51 @@ export function PedidosList({
         </div>
       ) : (
         <>
-          <div className="divide-y divide-gray-100 overflow-x-auto dark:divide-gray-700">
-            <div
-              className={`crm-table-head grid ${GRID_COLS} gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300`}
-            >
-              <div className="text-right">Nº</div>
-              <div className="min-w-0">Cliente</div>
-              <div className="min-w-0">Título</div>
-              <div className="text-right">
-                {activeTab === 'andamento' ? 'Criada' : activeTab === 'vendas' ? 'Entrega' : 'Cancelado em'}
-              </div>
-              <div className="min-w-0">
-                {activeTab === 'andamento' ? 'Status' : activeTab === 'cancelados' ? 'Motivo' : '-'}
-              </div>
-              <div className="text-right">Forma pgto</div>
-              <div className="text-right">Valor</div>
-              <div className="text-right">{activeTab === 'andamento' ? 'Pgto/Entr.' : '-'}</div>
-              <div />
-            </div>
+          <div className="ped-list-mobile-scope divide-y divide-gray-100 dark:divide-gray-700 lg:hidden">
             {pedidos.map((pedido) => (
-              <PedidoRow
+              <PedidoMobileCard
                 key={pedido.id}
                 pedido={pedido}
                 activeTab={activeTab}
-                saving={Boolean(savingById[pedido.id])}
-                onQuickApprove={onQuickApprove}
-                onOpenItems={onOpenItems}
-                onEdit={onEdit}
                 openMenuId={openMenuId}
                 onMenuToggle={setOpenMenuId}
               />
             ))}
+          </div>
+
+          <div className="ped-list-desktop-scope hidden lg:block">
+            <div className="divide-y divide-gray-100 overflow-x-auto dark:divide-gray-700">
+              <div
+                className={`crm-table-head grid ${GRID_COLS} gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300`}
+              >
+                <div className="text-right">Nº</div>
+                <div className="min-w-0">Cliente</div>
+                <div className="min-w-0">Título</div>
+                <div className="text-right">
+                  {activeTab === 'andamento' ? 'Criada' : activeTab === 'vendas' ? 'Entrega' : 'Cancelado em'}
+                </div>
+                <div className="min-w-0">
+                  {activeTab === 'andamento' ? 'Status' : activeTab === 'cancelados' ? 'Motivo' : '-'}
+                </div>
+                <div className="text-right">Forma pgto</div>
+                <div className="text-right">Valor</div>
+                <div className="text-right">{activeTab === 'andamento' ? 'Pgto/Entr.' : '-'}</div>
+                <div />
+              </div>
+              {pedidos.map((pedido) => (
+                <PedidoRow
+                  key={pedido.id}
+                  pedido={pedido}
+                  activeTab={activeTab}
+                  saving={Boolean(savingById[pedido.id])}
+                  onQuickApprove={onQuickApprove}
+                  onOpenItems={onOpenItems}
+                  onEdit={onEdit}
+                  openMenuId={openMenuId}
+                  onMenuToggle={setOpenMenuId}
+                />
+              ))}
+            </div>
           </div>
 
           {openPedido && menuPosition && typeof document !== 'undefined' && createPortal(
@@ -221,6 +245,84 @@ export function PedidosList({
         </>
       )}
     </section>
+  )
+}
+
+function PedidoMobileCard({
+  pedido,
+  activeTab,
+  openMenuId,
+  onMenuToggle,
+}: {
+  pedido: Pedido
+  activeTab: PedidoTab
+  openMenuId: string | null
+  onMenuToggle: (id: string | null) => void
+}) {
+  const dataCol =
+    activeTab === 'andamento'
+      ? pedido.createdAt || pedido.oportunidade.createdAt
+      : activeTab === 'vendas'
+        ? pedido.dataEntrega || pedido.dataAprovacao
+        : pedido.oportunidade.updatedAt || pedido.oportunidade.createdAt
+  const extraCol =
+    activeTab === 'andamento'
+      ? STATUS_ENTREGA_LABEL[pedido.statusEntrega] || pedido.statusEntrega
+      : activeTab === 'cancelados'
+        ? pedido.oportunidade.motivoPerda || '-'
+        : '-'
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Pedido #{pedido.numero}</div>
+          <div className="truncate text-base font-semibold text-gray-900 dark:text-white" title={pedido.oportunidade.cliente.nome}>
+            {pedido.oportunidade.cliente.nome}
+          </div>
+          <div className="mt-0.5 truncate text-sm text-gray-600 dark:text-gray-400" title={pedido.oportunidade.titulo || undefined}>
+            {pedido.oportunidade.titulo || '-'}
+          </div>
+        </div>
+        <button
+          type="button"
+          data-ped-menu-btn={pedido.id}
+          onClick={() => onMenuToggle(openMenuId === pedido.id ? null : pedido.id)}
+          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          title="Ações"
+          aria-label="Ações"
+        >
+          <MoreVertical size={18} />
+        </button>
+      </div>
+      <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(pedido.totalLiquido)}</span>
+        <span className="mx-2 text-gray-300 dark:text-gray-600">·</span>
+        <span>{dataCol ? formatDate(dataCol) : '-'}</span>
+      </div>
+      {pedido.formaPagamento ? (
+        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Pagamento: {pedido.formaPagamento}</div>
+      ) : null}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {typeof extraCol === 'string' && extraCol !== '-' ? (
+          <span className="rounded-md bg-gray-100 px-2 py-1 text-[11px] text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            {extraCol}
+          </span>
+        ) : null}
+        {activeTab === 'andamento' ? (
+          <>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+              {STATUS_ENTREGA_LABEL[pedido.statusEntrega] || pedido.statusEntrega}
+            </span>
+            {pedido.pagamentoConfirmado ? (
+              <span className="text-green-500" title="Pagamento confirmado">
+                <CheckCircle2 size={14} />
+              </span>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -256,7 +358,7 @@ function PedidoMenuDropdown({
   return (
     <div
       id={`ped-menu-${pedido.id}`}
-      className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="fixed z-[9999] w-48 max-w-[calc(100vw-1rem)] rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       style={{ top: position.top, left: position.left }}
     >
       <button

@@ -59,7 +59,7 @@ export function LoginFormCard({
       className={`relative z-10 w-full max-w-md rounded-[2rem] border p-4 sm:p-8 ${appearance.formCard}`}
     >
       <div className="mb-7 flex justify-center">
-        <div className="relative flex h-12 w-[220px] items-center justify-center">
+        <div className="relative flex h-12 w-full max-w-[220px] items-center justify-center">
           <Image
             src={logoSrc}
             alt="Arker CRM"

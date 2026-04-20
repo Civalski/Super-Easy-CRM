@@ -44,7 +44,7 @@ export default function SideCreateDrawer({
       />
 
       <aside
-        className={`absolute inset-y-0 right-0 h-dvh w-full ${maxWidthClass} min-w-0 overflow-hidden border-l border-slate-200/80 bg-linear-to-b from-white/95 via-slate-50/95 to-slate-100/92 text-slate-900 shadow-2xl shadow-slate-900/20 dark:border-slate-700/70 dark:from-slate-900/96 dark:via-slate-900/95 dark:to-slate-800/92 dark:text-slate-100 dark:shadow-slate-950/50`}
+        className={`absolute inset-y-0 right-0 box-border h-dvh w-full ${maxWidthClass} min-w-0 overflow-hidden border-l border-slate-200/80 bg-linear-to-b from-white/95 via-slate-50/95 to-slate-100/92 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-slate-900 shadow-2xl shadow-slate-900/20 dark:border-slate-700/70 dark:from-slate-900/96 dark:via-slate-900/95 dark:to-slate-800/92 dark:text-slate-100 dark:shadow-slate-950/50`}
       >
         {children}
       </aside>

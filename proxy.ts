@@ -99,10 +99,10 @@ function applyOssGuard(request: NextRequest, pathname: string): NextResponse | n
 }
 
 /* ------------------------------------------------------------------ */
-/*  Middleware                                                         */
+/*  Proxy (Next.js 16+ — replaces deprecated middleware convention)   */
 /* ------------------------------------------------------------------ */
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // API routes handle their own auth via withAuth — skip JWT check here.

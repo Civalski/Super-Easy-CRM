@@ -25,7 +25,7 @@ Mapa rapido "tarefa -> o que ler". Complementa o [AGENTS.md](AGENTS.md) sem dupl
 | Metodo completo (spec + harness por tarefa) | [docs/agent/SPEC_AND_HARNESS.md](docs/agent/SPEC_AND_HARNESS.md), [.agent/workflows/spec-harness-task.md](.agent/workflows/spec-harness-task.md), depois **uma** linha abaixo conforme o tipo de trabalho | conforme arquivos editados |
 | Criar rota de API em `app/api/**` | [AGENTS.md](AGENTS.md) §5, [docs/agent/RECIPES.md](docs/agent/RECIPES.md) secao API route, [lib/auth.ts](lib/auth.ts), [lib/security/api-rate-limit.ts](lib/security/api-rate-limit.ts) | `auth-api.mdc`, `security-oss.mdc` |
 | Criar/alterar feature em `components/features/<x>/` | [AGENTS.md](AGENTS.md) §4, [docs/agent/RECIPES.md](docs/agent/RECIPES.md) secao feature, [components/features/pedidos/](components/features/pedidos/) como referencia | `feature-module.mdc` |
-| Criar hook de dados (TanStack Query / SWR) | [docs/agent/RECIPES.md](docs/agent/RECIPES.md) secao hook, [lib/hooks/useDashboardData.ts](lib/hooks/useDashboardData.ts) como exemplo | `hooks-data.mdc` |
+| Criar hook de dados (TanStack Query) | [docs/agent/RECIPES.md](docs/agent/RECIPES.md) secao hook, [lib/hooks/useDashboardData.ts](lib/hooks/useDashboardData.ts) como exemplo | `hooks-data.mdc` |
 | Alterar `page.tsx` | [AGENTS.md](AGENTS.md) §4, [app/pedidos/page.tsx](app/pedidos/page.tsx) como referencia | `page-orchestration.mdc` |
 | Alterar `prisma/schema.prisma` | [DATABASE.md](DATABASE.md), [AGENTS.md](AGENTS.md) §7, [.agent/workflows/migrate-db.md](.agent/workflows/migrate-db.md) | `prisma-schema.mdc` |
 | Mexer em valores monetarios | [lib/money.ts](lib/money.ts), [lib/format.ts](lib/format.ts), [lib/pedidos/totals.ts](lib/pedidos/totals.ts) | `money.mdc` |

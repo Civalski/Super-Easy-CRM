@@ -173,7 +173,7 @@ const routeFiles = collectApiRouteFiles()
 const stripeWebhook = readFile('app/api/billing/stripe/webhook/route.ts')
 const financeAutomacoes = readFile('app/api/financeiro/automacoes/processar/route.ts')
 const prospectosProcessar = readFile('app/api/prospectos/agendamentos/processar/route.ts')
-const middleware = readFile('middleware.ts')
+const proxyGuard = readFile('proxy.ts')
 
 const inventoryChecks = [
   check('Inventario API: cada route.ts tem classificacao conhecida', () => routeFiles.length > 0),
@@ -194,8 +194,8 @@ const inventoryChecks = [
   check('Cron prospectos agendados exige segredo', () =>
     includesAll(prospectosProcessar, ['LEADS_SCHEDULER_SECRET', 'Unauthorized', 'status: 401'])
   ),
-  check('Middleware define allowlist OSS para APIs', () =>
-    includesAll(middleware, ['OSS_API_ALLOW_PREFIXES', 'OSS_API_DENIED_PREFIXES', 'applyOssGuard'])
+  check('Proxy define allowlist OSS para APIs', () =>
+    includesAll(proxyGuard, ['OSS_API_ALLOW_PREFIXES', 'OSS_API_DENIED_PREFIXES', 'applyOssGuard'])
   ),
   check('Rotas com $queryRaw em API parametrizam tenant (userId)', () => {
     const rawFiles = [
@@ -220,8 +220,8 @@ const inventoryChecks = [
       auth.includes('tokenSessionId')
     )
   }),
-  check('Middleware OSS nega APIs fora da allowlist (403 JSON)', () =>
-    includesAll(middleware, [
+  check('Proxy OSS nega APIs fora da allowlist (403 JSON)', () =>
+    includesAll(proxyGuard, [
       'status: 403',
       'Recurso não disponível nesta edição do CRM.',
     ])

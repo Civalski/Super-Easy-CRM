@@ -8,7 +8,11 @@ const config = [
     },
   },
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: [
+      'eslint.config.mjs',
+      '.next/**',
+      '.next.arker-relocated-*/**',
+    ],
   },
 ]
 

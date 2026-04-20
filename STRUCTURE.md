@@ -111,6 +111,7 @@ Componentes reutilizáveis genéricos, sem lógica de negócio.
 | `SideCreateDrawer.tsx` | Drawer lateral para formulários de criação/edição. |
 | `StatCard.tsx` | Card de estatísticas. |
 | `ConfirmDialog.tsx` | Diálogo de confirmação modal. |
+| `AppToaster.tsx` | Toaster global (Sonner), alinhado ao tema da app. |
 
 ### `components/features/`
 
@@ -172,7 +173,7 @@ Componentes estruturais da interface.
 | `security/` | Rate limiting (`rate-limit.ts`, `api-rate-limit.ts`), Turnstile (`turnstile.ts`), IP extraction (`client-ip.ts`), heavy routes guard (`heavy-routes.ts`). |
 | `billing/` | `subscription.ts` (normalização de status), `subscription-access.ts` (verificação de acesso premium), `subscription-schema.ts` (detecção de schema). Stripe em preparação. |
 | `domain/` | Lógica de domínio: `probabilidade.ts` (níveis e badges), `status.ts` (mapeamento de status de oportunidades). |
-| `hooks/` | Hooks globais: `useDashboardData.ts` (SWR), `useGlobalSearch.ts` (busca com debounce e cache), `useMotivosPerda.ts`. |
+| `hooks/` | Hooks globais: `useDashboardData.ts` (TanStack Query + `fetchJson`), `useGlobalSearch.ts` (busca com debounce e cache), `useMotivosPerda.ts`. |
 | `ui/` | Preferências de UI persistidas em localStorage: tema, sidebar, formato de data, densidade, confirmação de exclusão. |
 | `observability/` | `audit.ts` — log estruturado de eventos de negócio. |
 | `financeiro/` | `automation.ts` — lógica de automação financeira (recorrências). |

@@ -68,7 +68,10 @@ export function DashboardReportBlock({ block }: { block: DashboardPdfBlock }) {
 
       <div className="mb-4 flex flex-wrap gap-3">
         {totals.map((metric) => (
-          <div key={metric.key} className="min-w-[180px] rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <div
+            key={metric.key}
+            className="min-w-0 flex-1 basis-[min(100%,12rem)] rounded-xl border border-gray-200 bg-gray-50 p-3 lg:min-w-[180px] lg:flex-none"
+          >
             <p className="text-xs text-gray-500">{metric.label}</p>
             <div className="mt-1 flex items-center gap-2">
               <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: metric.color }} />

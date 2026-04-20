@@ -38,12 +38,12 @@ export function SubscriptionPlansModal({
       onClick={onClose}
     >
       <div
-        className="crm-card relative w-full max-w-4xl overflow-hidden border border-slate-200/70 dark:border-slate-700/70"
+        className="crm-card relative max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto overflow-x-hidden border border-slate-200/70 dark:border-slate-700/70"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          className="absolute right-3 top-3 z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 lg:min-h-[36px] lg:min-w-[36px] dark:hover:bg-slate-700 dark:hover:text-slate-200"
           aria-label="Fechar"
         >
           <X size={20} />

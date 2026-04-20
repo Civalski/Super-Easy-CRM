@@ -186,10 +186,22 @@ export function useLogin(theme: AppTheme) {
     void executeLogin(turnstileToken)
   }, [executeLogin, pendingLogin, turnstileToken])
 
-  const registerToken = searchParams.get('register_token')
+  const registerTokenParam = searchParams.get('register_token')
+  const registerComplete = searchParams.get('register_complete') === '1'
   const urlCallbackUrl = searchParams.get('callbackUrl')
 
   useEffect(() => {
+    const resolveRegisterToken = (): string | null => {
+      if (registerTokenParam) return registerTokenParam
+      if (!registerComplete || typeof window === 'undefined') return null
+      try {
+        return sessionStorage.getItem('__register_token')
+      } catch {
+        return null
+      }
+    }
+
+    const registerToken = resolveRegisterToken()
     if (!registerToken) return
 
     let cancelled = false
@@ -203,7 +215,7 @@ export function useLogin(theme: AppTheme) {
 
       try {
         writeAuthFlowCookie({
-          source: 'register',
+          source: registerComplete ? 'oauth' : 'register',
           callbackUrl: urlCallbackUrl || callbackUrl,
           nonce,
           status: 'processing',
@@ -221,6 +233,16 @@ export function useLogin(theme: AppTheme) {
           const session = await waitForSessionUser()
           if (session?.user) {
             clearAuthFlowCookie()
+            try {
+              sessionStorage.removeItem('__register_token')
+            } catch {
+              /* ignore */
+            }
+            if (registerComplete && typeof window !== 'undefined') {
+              const cleaned = new URL(window.location.href)
+              cleaned.searchParams.delete('register_complete')
+              window.history.replaceState(null, '', cleaned.toString())
+            }
             if (typeof window !== 'undefined') {
               window.location.replace(urlCallbackUrl || callbackUrl)
               return
@@ -231,17 +253,27 @@ export function useLogin(theme: AppTheme) {
           }
         }
         clearAuthFlowCookie()
+        try {
+          sessionStorage.removeItem('__register_token')
+        } catch {
+          /* ignore */
+        }
         setError('Token de login expirado ou invalido. Tente novamente.')
       } catch {
         clearAuthFlowCookie()
+        try {
+          sessionStorage.removeItem('__register_token')
+        } catch {
+          /* ignore */
+        }
         if (!cancelled) setError('Ocorreu um erro ao concluir o login.')
       }
     }
-    doAutoSignIn()
+    void doAutoSignIn()
     return () => {
       cancelled = true
     }
-  }, [registerToken, urlCallbackUrl, callbackUrl, router])
+  }, [registerTokenParam, registerComplete, urlCallbackUrl, callbackUrl, router])
 
   return {
     error,
