@@ -169,10 +169,10 @@ function AuthCallbackInner() {
         clearAuthFlowCookie()
         if (typeof window !== 'undefined') {
           try { sessionStorage.setItem('__register_token', json.registerToken) } catch {}
-          window.location.replace(`/login?${params.toString()}`)
+          window.location.replace(`/auth/finalizing?${params.toString()}`)
           return
         }
-        router.replace(`/login?${params.toString()}`)
+        router.replace(`/auth/finalizing?${params.toString()}`)
       } catch (err) {
         console.error('Erro no callback OAuth:', err)
         clearAuthFlowCookie()

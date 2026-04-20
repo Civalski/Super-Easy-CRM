@@ -26,7 +26,14 @@ import {
 const SIDEBAR_COLLAPSED_WIDTH = '4.5rem'
 const SIDEBAR_EXPANDED_WIDTH = '16rem'
 const SIDEBAR_COLLAPSE_DELAY_MS = 120
-const PUBLIC_LAYOUT_PATHS = ['/login', '/register', '/onboarding', '/auth/reset-password']
+const PUBLIC_LAYOUT_PATHS = [
+  '/login',
+  '/register',
+  '/onboarding',
+  '/auth/reset-password',
+  '/auth/callback',
+  '/auth/finalizing',
+]
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
