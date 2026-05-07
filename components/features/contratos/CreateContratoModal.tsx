@@ -9,7 +9,7 @@ import type { CreateContratoModalProps } from './types'
 type CreateContratoStep = 'choice' | 'manual' | 'ia'
 
 export function CreateContratoModal(props: CreateContratoModalProps) {
-  const { open, onClose, initialMode = null } = props
+  const { open, onClose, initialMode = null, documentKind = 'contrato' } = props
   const [step, setStep] = useState<CreateContratoStep>('choice')
   const hasChoiceStep = !initialMode
 
@@ -29,6 +29,7 @@ export function CreateContratoModal(props: CreateContratoModalProps) {
       {hasChoiceStep ? (
         <CreateContratoChoiceModal
           open={open && step === 'choice'}
+          documentKind={documentKind}
           onClose={handleClose}
           onSelect={(mode) => setStep(mode)}
         />

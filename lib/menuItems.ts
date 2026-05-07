@@ -4,6 +4,7 @@ import {
   Calendar,
   ClipboardList,
   DocumentCheck,
+  DocumentDuplicate,
   FileText,
   LayoutDashboard,
   Layers,
@@ -108,6 +109,16 @@ export const menuItems: MenuItem[] = [
       '- Preencha cláusulas, partes, datas e assinaturas.\n' +
       '- Gere PDFs com visual profissional para envio ou impressão.\n\n' +
       'Ideal para transformar combinados em documentação sólida.',
+  },
+  {
+    name: 'Proposta',
+    href: '/propostas',
+    icon: DocumentDuplicate,
+    helpDescription:
+      'Propostas comerciais de serviço separadas do fluxo de contrato.\n\n' +
+      '- Monte escopo, valor e condições com o mesmo motor de PDF das propostas formais.\n' +
+      '- Foco em fechamento comercial sem a etapa jurídica do contrato.\n\n' +
+      'Use quando a ideia é vender o projeto antes de formalizar cláusulas completas.',
   },
   {
     name: 'Funil',

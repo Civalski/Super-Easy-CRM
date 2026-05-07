@@ -2,6 +2,6 @@
 
 import { ContratosWorkspace } from '@/components/features/contratos/ContratosWorkspace'
 
-export default function ContratosPage() {
-  return <ContratosWorkspace variant="contratos" />
+export default function PropostasPage() {
+  return <ContratosWorkspace variant="propostas" />
 }

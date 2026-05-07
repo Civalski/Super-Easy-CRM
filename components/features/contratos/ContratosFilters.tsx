@@ -17,6 +17,8 @@ interface ContratosFiltersProps {
   onChange: (values: ContratosFiltersValues) => void
   onClose: () => void
   onClear: () => void
+  /** Quando definido (ex.: proposta), o tipo fica fixo e o select nao e exibido */
+  tipoLocked?: string
 }
 
 export function ContratosFilters({
@@ -26,11 +28,21 @@ export function ContratosFilters({
   onChange,
   onClose,
   onClear,
+  tipoLocked,
 }: ContratosFiltersProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [position, setPosition] = useState({ top: 0, left: 0, width: 320 })
 
-  const hasActiveFilters = Boolean(values.tipo || values.dataInicio || values.dataFim)
+  const tipoLabelLocked = useMemo(() => {
+    if (!tipoLocked) return ''
+    const found = TIPOS_CONTRATO.find((t) => t.value === tipoLocked)
+    return found?.label ?? tipoLocked
+  }, [tipoLocked])
+
+  const hasActiveFilters =
+    tipoLocked !== undefined && tipoLocked !== ''
+      ? Boolean(values.dataInicio || values.dataFim)
+      : Boolean(values.tipo || values.dataInicio || values.dataFim)
 
   const tipoOptions = useMemo(
     () => [{ value: '', label: 'Todos os tipos' }, ...TIPOS_CONTRATO.map((t) => ({ value: t.value, label: t.label }))],
@@ -89,20 +101,29 @@ export function ContratosFilters({
       style={{ top: position.top, left: position.left, width: position.width }}
     >
       <div className="space-y-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo de contrato</label>
-          <select
-            value={values.tipo}
-            onChange={(e) => onChange({ ...values, tipo: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-          >
-            {tipoOptions.map((opt) => (
-              <option key={opt.value || 'all'} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {tipoLocked ? (
+          <div>
+            <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</p>
+            <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-800/80 dark:text-gray-200">
+              {tipoLabelLocked}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo de contrato</label>
+            <select
+              value={values.tipo}
+              onChange={(e) => onChange({ ...values, tipo: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            >
+              {tipoOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <div>

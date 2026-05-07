@@ -26,10 +26,10 @@ const emptyParte: DadosParte = {
   telefone: '',
 }
 
-function createInitialFormState(): ContratoFormState {
+function createInitialFormState(defaultTipo: string): ContratoFormState {
   return {
     titulo: '',
-    tipo: 'geral',
+    tipo: defaultTipo,
     descricao: '',
     preambulo: '',
     clausulas: [{ titulo: '', conteudo: '' }],
@@ -61,14 +61,16 @@ function mergeCustomFields(
   return base
 }
 
-export function useContratoForm() {
+export function useContratoForm(options?: { defaultTipo?: string }) {
+  const defaultTipo = options?.defaultTipo ?? 'geral'
+
   const [clienteId, setClienteId] = useState('')
   const [clienteLabel, setClienteLabel] = useState('')
   const [clausulasMode, setClausulasMode] = useState<'manual' | 'paste'>('manual')
   const [clausulasTextoBruto, setClausulasTextoBruto] = useState('')
   const [customFieldsContratante, setCustomFieldsContratante] = useState<ContratoCustomField[]>([])
   const [customFieldsContratado, setCustomFieldsContratado] = useState<ContratoCustomField[]>([])
-  const [form, setForm] = useState<ContratoFormState>(createInitialFormState)
+  const [form, setForm] = useState<ContratoFormState>(() => createInitialFormState(defaultTipo))
 
   const resetForm = useCallback(() => {
     setClienteId('')
@@ -77,8 +79,8 @@ export function useContratoForm() {
     setClausulasTextoBruto('')
     setCustomFieldsContratante([])
     setCustomFieldsContratado([])
-    setForm(createInitialFormState())
-  }, [])
+    setForm(createInitialFormState(defaultTipo))
+  }, [defaultTipo])
 
   const setFormFromContrato = useCallback((contrato: Contrato) => {
     const clausulas = Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0

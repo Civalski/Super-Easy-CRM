@@ -25,7 +25,9 @@ export function CreateContratoIaModal({
   onSave,
   saving,
   onBack,
+  documentKind = 'contrato',
 }: CreateContratoIaModalProps) {
+  const focusProposta = documentKind === 'proposta'
   const {
     form,
     setForm,
@@ -49,7 +51,7 @@ export function CreateContratoIaModal({
     removeCustomField,
     applyParsedClausulas,
     buildPayload,
-  } = useContratoForm()
+  } = useContratoForm({ defaultTipo: focusProposta ? 'proposta' : 'geral' })
   const [iaPrompt, setIaPrompt] = useState('')
   const [iaLoading, setIaLoading] = useState(false)
   const [useMultiModels, setUseMultiModels] = useState(false)
@@ -83,8 +85,10 @@ export function CreateContratoIaModal({
   const handleGerarComIa = useCallback(async () => {
     const prompt = iaPrompt.trim()
     if (!prompt) {
-      toast.error('Descreva o contrato', {
-        description: 'Informe o que deseja no contrato para a IA gerar.',
+      toast.error(focusProposta ? 'Descreva a proposta' : 'Descreva o contrato', {
+        description: focusProposta
+          ? 'Informe o escopo e condicoes para a IA gerar a proposta.'
+          : 'Informe o que deseja no contrato para a IA gerar.',
       })
       return
     }
@@ -151,10 +155,15 @@ export function CreateContratoIaModal({
             : uso
         )
       )
-      toast.success('Contrato gerado com IA')
+      toast.success(focusProposta ? 'Proposta gerada com IA' : 'Contrato gerado com IA')
     } catch (error) {
       toast.error('Erro', {
-        description: error instanceof Error ? error.message : 'Nao foi possivel gerar o contrato.',
+        description:
+          error instanceof Error
+            ? error.message
+            : focusProposta
+              ? 'Nao foi possivel gerar a proposta.'
+              : 'Nao foi possivel gerar o contrato.',
       })
     } finally {
       setIaLoading(false)
@@ -163,6 +172,7 @@ export function CreateContratoIaModal({
     emptyParte,
     form.clausulas,
     form.preambulo,
+    focusProposta,
     form.tipo,
     form.titulo,
     iaPrompt,
@@ -189,9 +199,13 @@ export function CreateContratoIaModal({
       onClose={onClose}
       onBack={onBack}
       onSubmit={() => void handleSubmit()}
-      title="Novo contrato com I.A"
-      description="Fluxo dedicado a IA: descreva o contrato, gere e revise os dados das partes."
-      primaryLabel="Criar contrato"
+      title={focusProposta ? 'Nova proposta com I.A' : 'Novo contrato com I.A'}
+      description={
+        focusProposta
+          ? 'Fluxo dedicado a IA: descreva escopo e condicoes da proposta comercial.'
+          : 'Fluxo dedicado a IA: descreva o contrato, gere e revise os dados das partes.'
+      }
+      primaryLabel={focusProposta ? 'Criar proposta' : 'Criar contrato'}
       primaryDisabled={saving}
       primaryLoading={saving}
     >

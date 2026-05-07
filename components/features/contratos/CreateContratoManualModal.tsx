@@ -18,7 +18,9 @@ export function CreateContratoManualModal({
   onSave,
   saving,
   onBack,
+  documentKind = 'contrato',
 }: CreateContratoManualModalProps) {
+  const focusProposta = documentKind === 'proposta'
   const {
     form,
     resetForm,
@@ -40,7 +42,7 @@ export function CreateContratoManualModal({
     removeCustomField,
     applyParsedClausulas,
     buildPayload,
-  } = useContratoForm()
+  } = useContratoForm({ defaultTipo: focusProposta ? 'proposta' : 'geral' })
 
   useEffect(() => {
     if (open) resetForm()
@@ -65,9 +67,13 @@ export function CreateContratoManualModal({
       onClose={onClose}
       onBack={onBack}
       onSubmit={() => void handleSubmit()}
-      title="Novo contrato manual"
-      description="Preencha os dados do contrato sem usar geracao por IA."
-      primaryLabel="Criar contrato"
+      title={focusProposta ? 'Nova proposta manual' : 'Novo contrato manual'}
+      description={
+        focusProposta
+          ? 'Preencha escopo e condicoes comerciais sem usar geracao por IA.'
+          : 'Preencha os dados do contrato sem usar geracao por IA.'
+      }
+      primaryLabel={focusProposta ? 'Criar proposta' : 'Criar contrato'}
       primaryDisabled={saving}
       primaryLoading={saving}
     >

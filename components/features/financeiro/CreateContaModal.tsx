@@ -201,7 +201,7 @@ export default function CreateContaModal({ open, onClose, saving, form, onFormCh
 
             {form.recorrenteMensal && (
               <div className="rounded-xl border border-cyan-300/60 dark:border-cyan-400/20 bg-cyan-50 dark:bg-cyan-950/30 px-4 py-3 text-sm text-cyan-800 dark:text-cyan-200">
-                O sistema criará automaticamente uma nova conta todo mês com o mesmo valor e descrição, usando o dia do vencimento informado.
+                Comeca com um unico vencimento. Depois de liquidar esse mes, abre-se automaticamente o proximo no mesmo valor e dia.
               </div>
             )}
 

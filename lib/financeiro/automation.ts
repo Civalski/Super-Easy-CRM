@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { moneyRemaining, roundMoney } from '@/lib/money'
+import type { Prisma } from '@prisma/client'
 
 export function deriveFinanceStatus(params: {
   status: string
@@ -28,11 +29,98 @@ export function addMonthsWithDay(baseDate: Date, monthsToAdd: number, targetDay:
   return next
 }
 
-function toDateKey(date: Date) {
+export function toDateKey(date: Date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+/** Apos liquidar uma mensalidade, abre um unico novo vencimento (se a serie continuar ativa). */
+export async function createNextRecurringMonthIfEligible(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  conta: {
+    id: string
+    recorrenteMensal: boolean
+    recorrenciaAtiva: boolean
+    status: string
+    grupoParcelaId: string | null
+    dataVencimento: Date | null
+    valorTotal: number
+    tipo: string
+    autoDebito: boolean
+    oportunidadeId: string | null
+    ambiente: string
+    descricao: string | null
+    clienteId?: string | null
+    fornecedorId?: string | null
+    funcionarioId?: string | null
+    recorrenciaDiaVencimento: number | null
+    multaPorAtrasoPercentual?: number | null
+    multaPorAtrasoValor?: number | null
+    multaPorAtrasoPeriodo?: string | null
+  },
+) {
+  if (!conta.recorrenteMensal || conta.status !== 'pago') return
+  if (!conta.recorrenciaAtiva) return
+  if (!conta.grupoParcelaId || !conta.dataVencimento) return
+
+  const groupId = conta.grupoParcelaId
+  const diaVenc = conta.recorrenciaDiaVencimento ?? conta.dataVencimento.getDate()
+  const nextDate = addMonthsWithDay(conta.dataVencimento, 1, diaVenc)
+  const nextKey = toDateKey(nextDate)
+
+  const mesmoGrupo = await tx.contaReceber.findMany({
+    where: { userId, grupoParcelaId: groupId, recorrenteMensal: true },
+    select: { dataVencimento: true },
+  })
+  for (const row of mesmoGrupo) {
+    if (row.dataVencimento && toDateKey(row.dataVencimento) === nextKey) {
+      return
+    }
+  }
+
+  const numeroMax = await tx.contaReceber
+    .aggregate({
+      where: { userId, grupoParcelaId: groupId, recorrenteMensal: true },
+      _max: { numeroParcela: true },
+    })
+    .then((agg) => agg._max.numeroParcela ?? 0)
+
+  const valorProx = roundMoney(conta.valorTotal)
+  await tx.contaReceber.create({
+    data: {
+      userId,
+      pedidoId: null,
+      oportunidadeId: conta.oportunidadeId,
+      clienteId: conta.clienteId ?? null,
+      fornecedorId: conta.fornecedorId ?? null,
+      funcionarioId: conta.funcionarioId ?? null,
+      ambiente: conta.ambiente,
+      tipo: conta.tipo,
+      descricao: conta.descricao,
+      valorTotal: valorProx,
+      valorRecebido: 0,
+      autoDebito: conta.autoDebito,
+      grupoParcelaId: groupId,
+      numeroParcela: numeroMax + 1,
+      totalParcelas: null,
+      dataVencimento: nextDate,
+      status: deriveFinanceStatus({
+        status: 'pendente',
+        valorTotal: valorProx,
+        valorRecebido: 0,
+        dataVencimento: nextDate,
+      }),
+      recorrenteMensal: true,
+      recorrenciaAtiva: true,
+      recorrenciaDiaVencimento: diaVenc,
+      ...(conta.multaPorAtrasoPercentual != null ? { multaPorAtrasoPercentual: conta.multaPorAtrasoPercentual } : {}),
+      ...(conta.multaPorAtrasoValor != null ? { multaPorAtrasoValor: conta.multaPorAtrasoValor } : {}),
+      ...(conta.multaPorAtrasoPeriodo != null ? { multaPorAtrasoPeriodo: conta.multaPorAtrasoPeriodo } : {}),
+    },
+  })
 }
 
 async function processAutoDebits(userId: string) {
@@ -83,42 +171,33 @@ async function processAutoDebits(userId: string) {
           observacoes: 'Debito automatico de parcela no vencimento',
         },
       })
+
+      const fullPaid = await tx.contaReceber.findFirst({
+        where: { id: conta.id, userId },
+      })
+      if (fullPaid) {
+        await createNextRecurringMonthIfEligible(tx, userId, fullPaid)
+      }
     })
   }
 }
 
-async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: number) {
-  const recurring = await prisma.contaReceber.findMany({
+/** Garante o proximo vencimento unico quando o ultimo lancamento do grupo esta pago e a serie segue ativa. */
+async function ensureRecurringMonthlyAccounts(userId: string, _monthsAhead: number) {
+  const recorrentes = await prisma.contaReceber.findMany({
     where: {
       userId,
       recorrenteMensal: true,
-      recorrenciaAtiva: true,
-    },
-    select: {
-      id: true,
-      userId: true,
-      pedidoId: true,
-      oportunidadeId: true,
-      ambiente: true,
-      tipo: true,
-      descricao: true,
-      valorTotal: true,
-      autoDebito: true,
-      grupoParcelaId: true,
-      numeroParcela: true,
-      dataVencimento: true,
-      recorrenciaDiaVencimento: true,
-      status: true,
-      createdAt: true,
+      grupoParcelaId: { not: null },
     },
     orderBy: [{ createdAt: 'asc' }],
   })
 
-  if (recurring.length === 0) return
+  if (recorrentes.length === 0) return
 
-  const groups = new Map<string, typeof recurring>()
-  for (const conta of recurring) {
-    const groupId = conta.grupoParcelaId || conta.id
+  const groups = new Map<string, typeof recorrentes>()
+  for (const conta of recorrentes) {
+    const groupId = conta.grupoParcelaId!
     const group = groups.get(groupId)
     if (group) {
       group.push(conta)
@@ -127,10 +206,7 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
     }
   }
 
-  const now = new Date()
-  const horizon = new Date(now.getFullYear(), now.getMonth() + monthsAhead, 0, 23, 59, 59, 999)
-
-  for (const [groupId, contas] of Array.from(groups.entries())) {
+  for (const [, contas] of Array.from(groups.entries())) {
     const contasOrdenadas = [...contas].sort((a, b) => {
       const aDate = a.dataVencimento ? a.dataVencimento.getTime() : Number.NEGATIVE_INFINITY
       const bDate = b.dataVencimento ? b.dataVencimento.getTime() : Number.NEGATIVE_INFINITY
@@ -138,84 +214,12 @@ async function ensureRecurringMonthlyAccounts(userId: string, monthsAhead: numbe
       return a.createdAt.getTime() - b.createdAt.getTime()
     })
 
-    const base = contasOrdenadas[0]
-    const firstDue = base.dataVencimento || now
-    const diaVencimento = base.recorrenciaDiaVencimento || firstDue.getDate()
-    const existingDateKeys = new Set(
-      contasOrdenadas
-        .map((item) => item.dataVencimento)
-        .filter((item): item is Date => Boolean(item))
-        .map(toDateKey)
-    )
+    const last = contasOrdenadas[contasOrdenadas.length - 1]
+    if (!last.dataVencimento || last.status !== 'pago' || !last.recorrenciaAtiva) continue
 
-    let latestDate =
-      contasOrdenadas
-        .map((item) => item.dataVencimento)
-        .filter((item): item is Date => Boolean(item))
-        .sort((a, b) => a.getTime() - b.getTime())
-        .at(-1) || firstDue
-
-    let nextParcela = Math.max(...contasOrdenadas.map((item) => item.numeroParcela || 0), 0) + 1
-    const createData: Array<{
-      userId: string
-      pedidoId: string | null
-      oportunidadeId: string | null
-      ambiente: string
-      tipo: string
-      descricao: string | null
-      valorTotal: number
-      valorRecebido: number
-      autoDebito: boolean
-      grupoParcelaId: string
-      numeroParcela: number
-      totalParcelas: null
-      dataVencimento: Date
-      status: string
-      recorrenteMensal: boolean
-      recorrenciaAtiva: boolean
-      recorrenciaDiaVencimento: number
-    }> = []
-
-    while (latestDate.getTime() < horizon.getTime()) {
-      const nextDate = addMonthsWithDay(latestDate, 1, diaVencimento)
-      latestDate = nextDate
-      const key = toDateKey(nextDate)
-      if (existingDateKeys.has(key)) continue
-
-      existingDateKeys.add(key)
-      createData.push({
-        userId: base.userId,
-        pedidoId: null,
-        oportunidadeId: base.oportunidadeId,
-        ambiente: base.ambiente,
-        tipo: base.tipo,
-        descricao: base.descricao,
-        valorTotal: roundMoney(base.valorTotal),
-        valorRecebido: 0,
-        autoDebito: base.autoDebito,
-        grupoParcelaId: groupId,
-        numeroParcela: nextParcela,
-        totalParcelas: null,
-        dataVencimento: nextDate,
-        status: deriveFinanceStatus({
-          status: 'pendente',
-          valorTotal: roundMoney(base.valorTotal),
-          valorRecebido: 0,
-          dataVencimento: nextDate,
-        }),
-        recorrenteMensal: true,
-        recorrenciaAtiva: true,
-        recorrenciaDiaVencimento: diaVencimento,
-      })
-      nextParcela += 1
-    }
-
-    if (createData.length > 0) {
-      await prisma.contaReceber.createMany({
-        data: createData,
-        skipDuplicates: true,
-      })
-    }
+    await prisma.$transaction(async (tx) => {
+      await createNextRecurringMonthIfEligible(tx, userId, last)
+    })
   }
 }
 

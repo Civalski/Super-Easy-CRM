@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/api/route-helpers'
-import { addMonthsWithDay, deriveFinanceStatus } from '@/lib/financeiro/automation'
+import { createNextRecurringMonthIfEligible, deriveFinanceStatus } from '@/lib/financeiro/automation'
 import { roundMoney } from '@/lib/money'
 import { Prisma } from '@prisma/client'
 
@@ -13,7 +13,6 @@ const ALLOWED_TIPO_CONTA = new Set(['receber', 'pagar'])
 const ALLOWED_TIPO_MOVIMENTO = new Set(['entrada', 'saida', 'estorno'])
 const ALLOWED_AMBIENTE = new Set(['geral', 'pessoal'])
 const ALLOWED_AMBIENTE_QUERY = new Set(['geral', 'pessoal', 'total'])
-const RECURRING_MONTHS_AHEAD = 6
 
 async function ensurePremiumAccess(userId: string) {
   void userId
@@ -475,10 +474,7 @@ export async function POST(request: NextRequest) {
 
     let scheduleDates: Date[] = []
     if (recorrenteMensal && dataVencimento) {
-      const dia = dataVencimento.getDate()
-      scheduleDates = Array.from({ length: RECURRING_MONTHS_AHEAD }, (_, index) =>
-        addMonthsWithDay(dataVencimento, index, dia)
-      )
+      scheduleDates = [dataVencimento]
     } else if (datasParcelas && datasParcelas.length > 0) {
       scheduleDates = datasParcelas
     } else if (parcelas !== null && parcelas > 1) {
@@ -556,7 +552,7 @@ export async function POST(request: NextRequest) {
             valorRecebido: valorInicial,
             autoDebito,
             grupoParcelaId,
-            numeroParcela: totalParcelas > 1 ? index + 1 : null,
+            numeroParcela: recorrenteMensal || totalParcelas > 1 ? index + 1 : null,
             totalParcelas: recorrenteMensal ? null : totalParcelas > 1 ? totalParcelas : null,
             dataVencimento: dataParcela,
             status: deriveFinanceStatus({
@@ -811,6 +807,8 @@ export async function PATCH(request: NextRequest) {
           },
         })
       }
+
+      await createNextRecurringMonthIfEligible(tx, userId, conta)
 
       return conta
     })

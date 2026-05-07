@@ -1,24 +1,29 @@
 /**
- * Exporta todos os usuários cadastrados para data/usuarios.csv.
+ * Exporta todos os usuários cadastrados para scripts/usuarios.csv.
  * Inclui: username, name, email, role, telefone (empresa), areaAtuacao (ramo),
  * tipoPublico e assinatura vigente.
  *
  * Uso: npx tsx scripts/export-usuarios-csv.ts
  */
-import 'dotenv/config'
 import { writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import { normalizeSubscriptionStatus } from '@/lib/billing/subscription'
 
-const connectionString = process.env.DATABASE_URL
-if (!connectionString) {
-  throw new Error('DATABASE_URL não definida')
-}
+let prisma: PrismaClient
 
-const adapter = new PrismaPg({ connectionString })
-const prisma = new PrismaClient({ adapter })
+async function ensureEnvLoaded() {
+  if (process.env.DATABASE_URL) return
+
+  try {
+    const dotenv = await import('dotenv')
+    dotenv.config()
+  } catch {
+    // Permite execução mesmo sem dotenv instalado, desde que DATABASE_URL
+    // já esteja definida no ambiente do sistema.
+  }
+}
 
 function escapeCsv(value: string | null | undefined): string {
   if (value == null || value === '') return ''
@@ -57,6 +62,18 @@ function getAssinaturaVigente(user: {
 }
 
 async function main() {
+  await ensureEnvLoaded()
+
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error(
+      'DATABASE_URL não definida. Defina no ambiente ou em um arquivo .env'
+    )
+  }
+
+  const adapter = new PrismaPg({ connectionString })
+  prisma = new PrismaClient({ adapter })
+
   const users = await prisma.user.findMany({
     orderBy: { username: 'asc' },
     include: {
@@ -85,9 +102,9 @@ async function main() {
   })
 
   const csvContent = [header, ...rows].join('\n')
-  const dataDir = join(process.cwd(), 'data')
-  mkdirSync(dataDir, { recursive: true })
-  const csvPath = join(dataDir, 'usuarios.csv')
+  const scriptsDir = join(process.cwd(), 'scripts')
+  mkdirSync(scriptsDir, { recursive: true })
+  const csvPath = join(scriptsDir, 'usuarios.csv')
   writeFileSync(csvPath, csvContent, 'utf-8')
 
   console.log(`✓ Exportados ${users.length} usuário(s) para ${csvPath}`)
@@ -98,4 +115,8 @@ main()
     console.error('Erro ao exportar:', e)
     process.exit(1)
   })
-  .finally(() => prisma.$disconnect())
+  .finally(async () => {
+    if (prisma) {
+      await prisma.$disconnect()
+    }
+  })

@@ -69,9 +69,12 @@ export interface ContratoCustomField {
   value: string
 }
 
+export type ContratoDocumentKind = 'contrato' | 'proposta'
+
 export interface CreateContratoModalProps {
   open: boolean
   initialMode?: 'manual' | 'ia' | null
+  documentKind?: ContratoDocumentKind
   onClose: () => void
   onCreated: () => void
   onSave: (values: ContratoFormValues) => Promise<unknown>

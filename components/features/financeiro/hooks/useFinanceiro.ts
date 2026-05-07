@@ -208,7 +208,7 @@ export function useFinanceiro() {
       const res = await fetch('/api/financeiro/contas-receber', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Erro ao criar conta')
-      toast.success('Conta criada', { description: typeof data?.parcelasCriadas === 'number' ? `${data.parcelasCriadas} parcelas criadas com sucesso.` : typeof data?.lancamentosCriados === 'number' ? `${data.lancamentosCriados} lancamentos mensais criados para a recorrencia.` : undefined })
+      toast.success('Conta criada', { description: typeof data?.parcelasCriadas === 'number' ? `${data.parcelasCriadas} parcelas criadas com sucesso.` : typeof data?.recorrenteMensal === 'boolean' && data.recorrenteMensal ? 'Vencimento inicial criado; o proximo sera aberto automaticamente apos liquidacao.' : undefined })
       setShowCreateModal(false); resetCreateForm(); setPageReceber(1); setPagePagar(1); await refreshAll()
     } catch (err: unknown) { toast.error('Erro', { description: err instanceof Error ? err.message : 'Erro ao criar conta.' }) }
     finally { setSaving(false) }

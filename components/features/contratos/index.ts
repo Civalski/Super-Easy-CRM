@@ -1,3 +1,5 @@
+export { ContratosWorkspace } from './ContratosWorkspace'
+export type { ContratosWorkspaceVariant } from './ContratosWorkspace.config'
 export { CreateContratoModal } from './CreateContratoModal'
 export { ContratosList } from './ContratosList'
 export { ContratosFilters } from './ContratosFilters'

@@ -1,27 +1,35 @@
 'use client'
 
 import { SideCreateDrawer } from '@/components/common'
+import type { ContratoDocumentKind } from '@/components/features/contratos/types'
 import { FileText, Sparkles, X } from '@/lib/icons'
 
 interface CreateContratoChoiceModalProps {
   open: boolean
+  documentKind?: ContratoDocumentKind
   onClose: () => void
   onSelect: (mode: 'manual' | 'ia') => void
 }
 
 export function CreateContratoChoiceModal({
   open,
+  documentKind = 'contrato',
   onClose,
   onSelect,
 }: CreateContratoChoiceModalProps) {
+  const focusProposta = documentKind === 'proposta'
   return (
     <SideCreateDrawer open={open} onClose={onClose} maxWidthClass="max-w-xl">
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-5 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Novo contrato</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              {focusProposta ? 'Nova proposta comercial' : 'Novo contrato'}
+            </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Escolha como deseja iniciar a criacao do contrato.
+              {focusProposta
+                ? 'Escolha como deseja montar a proposta de servico.'
+                : 'Escolha como deseja iniciar a criacao do contrato.'}
             </p>
           </div>
           <button
