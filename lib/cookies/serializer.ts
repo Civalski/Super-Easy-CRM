@@ -78,8 +78,9 @@ export function parseAuthFlowCookie(raw: string | undefined): AuthFlowPayload | 
   const nonce = typeof flow.nonce === 'string' ? flow.nonce : undefined
   const status =
     flow.status === 'processing' || flow.status === 'done' ? flow.status : undefined
+  const registerToken = typeof flow.registerToken === 'string' ? flow.registerToken : undefined
 
-  return { source, callbackUrl, nonce, status, expiresAt }
+  return { source, callbackUrl, nonce, status, registerToken, expiresAt }
 }
 
 export function serializeAuthFlowCookie(payload: AuthFlowPayload): string {
@@ -90,6 +91,7 @@ export function serializeAuthFlowCookie(payload: AuthFlowPayload): string {
       callbackUrl: payload.callbackUrl ?? null,
       nonce: payload.nonce ?? null,
       status: payload.status ?? null,
+      registerToken: payload.registerToken ?? null,
       expiresAt: payload.expiresAt,
     },
   }

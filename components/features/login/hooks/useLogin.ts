@@ -190,11 +190,12 @@ export function useLogin(theme: AppTheme) {
   const urlCallbackUrl = searchParams.get('callbackUrl')
 
   useEffect(() => {
-    if (!registerToken) return
+    const resolvedRegisterToken = registerToken ?? readAuthFlowCookie()?.registerToken
+    if (!resolvedRegisterToken) return
 
     let cancelled = false
     const doAutoSignIn = async () => {
-      const nonce = createFlowNonce(registerToken)
+      const nonce = createFlowNonce(resolvedRegisterToken)
       const flow = readAuthFlowCookie()
 
       if (flow?.nonce === nonce && (flow?.status === 'processing' || flow?.status === 'done')) {
@@ -212,7 +213,7 @@ export function useLogin(theme: AppTheme) {
         const result = await signIn('credentials', {
           callbackUrl: urlCallbackUrl || callbackUrl,
           redirect: false,
-          registerToken,
+          registerToken: resolvedRegisterToken,
           username: '',
           password: '',
         })
