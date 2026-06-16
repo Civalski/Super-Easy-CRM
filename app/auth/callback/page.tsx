@@ -60,6 +60,14 @@ function AuthCallbackInner() {
       router.replace(`/login?${params.toString()}`)
     }
 
+    const buildFinalizingUrl = (registerToken?: string) => {
+      const params = new URLSearchParams()
+      params.set('register_complete', '1')
+      if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
+      if (registerToken) params.set('register_token', registerToken)
+      return `/auth/finalizing?${params.toString()}`
+    }
+
     if (errorParam) {
       console.error('OAuth callback retornou erro antes da troca de sessao', {
         errorParam,
@@ -82,10 +90,9 @@ function AuthCallbackInner() {
       const flow = readAuthFlowCookie()
 
       if (flow?.nonce === nonce && flow?.status === 'done') {
+        const finalizingUrl = buildFinalizingUrl(flow.registerToken)
         clearAuthFlowCookie()
-        const params = new URLSearchParams()
-        if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
-        router.replace(`/login?${params.toString()}`)
+        router.replace(finalizingUrl)
         return
       }
 
@@ -159,20 +166,19 @@ function AuthCallbackInner() {
           callbackUrl: nextPath !== '/' ? nextPath : undefined,
           nonce,
           status: 'done',
+          registerToken: json.registerToken,
         })
 
         await supabase.auth.signOut().catch(() => undefined)
 
-        const params = new URLSearchParams()
-        params.set('register_complete', '1')
-        if (nextPath && nextPath !== '/') params.set('callbackUrl', nextPath)
+        const finalizingUrl = buildFinalizingUrl(json.registerToken)
         clearAuthFlowCookie()
         if (typeof window !== 'undefined') {
           try { sessionStorage.setItem('__register_token', json.registerToken) } catch {}
-          window.location.replace(`/auth/finalizing?${params.toString()}`)
+          window.location.replace(finalizingUrl)
           return
         }
-        router.replace(`/auth/finalizing?${params.toString()}`)
+        router.replace(finalizingUrl)
       } catch (err) {
         console.error('Erro no callback OAuth:', err)
         clearAuthFlowCookie()

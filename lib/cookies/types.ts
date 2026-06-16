@@ -20,6 +20,7 @@ export interface AuthFlowPayload {
   callbackUrl?: string
   nonce?: string
   status?: 'processing' | 'done'
+  registerToken?: string
   expiresAt: number
 }
 

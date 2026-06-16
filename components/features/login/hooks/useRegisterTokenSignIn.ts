@@ -46,6 +46,8 @@ export function useRegisterTokenSignIn(
   useEffect(() => {
     const resolveRegisterToken = (): string | null => {
       if (registerTokenParam) return registerTokenParam
+      const flow = readAuthFlowCookie()
+      if (flow?.registerToken) return flow.registerToken
       if (!registerComplete || typeof window === 'undefined') return null
       try {
         return sessionStorage.getItem('__register_token')
