@@ -141,7 +141,6 @@ export function useLogin(theme: AppTheme) {
   }, [callbackUrl, hideTurnstilePrompt, password, router, username, website])
 
   const { handleGoogleSignIn: baseGoogleSignIn, showGoogleSignIn } = useGoogleSignIn(
-    callbackUrl,
     (msg) => {
       setError(msg)
       setLoading(false)
